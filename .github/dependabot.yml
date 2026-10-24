@@ -1,0 +1,31 @@
+# Dependabot: controlla ogni settimana se le dipendenze hanno aggiornamenti o falle di sicurezza
+# e apre in automatico una pull request con la correzione.
+version: 2
+updates:
+  # Azioni usate dai workflow di GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Rome"
+    labels:
+      - "dipendenze"
+    commit-message:
+      prefix: "deps"
+
+  # Librerie della web app (npm). Attivo appena viene aggiunto package.json (Fase 2).
+  # Togli il commento dalle righe qui sotto quando il file esiste.
+  # - package-ecosystem: "npm"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "07:00"
+  #     timezone: "Europe/Rome"
+  #   open-pull-requests-limit: 5
+  #   labels:
+  #     - "dipendenze"
+  #   commit-message:
+  #     prefix: "deps"

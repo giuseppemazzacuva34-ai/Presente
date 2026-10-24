@@ -1,0 +1,97 @@
+# Verifica e pubblicazione automatica della web app.
+# A ogni modifica su main: controlla che l'app si costruisca e, se Cloudflare è configurato, la pubblica.
+name: Verifica e pubblicazione
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifica:
+    name: Verifica
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Controlla se l'app esiste già
+        id: app
+        run: |
+          if [ -f package.json ]; then
+            echo "presente=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "presente=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nessun package.json: la web app arriva in Fase 2 (dal 7 dicembre). Niente da verificare."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.app.outputs.presente == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installa le dipendenze
+        if: steps.app.outputs.presente == 'true'
+        run: npm ci
+
+      - name: Test
+        if: steps.app.outputs.presente == 'true'
+        run: npm test --if-present
+
+      - name: Build
+        if: steps.app.outputs.presente == 'true'
+        run: npm run build --if-present
+
+      - name: Salva la build
+        if: steps.app.outputs.presente == 'true' && hashFiles('dist/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 3
+
+  pubblica:
+    name: Pubblica su Cloudflare Pages
+    needs: verifica
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Controlla la configurazione
+        id: cf
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "pronto=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pronto=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Pubblicazione saltata: aggiungi i secret CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID per attivarla."
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.cf.outputs.pronto == 'true'
+        continue-on-error: true
+        id: build
+        with:
+          name: dist
+          path: dist
+
+      - name: Pubblica
+        if: steps.cf.outputs.pronto == 'true' && steps.build.outcome == 'success'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=presente --branch=main
