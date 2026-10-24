@@ -1,0 +1,23 @@
+# Pubblicazione della landing page (lista d'attesa) su Netlify, piano gratuito.
+# Netlify pubblica la cartella /landing così com'è: nessuna build, nessuna dipendenza.
+# Le iscrizioni arrivano con Netlify Forms (modulo "lista-attesa"), incluso gratis.
+
+[build]
+  base = "landing"
+  publish = "."
+  command = ""
+  # Salta la pubblicazione se la landing non è cambiata (risparmia i crediti gratuiti).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../netlify.toml"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

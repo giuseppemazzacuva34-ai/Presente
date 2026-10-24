@@ -24,6 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verifica la landing della lista d'attesa
+        if: hashFiles('landing/index.html') != ''
+        run: python3 scripts/verifica_landing.py
+
       - name: Controlla se l'app esiste già
         id: app
         run: |
@@ -31,7 +35,7 @@ jobs:
             echo "presente=true" >> "$GITHUB_OUTPUT"
           else
             echo "presente=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Nessun package.json: la web app arriva in Fase 2 (dal 7 dicembre). Niente da verificare."
+            echo "::notice::Nessun package.json: la web app arriva in Fase 2 (dal 2 novembre). Niente da verificare."
           fi
 
       - uses: actions/setup-node@v4
