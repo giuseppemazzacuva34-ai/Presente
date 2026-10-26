@@ -4,6 +4,7 @@
 // rispetti il limite di frequenza, scriva nel database solo con parametri e non riveli dettagli quando qualcosa va storto.
 import { readFileSync, readdirSync } from "node:fs";
 import { iscrizione } from "../worker/iscrizione.js";
+import worker from "../worker/index.js";
 
 let errori = 0;
 function verifica(condizione, descrizione) {
@@ -102,6 +103,17 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const codice = readFileSync(new URL("../worker/" + nome, import.meta.url), "utf8");
     const sospette = codice.match(/prepare\(\s*(`[^`]*\$\{|[^)]*["'`]\s*\+)/g);
     verifica(!sospette, `worker/${nome}: query solo con parametri (prepare + bind)`);
+  }
+}
+
+// 8. Intestazioni di sicurezza anche sulle risposte generate dal Worker
+{
+  const env = { ISCRIZIONI_APERTE: "no", DB: null, ASSETS: { fetch: () => new Response("") } };
+  for (const [metodo, percorso] of [["POST", "/iscrizione"], ["GET", "/iscrizione"], ["GET", "/conteggio"]]) {
+    const r = await worker.fetch(new Request("https://presente.example" + percorso, { method: metodo }), env);
+    const csp = r.headers.get("content-security-policy") || "";
+    verifica(csp.includes("script-src 'none'") && csp.includes("frame-ancestors 'none'") && r.headers.get("x-content-type-options") === "nosniff",
+      `${metodo} ${percorso}: intestazioni di sicurezza presenti`);
   }
 }
 
