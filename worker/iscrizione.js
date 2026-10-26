@@ -20,9 +20,40 @@ function grazie(request) {
   return Response.redirect(new URL("/grazie", request.url).toString(), 303);
 }
 
+// Accetta il modulo solo se arriva dal nostro sito: un altro sito non può iscrivere qualcuno a sua insaputa.
+// I browser mandano sempre l'intestazione Origin con i moduli; se manca (programmi, vecchi browser) decide il limite di frequenza.
+function stessoSito(request) {
+  const origine = request.headers.get("origin");
+  if (!origine) return true;
+  try {
+    return new URL(origine).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
+// Limite di frequenza: al massimo 5 invii al minuto dalla stessa connessione (binding LIMITE_ISCRIZIONI in wrangler.jsonc).
+// L'indirizzo IP serve solo a contare i tentativi in memoria: non viene salvato né scritto nei log.
+async function troppiTentativi(request, env) {
+  if (!env.LIMITE_ISCRIZIONI) return false;
+  const chiave = "iscrizione:" + (request.headers.get("cf-connecting-ip") || "sconosciuto");
+  try {
+    const { success } = await env.LIMITE_ISCRIZIONI.limit({ key: chiave });
+    return !success;
+  } catch {
+    return false;
+  }
+}
+
 export async function iscrizione(request, env) {
   if (env.ISCRIZIONI_APERTE !== "si" || !env.DB) {
     return pagina("Ci siamo quasi.", "Le iscrizioni aprono tra pochissimo. Riprova tra qualche ora.", 503);
+  }
+  if (!stessoSito(request)) {
+    return pagina("Qualcosa non torna.", "Iscriviti direttamente dal modulo sul nostro sito.", 403);
+  }
+  if (await troppiTentativi(request, env)) {
+    return pagina("Un attimo.", "Troppi tentativi in poco tempo. Riprova tra un minuto.", 429);
   }
   let modulo;
   try {
@@ -42,10 +73,16 @@ export async function iscrizione(request, env) {
     return pagina("Manca qualcosa.", "Controlla l'email, scegli la zona e spunta le due caselle.", 400);
   }
 
-  await env.DB.prepare(SCHEMA).run();
-  await env.DB.prepare(
-    "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING"
-  ).bind(email, zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA).run();
+  try {
+    await env.DB.prepare(SCHEMA).run();
+    await env.DB.prepare(
+      "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING"
+    ).bind(email, zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA).run();
+  } catch (errore) {
+    // Nel log solo il tipo di errore: mai l'email o altri dati della persona.
+    console.error("iscrizione: errore del database", errore && errore.name);
+    return pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare l'iscrizione. Riprova tra qualche minuto.", 500);
+  }
 
   return grazie(request);
 }

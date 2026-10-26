@@ -28,6 +28,19 @@ jobs:
         if: hashFiles('landing/index.html') != ''
         run: python3 scripts/verifica_landing.py
 
+      - uses: actions/setup-node@v4
+        if: hashFiles('worker/index.js') != ''
+        with:
+          node-version: 22
+
+      - name: Test di sicurezza del Worker
+        if: hashFiles('worker/index.js') != ''
+        run: node scripts/test_worker.mjs
+
+      - name: Controlla la configurazione del Worker (prova senza pubblicare)
+        if: hashFiles('wrangler.jsonc') != ''
+        run: npx --yes wrangler@4 deploy --dry-run --outdir "$RUNNER_TEMP/worker"
+
       - name: Controlla se l'app esiste già
         id: app
         run: |
