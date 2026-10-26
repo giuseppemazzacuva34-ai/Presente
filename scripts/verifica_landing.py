@@ -13,6 +13,7 @@ Uso: python3 scripts/verifica_landing.py
 """
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
@@ -45,6 +46,9 @@ class Lettore(HTMLParser):
         if tag == "a" and a.get("href"):
             self.link.append(a["href"])
         for chiave in ("src", "href"):
+            # Il link canonico è un indirizzo per i motori di ricerca, non una risorsa da scaricare.
+            if tag == "link" and a.get("rel") == "canonical":
+                continue
             if tag in ("script", "img", "link", "iframe", "source") and a.get(chiave):
                 self.risorse.append(a[chiave])
         if tag not in VUOTI:
@@ -100,8 +104,9 @@ for nome in PAGINE:
         errori.append(f"{nome}: manca il meta viewport per il telefono")
     if not any(t == "title" for t, _ in p.tag):
         errori.append(f"{nome}: manca il titolo")
-    if "<script" in testo.lower():
-        errori.append(f"{nome}: la landing non deve usare script")
+    # Ammessi solo i dati strutturati per i motori di ricerca (JSON-LD), che il browser non esegue.
+    if re.search(r"<script(?![^>]*type=\"application/ld\+json\")", testo, re.I):
+        errori.append(f"{nome}: la landing non deve usare script (ammesso solo application/ld+json)")
     for r in p.risorse:
         if esterno(r):
             errori.append(f"{nome}: risorsa caricata da un sito esterno: {r}")
