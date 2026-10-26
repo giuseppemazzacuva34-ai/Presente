@@ -16,6 +16,15 @@
       "database_id": "39ed969d-4ed5-46d0-8d31-091e20504dfc"
     }
   ],
+  // Limite di frequenza per /iscrizione: 5 invii al minuto dalla stessa connessione (gratis, incluso nel piano Free).
+  // namespace_id è un numero scelto da noi, unico nell'account Cloudflare.
+  "ratelimits": [
+    {
+      "name": "LIMITE_ISCRIZIONI",
+      "namespace_id": "47011",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
   // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.
   // Per aprirle: cambiare "no" in "si" con una modifica su main.
   "vars": {
