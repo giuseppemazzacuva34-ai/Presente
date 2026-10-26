@@ -28,6 +28,6 @@
   // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.
   // Per aprirle: cambiare "no" in "si" con una modifica su main.
   "vars": {
-    "ISCRIZIONI_APERTE": "no"
+    "ISCRIZIONI_APERTE": "si"
   }
 }

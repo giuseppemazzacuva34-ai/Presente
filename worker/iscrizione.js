@@ -4,7 +4,7 @@
 import { pagina } from "./pagina.js";
 
 const ZONE = new Set(["isola", "nolo", "porta-romana", "altra-zona"]);
-const VERSIONE_INFORMATIVA = "bozza-2026-10-26";
+const VERSIONE_INFORMATIVA = "1.0-2026-10-26";
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (

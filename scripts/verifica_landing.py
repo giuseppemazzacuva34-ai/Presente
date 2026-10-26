@@ -6,7 +6,7 @@ Verifica che:
 - il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso (più il campo trappola anti-spam);
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
-- l'informativa resti marcata BOZZA finché non è approvata;
+- l'informativa (approvata con la decisione D5) non contenga più parti da completare né il marchio BOZZA;
 - la pagina resti leggera.
 
 Uso: python3 scripts/verifica_landing.py
@@ -134,8 +134,8 @@ for nome in PAGINE:
         peso = len(testo.encode()) + (CARTELLA / "stile.css").stat().st_size
         if peso > PESO_MASSIMO:
             errori.append(f"index.html: pagina troppo pesante ({peso} byte, massimo {PESO_MASSIMO})")
-    if nome == "privacy.html" and "BOZZA" not in testo:
-        errori.append("privacy.html: l'informativa deve restare marcata BOZZA finché non è approvata (decisione D5)")
+    if nome == "privacy.html" and any(x in testo for x in ("BOZZA", "da-completare", "DA VERIFICARE", "DA CONFERMARE")):
+        errori.append("privacy.html: l'informativa approvata (D5) contiene ancora parti da completare o il marchio BOZZA")
 
 if errori:
     print("Verifica della landing: PROBLEMI TROVATI")
