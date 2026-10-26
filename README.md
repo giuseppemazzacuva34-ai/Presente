@@ -1,6 +1,6 @@
 # Presente
 
-App di incontri gratuita per vedersi davvero: swipe con match che porta a un incontro, caparra anti-buca (70% a chi aspetta, 30% all'app), punteggio di affidabilità, locali consigliati e modalità Controluce. Lancio pubblico previsto a Milano sabato 9 gennaio 2027.
+App di incontri gratuita per vedersi davvero: niente foto né swipe: stanze di 7 giorni con chiamate solo voce, decisione reciproca con le chiavi, incontro dal vivo con caparra anti-buca (70% a chi aspetta, 30% all'app), locali consigliati e punteggio di affidabilità. Lancio pubblico previsto a Milano sabato 9 gennaio 2027.
 
 ## Stato
 
