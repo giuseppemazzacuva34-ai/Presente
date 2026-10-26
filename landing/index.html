@@ -3,15 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Presente · Lista d'attesa a Milano</title>
-  <meta name="description" content="Presente è l'app di incontri al buio, a Milano: niente foto, vi parlate a voce e vi vedete solo se lo volete entrambi. L'app non è ancora disponibile: entra in lista d'attesa.">
+  <title>Presente · L'app di incontri al buio: prima la voce, poi vi vedete</title>
+  <meta name="description" content="Niente foto, niente swipe. Su Presente vi parlate solo a voce per una settimana e vi vedete solo se lo volete tutti e due. Arriva in Italia città per città: entra gratis in lista d'attesa.">
+  <link rel="canonical" href="https://presente.presente-app.workers.dev/">
   <meta name="theme-color" content="#0e0d10">
-  <meta property="og:title" content="Presente · Meno «vediamo». Più «ci vediamo».">
-  <meta property="og:description" content="L'app di incontri per vedersi davvero. Si parte da Milano: entra in lista d'attesa.">
+  <meta property="og:site_name" content="Presente">
+  <meta property="og:title" content="Presente · Ti innamoreresti di una voce?">
+  <meta property="og:description" content="L'app di incontri al buio: niente foto, prima la voce. Vi vedete solo se lo volete tutti e due. Entra in lista d'attesa.">
+  <meta property="og:url" content="https://presente.presente-app.workers.dev/">
+  <meta property="og:image" content="https://presente.presente-app.workers.dev/social/anteprima.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Presente: conoscersi al buio. Il simbolo rosso su fondo scuro.">
   <meta property="og:locale" content="it_IT">
   <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/stile.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presente.presente-app.workers.dev/","logo":"https://presente.presente-app.workers.dev/favicon.svg","sameAs":["https://www.instagram.com/presente_app/","https://www.tiktok.com/@presente_app"]},{"@type":"WebSite","name":"Presente","url":"https://presente.presente-app.workers.dev/","inLanguage":"it-IT"}]}</script>
 </head>
 <body>
   <a class="salta" href="#iscriviti">Vai al modulo di iscrizione</a>
@@ -21,17 +30,22 @@
         <span>presente</span>
         <svg viewBox="0 0 14 32" aria-hidden="true"><g transform="rotate(10 7 16)" fill="#e8432b"><rect x="4" y="1" width="6" height="20" rx="3"/><circle cx="7" cy="27" r="3.4"/></g></svg>
       </a>
-      <p class="etichetta etichetta-testata">Milano</p>
+      <a class="bottone-piccolo" href="#iscriviti">Entra in lista</a>
     </header>
 
     <main id="contenuto">
-      <p class="etichetta">N° 00 · Lista d'attesa</p>
-      <h1>Meno «vediamo». <em>Più «ci vediamo».</em></h1>
-      <p class="attacco">Presente è l'app di incontri per vedersi davvero, non per scriversi. Partiamo da Milano e apriamo una città quando ci sono abbastanza persone iscritte.</p>
-      <p class="nota">L'app non è ancora disponibile. Lascia la tua email: ti scriviamo quando si apre la tua città.</p>
+      <p class="etichetta">Incontri al buio · In arrivo in Italia</p>
+      <h1>Ti innamoreresti <em>di una voce?</em></h1>
+      <p class="attacco">Presente è l'app di incontri senza foto e senza swipe. Vi parlate solo a voce per una settimana. Vi vedete solo se lo volete tutti e due.</p>
+      <ul class="punti">
+        <li>Niente foto da giudicare</li>
+        <li>Chiamate vocali da 15 minuti</li>
+        <li>Un no non lo scopre nessuno</li>
+      </ul>
 
       <form class="modulo" id="iscriviti" name="lista-attesa" method="POST" action="/iscrizione">
         <h2>Entra in lista d'attesa</h2>
+        <p class="sotto">È gratis e ci vogliono 20 secondi. Ti scriviamo solo quando Presente apre nella tua città.</p>
         <p class="nascosto"><label>Non compilare questo campo: <input name="campo-trappola" tabindex="-1" autocomplete="off"></label></p>
 
         <div class="campo">
@@ -42,13 +56,21 @@
         <div class="campo">
           <label for="zona">La tua città</label>
           <select id="zona" name="zona" required>
-            <option value="" selected disabled>Scegli una città</option>
+            <option value="" selected disabled>Scegli la tua città</option>
             <option value="milano">Milano</option>
             <option value="roma">Roma</option>
+            <option value="napoli">Napoli</option>
             <option value="torino">Torino</option>
             <option value="bologna">Bologna</option>
             <option value="firenze">Firenze</option>
-            <option value="napoli">Napoli</option>
+            <option value="genova">Genova</option>
+            <option value="venezia-padova">Venezia e Padova</option>
+            <option value="verona">Verona</option>
+            <option value="brescia-bergamo">Brescia e Bergamo</option>
+            <option value="bari">Bari</option>
+            <option value="palermo">Palermo</option>
+            <option value="catania">Catania</option>
+            <option value="cagliari">Cagliari</option>
             <option value="altra-citta-italia">Un'altra città italiana</option>
             <option value="estero">Fuori dall'Italia</option>
           </select>
@@ -56,12 +78,12 @@
 
         <div class="campo">
           <label for="invito">Chi ti ha invitato? <span class="facoltativo">(facoltativo)</span></label>
-          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome o il codice di chi ti ha mandato qui">
+          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome di chi ti ha mandato qui">
         </div>
 
         <div class="spunta">
           <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
-          <label for="maggiorenne">Confermo di avere almeno 18 anni.</label>
+          <label for="maggiorenne">Ho almeno 18 anni.</label>
         </div>
 
         <div class="spunta">
@@ -69,24 +91,55 @@
           <label for="consenso">Acconsento a usare la mia email, la mia città e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
         </div>
 
-        <button class="bottone" type="submit">Mettimi in lista</button>
+        <button class="bottone" type="submit">Voglio entrare</button>
+        <p class="rassicura">Niente spam, niente dati venduti. Ti cancelli con una email.</p>
       </form>
+
+      <section aria-labelledby="citta">
+        <h2 id="citta">La tua città si accende <em>quando siete abbastanza.</em></h2>
+        <p>Si parte con la <strong>Stanza Italia</strong>, aperta a tutti. Ogni città apre le sue stanze quando arriva a 36 iscritti, perché in una stanza servono persone compatibili e vicine. Ogni amica o amico che porti fa accendere prima la tua.</p>
+      </section>
 
       <h2>Come funzionerà</h2>
       <ol class="regole">
-        <li><strong>Niente foto. Niente swipe.</strong>Rispondi a qualche domanda su chi sei ed entri in una stanza con persone compatibili con te. Per sette giorni vi parlate solo a voce. Conta il carattere, non l'aspetto.</li>
-        <li><strong>Vi vedete solo se lo volete tutti e due.</strong>A fine settimana ognuno sceglie in segreto chi vorrebbe incontrare. Se la scelta è reciproca, vi date appuntamento. Un no non lo scopre nessuno.</li>
-        <li><strong>Prima la voce, poi lo sguardo.</strong>Solo quando la scelta è reciproca e confermate l'incontro scoprite le foto dell'altra persona. Il posto te lo suggeriamo noi, tra locali scelti per un primo appuntamento, e al locale una parola uguale sui due telefoni vi aiuta a riconoscervi.</li>
-        <li><strong>Ghosting? 10 €, grazie.</strong>Quando confermate l'incontro, bloccate una caparra di 10 € a testa. Se arrivi, resta tua. Se l'altra persona non arriva, a te che hai aspettato vanno 7 € in crediti da usare in Presente e 3 € vanno a Presente.</li>
-        <li><strong>La lista è gratis. Le buche no.</strong>Entrare in lista d'attesa non costa nulla. I prezzi dell'app li annunciamo prima dell'apertura, a chi è in lista per primo.</li>
+        <li><strong>Ti presenti con la voce.</strong>Rispondi a qualche domanda su chi sei e cosa cerchi. Niente foto da mettere in mostra: conta il carattere.</li>
+        <li><strong>Entri in una stanza.</strong>Per sette giorni sei con persone compatibili con te, nella tua città o nella Stanza Italia. Vi parlate in chiamate vocali da 15 minuti e scrivi le tue impressioni in un diario.</li>
+        <li><strong>Vi scegliete in segreto.</strong>Ogni settimana hai due chiavi da dare a chi vorresti incontrare. La domenica sera le porte si aprono, ma solo dove la chiave è reciproca. Un no non lo scopre nessuno.</li>
+        <li><strong>Poi vi vedete.</strong>Solo dopo il sì di entrambi scoprite profilo e foto, e vi date appuntamento in un locale che vi suggeriamo noi.</li>
+        <li><strong>Ghosting? 10 €, grazie.</strong>Quando confermate l'incontro bloccate una caparra di 10 € a testa. Se arrivi, resta tua. Se l'altra persona non arriva, a te vanno 7 € in crediti e 3 € a Presente.</li>
       </ol>
-      <p class="nota">Lancio pubblico previsto a Milano sabato 9 gennaio 2027. Le regole descrivono il progetto e possono cambiare prima dell'apertura.</p>
 
-      <p class="battuta">Le scuse le lasciamo agli altri.</p>
+      <h2>Domande frequenti</h2>
+      <div class="faq">
+        <details>
+          <summary>Quanto costa?</summary>
+          <p>Entrare in lista d'attesa è gratis. La prima stanza sarà gratuita; dopo l'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura.</p>
+        </details>
+        <details>
+          <summary>Quando parte e in quali città?</summary>
+          <p>Il lancio è previsto per il 9 gennaio 2027, con la Stanza Italia aperta a tutti. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende.</p>
+        </details>
+        <details>
+          <summary>Perché niente foto?</summary>
+          <p>Perché con le foto si giudica in mezzo secondo. Al buio ascolti come pensa, come ride, cosa la o lo appassiona. Le foto arrivano dopo, solo se vi scegliete a vicenda.</p>
+        </details>
+        <details>
+          <summary>E se non mi piace com'è dal vivo?</summary>
+          <p>Nessun obbligo di continuare. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene.</p>
+        </details>
+        <details>
+          <summary>Cosa fate con la mia email?</summary>
+          <p>La usiamo solo per la lista d'attesa e per avvisarti quando apre la tua città. Non la vendiamo e non la diamo a nessuno. Dettagli nell'<a href="/privacy">informativa privacy</a>.</p>
+        </details>
+      </div>
+
+      <p class="chiusura"><a class="bottone" href="#iscriviti">Entra in lista d'attesa</a></p>
+      <p class="nota">Le regole descrivono il progetto e possono cambiare prima dell'apertura.</p>
+      <p class="battuta">Prima la voce. Poi il resto.</p>
     </main>
 
     <footer class="piede">
-      <p>Presente è un progetto in costruzione; il nome è provvisorio. <a href="/privacy">Informativa privacy</a> · Contatti: <a href="mailto:presentemilano+info@gmail.com">presentemilano+info@gmail.com</a></p>
+      <p><a href="https://www.instagram.com/presente_app/" rel="noopener">Instagram</a> · <a href="https://www.tiktok.com/@presente_app" rel="noopener">TikTok</a> · <a href="/privacy">Informativa privacy</a> · <a href="mailto:presentemilano+info@gmail.com">Contatti</a></p>
     </footer>
   </div>
 </body>

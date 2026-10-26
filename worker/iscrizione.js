@@ -4,7 +4,10 @@
 import { pagina } from "./pagina.js";
 
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città.
-const ZONE = new Set(["milano", "roma", "torino", "bologna", "firenze", "napoli", "altra-citta-italia", "estero"]);
+const ZONE = new Set([
+  "milano", "roma", "napoli", "torino", "bologna", "firenze", "genova", "venezia-padova", "verona",
+  "brescia-bergamo", "bari", "palermo", "catania", "cagliari", "altra-citta-italia", "estero",
+]);
 const VERSIONE_INFORMATIVA = "1.1-2026-10-26";
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
