@@ -1,17 +1,18 @@
 # Presente
 
-App di incontri gratuita per vedersi davvero: niente foto né swipe: stanze di 7 giorni con chiamate solo voce, decisione reciproca con le chiavi, incontro dal vivo con caparra anti-buca (70% a chi aspetta, 30% all'app), locali consigliati e punteggio di affidabilità. Lancio pubblico previsto a Milano sabato 9 gennaio 2027.
+App di incontri per vedersi davvero, sul modello di «L'amore è cieco»: niente foto visibili né swipe; stanze di 7 giorni con chiamate solo voce, diario privato, decisione reciproca con le chiavi, incontro dal vivo con caparra anti-buca (7 € in crediti a chi aspetta, 3 € a Presente), locali consigliati, check-in «Sono qui» e segnale per riconoscersi. Lancio pubblico previsto a Milano sabato 9 gennaio 2027.
 
 ## Stato
 
-Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`. Il codice della web app arriva in Fase 2 (2 novembre – 6 dicembre 2026).
+Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. Il codice della web app arriva in Fase 2 (2 novembre – 6 dicembre 2026).
 
 ## Automatismi attivi
 
 | Cosa | File | Cosa fa |
 | --- | --- | --- |
 | Dependabot | `.github/dependabot.yml` | Ogni lunedì controlla le dipendenze e apre una pull request se serve un aggiornamento o una correzione di sicurezza |
-| Verifica e pubblicazione | `.github/workflows/ci.yml` | A ogni modifica su `main` installa, testa e costruisce l'app; se Cloudflare è configurato la pubblica su Cloudflare Pages |
+| Verifica | `.github/workflows/ci.yml` | A ogni pull request controlla la landing, i test di sicurezza del Worker e la configurazione (`wrangler deploy --dry-run`) |
+| Pubblicazione | Cloudflare Workers Builds | A ogni modifica su `main` pubblica il Worker `presente`; sugli altri rami crea un'anteprima |
 | Verifica della landing | `scripts/verifica_landing.py` | Controlla che la landing sia ben fatta, leggera, senza risorse esterne e che il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso |
 | Agenda Fase 2 | Issues e milestone | Le attività di sviluppo, settimana per settimana, con scadenza |
 
@@ -23,12 +24,12 @@ Le pagine statiche sono servite direttamente da Cloudflare; il codice in `worker
 `/iscrizione` salva l'iscrizione nel database **Cloudflare D1** `presente-lista` (Europa occidentale), `/conteggio` restituisce solo i totali per la plancia, senza dati personali.
 Piano Free: 100.000 richieste al giorno al Worker, 100.000 righe scritte al giorno su D1, 5 GB. Le intestazioni di sicurezza sono in `landing/_headers`.
 
-Le iscrizioni restano chiuse finché in `wrangler.jsonc` la variabile `ISCRIZIONI_APERTE` vale `no`: si porta a `si` solo dopo l'approvazione dell'informativa (D5).
+Le iscrizioni sono aperte (`ISCRIZIONI_APERTE` vale `si` in `wrangler.jsonc`) dopo l'approvazione dell'informativa privacy 1.0 (D5). Le anteprime dei rami (blocco `previews`) non hanno database e tengono le iscrizioni chiuse.
 
 Per vedere gli iscritti: D1 → `presente-lista` → Console, per esempio
 `SELECT invito, COUNT(*) AS iscritti FROM iscrizioni GROUP BY invito ORDER BY iscritti DESC;`
 
-L'informativa privacy (`landing/privacy.html`) è una BOZZA: va approvata e completata (decisione D5) prima di raccogliere iscrizioni.
+L'informativa privacy (`landing/privacy.html`) è la versione 1.0 approvata con D5.
 
 Per provarla sul computer: `python3 -m http.server -d landing 8000` e apri http://localhost:8000 (il modulo funziona solo su Cloudflare).
 
