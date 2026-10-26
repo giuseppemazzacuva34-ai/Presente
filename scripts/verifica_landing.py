@@ -3,7 +3,7 @@
 
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
-- il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso (più i campi tecnici di Netlify);
+- il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso (più il campo trappola anti-spam);
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
 - l'informativa resti marcata BOZZA finché non è approvata;
@@ -17,7 +17,7 @@ import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html"]
-CAMPI_AMMESSI = {"form-name", "campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso"}
+CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
@@ -115,12 +115,14 @@ for nome in PAGINE:
             errori.append("index.html: serve esattamente un modulo")
         else:
             m = p.moduli[0]
-            if m.get("data-netlify") != "true" or m.get("name") != "lista-attesa":
-                errori.append("index.html: il modulo deve avere name=\"lista-attesa\" e data-netlify=\"true\"")
+            if m.get("name") != "lista-attesa":
+                errori.append("index.html: il modulo deve avere name=\"lista-attesa\"")
             if m.get("method", "").upper() != "POST":
                 errori.append("index.html: il modulo deve usare POST")
-            if destinazione(m.get("action", "")) is None:
-                errori.append("index.html: la pagina di conferma del modulo non esiste")
+            if m.get("action") != "/iscrizione" or not (CARTELLA.parent / "functions" / "iscrizione.js").is_file():
+                errori.append("index.html: il modulo deve inviare a /iscrizione (funzione functions/iscrizione.js)")
+            if not (CARTELLA / "grazie.html").is_file():
+                errori.append("manca la pagina di conferma grazie.html")
         extra = set(p.campi) - CAMPI_AMMESSI
         if extra:
             errori.append(f"index.html: il modulo raccoglie dati non previsti: {sorted(extra)}")
