@@ -32,7 +32,7 @@ function databaseFinto({ rompi = false } = {}) {
 }
 
 function modulo(campi = {}, intestazioni = {}) {
-  const dati = new URLSearchParams({ email: "prova@example.com", zona: "isola", maggiorenne: "si", consenso: "si", ...campi });
+  const dati = new URLSearchParams({ email: "prova@example.com", zona: "milano", maggiorenne: "si", consenso: "si", ...campi });
   return new Request("https://presente.example/iscrizione", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", ...intestazioni },

@@ -3,8 +3,9 @@
 // Le iscrizioni restano chiuse finché la variabile ISCRIZIONI_APERTE non vale "si" (dopo l'approvazione dell'informativa, D5).
 import { pagina } from "./pagina.js";
 
-const ZONE = new Set(["isola", "nolo", "porta-romana", "altra-zona"]);
-const VERSIONE_INFORMATIVA = "1.0-2026-10-26";
+// Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città.
+const ZONE = new Set(["milano", "roma", "torino", "bologna", "firenze", "napoli", "altra-citta-italia", "estero"]);
+const VERSIONE_INFORMATIVA = "1.1-2026-10-26";
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
@@ -70,7 +71,7 @@ export async function iscrizione(request, env) {
   const valido = email.length <= 254 && EMAIL.test(email) && ZONE.has(zona)
     && modulo.get("maggiorenne") === "si" && modulo.get("consenso") === "si";
   if (!valido) {
-    return pagina("Manca qualcosa.", "Controlla l'email, scegli la zona e spunta le due caselle.", 400);
+    return pagina("Manca qualcosa.", "Controlla l'email, scegli la città e spunta le due caselle.", 400);
   }
 
   try {

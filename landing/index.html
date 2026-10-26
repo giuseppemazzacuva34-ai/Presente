@@ -27,8 +27,8 @@
     <main id="contenuto">
       <p class="etichetta">N° 00 · Lista d'attesa</p>
       <h1>Meno «vediamo». <em>Più «ci vediamo».</em></h1>
-      <p class="attacco">Presente è l'app di incontri per vedersi davvero, non per scriversi. La stiamo costruendo a Milano e si parte da Isola, NoLo e Porta Romana.</p>
-      <p class="nota">L'app non è ancora disponibile. Lascia la tua email: ti scriviamo quando si apre la tua zona.</p>
+      <p class="attacco">Presente è l'app di incontri per vedersi davvero, non per scriversi. Partiamo da Milano e apriamo una città quando ci sono abbastanza persone iscritte.</p>
+      <p class="nota">L'app non è ancora disponibile. Lascia la tua email: ti scriviamo quando si apre la tua città.</p>
 
       <form class="modulo" id="iscriviti" name="lista-attesa" method="POST" action="/iscrizione">
         <h2>Entra in lista d'attesa</h2>
@@ -40,13 +40,17 @@
         </div>
 
         <div class="campo">
-          <label for="zona">La tua zona di Milano</label>
+          <label for="zona">La tua città</label>
           <select id="zona" name="zona" required>
-            <option value="" selected disabled>Scegli una zona</option>
-            <option value="isola">Isola</option>
-            <option value="nolo">NoLo</option>
-            <option value="porta-romana">Porta Romana</option>
-            <option value="altra-zona">Un'altra zona di Milano</option>
+            <option value="" selected disabled>Scegli una città</option>
+            <option value="milano">Milano</option>
+            <option value="roma">Roma</option>
+            <option value="torino">Torino</option>
+            <option value="bologna">Bologna</option>
+            <option value="firenze">Firenze</option>
+            <option value="napoli">Napoli</option>
+            <option value="altra-citta-italia">Un'altra città italiana</option>
+            <option value="estero">Fuori dall'Italia</option>
           </select>
         </div>
 
@@ -62,7 +66,7 @@
 
         <div class="spunta">
           <input id="consenso" name="consenso" type="checkbox" value="si" required>
-          <label for="consenso">Acconsento a usare la mia email, la mia zona e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
+          <label for="consenso">Acconsento a usare la mia email, la mia città e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
         </div>
 
         <button class="bottone" type="submit">Mettimi in lista</button>
@@ -72,7 +76,7 @@
       <ol class="regole">
         <li><strong>Niente foto. Niente swipe.</strong>Rispondi a qualche domanda su chi sei ed entri in una stanza con persone compatibili con te. Per sette giorni vi parlate solo a voce. Conta il carattere, non l'aspetto.</li>
         <li><strong>Vi vedete solo se lo volete tutti e due.</strong>A fine settimana ognuno sceglie in segreto chi vorrebbe incontrare. Se la scelta è reciproca, vi date appuntamento. Un no non lo scopre nessuno.</li>
-        <li><strong>Il primo sguardo è dal vivo.</strong>Non vi siete mai visti: vi riconoscete al locale. Il posto te lo suggeriamo noi, tra locali dei quartieri pilota scelti per un primo appuntamento.</li>
+        <li><strong>Il primo sguardo è dal vivo.</strong>Non vi siete mai visti: vi riconoscete al locale. Il posto te lo suggeriamo noi, tra locali scelti per un primo appuntamento.</li>
         <li><strong>Ghosting? 10 €, grazie.</strong>Quando confermate l'incontro, bloccate 10 € a testa. Se arrivi, tornano a te. Se l'altra persona non arriva, 7 € vanno a te che hai aspettato e 3 € a Presente.</li>
         <li><strong>La lista è gratis. Le buche no.</strong>Entrare in lista d'attesa non costa nulla. I prezzi dell'app li annunciamo prima dell'apertura, a chi è in lista per primo.</li>
       </ol>
