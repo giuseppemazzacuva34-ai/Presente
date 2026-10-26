@@ -1,5 +1,5 @@
 // Numeri della lista d'attesa per la plancia: solo totali, nessun dato personale.
-export async function onRequestGet({ env }) {
+export async function conteggio(env) {
   const intestazioni = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
   if (!env.DB) return new Response(JSON.stringify({ totale: 0, per_zona: {}, nota: "database non collegato" }), { headers: intestazioni });
   try {

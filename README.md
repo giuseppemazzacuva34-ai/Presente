@@ -18,17 +18,12 @@ Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista 
 ## Landing page della lista d'attesa
 
 Cartella `landing/`: pagine statiche (nessuno script nel browser, nessuna risorsa esterna), identità «Rivista» (decisione D4).
-Ospitata gratis su **Cloudflare Pages**; le iscrizioni passano dalla funzione `functions/iscrizione.js` e finiscono nel database **Cloudflare D1** (piano Free: pagine statiche illimitate, 100.000 richieste al giorno per le funzioni, 100.000 righe scritte al giorno, 5 GB).
-`functions/conteggio.js` restituisce solo i totali (per la plancia), senza dati personali. Le intestazioni di sicurezza sono in `landing/_headers`.
+Ospitata gratis su **Cloudflare Workers** (Worker `presente`, configurazione in `wrangler.jsonc`), pubblicata da Cloudflare Workers Builds a ogni modifica su `main`.
+Le pagine statiche sono servite direttamente da Cloudflare; il codice in `worker/` parte solo per due indirizzi:
+`/iscrizione` salva l'iscrizione nel database **Cloudflare D1** `presente-lista` (Europa occidentale), `/conteggio` restituisce solo i totali per la plancia, senza dati personali.
+Piano Free: 100.000 richieste al giorno al Worker, 100.000 righe scritte al giorno su D1, 5 GB. Le intestazioni di sicurezza sono in `landing/_headers`.
 
-Per pubblicarla (una volta sola, gratis, circa 10 minuti):
-
-1. Crea un account gratuito su dash.cloudflare.com.
-2. Storage & Databases → D1 → Create database: nome `presente-lista`, posizione Western Europe.
-3. Workers & Pages → Create → Pages → Connect to Git → GitHub → repository `Presente`. Impostazioni di build: Framework preset `None`, Build command vuoto, Build output directory `landing`. Salva e pubblica.
-4. Nel progetto Pages: Settings → Bindings → Add → D1 database: nome della variabile `DB`, database `presente-lista`.
-5. Solo dopo l'approvazione dell'informativa (D5): Settings → Variables and Secrets → aggiungi `ISCRIZIONI_APERTE` con valore `si`. Finché manca, il modulo risponde «le iscrizioni aprono tra pochissimo» e non salva nulla.
-6. Deployments → Retry deployment. L'indirizzo è del tipo `presente-xxx.pages.dev`.
+Le iscrizioni restano chiuse finché in `wrangler.jsonc` la variabile `ISCRIZIONI_APERTE` vale `no`: si porta a `si` solo dopo l'approvazione dell'informativa (D5).
 
 Per vedere gli iscritti: D1 → `presente-lista` → Console, per esempio
 `SELECT invito, COUNT(*) AS iscritti FROM iscrizioni GROUP BY invito ORDER BY iscritti DESC;`

@@ -119,8 +119,8 @@ for nome in PAGINE:
                 errori.append("index.html: il modulo deve avere name=\"lista-attesa\"")
             if m.get("method", "").upper() != "POST":
                 errori.append("index.html: il modulo deve usare POST")
-            if m.get("action") != "/iscrizione" or not (CARTELLA.parent / "functions" / "iscrizione.js").is_file():
-                errori.append("index.html: il modulo deve inviare a /iscrizione (funzione functions/iscrizione.js)")
+            if m.get("action") != "/iscrizione" or not (CARTELLA.parent / "worker" / "iscrizione.js").is_file():
+                errori.append("index.html: il modulo deve inviare a /iscrizione (worker/iscrizione.js)")
             if not (CARTELLA / "grazie.html").is_file():
                 errori.append("manca la pagina di conferma grazie.html")
         extra = set(p.campi) - CAMPI_AMMESSI

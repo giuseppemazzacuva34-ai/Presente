@@ -1,7 +1,7 @@
 // Riceve il modulo della lista d'attesa e salva l'iscrizione nel database D1 (binding "DB").
-// Gratis sul piano Free di Cloudflare: 100.000 richieste al giorno per le funzioni, 100.000 righe scritte al giorno su D1.
+// Gratis sul piano Free di Cloudflare Workers: 100.000 richieste al giorno, 100.000 righe scritte al giorno su D1.
 // Le iscrizioni restano chiuse finché la variabile ISCRIZIONI_APERTE non vale "si" (dopo l'approvazione dell'informativa, D5).
-import { pagina } from "./_pagina.js";
+import { pagina } from "./pagina.js";
 
 const ZONE = new Set(["isola", "nolo", "porta-romana", "altra-zona"]);
 const VERSIONE_INFORMATIVA = "bozza-2026-10-26";
@@ -20,7 +20,7 @@ function grazie(request) {
   return Response.redirect(new URL("/grazie", request.url).toString(), 303);
 }
 
-export async function onRequestPost({ request, env }) {
+export async function iscrizione(request, env) {
   if (env.ISCRIZIONI_APERTE !== "si" || !env.DB) {
     return pagina("Ci siamo quasi.", "Le iscrizioni aprono tra pochissimo. Riprova tra qualche ora.", 503);
   }
@@ -50,6 +50,3 @@ export async function onRequestPost({ request, env }) {
   return grazie(request);
 }
 
-export function onRequestGet({ request }) {
-  return Response.redirect(new URL("/#iscriviti", request.url).toString(), 303);
-}
