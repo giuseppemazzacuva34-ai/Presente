@@ -1,14 +1,18 @@
 /* Presente · landing della lista d'attesa
    Identità: direzione «Rivista» (decisione D4, consigliata).
    Per cambiare identità basta modificare le variabili qui sotto. */
+/* Caratteri self-hosted (licenza OFL, file in /fonts): nessuna richiesta a siti esterni. */
+@font-face { font-family: "Instrument Serif"; src: url("/fonts/InstrumentSerif-Regular.woff") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("/fonts/InstrumentSerif-Italic.woff") format("woff"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("/fonts/InstrumentSans.woff") format("woff"); font-weight: 400 700; font-stretch: 75% 100%; font-style: normal; font-display: swap; }
+
 :root {
   --nero: #0e0d10;
   --avorio: #f2ede4;
   --rosso: #e8432b;
   --grigio: #a8a29a;
   --linea: rgba(242, 237, 228, 0.18);
-  /* Caratteri: Instrument Serif e Instrument Sans (gratuiti, licenza OFL).
-     Finché i file non sono nella cartella /fonts si usano caratteri di sistema simili. */
+  /* Caratteri: Instrument Serif e Instrument Sans (gratuiti, licenza OFL), caricati da /fonts. */
   --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --larghezza: 40rem;
@@ -71,7 +75,7 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
 .modulo a { color: var(--nero); }
 .campo { margin: 0 0 1.1rem; }
 .campo label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
-.campo input[type="email"], .campo select {
+.campo input[type="email"], .campo input[type="text"], .campo select {
   width: 100%; font: inherit; color: var(--nero); background: #fff;
   border: 1.5px solid var(--nero); border-radius: 3px; padding: 0.75rem 0.8rem; min-height: 3rem;
 }
@@ -115,3 +119,9 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
 @media (prefers-reduced-motion: no-preference) {
   .bottone { transition: background 0.3s ease; }
 }
+
+/* Pagina di conferma: invito a portare amici */
+.invita { margin: 2.5rem 0; padding: 1.5rem; border: 1px solid var(--linea); border-radius: 0.5rem; }
+.invita h2 { margin-top: 0; }
+.campo .facoltativo { color: var(--grigio); font-weight: 400; }
+a.bottone { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--avorio); }

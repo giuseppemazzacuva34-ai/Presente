@@ -51,6 +51,11 @@
           </select>
         </div>
 
+        <div class="campo">
+          <label for="invito">Chi ti ha invitato? <span class="facoltativo">(facoltativo)</span></label>
+          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome o il codice di chi ti ha mandato qui">
+        </div>
+
         <div class="spunta">
           <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
           <label for="maggiorenne">Confermo di avere almeno 18 anni.</label>
@@ -58,7 +63,7 @@
 
         <div class="spunta">
           <input id="consenso" name="consenso" type="checkbox" value="si" required>
-          <label for="consenso">Acconsento a usare la mia email e la mia zona solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
+          <label for="consenso">Acconsento a usare la mia email, la mia zona e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
         </div>
 
         <button class="bottone" type="submit">Mettimi in lista</button>

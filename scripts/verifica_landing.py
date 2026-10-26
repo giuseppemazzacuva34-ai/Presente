@@ -3,7 +3,7 @@
 
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
-- il modulo raccolga solo email, zona, maggiore età e consenso (più i campi tecnici di Netlify);
+- il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso (più i campi tecnici di Netlify);
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
 - l'informativa resti marcata BOZZA finché non è approvata;
@@ -17,7 +17,7 @@ import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html"]
-CAMPI_AMMESSI = {"form-name", "campo-trappola", "email", "zona", "maggiorenne", "consenso"}
+CAMPI_AMMESSI = {"form-name", "campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
