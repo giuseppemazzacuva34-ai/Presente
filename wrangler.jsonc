@@ -29,5 +29,13 @@
   // Per aprirle: cambiare "no" in "si" con una modifica su main.
   "vars": {
     "ISCRIZIONI_APERTE": "si"
+  },
+  // Anteprime dei rami (Worker Previews di Workers Builds, comando "npx wrangler preview"): il blocco "previews"
+  // è obbligatorio, senza di esso la build di anteprima fallisce. Le anteprime non usano le impostazioni di produzione:
+  // nessun database collegato e iscrizioni chiuse, così un'anteprima non tocca mai i dati reali della lista d'attesa.
+  "previews": {
+    "vars": {
+      "ISCRIZIONI_APERTE": "no"
+    }
   }
 }
