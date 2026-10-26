@@ -1,0 +1,24 @@
+// Configurazione di Cloudflare Workers per la landing di Presente (piano gratuito).
+// Cloudflare Workers Builds pubblica a ogni modifica su main.
+{
+  "name": "presente",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-10-13",
+  "assets": {
+    "directory": "./landing",
+    "binding": "ASSETS",
+    "run_worker_first": ["/iscrizione", "/conteggio"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "presente-lista",
+      "database_id": "39ed969d-4ed5-46d0-8d31-091e20504dfc"
+    }
+  ],
+  // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.
+  // Per aprirle: cambiare "no" in "si" con una modifica su main.
+  "vars": {
+    "ISCRIZIONI_APERTE": "no"
+  }
+}
