@@ -3,28 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Presente · L'app di incontri al buio: prima la voce, poi vi vedete</title>
-  <meta name="description" content="Niente foto, niente swipe. Su Presente vi parlate solo a voce per una settimana e vi vedete solo se lo volete tutti e due. Arriva in Italia città per città: entra gratis in lista d'attesa.">
+  <title>Presente · L'app di incontri al buio: le tue foto restano tue</title>
+  <meta name="description" content="Niente foto da giudicare, niente swipe. Su Presente vi parlate a voce per una settimana e le foto le scoprite solo se vi scegliete tutti e due. Arriva in Italia città per città: entra in lista d'attesa.">
   <link rel="canonical" href="https://presente.presente-app.workers.dev/">
   <meta name="theme-color" content="#0e0d10">
   <meta property="og:site_name" content="Presente">
   <meta property="og:title" content="Presente · Ti innamoreresti di una voce?">
-  <meta property="og:description" content="L'app di incontri al buio: niente foto, prima la voce. Vi vedete solo se lo volete tutti e due. Entra in lista d'attesa.">
+  <meta property="og:description" content="L'app di incontri al buio: prima la voce, le foto solo se vi scegliete tutti e due. Entra in lista d'attesa.">
   <meta property="og:url" content="https://presente.presente-app.workers.dev/">
   <meta property="og:image" content="https://presente.presente-app.workers.dev/social/anteprima.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Presente: conoscersi al buio. Il simbolo rosso su fondo scuro.">
+  <meta property="og:image:alt" content="Presente: ti innamoreresti di una voce? Un'onda sonora rossa su fondo scuro.">
   <meta property="og:locale" content="it_IT">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/stile.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presente.presente-app.workers.dev/","logo":"https://presente.presente-app.workers.dev/favicon.svg","sameAs":["https://www.instagram.com/presente_app/","https://www.tiktok.com/@presente_app"]},{"@type":"WebSite","name":"Presente","url":"https://presente.presente-app.workers.dev/","inLanguage":"it-IT"}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presente.presente-app.workers.dev/","logo":"https://presente.presente-app.workers.dev/favicon.svg","sameAs":["https://www.instagram.com/presente_app/"]},{"@type":"WebSite","name":"Presente","url":"https://presente.presente-app.workers.dev/","inLanguage":"it-IT"}]}</script>
 </head>
-<body>
+<body class="nuova">
   <a class="salta" href="#iscriviti">Vai al modulo di iscrizione</a>
-  <div class="pagina">
+  <div class="luci" aria-hidden="true"></div>
+  <div class="pagina pagina-larga">
     <header class="testata">
       <a class="logo" href="/" aria-label="Presente, pagina iniziale">
         <span>presente</span>
@@ -34,21 +35,54 @@
     </header>
 
     <main id="contenuto">
-      <figure class="video-apertura">
-        <video autoplay muted loop playsinline controls preload="auto" poster="/media/presente-poster.jpg" aria-label="Video: come funziona Presente, dalla chiamata al buio al primo sguardo dal vivo">
-          <source src="/media/presente.mp4" type="video/mp4">
-        </video>
-        <figcaption class="nota">Alza il volume: c'è la musica. <a href="#iscriviti">Salta e iscriviti</a></figcaption>
-      </figure>
+      <section class="eroe" aria-labelledby="titolo">
+        <div class="eroe-testo">
+          <p class="etichetta">Incontri al buio · In arrivo in Italia</p>
+          <h1 id="titolo">Ti innamoreresti <em>di una voce?</em></h1>
+          <p class="attacco">Presente è l'app di incontri dove <strong>nessuno vede le tue foto</strong> finché non vi scegliete tutti e due. Prima vi parlate a voce. Poi, se volete, vi vedete.</p>
+          <ul class="punti">
+            <li>Le tue foto restano tue</li>
+            <li>Chiamate da 15 minuti</li>
+            <li>Un no non lo scopre nessuno</li>
+          </ul>
+          <p class="azioni"><a class="bottone bottone-eroe" href="#iscriviti">Entra in lista d'attesa</a></p>
+          <p class="nota">Gratis, ci vogliono 20 secondi. Ti scriviamo solo quando apre la tua città.</p>
+        </div>
+        <figure class="video-apertura">
+          <video autoplay muted loop playsinline controls preload="metadata" poster="/media/presente-poster.jpg" aria-label="Video: come funziona Presente, dalla chiamata al buio al primo sguardo dal vivo">
+            <source src="/media/presente.mp4" type="video/mp4">
+          </video>
+          <figcaption class="nota">Alza il volume: c'è la musica.</figcaption>
+        </figure>
+      </section>
 
-      <p class="etichetta">Incontri al buio · In arrivo in Italia</p>
-      <h1>Ti innamoreresti <em>di una voce?</em></h1>
-      <p class="attacco">Presente è l'app di incontri senza foto e senza swipe. Vi parlate solo a voce per una settimana. Vi vedete solo se lo volete tutti e due.</p>
-      <ul class="punti">
-        <li>Niente foto da giudicare</li>
-        <li>Chiamate vocali da 15 minuti</li>
-        <li>Un no non lo scopre nessuno</li>
-      </ul>
+      <section class="schede-sezione" aria-labelledby="stanche">
+        <h2 id="stanche" class="titolo-centrato">Siamo stanche <em>delle solite app.</em></h2>
+        <ol class="schede" aria-label="Perché le app di incontri stancano, e cosa cambia con Presente">
+          <li class="scheda"><span class="numero">01</span><p>Giudicate da una foto <em>in mezzo secondo.</em></p></li>
+          <li class="scheda"><span class="numero">02</span><p>Sempre le stesse <em>tre domande.</em></p></li>
+          <li class="scheda"><span class="numero">03</span><p>E poi, <em>sparisce.</em></p></li>
+          <li class="scheda scheda-rossa"><span class="numero">04</span><p>Su Presente si comincia <em>dalla voce.</em></p></li>
+        </ol>
+        <p class="nota scorri" aria-hidden="true">Scorri →</p>
+      </section>
+
+      <section class="per-lei" aria-labelledby="pensata">
+        <p class="etichetta">Pensata per chi vuole essere conosciuta, non valutata</p>
+        <h2 id="pensata">Le regole <em>dalla tua parte.</em></h2>
+        <ul class="garanzie">
+          <li><strong>Le tue foto le vede solo chi hai scelto.</strong> Restano nascoste finché non vi scegliete a vicenda. Se non succede, nessuno le vede.</li>
+          <li><strong>Ti scelgono per come sei.</strong> Nella stanza conta come parli, come ridi, cosa racconti. Non l'angolazione giusta.</li>
+          <li><strong>Un no resta segreto.</strong> Ogni settimana dai le tue chiavi in segreto. Le porte si aprono solo dove la scelta è reciproca: niente figuracce, niente spiegazioni.</li>
+          <li><strong>Il primo incontro è in un locale.</strong> Dopo il sì di entrambi vi suggeriamo noi dove vedervi.</li>
+          <li><strong>Chi dà buca, paga.</strong> Confermando l'incontro bloccate 10 € a testa. Se l'altra persona non arriva, a te vanno 7 € in crediti.</li>
+        </ul>
+      </section>
+
+      <section class="amica" aria-labelledby="porta">
+        <h2 id="porta">Iscriviti <em>con un'amica.</em></h2>
+        <p>Ogni città si accende quando arriva a <strong>36 iscritti</strong>: in una stanza servono persone compatibili e vicine. Porta un'amica single e la vostra città si accende prima. Nel modulo c'è un campo apposta: «Chi ti ha invitato?».</p>
+      </section>
 
       <form class="modulo" id="iscriviti" name="lista-attesa" method="POST" action="/iscrizione">
         <h2>Entra in lista d'attesa</h2>
@@ -85,7 +119,7 @@
 
         <div class="campo">
           <label for="invito">Chi ti ha invitato? <span class="facoltativo">(facoltativo)</span></label>
-          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome di chi ti ha mandato qui">
+          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome della tua amica o del tuo amico">
         </div>
 
         <div class="spunta">
@@ -102,22 +136,24 @@
         <p class="rassicura">Niente spam, niente dati venduti. Ti cancelli con una email.</p>
       </form>
 
-      <section aria-labelledby="citta">
-        <h2 id="citta">La tua città si accende <em>quando siete abbastanza.</em></h2>
-        <p>Si parte con la <strong>Stanza Italia</strong>, aperta a tutti. Ogni città apre le sue stanze quando arriva a 36 iscritti, perché in una stanza servono persone compatibili e vicine. Ogni amica o amico che porti fa accendere prima la tua.</p>
-      </section>
-
       <h2>Come funzionerà</h2>
       <ol class="regole">
         <li><strong>Ti presenti con la voce.</strong>Rispondi a qualche domanda su chi sei e cosa cerchi. Niente foto da mettere in mostra: conta il carattere.</li>
         <li><strong>Entri in una stanza.</strong>Per sette giorni sei con persone compatibili con te, nella tua città o nella Stanza Italia. Vi parlate in chiamate vocali da 15 minuti e scrivi le tue impressioni in un diario.</li>
-        <li><strong>Vi scegliete in segreto.</strong>Ogni settimana hai due chiavi da dare a chi vorresti incontrare. La domenica sera le porte si aprono, ma solo dove la chiave è reciproca. Un no non lo scopre nessuno.</li>
+        <li><strong>Vi scegliete in segreto.</strong>Ogni settimana hai due chiavi da dare a chi vorresti incontrare. La domenica sera le porte si aprono, ma solo dove la chiave è reciproca.</li>
         <li><strong>Poi vi vedete.</strong>Solo dopo il sì di entrambi scoprite profilo e foto, e vi date appuntamento in un locale che vi suggeriamo noi.</li>
-        <li><strong>Ghosting? 10 €, grazie.</strong>Quando confermate l'incontro bloccate una caparra di 10 € a testa. Se arrivi, resta tua. Se l'altra persona non arriva, a te vanno 7 € in crediti e 3 € a Presente.</li>
       </ol>
 
       <h2>Domande frequenti</h2>
       <div class="faq">
+        <details>
+          <summary>Chi vede le mie foto?</summary>
+          <p>Nessuno, finché non vi scegliete a vicenda. Durante la settimana nella stanza vi conoscete solo a voce. Profilo e foto si scoprono solo dopo il sì di entrambi, e solo tra voi due.</p>
+        </details>
+        <details>
+          <summary>Come proteggete chi si iscrive?</summary>
+          <p>Le foto restano nascoste fino alla scelta reciproca, un no non lo scopre nessuno e il primo incontro è in un locale che vi suggeriamo noi. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene. Prima dell'apertura pubblichiamo qui le regole complete.</p>
+        </details>
         <details>
           <summary>Quanto costa?</summary>
           <p>Entrare in lista d'attesa è gratis. La prima stanza sarà gratuita; dopo l'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura.</p>
@@ -127,12 +163,8 @@
           <p>Partiamo presto con la Stanza Italia, aperta a tutti: chi è in lista d'attesa lo sa per primo. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende.</p>
         </details>
         <details>
-          <summary>Perché niente foto?</summary>
-          <p>Perché con le foto si giudica in mezzo secondo. Al buio ascolti come pensa, come ride, cosa la o lo appassiona. Le foto arrivano dopo, solo se vi scegliete a vicenda.</p>
-        </details>
-        <details>
-          <summary>E se non mi piace com'è dal vivo?</summary>
-          <p>Nessun obbligo di continuare. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene.</p>
+          <summary>E se dal vivo non scatta niente?</summary>
+          <p>Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa.</p>
         </details>
         <details>
           <summary>Cosa fate con la mia email?</summary>
@@ -146,7 +178,7 @@
     </main>
 
     <footer class="piede">
-      <p><a href="https://www.instagram.com/presente_app/" rel="noopener">Instagram</a> · <a href="https://www.tiktok.com/@presente_app" rel="noopener">TikTok</a> · <a href="/privacy">Informativa privacy</a> · <a href="mailto:presentemilano+info@gmail.com">Contatti</a></p>
+      <p><a href="https://www.instagram.com/presente_app/" rel="noopener">Instagram</a> · <a href="/privacy">Informativa privacy</a> · <a href="mailto:presentemilano+info@gmail.com">Contatti</a></p>
     </footer>
   </div>
 </body>
