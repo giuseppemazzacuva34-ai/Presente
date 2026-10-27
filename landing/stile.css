@@ -148,3 +148,11 @@ a.bottone { display: flex; align-items: center; justify-content: center; text-de
 .chiusura .bottone { color: #fff; }
 .bottone-chiaro { background: transparent; border: 1.5px solid var(--avorio); }
 .bottone-chiaro:hover { background: var(--avorio); color: var(--nero) !important; }
+
+/* Video di apertura (27 ottobre): parte da solo, senza audio, e si può alzare il volume */
+.video-apertura { margin: -0.5rem 0 2.5rem; text-align: center; }
+.video-apertura video {
+  display: block; width: 100%; max-width: 26rem; max-height: 78vh; aspect-ratio: 9 / 16; margin: 0 auto;
+  object-fit: cover; background: #000; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
+}
+.video-apertura figcaption { margin-top: 0.75rem; font-size: 0.9rem; }
