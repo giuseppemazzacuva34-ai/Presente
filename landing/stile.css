@@ -224,3 +224,14 @@ body.nuova { position: relative; overflow-x: hidden; }
   .schede { grid-auto-flow: row; grid-template-columns: repeat(4, 1fr); grid-auto-columns: auto; overflow: visible; margin: 1.5rem 0 0; padding: 0.5rem 0 1rem; }
   .scorri { display: none; }
 }
+
+/* Profili social (27 ottobre) */
+.social { margin-top: 2.5rem; }
+.social h2 { margin-top: 0; font-size: clamp(1.5rem, 5vw, 1.9rem); }
+.social-link { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.social-link a {
+  display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.9rem; padding: 0.55rem 1.1rem;
+  border: 1px solid var(--linea); border-radius: 999px; text-decoration: none; color: var(--avorio); font-weight: 600;
+}
+.social-link a:hover { border-color: var(--rosso); color: var(--avorio); background: rgba(232, 67, 43, 0.12); }
+.social-link svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--rosso); }
