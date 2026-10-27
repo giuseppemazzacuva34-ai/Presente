@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /grazie
 
-Sitemap: https://presente.presente-app.workers.dev/sitemap.xml
+Sitemap: https://presenteincontri.app/sitemap.xml
