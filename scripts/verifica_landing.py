@@ -17,7 +17,7 @@ import re
 import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
-PAGINE = ["index.html", "grazie.html", "privacy.html"]
+PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
 CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
