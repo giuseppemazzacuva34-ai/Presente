@@ -20,14 +20,17 @@ Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista 
 
 Cartella `landing/`: pagine statiche (nessuno script nel browser, nessuna risorsa esterna), identità «Rivista» (decisione D4).
 Ospitata gratis su **Cloudflare Workers** (Worker `presente`, configurazione in `wrangler.jsonc`), pubblicata da Cloudflare Workers Builds a ogni modifica su `main`.
-Le pagine statiche sono servite direttamente da Cloudflare; il codice in `worker/` parte solo per due indirizzi:
+Le pagine statiche sono servite direttamente da Cloudflare; il codice in `worker/` parte solo per tre indirizzi (la home, per i link d'invito):
 `/iscrizione` salva l'iscrizione nel database **Cloudflare D1** `presente-lista` (Europa occidentale), `/conteggio` restituisce solo i totali per la plancia, senza dati personali.
+Anche la home `/` passa dal Worker: se l'indirizzo è un link d'invito dei creator (`https://presenteincontri.app/?invito=CODICE`), il Worker scrive il codice nel campo «Chi ti ha invitato?» prima di mandare la pagina (solo lettere e numeri, massimo 20 caratteri, in maiuscolo; la pagina resta senza script). Senza `?invito` la home è identica.
 Piano Free: 100.000 richieste al giorno al Worker, 100.000 righe scritte al giorno su D1, 5 GB. Le intestazioni di sicurezza sono in `landing/_headers`.
 
 Le iscrizioni sono aperte (`ISCRIZIONI_APERTE` vale `si` in `wrangler.jsonc`) dopo l'approvazione dell'informativa privacy 1.0 (D5). Le anteprime dei rami (blocco `previews`) non hanno database e tengono le iscrizioni chiuse.
 
 Per vedere gli iscritti: D1 → `presente-lista` → Console, per esempio
 `SELECT invito, COUNT(*) AS iscritti FROM iscrizioni GROUP BY invito ORDER BY iscritti DESC;`
+
+Iscritti per codice dei creator (per il CMO): metti i codici assegnati in `CODICI_INVITO` in `wrangler.jsonc`, separati da virgola (es. `"SILVIA,NEVADA"`), con una modifica su `main`. Da quel momento `/conteggio` mostra `per_codice` con un totale per ciascun codice; chi ha scritto il codice a mano in minuscolo o con spazi viene contato lo stesso. Nessuna email e nessun nome scritto liberamente nel campo invito esce da `/conteggio`.
 
 L'informativa privacy (`landing/privacy.html`) è la versione 1.0 approvata con D5.
 

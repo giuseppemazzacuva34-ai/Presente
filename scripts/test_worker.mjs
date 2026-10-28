@@ -5,6 +5,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { iscrizione } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
+import { conteggio } from "../worker/conteggio.js";
+import { pulisciCodice } from "../worker/invito.js";
 
 let errori = 0;
 function verifica(condizione, descrizione) {
@@ -115,6 +117,49 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(csp.includes("script-src 'none'") && csp.includes("frame-ancestors 'none'") && r.headers.get("x-content-type-options") === "nosniff",
       `${metodo} ${percorso}: intestazioni di sicurezza presenti`);
   }
+}
+
+// 9. Link d'invito dei creator: /?invito=CODICE precompila il campo, ripulito e senza possibilità di iniettare HTML
+{
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  const assets = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8", etag: "x" } }) };
+  const env = { ASSETS: assets };
+  const apri = async (q) => (await worker.fetch(new Request("https://presente.example/" + q), env));
+  const r = await apri("?invito=silvia26");
+  const t = await r.text();
+  verifica(t.includes('name="invito" value="SILVIA26"') && r.headers.get("cache-control") === "private, no-store",
+    "?invito=silvia26: campo precompilato con SILVIA26, pagina non in cache condivisa");
+  const csp = r.headers.get("content-security-policy") || "";
+  verifica(csp.includes("script-src 'none'"), "home con invito: intestazioni di sicurezza presenti");
+  const cattivo = await (await apri('?invito=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')).text();
+  verifica(!cattivo.includes("<script>alert") && cattivo.includes('value="SCRIPTALERT1SCRIPT"'),
+    "?invito con HTML: solo lettere e numeri entrano nella pagina");
+  verifica(pulisciCodice("A".repeat(30)).length === 20 && pulisciCodice("  ") === "" && pulisciCodice(null) === "",
+    "codice invito: massimo 20 caratteri, vuoto se non resta nulla");
+  const senza = await (await apri("")).text();
+  verifica(senza === home, "home senza invito: pagina identica all'originale");
+  const vuoto = await (await apri("?invito=%21%21")).text();
+  verifica(vuoto === home, "?invito senza lettere né numeri: pagina identica all'originale");
+}
+
+// 10. /conteggio: iscritti per codice dei creator, solo codici configurati, mai email né nomi liberi
+{
+  const righe = [{ invito: "SILVIA26", n: 3 }, { invito: "silvia 26", n: 1 }, { invito: "Marco Rossi", n: 2 }];
+  const DB = {
+    prepare(sql) {
+      return {
+        async first() { return 6; },
+        async all() { return { results: sql.includes("GROUP BY invito") ? righe : [{ zona: "milano", n: 6 }] }; },
+      };
+    },
+  };
+  const dati = await (await conteggio({ DB, CODICI_INVITO: "SILVIA26, nevada" })).json();
+  verifica(dati.per_codice.SILVIA26 === 4 && dati.per_codice.NEVADA === 0 && Object.keys(dati.per_codice).length === 2,
+    "/conteggio per_codice: conta i codici configurati (anche scritti a mano) e nient'altro");
+  const testo = JSON.stringify(dati);
+  verifica(!testo.includes("Marco") && !testo.includes("@"), "/conteggio: nessun nome libero e nessuna email");
+  const vuoti = await (await conteggio({ DB })).json();
+  verifica(JSON.stringify(vuoti.per_codice) === "{}", "/conteggio senza codici configurati: per_codice vuoto");
 }
 
 if (errori) {
