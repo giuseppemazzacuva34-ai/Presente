@@ -100,6 +100,15 @@ select pg_temp.ok(pg_temp.rifiutato($$insert into public.questionario (utente_id
 select pg_temp.ok(pg_temp.rifiutato($$update public.questionario set in_vigore_dal = now() where in_vigore_dal > now()$$), 'la settimana di una versione non si sposta');
 commit;
 
+-- Tetto di grandezza del questionario (migrazione 20261029234100_limiti_sicurezza.sql)
+begin;
+select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+select pg_temp.ok(pg_temp.rifiutato(format($$insert into public.questionario (utente_id, risposte) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', %L)$$,
+  json_build_object('x', repeat('a', 20000))::text)), 'risposte troppo grandi: rifiutate');
+commit;
+select pg_temp.ok((select bool_and(p.proconfig @> array['search_path=""']) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname in ('controlla_profilo', 'controlla_questionario', 'prossima_apertura')), 'funzioni con search_path fisso');
+
 -- Orario delle stanze: lunedì alle 9:00 di Roma, anche con il cambio d'ora
 select pg_temp.ok(public.prossima_apertura('2026-10-29 12:00+00') = '2026-11-02 09:00 Europe/Rome'::timestamptz, 'giovedì 29/10 → lunedì 2/11 alle 9:00');
 select pg_temp.ok(public.prossima_apertura('2026-11-02 07:59+00') = '2026-11-02 09:00 Europe/Rome'::timestamptz, 'lunedì alle 8:59 → lo stesso lunedì alle 9:00');
