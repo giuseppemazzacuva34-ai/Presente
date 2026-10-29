@@ -21,9 +21,11 @@ async def main():
         await pg.goto("http://localhost:8787/app/"); await pg.wait_for_timeout(500)
         await foto("benvenuto"); await clic("Entra")
         await pg.fill("#email", "prova@example.com"); await foto("email"); await clic("Mandami il link")
-        await pg.fill("#nascita", "2012-05-01"); await foto("minorenne")
+        await pg.select_option("#giorno", "1"); await pg.select_option("#mese", "5"); await pg.select_option("#anno", "2012"); await clic("Continua"); await foto("minorenne")
         await clic("Torna all'inizio"); await clic("Entra"); await pg.fill("#email", "prova@example.com"); await clic("Mandami il link")
-        await pg.fill("#nascita", "1994-05-01"); await clic("Continua")
+        await pg.select_option("#giorno", "31"); await pg.select_option("#mese", "2"); await pg.select_option("#anno", "1994")
+        assert await pg.locator(".data + .errore").is_visible(), "data impossibile non segnalata"
+        await pg.select_option("#mese", "5"); await foto("data"); await clic("Continua")
         await pg.check("#accetto"); await foto("regole"); await clic("Continua")
         await pg.fill("#nome", "Giulia"); await pg.locator("#nome").blur()
         await pg.select_option("#citta", "Milano"); await clic("Donna"); await foto("chi-sei"); await clic("Continua")
