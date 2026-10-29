@@ -1,3 +1,5 @@
+import { eliminaAccount, PERCORSO_ELIMINA } from "./elimina.js";
+
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
 // della landing: l'app usa i propri script (solo dal nostro dominio) e potrà chiedere il microfono per le chiamate solo voce.
@@ -37,6 +39,7 @@ export function eApp(pathname) {
 
 export async function app(request, env) {
   const url = new URL(request.url);
+  if (url.pathname === PERCORSO_ELIMINA) return conIntestazioniApp(await eliminaAccount(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }
@@ -53,6 +56,10 @@ function conIntestazioniApp(risposta, pathname) {
   for (const [nome, valore] of Object.entries(INTESTAZIONI_APP)) nuova.headers.set(nome, valore);
   // Pagine, codice, stili e service worker sempre ricontrollati (così una correzione arriva subito, anche su iPhone);
   // le icone restano in cache per un'ora.
+  if (pathname.startsWith("/app/api/")) {
+    nuova.headers.set("cache-control", "no-store");
+    return nuova;
+  }
   const sempreNuovo = pathname.endsWith("/") || pathname.endsWith(".html") || pathname.endsWith("/sw.js") || pathname.endsWith(".webmanifest") || pathname.endsWith("/config.json")
     || pathname.endsWith(".js") || pathname.endsWith(".css");
   nuova.headers.set("cache-control", sempreNuovo ? "no-cache" : "public, max-age=3600");
