@@ -14,6 +14,7 @@ Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista 
 | Verifica | `.github/workflows/ci.yml` | A ogni pull request controlla la landing, la web app, i test di sicurezza del Worker e la configurazione (`wrangler deploy --dry-run`) |
 | Pubblicazione | Cloudflare Workers Builds | A ogni modifica su `main` pubblica il Worker `presente`; sugli altri rami crea un'anteprima |
 | Verifica della landing | `scripts/verifica_landing.py` | Controlla che la landing sia ben fatta, leggera, senza risorse esterne e che il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso |
+| Database | `.github/workflows/database.yml` | Quando cambia `supabase/migrations` su `main`, riprova le migrazioni su un Postgres di prova e poi le applica al progetto Supabase (Francoforte), una transazione per migrazione. A mano (Actions → «Database») con «prova» elenca cosa applicherebbe senza toccare nulla |
 | Agenda Fase 2 | Issues e milestone | Le attività di sviluppo, settimana per settimana, con scadenza |
 
 ## Landing page della lista d'attesa
