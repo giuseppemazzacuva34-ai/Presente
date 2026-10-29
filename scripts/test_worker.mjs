@@ -10,6 +10,9 @@ import { pulisciCodice } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
 
+// User agent di un telefono vero (browser interno di Instagram): le richieste senza user agent contano come automatiche.
+const TELEFONO = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0";
+
 let errori = 0;
 function verifica(condizione, descrizione) {
   if (condizione) {
@@ -188,7 +191,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
 
   const env = { DB: contatoriFinti(), ASSETS };
-  const r = await worker.fetch(new Request("https://presente.example/da/instagram"), env);
+  const r = await worker.fetch(new Request("https://presente.example/da/instagram", { headers: { "user-agent": TELEFONO } }), env);
   verifica(r.status === 302 && r.headers.get("location") === "https://presente.example/?da=instagram" && r.headers.get("cache-control") === "no-store",
     "/da/instagram: rimanda a /?da=instagram, senza cache");
   const visita = env.DB.query.find((q) => q.sql.startsWith("INSERT INTO visite_canale"));
@@ -219,6 +222,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const piu = env3.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni_canale"));
   verifica(r3.status === 303 && piu && piu.valori[0] === "instagram", "iscrizione da /da/instagram: +1 in iscrizioni_canale");
   verifica(riga && !riga.sql.includes("canale") && !riga.valori.includes("instagram"), "iscrizione: il canale NON entra nella riga dell'iscritto");
+  verifica(r3.headers.get("location") === "https://presente.example/grazie?da=instagram", "iscrizione con canale: va a /grazie?da=instagram (il contatore conta /grazie per sorgente)");
 
   const env4 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti({ nuova: false }) };
   await iscrizione(modulo({ canale: "instagram" }), env4);
@@ -243,6 +247,10 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
 
 // 12. Contatore delle visite (D43): "/" e "/grazie" per giorno e utm, solo totali, nessun IP né cookie.
 {
+  const contatoriFintiVisite = () => {
+    const query = [];
+    return { query, prepare(sql) { const v = { sql, valori: [] }; query.push(v); return { bind(...x) { v.valori = x; return this; }, async run() { return { meta: { changes: 1 } }; } }; } };
+  };
   const dbVisite = () => {
     const query = [];
     return { query, prepare(sql) { const v = { sql, valori: [] }; query.push(v); return { bind(...x) { v.valori = x; return this; }, async run() { return { meta: { changes: 1 } }; } }; } };
@@ -250,13 +258,14 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
   const apri = async (percorso, env, init = {}) => {
-    const r = await worker.fetch(new Request("https://presente.example" + percorso, init), env);
+    const headers = { "user-agent": TELEFONO, ...(init.headers || {}) };
+    const r = await worker.fetch(new Request("https://presente.example" + percorso, { ...init, headers }), env);
     return { r, conta: env.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")) };
   };
 
   {
     const env = { DB: dbVisite(), ASSETS, CAMPAGNE_UTM: "lista_traffico" };
-    const { r, conta } = await apri("/", env, { headers: { "cf-connecting-ip": "203.0.113.7", cookie: "x=1", "user-agent": "Prova/1.0" } });
+    const { r, conta } = await apri("/", env, { headers: { "cf-connecting-ip": "203.0.113.7", cookie: "x=1", "user-agent": "Mozilla/5.0 Prova/1.0" } });
     verifica(r.status === 200 && conta.length === 1 && conta[0].valori[0] === "home" && conta[0].valori[2] === "" && conta[0].valori[3] === "",
       "visita a /: +1 per home e giorno, senza utm");
     const tutto = JSON.stringify(env.DB.query);
@@ -285,6 +294,44 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(altre.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")).length === 0, "altre pagine, HEAD e /conteggio: non contano");
   }
   {
+    // Anteprime dei link, robot e prefetch: non contano come persone (riga "automatiche"), il browser di Instagram e Facebook sì.
+    const casi = [
+      ["facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)", {}],
+      ["Facebot", {}],
+      ["meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)", {}],
+      ["WhatsApp/2.23.20.0", {}],
+      ["Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", {}],
+      ["curl/8.5.0", {}],
+      ["", {}],
+      [TELEFONO, { "x-purpose": "preview" }],
+      [TELEFONO, { "sec-purpose": "prefetch;prerender" }],
+      [TELEFONO, { purpose: "prefetch" }],
+    ];
+    for (const [ua, extra] of casi) {
+      const env = { DB: dbVisite(), ASSETS };
+      const { conta } = await apri("/?utm_source=meta", env, { headers: { "user-agent": ua, ...extra } });
+      verifica(conta.length === 1 && conta[0].valori[0] === "automatiche", `automatica non contata come persona: ${ua || "(senza user agent)"} ${JSON.stringify(extra)}`);
+      verifica(!JSON.stringify(env.DB.query).includes(ua || "§"), "automatiche: lo user agent non viene salvato");
+    }
+    for (const ua of [TELEFONO, "Mozilla/5.0 (Linux; Android 14; SM-S918B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0 Mobile Safari/537.36 [FBAN/EMA;FBLC/it_IT;FBAV/480.0.0.0;]"]) {
+      const env = { DB: dbVisite(), ASSETS };
+      const { conta } = await apri("/", env, { headers: { "user-agent": ua } });
+      verifica(conta.length === 1 && conta[0].valori[0] === "home", "browser interno di Instagram/Facebook: è una persona, conta in home");
+    }
+    const anteprimaDa = { DB: contatoriFintiVisite(), ASSETS };
+    const rd = await worker.fetch(new Request("https://presente.example/da/meta", { headers: { "user-agent": "facebookexternalhit/1.1" } }), anteprimaDa);
+    verifica(rd.status === 302 && anteprimaDa.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_canale")).length === 0,
+      "/da/meta aperto dall'anteprima di Meta: rimanda ma non conta la visita");
+  }
+  {
+    // /grazie con ?da=<canale>: conta per giorno e sorgente; il modulo con canale porta lì.
+    const env = { DB: dbVisite(), ASSETS };
+    const g = await apri("/grazie?da=meta", env);
+    verifica(g.conta[0].valori[0] === "grazie" && g.conta[0].valori[2] === "meta", "/grazie?da=meta: conta grazie con sorgente meta");
+    const s = await apri("/grazie?da=inventato", { DB: dbVisite(), ASSETS });
+    verifica(s.conta[0].valori[2] === "", "/grazie con canale sconosciuto: nessuna sorgente");
+  }
+  {
     const rotto = { prepare() { return { bind() { return this; }, async run() { throw new Error("D1_ERROR"); } }; } };
     const erroreOriginale = console.error; console.error = () => {};
     const r = await worker.fetch(new Request("https://presente.example/"), { DB: rotto, ASSETS });
@@ -305,10 +352,11 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
       { pagina: "home", giorno: "2026-10-29", sorgente: "meta", campagna: "lista_traffico", n: 7 },
       { pagina: "grazie", giorno: "2026-10-29", sorgente: "", campagna: "", n: 2 },
       { pagina: "strana", giorno: "2026-10-29", sorgente: "", campagna: "", n: 99 },
+      { pagina: "automatiche", giorno: "2026-10-29", sorgente: "meta", campagna: "", n: 120 },
     ];
     const DB = { prepare() { return { async all() { return { results: righe }; } }; } };
     const v = await perVisite({ DB });
-    verifica(v.home === 17 && v.grazie === 2 && v.per_giorno["2026-10-29"].home === 17 && v.per_utm["meta/lista_traffico"].home === 7,
+    verifica(v.home === 17 && v.grazie === 2 && v.automatiche === 120 && v.per_giorno["2026-10-29"].home === 17 && v.per_utm["meta/lista_traffico"].home === 7,
       "/conteggio visite: totali, per giorno e per utm");
   }
 }
