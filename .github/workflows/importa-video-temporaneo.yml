@@ -15,14 +15,14 @@ jobs:
       - name: Scarica e verifica i file
         run: |
           set -euo pipefail
-          curl -fsSL -o landing/media/presente-v3.mp4 "https://backend.composio.dev/api/v3/sl/ciS4TArikZ"
-          curl -fsSL -o landing/media/presente-v3-poster.jpg "https://backend.composio.dev/api/v3/sl/Tmjj4smIkn"
-          echo "2762dda7256300013306db8954af1d0d8af75426fa65a41ffa9e9a5d972441db  landing/media/presente-v3.mp4" | sha256sum -c -
-          echo "8c86d92c7baa4821f3f277b59f02cab440f31b0330b5d285338811f6ea79fa9f  landing/media/presente-v3-poster.jpg" | sha256sum -c -
+          curl -fsSL -o landing/media/presente-v3.mp4 "https://backend.composio.dev/api/v3/sl/1NXPWpv_V-"
+          curl -fsSL -o landing/media/presente-v3-poster.jpg "https://backend.composio.dev/api/v3/sl/SEMKRcRUtr"
+          echo "93445901488ca38ff6fc99bf07904315973bb6f299f2782134cac0500390f4a7  landing/media/presente-v3.mp4" | sha256sum -c -
+          echo "1e8495728df777ba9cd5f8ab0d958162d2d545efafffe6eec68373f21296869a  landing/media/presente-v3-poster.jpg" | sha256sum -c -
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add landing/media/presente-v3.mp4 landing/media/presente-v3-poster.jpg
-          git commit -m "Landing: file del video v3 e copertina (importati dal workbench)"
+          git commit -m "Landing: file del video v3 e copertina, testi più leggibili"
           git push
