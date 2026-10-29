@@ -42,14 +42,18 @@
     // Solo lettere e numeri, massimo 20 caratteri. Vuoto finché i codici non sono assegnati.
     "CODICI_INVITO": "",
     // Campagne utm contate per nome in /conteggio (D43); le altre finiscono in "altro". Separate da virgola.
-    "CAMPAGNE_UTM": "lista_traffico"
+    "CAMPAGNE_UTM": "lista_traffico",
+    // Accesso vero alla web app con email (issue #2). "no" = l'app resta in anteprima e non manda nulla a Supabase.
+    // Si mette "si" solo dopo l'informativa privacy dell'app (T08) e la revisione di sicurezza del CISO (T15).
+    "ACCESSO_APP": "no"
   },
   // Anteprime dei rami (Worker Previews di Workers Builds, comando "npx wrangler preview"): il blocco "previews"
   // è obbligatorio, senza di esso la build di anteprima fallisce. Le anteprime non usano le impostazioni di produzione:
   // nessun database collegato e iscrizioni chiuse, così un'anteprima non tocca mai i dati reali della lista d'attesa.
   "previews": {
     "vars": {
-      "ISCRIZIONI_APERTE": "no"
+      "ISCRIZIONI_APERTE": "no",
+      "ACCESSO_APP": "no"
     }
   }
 }

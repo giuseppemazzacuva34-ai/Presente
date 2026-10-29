@@ -1,6 +1,6 @@
 # Architettura della Fase 2 (beta del 6 dicembre 2026)
 
-Versione 1.1 · 29 ottobre 2026 (v1: 28 ottobre) · autore: CTO («sviluppatore»).
+Versione 1.2 · 29 ottobre 2026 (v1: 28 ottobre) · autore: CTO («sviluppatore»).
 Fonti: tab «Struttura dell'app» del business plan, specifiche del CPO nelle issue #2, #3, #4 (v1 del 27 ottobre) e decisioni D14–D20, D23 A, D24 A, D30 B, D31 B, D32 A, D35 A.
 Questo documento descrive *come* è costruita l'app; *cosa* fa lo decidono le specifiche del CPO. Se le due cose non coincidono, valgono le specifiche e questo documento va corretto.
 
@@ -76,6 +76,16 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 | `api/` (dalla #4) | Worker `presente-api`; riceve come secret Cloudflare `SUPABASE_SERVICE_ROLE_KEY`, `REALTIME_APP_ID`, `REALTIME_APP_SECRET` |
 - Test automatico in «Verifica»: con due account di prova, l'account B non riesce a leggere foto, questionario, filtri e diario dell'account A (criterio di accettazione della #2).
 
+## Accesso con email (#2, pronto dal 29/10 ma spento)
+
+1. L'utente scrive l'email; l'app chiama Supabase Auth (`/auth/v1/otp`) con la sola chiave anon. Supabase crea l'account se non c'è e manda **un'email con link e codice di 6 cifre**.
+2. Link: apre `presenteincontri.app/app/#access_token=…`. La parte dopo «#» non arriva a nessun server; l'app la legge e la cancella subito dall'indirizzo e dalla cronologia.
+3. Codice: su iPhone la web app nella Home ha una memoria separata da Safari, quindi il link entrerebbe in Safari e non nell'app. Per questo l'app chiede anche il codice (`/auth/v1/verify`).
+4. Sul telefono restano solo token, scadenza e id utente (niente email). Il token si rinnova da solo un minuto prima della scadenza; se il rinnovo è rifiutato si rientra con una nuova email.
+5. Interruttore: `ACCESSO_APP` in `wrangler.jsonc` (oggi `"no"`, sempre `"no"` nelle anteprime). Con `"no"` l'app resta in anteprima e non chiama Supabase.
+
+Da fare in Supabase prima di accendere (pannello Authentication, lo fa Giuseppe con le istruzioni del CTO): Site URL `https://presenteincontri.app/app/` e solo questo indirizzo tra i Redirect URL; modello dell'email «Magic link» in italiano con link e `{{ .Token }}`; scadenza del codice 1 ora (specifica). Il servizio email incluso basta per le prove interne, non per la beta (vedi «Email di servizio» nelle scelte aperte).
+
 ## Flusso di una chiamata (#4)
 
 1. A tocca «Chiama». La web app chiede al Worker `presente-api` di aprire la chiamata, con il token di accesso Supabase di A.
@@ -87,6 +97,15 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 7. «Chiudi e segnala»: il Worker chiude la sessione subito, registra il blocco reciproco e apre il modulo di segnalazione.
 
 Connessione persa: 30 secondi per rientrare nella stessa sessione, il timer continua.
+
+### Audio e video sulla stessa base (D48 A, 29/10)
+
+Le chiamate dalla stanza sono **solo voce**; dopo la porta c'è lo **svelamento**: videochiamata di 10 secondi che parte sfocata. Entrambe usano la stessa sessione Cloudflare Realtime, quindi la #4 si costruisce già pronta per il video:
+- una sessione per persona con tracce separate: `audio` sempre, `video` solo se il Worker `presente-api` lo autorizza (porta aperta e patto valido). Nelle chiamate dalla stanza il Worker rifiuta di pubblicare tracce video, anche se il telefono ci prova;
+- la sfocatura si applica sul telefono di chi trasmette, su un canvas, prima di creare la traccia: chi riceve non può toglierla;
+- il tempo di 10 secondi lo decide il server e parte solo quando **entrambe** le tracce video arrivano a Cloudflare; a 10 s il Worker chiude le tracce video per tutti e due;
+- nessuna registrazione: Realtime inoltra e basta, e in `chiamate` si salvano solo inizio, durata e tipo (`voce` / `svelamento`).
+I dettagli (quanto sfocato all'inizio, se si schiarisce, cosa succede se uno si scollega) li fissa la specifica del CPO.
 
 ## Lavori programmati
 

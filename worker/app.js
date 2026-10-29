@@ -75,7 +75,11 @@ export function configurazione(env) {
   if (!chiave) problemi.push("SUPABASE_ANON_KEY manca");
   else if (!CHIAVE_ANON.test(chiave)) problemi.push("SUPABASE_ANON_KEY non sembra una chiave pubblica di Supabase");
   else if (chiave.startsWith("eyJ") && ruoloDelToken(chiave) !== "anon") problemi.push("SUPABASE_ANON_KEY non è la chiave anon (forse è la service_role)");
-  const corpo = problemi.length ? { pronta: false, problemi } : { pronta: true, supabaseUrl: indirizzo, supabaseAnonKey: chiave };
+  // «accesso»: true solo se le chiavi sono giuste E la variabile ACCESSO_APP vale «si» (wrangler.jsonc). Finché è
+  // false la web app resta in anteprima: niente email, niente dati verso Supabase.
+  const corpo = problemi.length
+    ? { pronta: false, accesso: false, problemi }
+    : { pronta: true, accesso: String(env.ACCESSO_APP || "").trim() === "si", supabaseUrl: indirizzo, supabaseAnonKey: chiave };
   return new Response(JSON.stringify(corpo), {
     // Sempre 200: la web app (e chi controlla) legge «pronta»; così il motivo si vede anche da un browser qualsiasi.
     status: 200,
