@@ -15,6 +15,7 @@ Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista 
 | Pubblicazione | Cloudflare Workers Builds | A ogni modifica su `main` pubblica il Worker `presente`; sugli altri rami crea un'anteprima |
 | Verifica della landing | `scripts/verifica_landing.py` | Controlla che la landing sia ben fatta, leggera, senza risorse esterne e che il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso |
 | Database | `.github/workflows/database.yml` | Quando cambia `supabase/migrations` su `main`, riprova le migrazioni su un Postgres di prova e poi le applica al progetto Supabase (Francoforte), una transazione per migrazione. A mano (Actions → «Database») con «prova» elenca cosa applicherebbe senza toccare nulla |
+| Risposte ai commenti «BUIO» | `worker/meta.js` | Webhook di Meta su `/meta/webhook`: a chi scrive BUIO sotto post e inserzioni di Instagram e Facebook manda il link della lista d'attesa in privato e risponde in pubblico, senza salvare nulla. Spento finché `RISPOSTE_META` non vale `si`; passi su Meta in [`docs/meta-webhook.md`](docs/meta-webhook.md) |
 | Agenda Fase 2 | Issues e milestone | Le attività di sviluppo, settimana per settimana, con scadenza |
 
 ## Landing page della lista d'attesa

@@ -11,7 +11,7 @@
     // "/" passa dal Worker per precompilare il codice dei link d'invito dei creator (?invito=CODICE)
     // e il campo nascosto del canale (?da=); "/da/*" sono i link per canale (D26).
     // "/app/*" è la web app installabile (Fase 2, #1): passa dal Worker per avere intestazioni di sicurezza sue.
-    "run_worker_first": ["/", "/grazie", "/grazie.html", "/iscrizione", "/conteggio", "/da", "/da/*", "/app", "/app/*"]
+    "run_worker_first": ["/", "/grazie", "/grazie.html", "/iscrizione", "/conteggio", "/da", "/da/*", "/app", "/app/*", "/meta/webhook"]
   },
   // Dominio comprato il 27 ottobre 2026 su Cloudflare: il sito risponde anche su presenteincontri.app (e www).
   "routes": [
@@ -45,7 +45,15 @@
     "CAMPAGNE_UTM": "lista_traffico",
     // Accesso vero alla web app con email (issue #2). "no" = l'app resta in anteprima e non manda nulla a Supabase.
     // Si mette "si" solo dopo l'informativa privacy dell'app (T08) e la revisione di sicurezza del CISO (T15).
-    "ACCESSO_APP": "no"
+    "ACCESSO_APP": "no",
+    // Risposte automatiche ai commenti «BUIO» su Instagram e Facebook (docs/meta-webhook.md).
+    // "no" = Meta può verificare l'indirizzo ma nessuno riceve risposte. "si" solo quando l'app Meta è in modalità Live
+    // e i Secret META_APP_SECRET, META_VERIFY_TOKEN e META_PAGE_TOKEN sono inseriti su Cloudflare.
+    "RISPOSTE_META": "no",
+    // Id pubblici della Pagina Facebook e dell'account Instagram di Presente: servono per non rispondere ai nostri commenti.
+    "META_PAGE_ID": "1409616645567240",
+    "META_IG_ID": "",
+    "META_GRAPH_VERSIONE": "v24.0"
   },
   // Anteprime dei rami (Worker Previews di Workers Builds, comando "npx wrangler preview"): il blocco "previews"
   // è obbligatorio, senza di esso la build di anteprima fallisce. Le anteprime non usano le impostazioni di produzione:
@@ -53,7 +61,8 @@
   "previews": {
     "vars": {
       "ISCRIZIONI_APERTE": "no",
-      "ACCESSO_APP": "no"
+      "ACCESSO_APP": "no",
+      "RISPOSTE_META": "no"
     }
   }
 }
