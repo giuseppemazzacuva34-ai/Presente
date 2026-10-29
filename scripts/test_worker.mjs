@@ -360,6 +360,11 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(manca.status === 200 && corpoManca.pronta === false && corpoManca.problemi.length === 2, "/app/config.json: dice quali secret mancano");
   const [servizio, corpoServizio] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: token("service_role") });
   verifica(corpoServizio.pronta === false && !JSON.stringify(corpoServizio).includes("eyJ"), "/app/config.json: la chiave service_role non esce mai");
+  verifica(corpoOk.accesso === false && corpoManca.accesso === false, "/app/config.json: accesso spento se ACCESSO_APP non vale «si»");
+  const [, acceso] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: token("anon"), ACCESSO_APP: "si" });
+  verifica(acceso.accesso === true, "/app/config.json: accesso acceso con ACCESSO_APP = «si»");
+  const [, accesoSenzaChiavi] = await leggi({ ACCESSO_APP: "si" });
+  verifica(accesoSenzaChiavi.accesso === false, "/app/config.json: senza chiavi giuste l'accesso resta spento");
   const [, segreta] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_secret_abc" });
   verifica(segreta.pronta === false, "/app/config.json: le chiavi segrete sb_secret_ non escono mai");
   const [sbagliato, corpoSbagliato] = await leggi({ SUPABASE_URL: "https://supabase.com/dashboard/project/x", SUPABASE_ANON_KEY: token("anon") });

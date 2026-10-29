@@ -8,6 +8,7 @@
 import { DOMANDE, TEMI, IMPORTANZA, DOMANDA_IMPORTANZA, DOMANDE_VOCE, erroreRisposta } from "./domande.js";
 import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registratore.js";
 import { preparaFoto } from "./foto.js";
+import { MESSAGGI } from "./accesso.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -61,9 +62,16 @@ const PASSI = [
 
 let radice;
 let registrazioneInCorso = null;
+// Accesso vero con email (accesso.js). null = anteprima: nessuna email, si passa direttamente al passo dopo.
+let accesso = null;
+const email = { inviata: false, codice: "", errore: "", attesa: false };
 
-export function avvia(elemento) {
+export function avvia(elemento, opzioni = {}) {
   radice = elemento;
+  accesso = opzioni.accesso || null;
+  if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
+  // Già dentro (dal link nell'email o da una sessione precedente): si riparte dalla maggiore età.
+  if (accesso && accesso.connesso()) stato.passo = 2;
   disegna();
 }
 
@@ -80,7 +88,9 @@ function disegna() {
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
   const parti = [
-    h("div", { classe: "anteprima", role: "note" }, "Anteprima: niente viene inviato né salvato. Voce e foto restano su questo telefono finché non chiudi la pagina."),
+    h("div", { classe: "anteprima", role: "note" }, accesso
+      ? "Prova: l'accesso con email è vero, il resto del profilo non viene ancora salvato. Voce e foto restano su questo telefono."
+      : "Anteprima: niente viene inviato né salvato. Voce e foto restano su questo telefono finché non chiudi la pagina."),
     stato.passo > 0 && stato.passo < PASSI.length - 1 ? barra() : null,
     contenuto,
   ];
@@ -150,6 +160,41 @@ function etaDa(data) {
   return eta;
 }
 
+// Passo 2 con l'accesso acceso: manda l'email (link + codice di 6 cifre) e, se serve, chiede il codice.
+function emailVera() {
+  const valida = () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(stato.email) && !email.attesa;
+  const manda = async () => {
+    email.attesa = true; email.errore = ""; disegna();
+    const r = await accesso.mandaLink(stato.email, location.origin + "/app/");
+    email.attesa = false;
+    if (r.ok) { email.inviata = true; email.codice = ""; } else email.errore = MESSAGGI[r.motivo] || MESSAGGI.generico;
+    disegna();
+  };
+  if (!email.inviata) {
+    const campo = h("input", { type: "email", id: "email", autocomplete: "email", inputmode: "email", autocapitalize: "off", value: stato.email,
+      placeholder: "nome@esempio.it", oninput: (e) => { stato.email = e.target.value.trim(); ricontrolla(); } });
+    return schermata("La tua email",
+      "Ti mandiamo un link: lo apri e sei dentro. Niente password.",
+      [h("label", { for: "email" }, "Email"), campo, errore(email.errore)],
+      [indietro(), avanti(email.attesa ? "Invio…" : "Mandami il link", valida, manda)]);
+  }
+  const entra = async () => {
+    email.attesa = true; email.errore = ""; disegna();
+    const r = await accesso.verificaCodice(stato.email, email.codice);
+    email.attesa = false;
+    if (r.ok) { email.inviata = false; vai(2); } else { email.errore = MESSAGGI[r.motivo] || MESSAGGI.codice; disegna(); }
+  };
+  const codice = h("input", { type: "text", id: "codice", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "7", value: email.codice,
+    placeholder: "123456", oninput: (e) => { email.codice = e.target.value.replace(/[^\d]/g, ""); ricontrolla(); } });
+  return schermata("Ti abbiamo mandato un link",
+    `Apri l'email che abbiamo mandato a ${stato.email} e tocca il link. Se hai aggiunto Presente alla schermata Home, scrivi qui il codice di 6 cifre della stessa email.`,
+    [h("label", { for: "codice" }, "Codice"), codice, errore(email.errore),
+      h("p", { classe: "nota" }, "Non è arrivata? Guarda nello spam, oppure ",
+        h("button", { classe: "link", type: "button", disabled: email.attesa, onclick: manda }, "mandala di nuovo"), ".")],
+    [h("button", { classe: "bottone-secondario", type: "button", onclick: () => { email.inviata = false; email.errore = ""; disegna(); } }, "Cambia email"),
+      avanti(email.attesa ? "Controllo…" : "Entra", () => /^\d{6}$/.test(email.codice) && !email.attesa, entra)]);
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 const SCHERMATE = {
   benvenuto() {
@@ -160,6 +205,7 @@ const SCHERMATE = {
   },
 
   email() {
+    if (accesso) return emailVera();
     const campo = h("input", { type: "email", id: "email", autocomplete: "email", inputmode: "email", autocapitalize: "off", value: stato.email,
       placeholder: "nome@esempio.it", oninput: (e) => { stato.email = e.target.value.trim(); ricontrolla(); } });
     const bottone = avanti("Mandami il link", () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(stato.email), () => vai(2));
