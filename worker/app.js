@@ -75,7 +75,8 @@ export function configurazione(env) {
   else if (chiave.startsWith("eyJ") && ruoloDelToken(chiave) !== "anon") problemi.push("SUPABASE_ANON_KEY non è la chiave anon (forse è la service_role)");
   const corpo = problemi.length ? { pronta: false, problemi } : { pronta: true, supabaseUrl: indirizzo, supabaseAnonKey: chiave };
   return new Response(JSON.stringify(corpo), {
-    status: problemi.length ? 503 : 200,
+    // Sempre 200: la web app (e chi controlla) legge «pronta»; così il motivo si vede anche da un browser qualsiasi.
+    status: 200,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 }
