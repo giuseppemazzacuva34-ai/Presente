@@ -33,7 +33,8 @@ for file in "$radice"/supabase/migrations/*.sql; do
   base="$(basename "$file" .sql)"
   versione="${base%%_*}"
   nome="${base#*_}"
-  [[ "$versione" =~ ^[0-9]{14}$ ]] || { echo "::error::Nome non valido: $base"; exit 1; }
+  # Versione e nome entrano nella riga SQL del registro: solo cifre, lettere minuscole e «_» (niente apici).
+  [[ "$versione" =~ ^[0-9]{14}$ && "$nome" =~ ^[a-z0-9_]{1,80}$ ]] || { echo "::error::Nome non valido: $base"; exit 1; }
   if grep -qx "$versione" <<<"$applicate"; then
     echo "già applicata: $base"; echo "| \`$base\` | già applicata |" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"; continue
   fi
