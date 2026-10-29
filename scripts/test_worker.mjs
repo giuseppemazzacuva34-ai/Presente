@@ -345,6 +345,27 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     "app/index.html: nessuno script in linea, nessun gestore on*, nessuna risorsa esterna");
 }
 
+// /app/config.json (#2): solo indirizzo e chiave anon, mai la service_role.
+{
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const token = (ruolo) => `eyJhbGciOiJIUzI1NiJ9.${b64({ role: ruolo, iss: "supabase" })}.firmafinta`;
+  const ASSETS = { fetch: async () => new Response("") };
+  const leggi = async (env) => { const r = await worker.fetch(new Request("https://presente.example/app/config.json"), { ASSETS, ...env }); return [r, await r.json()]; };
+  const [ok, corpoOk] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co/", SUPABASE_ANON_KEY: token("anon") });
+  verifica(ok.status === 200 && corpoOk.pronta && corpoOk.supabaseUrl === "https://abcdefghijklmnopqrst.supabase.co" && ok.headers.get("cache-control") === "no-cache",
+    "/app/config.json: indirizzo e chiave anon quando i secret ci sono");
+  const [, nuovaChiave] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_publishable_abc123" });
+  verifica(nuovaChiave.pronta === true, "/app/config.json: accetta anche le nuove chiavi pubbliche sb_publishable_");
+  const [manca, corpoManca] = await leggi({});
+  verifica(manca.status === 503 && corpoManca.pronta === false && corpoManca.problemi.length === 2, "/app/config.json: dice quali secret mancano");
+  const [servizio, corpoServizio] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: token("service_role") });
+  verifica(servizio.status === 503 && !JSON.stringify(corpoServizio).includes("eyJ"), "/app/config.json: la chiave service_role non esce mai");
+  const [segreta] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_secret_abc" });
+  verifica(segreta.status === 503, "/app/config.json: le chiavi segrete sb_secret_ non escono mai");
+  const [sbagliato, corpoSbagliato] = await leggi({ SUPABASE_URL: "https://supabase.com/dashboard/project/x", SUPABASE_ANON_KEY: token("anon") });
+  verifica(sbagliato.status === 503 && !JSON.stringify(corpoSbagliato).includes("dashboard"), "/app/config.json: indirizzo sbagliato segnalato senza ripeterlo");
+}
+
 if (errori) {
   console.log(`\n${errori} controlli non superati.`);
   process.exit(1);

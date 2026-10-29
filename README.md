@@ -50,4 +50,5 @@ La web app installabile è online, per ora come pagina «in costruzione», su `p
 - Nessun framework e nessuna libreria da installare (motivo in [`docs/architettura.md`](docs/architettura.md)). Test in `scripts/test_worker.mjs`.
 - Questionario privato e affinità (#2, D35 A): `api/questionario.js`, solo lato server (le 15 domande v1, i pesi dei temi e il calcolo 0–100, mai mostrato agli utenti). Test con `node --test test/*.test.mjs`, eseguiti anche da «Verifica».
 - Database (#2): tabelle e regole per riga in `supabase/migrations/`, provate a ogni pull request da `scripts/test_supabase.sh` su un Postgres di prova (mai sul progetto vero, mai con dati reali).
+- `/app/config.json`: il Worker passa all'app l'indirizzo di Supabase e la chiave pubblica «anon», letti dai secret del Worker `presente` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`). Se mancano o sono sbagliati risponde `pronta: false` con il motivo, senza mai mostrare il valore; la chiave service_role non esce mai.
 - Per aggiungerla alla Home: su iPhone apri `presenteincontri.app/app/` con Safari → Condividi → «Aggiungi alla schermata Home»; su Android Chrome propone «Installa app».

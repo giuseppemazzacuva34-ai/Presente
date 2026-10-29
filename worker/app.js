@@ -40,6 +40,7 @@ export async function app(request, env) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }
+  if (url.pathname === "/app/config.json") return conIntestazioniApp(configurazione(env), url.pathname);
   if (url.pathname === "/app") {
     url.pathname = "/app/";
     return conIntestazioniApp(Response.redirect(url.toString(), 301), "/app");
@@ -51,7 +52,40 @@ function conIntestazioniApp(risposta, pathname) {
   const nuova = new Response(risposta.body, risposta);
   for (const [nome, valore] of Object.entries(INTESTAZIONI_APP)) nuova.headers.set(nome, valore);
   // Pagine e service worker sempre ricontrollati, così un aggiornamento arriva subito; icone e stili in cache per un'ora.
-  const sempreNuovo = pathname.endsWith("/") || pathname.endsWith(".html") || pathname.endsWith("/sw.js") || pathname.endsWith(".webmanifest");
+  const sempreNuovo = pathname.endsWith("/") || pathname.endsWith(".html") || pathname.endsWith("/sw.js") || pathname.endsWith(".webmanifest") || pathname.endsWith("/config.json");
   nuova.headers.set("cache-control", sempreNuovo ? "no-cache" : "public, max-age=3600");
   return nuova;
+}
+
+// Configurazione pubblica per la web app (#2): indirizzo del progetto Supabase e chiave «anon».
+// Sono pubbliche per natura (ogni browser le riceve; chi vede cosa lo decidono le regole per riga).
+// Arrivano dai secret del Worker (Cloudflare → Workers → presente → Settings → Variables and Secrets),
+// non dal repository. La chiave service_role NON passa mai di qui.
+const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
+const CHIAVE_ANON = /^(eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_publishable_[A-Za-z0-9_-]+)$/;
+
+export function configurazione(env) {
+  const indirizzo = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  const chiave = String(env.SUPABASE_ANON_KEY || "").trim();
+  const problemi = [];
+  if (!indirizzo) problemi.push("SUPABASE_URL manca");
+  else if (!URL_SUPABASE.test(indirizzo)) problemi.push("SUPABASE_URL non ha la forma https://<codice progetto>.supabase.co");
+  if (!chiave) problemi.push("SUPABASE_ANON_KEY manca");
+  else if (!CHIAVE_ANON.test(chiave)) problemi.push("SUPABASE_ANON_KEY non sembra una chiave pubblica di Supabase");
+  else if (chiave.startsWith("eyJ") && ruoloDelToken(chiave) !== "anon") problemi.push("SUPABASE_ANON_KEY non è la chiave anon (forse è la service_role)");
+  const corpo = problemi.length ? { pronta: false, problemi } : { pronta: true, supabaseUrl: indirizzo, supabaseAnonKey: chiave };
+  return new Response(JSON.stringify(corpo), {
+    status: problemi.length ? 503 : 200,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// Legge il ruolo scritto dentro la chiave (senza verificarla): serve solo a non pubblicare mai per sbaglio la service_role.
+function ruoloDelToken(token) {
+  try {
+    const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(parte + "=".repeat((4 - (parte.length % 4)) % 4))).role;
+  } catch {
+    return null;
+  }
 }
