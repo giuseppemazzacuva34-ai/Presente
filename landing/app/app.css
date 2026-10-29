@@ -19,11 +19,14 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 .errore { color: #ff8a73; font-size: 0.9rem; margin: 0.25rem 0; }
 
 .corpo input:not([type="checkbox"]), .corpo select {
-  font: inherit; color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.6rem;
+  font: inherit; font-size: max(16px, 1rem); color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.6rem;
   padding: 0.8rem 0.9rem; width: 100%; box-sizing: border-box; min-height: 3rem;
 }
 .corpo select option { color: #000; }
-.corpo input[type="number"] { width: 5.5rem; }
+#eta-min, #eta-max { width: 5.5rem; text-align: center; }
+.data { display: grid; grid-template-columns: 1fr 1.6fr 1.3fr; gap: 0.5rem; }
+.corpo select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--grigio) 50%), linear-gradient(135deg, var(--grigio) 50%, transparent 50%); background-position: calc(100% - 1rem) 55%, calc(100% - 0.7rem) 55%; background-size: 0.3rem 0.3rem; background-repeat: no-repeat; padding-right: 1.8rem; }
+[hidden] { display: none !important; }
 .corpo input:focus, .corpo select:focus { border-color: var(--avorio); outline: none; }
 .riga { display: flex; align-items: center; gap: 0.6rem; }
 .riga label { margin: 0; }

@@ -51,8 +51,10 @@ export async function app(request, env) {
 function conIntestazioniApp(risposta, pathname) {
   const nuova = new Response(risposta.body, risposta);
   for (const [nome, valore] of Object.entries(INTESTAZIONI_APP)) nuova.headers.set(nome, valore);
-  // Pagine e service worker sempre ricontrollati, così un aggiornamento arriva subito; icone e stili in cache per un'ora.
-  const sempreNuovo = pathname.endsWith("/") || pathname.endsWith(".html") || pathname.endsWith("/sw.js") || pathname.endsWith(".webmanifest") || pathname.endsWith("/config.json");
+  // Pagine, codice, stili e service worker sempre ricontrollati (così una correzione arriva subito, anche su iPhone);
+  // le icone restano in cache per un'ora.
+  const sempreNuovo = pathname.endsWith("/") || pathname.endsWith(".html") || pathname.endsWith("/sw.js") || pathname.endsWith(".webmanifest") || pathname.endsWith("/config.json")
+    || pathname.endsWith(".js") || pathname.endsWith(".css");
   nuova.headers.set("cache-control", sempreNuovo ? "no-cache" : "public, max-age=3600");
   return nuova;
 }

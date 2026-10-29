@@ -34,7 +34,7 @@ const CITTA = ["Milano", "Roma", "Napoli", "Torino", "Bologna", "Firenze", "Pale
 const stato = {
   passo: 0,
   email: "",
-  dataNascita: "",
+  dataNascita: "", giorno: "", mese: "", anno: "", minorenne: false,
   regole: false,
   nome: "", citta: "", cittaAltra: "", estero: false, miPresento: "", miDescrivo: "",
   cerco: "", consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
@@ -105,8 +105,20 @@ function schermata(titolo, sottotitolo, corpo, azioni) {
     h("div", { classe: "azioni" }, azioni));
 }
 
+// «quando» può essere una funzione: allora il pulsante si riaccende/spegne con ricontrolla(), senza ridisegnare
+// la schermata. Serve sui campi di testo: ridisegnare mentre si scrive (o al primo tocco fuori dal campo) su iPhone
+// fa perdere il tocco sul pulsante.
+let pulsanteAvanti = null;
+let condizioneAvanti = null;
 function avanti(testo, quando, onclick) {
-  return h("button", { classe: "bottone", type: "button", disabled: !quando, onclick }, testo);
+  const condizione = typeof quando === "function" ? quando : () => Boolean(quando);
+  const bottone = h("button", { classe: "bottone", type: "button", disabled: !condizione(), onclick: () => { if (condizione()) onclick(); } }, testo);
+  pulsanteAvanti = bottone;
+  condizioneAvanti = condizione;
+  return bottone;
+}
+function ricontrolla() {
+  if (pulsanteAvanti && condizioneAvanti) pulsanteAvanti.disabled = !condizioneAvanti();
 }
 function indietro() {
   return h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(stato.passo - 1) }, "Indietro");
@@ -148,11 +160,9 @@ const SCHERMATE = {
   },
 
   email() {
-    const campo = h("input", { type: "email", id: "email", autocomplete: "email", inputmode: "email", value: stato.email,
-      placeholder: "nome@esempio.it", oninput: (e) => { stato.email = e.target.value.trim(); aggiorna(); } });
-    const bottone = avanti("Mandami il link", false, () => vai(2));
-    const aggiorna = () => { bottone.disabled = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(stato.email); };
-    aggiorna();
+    const campo = h("input", { type: "email", id: "email", autocomplete: "email", inputmode: "email", autocapitalize: "off", value: stato.email,
+      placeholder: "nome@esempio.it", oninput: (e) => { stato.email = e.target.value.trim(); ricontrolla(); } });
+    const bottone = avanti("Mandami il link", () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(stato.email), () => vai(2));
     return schermata("La tua email",
       "Ti mandiamo un link: lo apri e sei dentro. Niente password.",
       [h("label", { for: "email" }, "Email"), campo,
@@ -161,19 +171,47 @@ const SCHERMATE = {
   },
 
   eta() {
-    const eta = stato.dataNascita ? etaDa(stato.dataNascita) : null;
-    const minorenne = eta !== null && eta < 18;
-    if (minorenne) {
+    if (stato.minorenne) {
       return schermata("Presente è solo per maggiorenni.",
         "Ci dispiace: per entrare devi avere almeno 18 anni. Non abbiamo salvato nessun tuo dato.",
-        [], [h("button", { classe: "bottone-secondario", type: "button", onclick: () => { stato.dataNascita = ""; stato.email = ""; vai(0); } }, "Torna all'inizio")]);
+        [], [h("button", { classe: "bottone-secondario", type: "button", onclick: () => {
+          stato.minorenne = false; stato.giorno = stato.mese = stato.anno = ""; stato.dataNascita = ""; stato.email = ""; vai(0); } }, "Torna all'inizio")]);
     }
-    const campo = h("input", { type: "date", id: "nascita", value: stato.dataNascita, max: new Date().toISOString().slice(0, 10), min: "1920-01-01",
-      onchange: (e) => { stato.dataNascita = e.target.value; disegna(); } });
+    // Tre menu (giorno, mese, anno) invece del calendario del browser: su iPhone il campo data vuoto a volte
+    // non si apre o non si vede, e con tre menu la data si sceglie allo stesso modo su ogni telefono.
+    const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+    const annoOggi = new Date().getFullYear();
+    const componi = () => {
+      const { giorno, mese, anno } = stato;
+      if (!giorno || !mese || !anno) { stato.dataNascita = ""; return; }
+      const d = new Date(Number(anno), Number(mese) - 1, Number(giorno));
+      stato.dataNascita = d.getMonth() === Number(mese) - 1
+        ? `${anno}-${String(mese).padStart(2, "0")}-${String(giorno).padStart(2, "0")}` : "";
+    };
+    const avviso = h("p", { classe: "errore", role: "alert", hidden: true }, "Questa data non esiste: controlla giorno e mese.");
+    const cambia = (campo) => (e) => {
+      stato[campo] = e.target.value;
+      componi();
+      avviso.hidden = !(stato.giorno && stato.mese && stato.anno && !stato.dataNascita);
+      ricontrolla();
+    };
+    const menu = (id, etichetta, campo, opzioni) => h("select", { id, "aria-label": etichetta, onchange: cambia(campo) },
+      h("option", { value: "" }, etichetta),
+      opzioni.map(([v, t]) => h("option", { value: String(v), selected: String(stato[campo]) === String(v) }, t)));
+    const giorni = Array.from({ length: 31 }, (_, i) => [i + 1, String(i + 1)]);
+    const mesi = MESI.map((m, i) => [i + 1, m]);
+    const anni = Array.from({ length: annoOggi - 1920 + 1 }, (_, i) => [annoOggi - i, String(annoOggi - i)]);
     return schermata("Quando sei nato o nata?",
       "Serve per l'età che vedranno gli altri (mai la data). Dopo non si può più cambiare.",
-      [h("label", { for: "nascita" }, "Data di nascita"), campo],
-      [indietro(), avanti("Continua", eta !== null && eta >= 18 && eta <= 106, () => vai(3))]);
+      [h("p", { classe: "etichetta" }, "Data di nascita"),
+        h("div", { classe: "data" }, menu("giorno", "Giorno", "giorno", giorni), menu("mese", "Mese", "mese", mesi), menu("anno", "Anno", "anno", anni)),
+        avviso],
+      [indietro(), avanti("Continua", () => Boolean(stato.dataNascita), () => {
+        const eta = etaDa(stato.dataNascita);
+        if (eta === null || eta > 106) return;
+        if (eta < 18) { stato.minorenne = true; disegna(); return; }
+        vai(3);
+      })]);
   },
 
   regole() {
@@ -191,9 +229,10 @@ const SCHERMATE = {
   },
 
   chi() {
-    const nomeOk = /^[\p{L}][\p{L}' -]{1,19}$/u.test(stato.nome.trim());
-    const cittaOk = stato.estero || (stato.citta && (stato.citta !== "altra" || stato.cittaAltra.trim().length >= 2));
-    const presentoOk = stato.miPresento && (stato.miPresento !== "mi_descrivo" || stato.miDescrivo.trim().length >= 2);
+    const nomeOk = () => /^[\p{L}][\p{L}' -]{1,19}$/u.test(stato.nome.trim());
+    const cittaOk = () => stato.estero || (stato.citta && (stato.citta !== "altra" || stato.cittaAltra.trim().length >= 2));
+    const presentoOk = () => stato.miPresento && (stato.miPresento !== "mi_descrivo" || stato.miDescrivo.trim().length >= 2);
+    const avvisoNome = h("p", { classe: "errore", role: "alert", hidden: !stato.nome || nomeOk() }, "Da 2 a 20 lettere, senza numeri.");
     const selezione = h("select", { id: "citta", onchange: (e) => {
       stato.estero = e.target.value === "estero"; stato.citta = e.target.value; disegna(); } },
       h("option", { value: "" }, "Scegli la tua città"),
@@ -202,25 +241,27 @@ const SCHERMATE = {
       h("option", { value: "estero", selected: stato.citta === "estero" }, "Vivo all'estero"));
     return schermata("Chi sei", "Gli altri vedranno solo nome, età e città.",
       [h("label", { for: "nome" }, "Nome (solo il nome di battesimo)"),
-        h("input", { id: "nome", autocomplete: "given-name", maxlength: "20", value: stato.nome,
-          onchange: (e) => { stato.nome = e.target.value; disegna(); } }),
-        stato.nome && !nomeOk ? errore("Da 2 a 20 lettere, senza numeri.") : null,
+        h("input", { id: "nome", autocomplete: "given-name", autocapitalize: "words", maxlength: "20", value: stato.nome,
+          oninput: (e) => { stato.nome = e.target.value; if (nomeOk()) avvisoNome.hidden = true; ricontrolla(); },
+          onblur: () => { avvisoNome.hidden = !stato.nome || nomeOk(); } }),
+        avvisoNome,
         h("label", { for: "citta" }, "Città"), selezione,
         stato.citta === "altra" ? h("input", { id: "citta-altra", "aria-label": "Nome della città", placeholder: "Scrivi la città", value: stato.cittaAltra,
-          onchange: (e) => { stato.cittaAltra = e.target.value; disegna(); } }) : null,
+          oninput: (e) => { stato.cittaAltra = e.target.value; ricontrolla(); } }) : null,
         h("p", { classe: "etichetta" }, "Mi presento come"),
         scelte("presento", [["donna", "Donna"], ["uomo", "Uomo"], ["non_binario", "Non binario"], ["mi_descrivo", "Preferisco descrivermi"]],
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
-          onchange: (e) => { stato.miDescrivo = e.target.value; disegna(); } }) : null],
-      [indietro(), avanti("Continua", nomeOk && cittaOk && presentoOk, () => vai(5))]);
+          oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
+      [indietro(), avanti("Continua", () => Boolean(nomeOk() && cittaOk() && presentoOk()), () => vai(5))]);
   },
 
   cerchi() {
-    const etaOk = stato.etaMin <= stato.etaMax;
-    const tutto = stato.cerco && stato.consensoCerco && etaOk && stato.raggio && stato.cosaCerco && stato.figli && stato.fumo;
-    const numero = (id, valore, set) => h("input", { id, type: "number", min: "18", max: "99", inputmode: "numeric", value: String(valore),
-      onchange: (e) => { set(Math.max(18, Math.min(99, Number(e.target.value) || 18))); disegna(); } });
+    const etaOk = () => stato.etaMin >= 18 && stato.etaMax <= 99 && stato.etaMin <= stato.etaMax;
+    const tutto = () => Boolean(stato.cerco && stato.consensoCerco && etaOk() && stato.raggio && stato.cosaCerco && stato.figli && stato.fumo);
+    const avvisoEta = h("p", { classe: "errore", role: "alert", hidden: etaOk() }, "Età da 18 a 99, e la massima non può essere minore della minima.");
+    const numero = (id, valore, set) => h("input", { id, type: "text", inputmode: "numeric", pattern: "[0-9]*", maxlength: "2", value: String(valore),
+      oninput: (e) => { set(Number(e.target.value.replace(/\D/g, "")) || 0); avvisoEta.hidden = etaOk(); ricontrolla(); } });
     return schermata("Chi cerchi", "Servono a comporre la tua stanza. Nessuno li vede.",
       [h("p", { classe: "etichetta" }, "Cerco"),
         scelte("cerco", [["donne", "Donne"], ["uomini", "Uomini"], ["tutti", "Tutti"]], stato.cerco, (v) => { stato.cerco = v; disegna(); }),
@@ -232,7 +273,7 @@ const SCHERMATE = {
         h("p", { classe: "etichetta" }, "Età"),
         h("div", { classe: "riga" }, h("label", { for: "eta-min" }, "da"), numero("eta-min", stato.etaMin, (v) => { stato.etaMin = v; }),
           h("label", { for: "eta-max" }, "a"), numero("eta-max", stato.etaMax, (v) => { stato.etaMax = v; })),
-        etaOk ? null : errore("L'età massima non può essere minore della minima."),
+        avvisoEta,
         h("p", { classe: "etichetta" }, "Dove"),
         scelte("raggio", [["citta", "Solo la mia città"], ["italia", "Anche altre città italiane"], ["estero", "Anche dall'estero, nella mia lingua"]],
           stato.raggio, (v) => { stato.raggio = v; disegna(); }),
