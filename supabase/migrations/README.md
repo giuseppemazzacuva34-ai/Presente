@@ -2,7 +2,7 @@
 
 Una migrazione per issue (prima: #2, profilo, voce, foto nascoste e questionario), con nome
 `AAAAMMGGhhmmss_descrizione.sql`. Ogni tabella con dati delle persone nasce con le regole per riga
-(RLS) attive. Si applicano dal workflow su `main`, mai a mano e mai con dati reali nel repository.
+(RLS) attive. Si applicano dal workflow «Database» (`.github/workflows/database.yml`, script `scripts/applica_migrazioni.sh`) su `main`, mai a mano e mai con dati reali nel repository. Il registro delle migrazioni applicate è `supabase_migrations.schema_migrations`, lo stesso della CLI di Supabase.
 
 Prova in locale e in «Verifica»: `bash scripts/test_supabase.sh` crea un Postgres temporaneo, ricrea il minimo di
 Supabase (`supabase/test/supabase_finto.sql`), applica tutte le migrazioni e lancia i test delle regole per riga

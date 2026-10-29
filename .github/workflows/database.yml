@@ -1,0 +1,44 @@
+# Database (Fase 2): applica le migrazioni di supabase/migrations al progetto Supabase «presente» (Francoforte, D23 A).
+# - Da solo, a ogni modifica di supabase/migrations su main (dopo che «Verifica» le ha provate su un Postgres di prova).
+# - A mano da Actions → «Database» → Run workflow: «prova» elenca cosa verrebbe applicato senza toccare nulla.
+# I segreti si leggono solo qui, mai nelle pull request, e non vengono mai stampati.
+name: Database
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "prova = solo elenco; applica = applica le migrazioni nuove"
+        required: true
+        default: prova
+        type: choice
+        options: [prova, applica]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database
+  cancel-in-progress: false
+
+jobs:
+  migrazioni:
+    name: Migrazioni
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Riprova le migrazioni su un Postgres di prova
+        run: bash scripts/test_supabase.sh
+
+      - name: Applica al progetto vero
+        env:
+          MODO: ${{ github.event_name == 'push' && 'applica' || inputs.modo }}
+        run: bash scripts/applica_migrazioni.sh "$MODO"
