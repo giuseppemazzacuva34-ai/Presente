@@ -44,6 +44,10 @@ jobs:
         if: hashFiles('test/*.test.mjs') != ''
         run: node --test test/*.test.mjs
 
+      - name: Migrazioni e regole per riga di Supabase (Postgres di prova, nessun dato reale)
+        if: hashFiles('supabase/migrations/*.sql') != ''
+        run: bash scripts/test_supabase.sh
+
       - name: Controlla la configurazione del Worker (prova senza pubblicare)
         if: hashFiles('wrangler.jsonc') != ''
         run: npx --yes wrangler@4 deploy --dry-run --outdir "$RUNNER_TEMP/worker"
