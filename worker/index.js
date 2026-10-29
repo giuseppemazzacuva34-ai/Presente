@@ -1,6 +1,6 @@
 // Worker di Presente: serve la landing (cartella /landing) e gestisce le due rotte dinamiche.
 // Le pagine statiche sono servite direttamente da Cloudflare (gratis e senza limite); il Worker parte solo per
-// /iscrizione, /conteggio, i link per canale /da/<canale>, la web app /app/ e la home "/" (vedi "run_worker_first" in wrangler.jsonc).
+// /iscrizione, /conteggio, /meta/webhook, i link per canale /da/<canale>, la web app /app/ e la home "/" (vedi "run_worker_first" in wrangler.jsonc).
 import { iscrizione } from "./iscrizione.js";
 import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
@@ -9,6 +9,7 @@ import { homeConInvito } from "./invito.js";
 import { daCanale } from "./canale.js";
 import { contaVisitaPagina } from "./visite.js";
 import { app, eApp } from "./app.js";
+import { metaWebhook, PERCORSO_META } from "./meta.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -19,6 +20,8 @@ export default {
       if (ctx && ctx.waitUntil) ctx.waitUntil(conteggioVisita);
       else await conteggioVisita;
     }
+    // Webhook di Meta per i commenti «BUIO» (docs/meta-webhook.md): nessuna intestazione HTML, risponde solo a Meta.
+    if (pathname === PERCORSO_META) return await metaWebhook(request, env, ctx);
     if (pathname === "/iscrizione") {
       if (request.method === "POST") return conSicurezza(await iscrizione(request, env));
       return conSicurezza(Response.redirect(new URL("/#iscriviti", request.url).toString(), 303));
