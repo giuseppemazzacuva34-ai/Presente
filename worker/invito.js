@@ -19,7 +19,9 @@ export async function homeConInvito(request, env) {
   const risposta = await env.ASSETS.fetch(request);
   const parametri = new URL(request.url).searchParams;
   const codice = pulisciCodice(parametri.get("invito"));
-  const canale = canaleValido(parametri.get("da"));
+  // Senza ?da=, una sorgente utm che è anche un canale (es. utm_source=meta delle sponsorizzate) vale come canale:
+  // così anche le iscrizioni dalla campagna finiscono nel contatore iscrizioni_canale.
+  const canale = canaleValido(parametri.get("da")) || canaleValido(parametri.get("utm_source"));
   const tipo = risposta.headers.get("content-type") || "";
   if ((!codice && !canale) || risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
 

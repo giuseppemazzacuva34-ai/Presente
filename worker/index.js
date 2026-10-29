@@ -7,10 +7,17 @@ import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
 import { daCanale } from "./canale.js";
+import { contaVisitaPagina } from "./visite.js";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
+    // Contatore delle visite a "/" e "/grazie" (D43): solo totali, in sottofondo per non rallentare la pagina.
+    const conteggioVisita = contaVisitaPagina(request, env);
+    if (conteggioVisita) {
+      if (ctx && ctx.waitUntil) ctx.waitUntil(conteggioVisita);
+      else await conteggioVisita;
+    }
     if (pathname === "/iscrizione") {
       if (request.method === "POST") return conSicurezza(await iscrizione(request, env));
       return conSicurezza(Response.redirect(new URL("/#iscriviti", request.url).toString(), 303));

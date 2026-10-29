@@ -8,6 +8,7 @@ import worker from "../worker/index.js";
 import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
+import { perVisite, etichetteUtm } from "../worker/visite.js";
 
 let errori = 0;
 function verifica(condizione, descrizione) {
@@ -238,6 +239,78 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const numeri = await perCanale({ DB });
   verifica(numeri.instagram.visite === 5 && numeri.instagram.iscrizioni === 1 && numeri.meta.visite === 0 && !numeri.altro,
     "/conteggio per_canale: visite e iscrizioni per i soli canali dell'elenco");
+}
+
+// 12. Contatore delle visite (D43): "/" e "/grazie" per giorno e utm, solo totali, nessun IP né cookie.
+{
+  const dbVisite = () => {
+    const query = [];
+    return { query, prepare(sql) { const v = { sql, valori: [] }; query.push(v); return { bind(...x) { v.valori = x; return this; }, async run() { return { meta: { changes: 1 } }; } }; } };
+  };
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const apri = async (percorso, env, init = {}) => {
+    const r = await worker.fetch(new Request("https://presente.example" + percorso, init), env);
+    return { r, conta: env.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")) };
+  };
+
+  {
+    const env = { DB: dbVisite(), ASSETS, CAMPAGNE_UTM: "lista_traffico" };
+    const { r, conta } = await apri("/", env, { headers: { "cf-connecting-ip": "203.0.113.7", cookie: "x=1", "user-agent": "Prova/1.0" } });
+    verifica(r.status === 200 && conta.length === 1 && conta[0].valori[0] === "home" && conta[0].valori[2] === "" && conta[0].valori[3] === "",
+      "visita a /: +1 per home e giorno, senza utm");
+    const tutto = JSON.stringify(env.DB.query);
+    verifica(!tutto.includes("203.0.113.7") && !tutto.includes("Prova/1.0") && !tutto.includes("x=1"), "visita: nessun IP, cookie o user agent nel database");
+    verifica(conta[0].valori.length === 4 && /^\d{4}-\d{2}-\d{2}$/.test(conta[0].valori[1]), "visita: si salvano solo pagina, giorno, sorgente, campagna");
+    verifica((r.headers.get("content-security-policy") || "").includes("script-src 'none'"), "home: CSP con script-src 'none'");
+  }
+  {
+    const env = { DB: dbVisite(), ASSETS, CAMPAGNE_UTM: "lista_traffico" };
+    const { r, conta } = await apri("/?utm_source=meta&utm_campaign=lista_traffico&fbclid=abc", env);
+    verifica(conta[0].valori[2] === "meta" && conta[0].valori[3] === "lista_traffico", "sponsorizzata Meta: conta sorgente meta e campagna lista_traffico");
+    const t = await r.text();
+    verifica(t.includes('name="canale" value="meta"'), "utm_source=meta: il modulo porta il canale meta (iscrizioni contate in per_canale)");
+    verifica(!JSON.stringify(env.DB.query).includes("abc"), "fbclid e altri parametri non vengono salvati");
+  }
+  {
+    const e = etichetteUtm(new URLSearchParams("utm_source=%3Cscript%3E&utm_campaign=inventata123"), { CAMPAGNE_UTM: "lista_traffico" });
+    verifica(e.sorgente === "altro" && e.campagna === "altro", "utm sconosciuti: diventano «altro» (il database non si riempie di valori inventati)");
+  }
+  {
+    const env = { DB: dbVisite(), ASSETS };
+    const g = await apri("/grazie", env);
+    verifica(g.conta.length === 1 && g.conta[0].valori[0] === "grazie", "visita a /grazie: +1 per grazie");
+    const altre = { DB: dbVisite(), ASSETS };
+    await apri("/privacy", altre); await apri("/", altre, { method: "HEAD" }); await apri("/conteggio", altre);
+    verifica(altre.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")).length === 0, "altre pagine, HEAD e /conteggio: non contano");
+  }
+  {
+    const rotto = { prepare() { return { bind() { return this; }, async run() { throw new Error("D1_ERROR"); } }; } };
+    const erroreOriginale = console.error; console.error = () => {};
+    const r = await worker.fetch(new Request("https://presente.example/"), { DB: rotto, ASSETS });
+    console.error = erroreOriginale;
+    verifica(r.status === 200, "contatore rotto: la home si apre comunque");
+    const senzaDb = await worker.fetch(new Request("https://presente.example/"), { ASSETS });
+    verifica(senzaDb.status === 200, "senza database (anteprime): la home si apre e non conta");
+  }
+  {
+    const attese = [];
+    const env = { DB: dbVisite(), ASSETS };
+    await worker.fetch(new Request("https://presente.example/"), env, { waitUntil: (p) => attese.push(p) });
+    verifica(attese.length === 1, "con ctx.waitUntil il conteggio avviene in sottofondo");
+  }
+  {
+    const righe = [
+      { pagina: "home", giorno: "2026-10-29", sorgente: "", campagna: "", n: 10 },
+      { pagina: "home", giorno: "2026-10-29", sorgente: "meta", campagna: "lista_traffico", n: 7 },
+      { pagina: "grazie", giorno: "2026-10-29", sorgente: "", campagna: "", n: 2 },
+      { pagina: "strana", giorno: "2026-10-29", sorgente: "", campagna: "", n: 99 },
+    ];
+    const DB = { prepare() { return { async all() { return { results: righe }; } }; } };
+    const v = await perVisite({ DB });
+    verifica(v.home === 17 && v.grazie === 2 && v.per_giorno["2026-10-29"].home === 17 && v.per_utm["meta/lista_traffico"].home === 7,
+      "/conteggio visite: totali, per giorno e per utm");
+  }
 }
 
 if (errori) {
