@@ -1,0 +1,28 @@
+# TEMPORANEO: importa il nuovo video della landing (prodotto nel workbench Composio) e si cancella prima della PR.
+name: Importa video landing v3 (temporaneo)
+on:
+  push:
+    branches: [studio/video-landing-v3]
+    paths: [.github/workflows/importa-video-temporaneo.yml]
+permissions:
+  contents: write
+jobs:
+  importa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Scarica e verifica i file
+        run: |
+          set -euo pipefail
+          curl -fsSL -o landing/media/presente-v3.mp4 "https://backend.composio.dev/api/v3/sl/ciS4TArikZ"
+          curl -fsSL -o landing/media/presente-v3-poster.jpg "https://backend.composio.dev/api/v3/sl/Tmjj4smIkn"
+          echo "2762dda7256300013306db8954af1d0d8af75426fa65a41ffa9e9a5d972441db  landing/media/presente-v3.mp4" | sha256sum -c -
+          echo "8c86d92c7baa4821f3f277b59f02cab440f31b0330b5d285338811f6ea79fa9f  landing/media/presente-v3-poster.jpg" | sha256sum -c -
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add landing/media/presente-v3.mp4 landing/media/presente-v3-poster.jpg
+          git commit -m "Landing: file del video v3 e copertina (importati dal workbench)"
+          git push
