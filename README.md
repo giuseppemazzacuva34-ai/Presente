@@ -4,14 +4,14 @@ App di incontri per vedersi davvero, sul modello di «L'amore è cieco»: niente
 
 ## Stato
 
-Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. Il codice della web app arriva in Fase 2 (2 novembre – 6 dicembre 2026). Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md).
+Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe; beta il 6 dicembre 2026. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md).
 
 ## Automatismi attivi
 
 | Cosa | File | Cosa fa |
 | --- | --- | --- |
 | Dependabot | `.github/dependabot.yml` | Ogni lunedì controlla le dipendenze e apre una pull request se serve un aggiornamento o una correzione di sicurezza |
-| Verifica | `.github/workflows/ci.yml` | A ogni pull request controlla la landing, i test di sicurezza del Worker e la configurazione (`wrangler deploy --dry-run`) |
+| Verifica | `.github/workflows/ci.yml` | A ogni pull request controlla la landing, la web app, i test di sicurezza del Worker e la configurazione (`wrangler deploy --dry-run`) |
 | Pubblicazione | Cloudflare Workers Builds | A ogni modifica su `main` pubblica il Worker `presente`; sugli altri rami crea un'anteprima |
 | Verifica della landing | `scripts/verifica_landing.py` | Controlla che la landing sia ben fatta, leggera, senza risorse esterne e che il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso |
 | Agenda Fase 2 | Issues e milestone | Le attività di sviluppo, settimana per settimana, con scadenza |
@@ -40,14 +40,11 @@ L'informativa privacy (`landing/privacy.html`) è la versione 1.0 approvata con 
 
 Per provarla sul computer: `python3 -m http.server -d landing 8000` e apri http://localhost:8000 (il modulo funziona solo su Cloudflare).
 
-## Attivare la pubblicazione automatica della web app
+## Web app (Fase 2)
 
-1. Crea un account gratuito su Cloudflare.
-2. Crea un token API con il permesso "Cloudflare Pages: Edit" e copia l'ID account.
-3. Su GitHub: Settings → Secrets and variables → Actions → aggiungi `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`.
+La web app installabile è online, per ora come pagina «in costruzione», su `presenteincontri.app/app/` (issue #1). È servita dallo **stesso Worker** `presente` della landing (niente Cloudflare Pages) e si pubblica con lui a ogni modifica su `main`.
 
-Finché i secret mancano, la pubblicazione viene saltata senza errori.
-
-## Quando arriva la web app
-
-Nel file `.github/dependabot.yml` togli il commento dal blocco `npm` per far controllare anche le librerie dell'app.
+- File in `landing/app/`: `index.html`, `avvio.js` (registra il service worker), `sw.js` (rende l'app installabile e la apre anche senza rete), `manifest.webmanifest`, `icone/`.
+- Intestazioni di sicurezza proprie in `worker/app.js`, diverse dalla landing: script ammessi solo dal nostro dominio (niente codice in linea), collegamenti solo a Supabase e Cloudflare Realtime, microfono e fotocamera solo per il nostro sito, `noindex`.
+- Nessun framework e nessuna libreria da installare (motivo in [`docs/architettura.md`](docs/architettura.md)). Test in `scripts/test_worker.mjs`.
+- Per aggiungerla alla Home: su iPhone apri `presenteincontri.app/app/` con Safari → Condividi → «Aggiungi alla schermata Home»; su Android Chrome propone «Installa app».

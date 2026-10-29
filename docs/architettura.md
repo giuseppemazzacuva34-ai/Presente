@@ -1,6 +1,6 @@
 # Architettura della Fase 2 (beta del 6 dicembre 2026)
 
-Versione 1 · 28 ottobre 2026 · autore: CTO («sviluppatore»).
+Versione 1.1 · 29 ottobre 2026 (v1: 28 ottobre) · autore: CTO («sviluppatore»).
 Fonti: tab «Struttura dell'app» del business plan, specifiche del CPO nelle issue #2, #3, #4 (v1 del 27 ottobre) e decisioni D14–D20, D23 A, D24 A, D30 B, D31 B, D32 A, D35 A.
 Questo documento descrive *come* è costruita l'app; *cosa* fa lo decidono le specifiche del CPO. Se le due cose non coincidono, valgono le specifiche e questo documento va corretto.
 
@@ -16,13 +16,15 @@ Questo documento descrive *come* è costruita l'app; *cosa* fa lo decidono le sp
 
 | Componente | Dove gira | Cosa fa | Costo in beta |
 | --- | --- | --- | --- |
-| Web app (PWA) | Cloudflare Workers, risorse statiche, indirizzo `app.presenteincontri.app` | Schermate, registrazione voce, chiamate nel browser, service worker per notifiche e installazione | Gratis |
+| Web app (PWA) | Worker `presente` (lo stesso della landing), indirizzo `presenteincontri.app/app/`, file in `landing/app/` | Schermate, registrazione voce, chiamate nel browser, service worker per notifiche e installazione | Gratis |
 | Supabase (regione UE, Francoforte) | Supabase | Accesso con link via email, database Postgres con regole per riga (RLS), Storage privato per voce e foto, canali in tempo reale per squilli e stato «disponibile ora», lavori programmati (`pg_cron`) | Piano gratuito (500 MB database, 1 GB file) |
 | Worker `presente-api` | Cloudflare Workers | Unico posto con le chiavi segrete: crea le sessioni di chiamata su Realtime, controlla i limiti (3 con la stessa persona, 5 al giorno, fascia di disponibilità, stessa stanza), manda le notifiche push, esegue i lavori del lunedì e della domenica (Cron Triggers) | Gratis (100.000 richieste al giorno) |
 | Cloudflare Realtime | Cloudflare | Trasporto dell'audio delle chiamate (e del video sfocato dopo la porta, #6) | 1.000 GB al mese di traffico gratis; una chiamata voce da 15 minuti usa pochi MB |
 | Landing e lista d'attesa | Worker `presente` (già online) | Invariata | Gratis |
 
-Linguaggi e strumenti: TypeScript ovunque; interfaccia con **SvelteKit** in modalità statica (pagine leggere, buone su telefoni economici, PWA semplice); test con **Vitest** (logica) e **Playwright** (percorsi completi su Chromium e WebKit, cioè il motore di Safari). Tutto in questo repository: `app/` (web app), `api/` (Worker), `supabase/` (schema, regole di accesso, migrazioni). Il controllo «Verifica» esegue test, build e controllo delle regole di accesso a ogni pull request.
+Linguaggi e strumenti (**cambiati il 29/10**, vedi sotto): JavaScript moderno del browser (moduli ES) **senza framework e senza librerie da installare**; Supabase si usa con le sue API HTTP (accesso, database, file) chiamate con `fetch`, l'audio con le API WebRTC del browser. Test: `node --test` e i controlli in `scripts/` (nessuna dipendenza), più prove con il browser Chromium già disponibile nell'ambiente di sviluppo. Tutto in questo repository: `landing/app/` (web app), `worker/` (Worker `presente`), `api/` (Worker `presente-api`, dalla #4), `supabase/` (schema, regole di accesso, migrazioni). Il controllo «Verifica» esegue i test e il controllo delle regole di accesso a ogni pull request.
+
+**Perché niente SvelteKit (cambio del 29/10).** L'ambiente in cui il CTO lavora non raggiunge il registro dei pacchetti npm: con un framework non potrebbe installare, provare né aggiornare le librerie, e ogni modifica andrebbe alla cieca. Senza dipendenze l'app non ha passaggio di build, è leggerissima sui telefoni economici, non ha librerie di terzi da tenere aggiornate (meno rischi di sicurezza) e ogni file si prova subito. Il prezzo è un po' più di codice scritto a mano per le schermate. Se in futuro serve un framework, si rivaluta.
 
 ## Dati
 
@@ -70,7 +72,7 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 | `supabase/config.toml` | Configurazione del progetto per la CLI di Supabase (nessuna chiave: il collegamento usa `SUPABASE_PROJECT_REF` e `SUPABASE_ACCESS_TOKEN` dai segreti) |
 | `supabase/migrations/` | Tabelle e regole per riga, una migrazione per issue; si applicano dal workflow su `main` |
 | `.env.example` | Solo i **nomi** delle variabili, per sviluppare in locale; il file `.env` vero è escluso da git |
-| `app/` (dalla #2) | Web app; riceve in build solo `SUPABASE_URL` e `SUPABASE_ANON_KEY` |
+| `landing/app/` (dal 29/10, #1) | Web app installabile: pagina, `manifest.webmanifest`, service worker `sw.js`, icone. Il Worker la serve sotto `/app/` con intestazioni di sicurezza proprie (`worker/app.js`): script solo dal nostro dominio, collegamenti solo a Supabase e Cloudflare Realtime, microfono solo per il nostro sito, fuori da Google. Dalla #2 riceverà `SUPABASE_URL` e `SUPABASE_ANON_KEY` dal Worker (secret Cloudflare del Worker `presente`; la chiave anon è pubblica per natura, le regole per riga decidono chi vede cosa) |
 | `api/` (dalla #4) | Worker `presente-api`; riceve come secret Cloudflare `SUPABASE_SERVICE_ROLE_KEY`, `REALTIME_APP_ID`, `REALTIME_APP_SECRET` |
 - Test automatico in «Verifica»: con due account di prova, l'account B non riesce a leggere foto, questionario, filtri e diario dell'account A (criterio di accettazione della #2).
 
