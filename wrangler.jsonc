@@ -7,8 +7,9 @@
   "assets": {
     "directory": "./landing",
     "binding": "ASSETS",
-    // "/" passa dal Worker per precompilare il codice dei link d'invito dei creator (?invito=CODICE).
-    "run_worker_first": ["/", "/iscrizione", "/conteggio"]
+    // "/" passa dal Worker per precompilare il codice dei link d'invito dei creator (?invito=CODICE)
+    // e il campo nascosto del canale (?da=); "/da/*" sono i link per canale (D26).
+    "run_worker_first": ["/", "/iscrizione", "/conteggio", "/da", "/da/*"]
   },
   // Dominio comprato il 27 ottobre 2026 su Cloudflare: il sito risponde anche su presenteincontri.app (e www).
   "routes": [

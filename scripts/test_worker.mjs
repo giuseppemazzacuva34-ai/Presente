@@ -7,6 +7,7 @@ import { iscrizione } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
 import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
+import { perCanale } from "../worker/canale.js";
 
 let errori = 0;
 function verifica(condizione, descrizione) {
@@ -160,6 +161,83 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(!testo.includes("Marco") && !testo.includes("@"), "/conteggio: nessun nome libero e nessuna email");
   const vuoti = await (await conteggio({ DB })).json();
   verifica(JSON.stringify(vuoti.per_codice) === "{}", "/conteggio senza codici configurati: per_codice vuoto");
+}
+
+// 11. Link per canale (D26): /da/<canale> conta la visita, la home aggiunge il campo nascosto,
+//     l'iscrizione conta 1 per canale senza scrivere il canale nella riga dell'iscritto.
+{
+  const contatoriFinti = ({ nuova = true, rompi = false } = {}) => {
+    const query = [];
+    return {
+      query,
+      prepare(sql) {
+        const voce = { sql, valori: [] };
+        query.push(voce);
+        return {
+          bind(...valori) { voce.valori = valori; return this; },
+          async run() {
+            if (rompi && sql.includes("_canale")) throw new Error("D1_ERROR");
+            return { meta: { changes: sql.startsWith("INSERT INTO iscrizioni ") && !nuova ? 0 : 1 } };
+          },
+        };
+      },
+    };
+  };
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+
+  const env = { DB: contatoriFinti(), ASSETS };
+  const r = await worker.fetch(new Request("https://presente.example/da/instagram"), env);
+  verifica(r.status === 302 && r.headers.get("location") === "https://presente.example/?da=instagram" && r.headers.get("cache-control") === "no-store",
+    "/da/instagram: rimanda a /?da=instagram, senza cache");
+  const visita = env.DB.query.find((q) => q.sql.startsWith("INSERT INTO visite_canale"));
+  verifica(visita && visita.valori[0] === "instagram" && visita.valori.length === 2, "/da/instagram: +1 nella tabella visite_canale (solo canale e giorno)");
+  verifica((r.headers.get("content-security-policy") || "").includes("script-src 'none'"), "/da/instagram: intestazioni di sicurezza presenti");
+
+  for (const percorso of ["/da/xyz", "/da", "/da/", "/da/instagram/altro", "/da/Instagram%22"]) {
+    const env2 = { DB: contatoriFinti(), ASSETS };
+    const r2 = await worker.fetch(new Request("https://presente.example" + percorso), env2);
+    verifica(r2.status === 404 && env2.DB.query.length === 0, `${percorso}: 404, nessun conteggio`);
+  }
+  const post = await worker.fetch(new Request("https://presente.example/da/instagram", { method: "POST" }), { DB: contatoriFinti(), ASSETS });
+  verifica(post.status === 404, "/da/instagram con POST: 404");
+
+  const creator = await worker.fetch(new Request("https://presente.example/da/creator?invito=silvia26"), { DB: contatoriFinti(), ASSETS });
+  verifica(creator.headers.get("location") === "https://presente.example/?da=creator&invito=SILVIA26", "/da/creator?invito=: porta con sé il codice ripulito");
+
+  const pagina = await (await worker.fetch(new Request("https://presente.example/?da=tiktok"), { ASSETS })).text();
+  verifica(pagina.includes('<input type="hidden" name="canale" value="tiktok">'), "/?da=tiktok: campo nascosto canale nel modulo");
+  const cattiva = await (await worker.fetch(new Request("https://presente.example/?da=%22%3E%3Cb%3E"), { ASSETS })).text();
+  verifica(cattiva === home, "/?da= fuori elenco: pagina identica all'originale");
+  const entrambi = await (await worker.fetch(new Request("https://presente.example/?da=creator&invito=nevada"), { ASSETS })).text();
+  verifica(entrambi.includes('name="invito" value="NEVADA"') && entrambi.includes('name="canale" value="creator"'), "/?da=creator&invito=: canale e codice insieme");
+
+  const env3 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti() };
+  const r3 = await iscrizione(modulo({ canale: "instagram" }), env3);
+  const riga = env3.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni "));
+  const piu = env3.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni_canale"));
+  verifica(r3.status === 303 && piu && piu.valori[0] === "instagram", "iscrizione da /da/instagram: +1 in iscrizioni_canale");
+  verifica(riga && !riga.sql.includes("canale") && !riga.valori.includes("instagram"), "iscrizione: il canale NON entra nella riga dell'iscritto");
+
+  const env4 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti({ nuova: false }) };
+  await iscrizione(modulo({ canale: "instagram" }), env4);
+  verifica(!env4.DB.query.some((q) => q.sql.startsWith("INSERT INTO iscrizioni_canale")), "email già in lista: non conta una seconda volta");
+
+  const env5 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti() };
+  await iscrizione(modulo({ canale: "sito-cattivo" }), env5);
+  verifica(!env5.DB.query.some((q) => q.sql.includes("_canale")), "canale fuori elenco: nessun contatore");
+
+  const env6 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti({ rompi: true }) };
+  const erroreOriginale = console.error;
+  console.error = () => {};
+  const r6 = await iscrizione(modulo({ canale: "meta" }), env6);
+  console.error = erroreOriginale;
+  verifica(r6.status === 303, "contatore rotto: l'iscrizione va comunque a buon fine");
+
+  const DB = { prepare(sql) { return { async all() { return { results: sql.includes("visite_canale") ? [{ canale: "instagram", n: 5 }, { canale: "altro", n: 9 }] : [{ canale: "instagram", n: 1 }] }; } }; } };
+  const numeri = await perCanale({ DB });
+  verifica(numeri.instagram.visite === 5 && numeri.instagram.iscrizioni === 1 && numeri.meta.visite === 0 && !numeri.altro,
+    "/conteggio per_canale: visite e iscrizioni per i soli canali dell'elenco");
 }
 
 if (errori) {

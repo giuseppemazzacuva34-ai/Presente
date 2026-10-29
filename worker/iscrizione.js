@@ -2,6 +2,7 @@
 // Gratis sul piano Free di Cloudflare Workers: 100.000 richieste al giorno, 100.000 righe scritte al giorno su D1.
 // Le iscrizioni restano chiuse finché la variabile ISCRIZIONI_APERTE non vale "si" (dopo l'approvazione dell'informativa, D5).
 import { pagina } from "./pagina.js";
+import { canaleValido, contaIscrizione } from "./canale.js";
 
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città.
 const ZONE = new Set([
@@ -77,17 +78,23 @@ export async function iscrizione(request, env) {
     return pagina("Manca qualcosa.", "Controlla l'email, scegli la città e spunta le due caselle.", 400);
   }
 
+  // Canale del link /da/<canale> (D26): serve solo al contatore, non entra nella riga dell'iscritto.
+  const canale = canaleValido(modulo.get("canale"));
+  let nuova = false;
   try {
     await env.DB.prepare(SCHEMA).run();
-    await env.DB.prepare(
+    const esito = await env.DB.prepare(
       "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING"
     ).bind(email, zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA).run();
+    // Chi era già in lista non viene contato una seconda volta.
+    nuova = Boolean(esito && esito.meta && esito.meta.changes > 0);
   } catch (errore) {
     // Nel log solo il tipo di errore: mai l'email o altri dati della persona.
     console.error("iscrizione: errore del database", errore && errore.name);
     return pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare l'iscrizione. Riprova tra qualche minuto.", 500);
   }
 
+  if (nuova) await contaIscrizione(env, canale);
   return grazie(request);
 }
 
