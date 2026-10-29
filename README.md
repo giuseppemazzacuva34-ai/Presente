@@ -4,7 +4,7 @@ App di incontri per vedersi davvero, sul modello di «L'amore è cieco»: niente
 
 ## Stato
 
-Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. Il codice della web app arriva in Fase 2 (2 novembre – 6 dicembre 2026). Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md).
+Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. Il codice della web app arriva in Fase 2 (2 novembre – 6 dicembre 2026). Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md).
 
 ## Automatismi attivi
 

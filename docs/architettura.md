@@ -60,6 +60,18 @@ Giuseppe crea Supabase (progetto «presente», Francoforte) e l'app Cloudflare R
 | `REALTIME_APP_ID`, `REALTIME_APP_SECRET` | Creare le sessioni delle chiamate su Cloudflare Realtime | Solo nel Worker `presente-api` (secret Cloudflare) |
 
 Il workflow legge i segreti solo nel job di pubblicazione su `main` (mai nelle pull request) e li passa al Worker con `wrangler secret put`. Se un segreto manca, la pubblicazione di quella parte si salta con un avviso e «Verifica» resta verde.
+
+**Stato al 29/10: tutti e 8 i segreti ci sono e funzionano.** Si controllano quando si vuole da GitHub → Actions → «Verifica segreti» → Run workflow: il controllo prova ogni chiave con una chiamata di sola lettura e scrive solo nomi ed esiti, mai valori.
+
+Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
+
+| Cartella / file | Contenuto |
+|---|---|
+| `supabase/config.toml` | Configurazione del progetto per la CLI di Supabase (nessuna chiave: il collegamento usa `SUPABASE_PROJECT_REF` e `SUPABASE_ACCESS_TOKEN` dai segreti) |
+| `supabase/migrations/` | Tabelle e regole per riga, una migrazione per issue; si applicano dal workflow su `main` |
+| `.env.example` | Solo i **nomi** delle variabili, per sviluppare in locale; il file `.env` vero è escluso da git |
+| `app/` (dalla #2) | Web app; riceve in build solo `SUPABASE_URL` e `SUPABASE_ANON_KEY` |
+| `api/` (dalla #4) | Worker `presente-api`; riceve come secret Cloudflare `SUPABASE_SERVICE_ROLE_KEY`, `REALTIME_APP_ID`, `REALTIME_APP_SECRET` |
 - Test automatico in «Verifica»: con due account di prova, l'account B non riesce a leggere foto, questionario, filtri e diario dell'account A (criterio di accettazione della #2).
 
 ## Flusso di una chiamata (#4)
@@ -89,9 +101,9 @@ Il cambio d'ora è gestito calcolando gli orari nel fuso `Europe/Rome`, con un t
 
 | Tema | Stato | Cosa serve |
 | --- | --- | --- |
-| D23 · dove conservare voce, questionario e foto | **Decisa A**: tutto su Supabase UE | Giuseppe crea il progetto Supabase in regione UE (Francoforte) e mi passa l'accesso; da fare entro il 2 novembre per partire con la #2 |
+| D23 · dove conservare voce, questionario e foto | **Decisa A**: tutto su Supabase UE | **Fatto il 29/10**: progetto «presente» a Francoforte (eu-central-1), chiavi nei segreti GitHub e verificate |
 | D24 · web app o store | **Decisa A**: web app installabile | Da provare presto (settimana 9–15 novembre) le chiamate su Safari iPhone con la web app in Home e le notifiche push |
-| Cloudflare Realtime | Da attivare | Giuseppe crea un'app Realtime nell'account Cloudflare esistente (gratis fino a 1.000 GB/mese) e mi passa ID e chiave come secret |
+| Cloudflare Realtime | **Attivo dal 29/10** | App SFU «presente» creata; ID e chiave nei segreti GitHub e verificati |
 | Email di servizio (link di accesso, «la stanza è aperta») | **Da decidere** | Il servizio email incluso in Supabase manda pochissime email all'ora: basta per i test interni, non per la beta. Servirà un fornitore di email (gli indirizzi sono dati personali, quindi lo sceglie Giuseppe con il CFO, e va nell'informativa). Proposta come decisione quando si avvicina il test con 20 persone |
 | Video sfocato dopo la porta (#6) | Tecnica scelta | La sfocatura si applica sul telefono di chi trasmette, prima che il video parta: chi riceve non può «togliere» la sfocatura |
 | Informativa privacy per l'app | Da preparare (CFO) | Deve nominare Supabase e Cloudflare, i dati particolari (cerco, questionario, voce, foto) e il consenso separato, prima del test con persone reali |
