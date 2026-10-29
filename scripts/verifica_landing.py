@@ -18,7 +18,9 @@ import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
-CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso"}
+CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale"}
+# «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
+CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
@@ -131,6 +133,13 @@ for nome in PAGINE:
         extra = set(p.campi) - CAMPI_AMMESSI
         if extra:
             errori.append(f"index.html: il modulo raccoglie dati non previsti: {sorted(extra)}")
+        if "canale" in p.campi:
+            c = p.campi["canale"]
+            if c.get("type") != "hidden" or c.get("value") not in CANALI:
+                errori.append("index.html: il campo canale è ammesso solo nascosto e con un valore dell'elenco")
+        canali_worker = set(re.findall(r'"([a-z]+)"', re.search(r"CANALI = new Set\(\[(.*?)\]\)", (CARTELLA.parent / "worker" / "canale.js").read_text(encoding="utf-8")).group(1)))
+        if canali_worker != CANALI:
+            errori.append(f"worker/canale.js e verifica_landing.py hanno elenchi di canali diversi: {sorted(canali_worker ^ CANALI)}")
         for campo in CAMPI_OBBLIGATORI:
             if campo not in p.campi:
                 errori.append(f"index.html: manca il campo {campo}")

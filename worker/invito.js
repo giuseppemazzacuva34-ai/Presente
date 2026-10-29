@@ -2,22 +2,33 @@
 // La pagina resta senza script: è il Worker a scrivere il codice dentro l'HTML prima di mandarlo al browser.
 // Il codice viene ripulito: solo lettere e numeri, massimo 20 caratteri, in maiuscolo. Nient'altro entra nella pagina.
 
+import { canaleValido } from "./canale.js";
+
 const SEGNAPOSTO = '<input id="invito" name="invito"';
 
 export function pulisciCodice(valore) {
   return String(valore || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 20).toUpperCase();
 }
 
+// Punto del modulo dove il Worker aggiunge il campo nascosto «canale» (link /da/<canale>, D26).
+const SEGNAPOSTO_CANALE = 'action="/iscrizione">';
+
 // Serve la home; se l'indirizzo ha ?invito=CODICE valido, restituisce la stessa pagina con il campo già compilato.
+// Se ha ?da=<canale> dell'elenco chiuso (vedi canale.js), aggiunge al modulo il campo nascosto «canale».
 export async function homeConInvito(request, env) {
   const risposta = await env.ASSETS.fetch(request);
-  const codice = pulisciCodice(new URL(request.url).searchParams.get("invito"));
+  const parametri = new URL(request.url).searchParams;
+  const codice = pulisciCodice(parametri.get("invito"));
+  const canale = canaleValido(parametri.get("da"));
   const tipo = risposta.headers.get("content-type") || "";
-  if (!codice || risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
+  if ((!codice && !canale) || risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
 
-  const html = await risposta.text();
-  if (!html.includes(SEGNAPOSTO)) return new Response(html, risposta);
-  const nuova = new Response(html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`), risposta);
+  let html = await risposta.text();
+  if (codice && html.includes(SEGNAPOSTO)) html = html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`);
+  if (canale && html.includes(SEGNAPOSTO_CANALE)) {
+    html = html.replace(SEGNAPOSTO_CANALE, `${SEGNAPOSTO_CANALE}\n        <input type="hidden" name="canale" value="${canale}">`);
+  }
+  const nuova = new Response(html, risposta);
   // Pagina personalizzata: nessuna copia in cache condivisa.
   nuova.headers.set("cache-control", "private, no-store");
   nuova.headers.delete("etag");
