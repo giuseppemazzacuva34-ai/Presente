@@ -47,4 +47,5 @@ La web app installabile è online, per ora come pagina «in costruzione», su `p
 - File in `landing/app/`: `index.html`, `avvio.js` (registra il service worker), `sw.js` (rende l'app installabile e la apre anche senza rete), `manifest.webmanifest`, `icone/`.
 - Intestazioni di sicurezza proprie in `worker/app.js`, diverse dalla landing: script ammessi solo dal nostro dominio (niente codice in linea), collegamenti solo a Supabase e Cloudflare Realtime, microfono e fotocamera solo per il nostro sito, `noindex`.
 - Nessun framework e nessuna libreria da installare (motivo in [`docs/architettura.md`](docs/architettura.md)). Test in `scripts/test_worker.mjs`.
+- Questionario privato e affinità (#2, D35 A): `api/questionario.js`, solo lato server (le 15 domande v1, i pesi dei temi e il calcolo 0–100, mai mostrato agli utenti). Test con `node --test test/*.test.mjs`, eseguiti anche da «Verifica».
 - Per aggiungerla alla Home: su iPhone apri `presenteincontri.app/app/` con Safari → Condividi → «Aggiungi alla schermata Home»; su Android Chrome propone «Installa app».

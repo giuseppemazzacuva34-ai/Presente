@@ -34,7 +34,7 @@ Tutti in Supabase UE, tranne il trasporto delle chiamate (che non salva nulla). 
 | --- | --- | --- |
 | `profili` | nome, data di nascita, città, mi presento come, disponibilità | Il proprietario; gli altri della stessa stanza vedono solo nome, età (calcolata), città |
 | `filtri` | cerco, età cercata, raggio, cosa cerco, figli, fumo + consenso separato con data e versione dell'informativa | Solo il proprietario e il lavoro che compone le stanze |
-| `questionario` | 15 risposte e «quanto conta» | Solo il proprietario e il lavoro che compone le stanze; mai mostrato a nessuno |
+| `questionario` | 15 risposte e «quanto conta», con la versione del questionario (`v1`) | Solo il proprietario e il lavoro che compone le stanze; mai mostrato a nessuno. Domande, pesi e calcolo dell'affinità in `api/questionario.js` (solo server): ogni tema vale peso × media dei due «quanto conta» ÷ 3, e il totale si riporta su 0–100 rispetto al massimo possibile con quei «quanto conta» (profili identici = 100, tutto diverso e lontano = 0) |
 | Storage `voci/` | presentazione da 20 s e 3 risposte da 30 s | Il proprietario; gli altri della stessa stanza tramite link temporaneo (pochi minuti) |
 | Storage `foto/` | 3 foto, ridimensionate e senza dati EXIF | Il proprietario; l'altra persona solo dopo porta e patto (#6), tramite link temporaneo |
 | `stanze`, `membri_stanza` | composizione settimanale | I membri della stanza |
