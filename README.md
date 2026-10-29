@@ -43,9 +43,10 @@ Per provarla sul computer: `python3 -m http.server -d landing 8000` e apri http:
 
 ## Web app (Fase 2)
 
-La web app installabile è online, per ora come pagina «in costruzione», su `presenteincontri.app/app/` (issue #1). È servita dallo **stesso Worker** `presente` della landing (niente Cloudflare Pages) e si pubblica con lui a ogni modifica su `main`.
+La web app installabile è online su `presenteincontri.app/app/` (issue #1). Dal 29/10 c'è l'**anteprima dell'iscrizione** (issue #2): benvenuto, email, maggiore età, regole, chi sei, chi cerchi (con consenso separato), voce da 20 s, 3 risposte a voce da 30 s, le 15 domande del questionario, 3 foto, riepilogo. **In anteprima niente viene inviato né salvato**: voce, foto e risposte restano nella memoria della pagina e spariscono quando la si chiude; nessuna email parte. Il collegamento a Supabase (login e salvataggio) si accende solo dopo l'informativa dell'app (T08) e la revisione del CISO (T15). È servita dallo **stesso Worker** `presente` della landing (niente Cloudflare Pages) e si pubblica con lui a ogni modifica su `main`.
 
-- File in `landing/app/`: `index.html`, `avvio.js` (registra il service worker), `sw.js` (rende l'app installabile e la apre anche senza rete), `manifest.webmanifest`, `icone/`.
+- File in `landing/app/`: `index.html`, `avvio.js` (registra il service worker e avvia l'app), `sw.js` (rende l'app installabile e la apre anche senza rete), `manifest.webmanifest`, `icone/`, `moduli/` (`flusso.js` le schermate, `registratore.js` la voce con stop automatico e controllo del silenzio, `foto.js` ridimensiona e toglie i dati EXIF, `domande.js` le domande condivise con il server).
+- Prova completa in locale: `node scripts/server_locale.mjs . &` e poi `python3 scripts/prova_app.py <cartella schermate> <foto.jpg>` (Chromium con microfono finto, una schermata per passo).
 - Intestazioni di sicurezza proprie in `worker/app.js`, diverse dalla landing: script ammessi solo dal nostro dominio (niente codice in linea), collegamenti solo a Supabase e Cloudflare Realtime, microfono e fotocamera solo per il nostro sito, `noindex`.
 - Nessun framework e nessuna libreria da installare (motivo in [`docs/architettura.md`](docs/architettura.md)). Test in `scripts/test_worker.mjs`.
 - Questionario privato e affinità (#2, D35 A): `api/questionario.js`, solo lato server (le 15 domande v1, i pesi dei temi e il calcolo 0–100, mai mostrato agli utenti). Test con `node --test test/*.test.mjs`, eseguiti anche da «Verifica».

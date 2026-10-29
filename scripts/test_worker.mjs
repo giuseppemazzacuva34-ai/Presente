@@ -366,6 +366,18 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(corpoSbagliato.pronta === false && !JSON.stringify(corpoSbagliato).includes("dashboard"), "/app/config.json: indirizzo sbagliato segnalato senza ripeterlo");
 }
 
+// Codice della web app: niente risorse esterne, niente innerHTML/eval, e il calcolo dell'affinità non arriva al browser.
+{
+  const cartella = new URL("../landing/app/", import.meta.url);
+  const file = ["avvio.js", "sw.js", ...readdirSync(new URL("moduli/", cartella)).map((f) => "moduli/" + f)];
+  for (const nome of file) {
+    const testo = readFileSync(new URL(nome, cartella), "utf8").replace(/\/\/.*$/gm, "");
+    verifica(!/https?:\/\//.test(testo), `app/${nome}: nessuna risorsa esterna`);
+    verifica(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/.test(testo), `app/${nome}: niente HTML in stringa né eval`);
+    verifica(!/affinita|PESI|peso/.test(testo), `app/${nome}: niente pesi né affinità nel browser`);
+  }
+}
+
 if (errori) {
   console.log(`\n${errori} controlli non superati.`);
   process.exit(1);

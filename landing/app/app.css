@@ -1,3 +1,67 @@
 /* Stile della web app: parte da /stile.css (identità «Rivista», D4) e aggiunge solo ciò che serve all'app. */
 body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.app .testata { margin-bottom: 1.25rem; }
 .stato { color: var(--grigio); font-size: 0.875rem; border-top: 1px solid var(--linea); padding-top: 1rem; margin-top: 2rem; }
+
+.anteprima { font-size: 0.78rem; line-height: 1.4; color: var(--nero); background: var(--avorio); border-radius: 0.5rem; padding: 0.55rem 0.75rem; margin-bottom: 1.25rem; }
+
+.avanzamento { margin-bottom: 1.5rem; }
+.avanzamento-testo { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grigio); margin-bottom: 0.4rem; }
+.avanzamento-barra { height: 4px; background: var(--linea); border-radius: 2px; overflow: hidden; }
+.avanzamento-barra span { display: block; height: 100%; width: 0; background: var(--rosso); transition: width 0.2s; }
+
+.schermata h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(1.9rem, 7vw, 2.6rem); line-height: 1.08; margin: 0 0 0.75rem; }
+.schermata h1:focus { outline: none; }
+.sottotitolo { color: var(--grigio); margin: 0 0 1.5rem; }
+.corpo { display: flex; flex-direction: column; gap: 0.6rem; }
+.corpo label, .etichetta { font-size: 0.85rem; color: var(--grigio); margin: 0.6rem 0 0; }
+.nota { font-size: 0.82rem; color: var(--grigio); margin: 0.25rem 0; }
+.errore { color: #ff8a73; font-size: 0.9rem; margin: 0.25rem 0; }
+
+.corpo input:not([type="checkbox"]), .corpo select {
+  font: inherit; color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.6rem;
+  padding: 0.8rem 0.9rem; width: 100%; box-sizing: border-box; min-height: 3rem;
+}
+.corpo select option { color: #000; }
+.corpo input[type="number"] { width: 5.5rem; }
+.corpo input:focus, .corpo select:focus { border-color: var(--avorio); outline: none; }
+.riga { display: flex; align-items: center; gap: 0.6rem; }
+.riga label { margin: 0; }
+
+.scelte { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.scelta {
+  font: inherit; font-size: 0.95rem; color: var(--avorio); background: transparent; border: 1px solid var(--linea);
+  border-radius: 999px; padding: 0.6rem 1rem; cursor: pointer; text-align: left; min-height: 2.75rem;
+}
+.scelta-attiva { background: var(--avorio); color: var(--nero); border-color: var(--avorio); }
+.estremi { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--grigio); }
+
+.casella { display: flex; gap: 0.7rem; align-items: flex-start; font-size: 0.95rem; color: var(--avorio) !important; line-height: 1.4; cursor: pointer; }
+.casella input { width: 1.3rem; height: 1.3rem; margin-top: 0.1rem; accent-color: var(--rosso); flex: none; }
+.consenso { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 0.9rem; margin: 0.4rem 0; }
+.regole { padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.8rem; margin: 0 0 1rem; }
+
+.azioni { display: flex; align-items: center; gap: 0.75rem; justify-content: space-between; margin-top: 2rem; position: sticky; bottom: 0; padding: 1rem 0 calc(1rem + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--nero) 30%); }
+.bottone, .bottone-secondario {
+  font: inherit; font-weight: 600; border-radius: 999px; padding: 0.85rem 1.4rem; cursor: pointer; min-height: 3rem; border: 1px solid var(--avorio); white-space: nowrap;
+}
+.bottone { background: var(--rosso); border-color: var(--rosso); color: #fff; margin-left: auto; }
+.bottone:disabled { opacity: 0.35; cursor: not-allowed; }
+.bottone-secondario { background: transparent; color: var(--avorio); display: inline-flex; align-items: center; justify-content: center; }
+
+.registratore { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--linea); border-radius: 0.75rem; padding: 1rem; }
+.registratore audio { width: 100%; }
+.registratore .avanzamento-barra { width: 100%; }
+.bottone-rec { margin-left: 0; }
+.timer { font-family: var(--serif); font-size: 2rem; margin: 0; }
+.risposta-voce { margin-top: 0.6rem; }
+
+.griglia-foto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.casella-foto { aspect-ratio: 3 / 4; border: 1px dashed var(--linea); border-radius: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; overflow: hidden; position: relative; }
+.casella-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.casella-foto .bottone-secondario { position: relative; font-size: 0.8rem; padding: 0.4rem 0.8rem; min-height: 0; background: rgba(14, 13, 16, 0.7); }
+.piu { font-size: 2rem; color: var(--grigio); }
+.nascosto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.riepilogo { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.riepilogo audio { width: 100%; }

@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Presente · l'app</title>
-  <meta name="description" content="La web app di Presente è in costruzione: la beta parte il 6 dicembre 2026.">
+  <meta name="description" content="Anteprima della web app di Presente: incontri al buio, prima la voce.">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0e0d10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/app/manifest.webmanifest">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/app/icone/apple-touch-icon.png">
@@ -15,17 +17,19 @@
   <script type="module" src="/app/avvio.js"></script>
 </head>
 <body>
-  <main class="pagina">
+  <div class="pagina app">
     <header class="testata">
       <a class="logo" href="/" aria-label="Presente, pagina iniziale">
         <span>presente</span>
         <svg viewBox="0 0 14 32" aria-hidden="true"><g transform="rotate(10 7 16)" fill="#e8432b"><rect x="4" y="1" width="6" height="20" rx="3"/><circle cx="7" cy="27" r="3.4"/></g></svg>
       </a>
     </header>
-    <h1>L'app è in costruzione.</h1>
-    <p>Qui nasceranno le stanze, le chiamate solo voce e la sera delle chiavi. La beta per i primi iscritti parte <strong>domenica 6 dicembre 2026</strong>.</p>
-    <p>Se non l'hai ancora fatto, <a href="/#iscriviti">entra nella lista d'attesa</a>: ti scriviamo noi quando tocca a te.</p>
+    <main id="app">
+      <h1>L'app è in costruzione.</h1>
+      <p>La beta per i primi iscritti parte <strong>domenica 6 dicembre 2026</strong>. Se non l'hai ancora fatto, <a href="/#iscriviti">entra nella lista d'attesa</a>.</p>
+      <p class="nota">Per vedere l'anteprima serve un browser aggiornato con JavaScript attivo.</p>
+    </main>
     <p class="stato" id="stato" hidden></p>
-  </main>
+  </div>
 </body>
 </html>
