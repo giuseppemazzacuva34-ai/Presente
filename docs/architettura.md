@@ -47,6 +47,19 @@ Regole che valgono per tutto:
 - Nessun dato personale verso servizi esterni oltre a Supabase e Cloudflare (già indicati nell'informativa da aggiornare prima della beta).
 - Cancellazione dell'account: una sola funzione cancella righe e file in Supabase (D23 A: un solo posto).
 - Le chiavi segrete stanno solo nei «secret» di Cloudflare e Supabase, mai nel repository.
+
+### Dove stanno le chiavi (decisione del 29/10)
+
+Giuseppe crea Supabase (progetto «presente», Francoforte) e l'app Cloudflare Realtime, e mette le chiavi **solo** come segreti del repository su GitHub, con questi nomi. Mai in chat, nella plancia o nel codice.
+
+| Segreto GitHub | A cosa serve | Dove arriva |
+|---|---|---|
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Indirizzo del progetto e chiave pubblica: da sola non apre nulla, le regole per riga decidono chi vede cosa | Nella web app al momento della build |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chiave «amministratore» per i lavori del lunedì e della domenica | Solo nel Worker `presente-api` (secret Cloudflare), mai nel browser |
+| `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` | Applicare le migrazioni del database (tabelle e regole per riga) dal workflow | Solo nel workflow di pubblicazione |
+| `REALTIME_APP_ID`, `REALTIME_APP_SECRET` | Creare le sessioni delle chiamate su Cloudflare Realtime | Solo nel Worker `presente-api` (secret Cloudflare) |
+
+Il workflow legge i segreti solo nel job di pubblicazione su `main` (mai nelle pull request) e li passa al Worker con `wrangler secret put`. Se un segreto manca, la pubblicazione di quella parte si salta con un avviso e «Verifica» resta verde.
 - Test automatico in «Verifica»: con due account di prova, l'account B non riesce a leggere foto, questionario, filtri e diario dell'account A (criterio di accettazione della #2).
 
 ## Flusso di una chiamata (#4)
