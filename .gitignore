@@ -1,0 +1,8 @@
+# Chiavi locali: mai nel repository
+.env
+.env.*
+!.env.example
+.dev.vars
+# CLI di Supabase
+supabase/.temp/
+supabase/.branches/

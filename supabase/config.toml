@@ -1,0 +1,4 @@
+# Configurazione di Supabase per la CLI (Fase 2, D23 A: progetto «presente» a Francoforte).
+# Nessuna chiave qui: il collegamento al progetto usa i segreti GitHub
+# SUPABASE_PROJECT_REF e SUPABASE_ACCESS_TOKEN (vedi docs/architettura.md).
+project_id = "presente"
