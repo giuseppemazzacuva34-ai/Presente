@@ -1,0 +1,107 @@
+# Verifica segreti (solo a mano, da Actions → «Verifica segreti» → Run workflow).
+# Controlla che gli 8 segreti della Fase 2 esistano e che Supabase e Cloudflare Realtime li accettino.
+# Non stampa MAI un valore: solo il NOME del segreto e «ok» / «manca» / «rifiutato».
+# GitHub oscura comunque i segreti nei log; in più qui niente echo dei valori e niente set -x.
+name: Verifica segreti
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  segreti:
+    name: Verifica segreti
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      REALTIME_APP_ID: ${{ secrets.REALTIME_APP_ID }}
+      REALTIME_APP_SECRET: ${{ secrets.REALTIME_APP_SECRET }}
+    steps:
+      - name: Controlla i segreti (senza mostrarli)
+        shell: bash
+        run: |
+          set +x
+          set -u
+          errori=0
+          esito() { echo "$1: $2"; echo "| \`$1\` | $2 |" >> "$GITHUB_STEP_SUMMARY"; }
+          male() { esito "$1" "❌ $2"; errori=$((errori + 1)); }
+          bene() { esito "$1" "✅ $2"; }
+          codice() { curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$@" 2>/dev/null || echo 000; }
+
+          echo "| Segreto | Esito |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          # 1. Nessun segreto vuoto
+          for nome in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY SUPABASE_DB_PASSWORD \
+                      SUPABASE_PROJECT_REF SUPABASE_ACCESS_TOKEN REALTIME_APP_ID REALTIME_APP_SECRET; do
+            if [ -z "${!nome// /}" ]; then male "$nome" "manca o è vuoto"; fi
+          done
+
+          URL="${SUPABASE_URL%/}"
+          REF="${SUPABASE_PROJECT_REF// /}"
+
+          # 2. Indirizzo e codice progetto coerenti
+          if [ -n "$URL" ] && [ -n "$REF" ]; then
+            if [ "$URL" = "https://$REF.supabase.co" ]; then bene SUPABASE_URL "indirizzo coerente con SUPABASE_PROJECT_REF"
+            else male SUPABASE_URL "non è https://<SUPABASE_PROJECT_REF>.supabase.co (controlla URL o codice progetto)"; fi
+          fi
+
+          # 3. Chiave pubblica (anon): sola lettura dell'elenco API
+          if [ -n "$URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            c=$(codice -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" "$URL/auth/v1/settings")
+            [ "$c" = 200 ] && bene SUPABASE_ANON_KEY "accettata da Supabase" || male SUPABASE_ANON_KEY "rifiutata da Supabase (risposta $c)"
+          fi
+
+          # 4. Chiave amministratore (service role): sola lettura, una sola riga di elenco utenti, nessun dato stampato
+          if [ -n "$URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            c=$(codice -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" "$URL/auth/v1/admin/users?page=1&per_page=1")
+            [ "$c" = 200 ] && bene SUPABASE_SERVICE_ROLE_KEY "accettata come chiave amministratore" || male SUPABASE_SERVICE_ROLE_KEY "rifiutata (risposta $c): forse è stata incollata la chiave anon"
+          fi
+
+          # 5. Token di gestione: legge il progetto e controlla la regione (Francoforte = eu-central-1)
+          if [ -n "$REF" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            risposta=$(curl -sS --max-time 20 -w '\n%{http_code}' -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$REF" 2>/dev/null || printf '\n000')
+            c=$(printf '%s' "$risposta" | tail -n1)
+            regione=$(printf '%s' "$risposta" | sed '$d' | python3 -c 'import json,sys
+          try: print(json.load(sys.stdin).get("region",""))
+          except Exception: print("")')
+            if [ "$c" = 200 ]; then
+              bene SUPABASE_ACCESS_TOKEN "accettato, progetto trovato"
+              [ "$regione" = "eu-central-1" ] && bene "Regione" "eu-central-1 (Francoforte)" || male "Regione" "il progetto non è a Francoforte ($regione)"
+            else male SUPABASE_ACCESS_TOKEN "rifiutato o progetto non trovato (risposta $c)"; fi
+          fi
+
+          # 6. Password del database: una connessione e «select 1» (pooler IPv4 di Francoforte)
+          if [ -n "$REF" ] && [ -n "$SUPABASE_DB_PASSWORD" ]; then
+            ok=no
+            for host in aws-0-eu-central-1.pooler.supabase.com aws-1-eu-central-1.pooler.supabase.com; do
+              if PGPASSWORD="$SUPABASE_DB_PASSWORD" PGCONNECT_TIMEOUT=10 psql "host=$host port=5432 dbname=postgres user=postgres.$REF sslmode=require" -tAc 'select 1' >/dev/null 2>&1; then ok=si; break; fi
+            done
+            [ "$ok" = si ] && bene SUPABASE_DB_PASSWORD "accettata dal database" || male SUPABASE_DB_PASSWORD "rifiutata dal database (o progetto non raggiungibile)"
+          fi
+
+          # 7. Cloudflare Realtime: apre e lascia scadere una sessione vuota (nessun audio, nessun dato)
+          if [ -n "$REALTIME_APP_ID" ] && [ -n "$REALTIME_APP_SECRET" ]; then
+            c=$(codice -X POST -H "Authorization: Bearer $REALTIME_APP_SECRET" "https://rtc.live.cloudflare.com/v1/apps/$REALTIME_APP_ID/sessions/new")
+            case "$c" in
+              200|201) bene "REALTIME_APP_ID + REALTIME_APP_SECRET" "accettati da Cloudflare Realtime" ;;
+              401|403) male REALTIME_APP_SECRET "rifiutato da Cloudflare Realtime (risposta $c)" ;;
+              404)     male REALTIME_APP_ID "app non trovata su Cloudflare Realtime (risposta 404)" ;;
+              *)       male "REALTIME_APP_ID + REALTIME_APP_SECRET" "risposta inattesa da Cloudflare Realtime ($c)" ;;
+            esac
+          fi
+
+          echo
+          if [ "$errori" -gt 0 ]; then
+            echo "::error::$errori controlli non superati: vedi l'elenco qui sopra (solo nomi, mai valori)."
+            exit 1
+          fi
+          echo "Tutti i segreti della Fase 2 ci sono e funzionano."
