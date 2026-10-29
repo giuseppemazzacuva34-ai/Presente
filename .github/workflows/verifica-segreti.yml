@@ -51,8 +51,23 @@ jobs:
           # 2. Indirizzo e codice progetto coerenti
           if [ -n "$URL" ] && [ -n "$REF" ]; then
             if [ "$URL" = "https://$REF.supabase.co" ]; then bene SUPABASE_URL "indirizzo coerente con SUPABASE_PROJECT_REF"
-            else male SUPABASE_URL "non è https://<SUPABASE_PROJECT_REF>.supabase.co (controlla URL o codice progetto)"; fi
+            else
+              # Indizi senza mostrare il valore: solo sì/no su forme comuni di errore
+              indizio="dovrebbe essere esattamente https://<codice progetto>.supabase.co, senza niente dopo"
+              case "$URL" in
+                *supabase.com/dashboard*) indizio="è il link della dashboard: serve il «Project URL» di Settings → API" ;;
+                *"/rest/v1"*|*"/auth/v1"*) indizio="contiene /rest/v1 o /auth/v1 alla fine: va tolto" ;;
+                http://*) indizio="inizia con http:// invece di https://" ;;
+                https://*.supabase.co) indizio="è un indirizzo Supabase ma di un altro progetto (non coincide con SUPABASE_PROJECT_REF)" ;;
+                *\"*|*"'"*|*" "*) indizio="contiene virgolette o spazi: incolla solo l'indirizzo" ;;
+              esac
+              male SUPABASE_URL "$indizio"
+            fi
           fi
+
+          # Le chiavi si provano sull'indirizzo ricavato dal codice progetto (già verificato dal token),
+          # così un URL sbagliato non fa sembrare sbagliate anche le chiavi.
+          [ -n "$REF" ] && URL="https://$REF.supabase.co"
 
           # 3. Chiave pubblica (anon): sola lettura dell'elenco API
           if [ -n "$URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
