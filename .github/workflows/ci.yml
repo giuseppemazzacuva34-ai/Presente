@@ -40,6 +40,10 @@ jobs:
         if: hashFiles('worker/index.js') != ''
         run: node scripts/test_worker.mjs
 
+      - name: Test della logica dell'app (questionario, affinità)
+        if: hashFiles('test/*.test.mjs') != ''
+        run: node --test test/*.test.mjs
+
       - name: Controlla la configurazione del Worker (prova senza pubblicare)
         if: hashFiles('wrangler.jsonc') != ''
         run: npx --yes wrangler@4 deploy --dry-run --outdir "$RUNNER_TEMP/worker"
