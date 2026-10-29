@@ -149,7 +149,7 @@ a.bottone { display: flex; align-items: center; justify-content: center; text-de
 .bottone-chiaro { background: transparent; border: 1.5px solid var(--avorio); }
 .bottone-chiaro:hover { background: var(--avorio); color: var(--nero) !important; }
 
-/* Video di apertura (27 ottobre): parte da solo, senza audio, e si può alzare il volume */
+/* Video di apertura: dal 29/10 non parte da solo (preload none): si scarica solo se si preme play */
 .video-apertura { margin: -0.5rem 0 2.5rem; text-align: center; }
 .video-apertura video {
   display: block; width: 100%; max-width: 26rem; max-height: 78vh; aspect-ratio: 9 / 16; margin: 0 auto;
@@ -235,3 +235,25 @@ body.nuova { position: relative; overflow-x: hidden; }
 }
 .social-link a:hover { border-color: var(--rosso); color: var(--avorio); background: rgba(232, 67, 43, 0.12); }
 .social-link svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--rosso); }
+
+/* 29 ottobre: modulo nella prima schermata del telefono (richiesta di Giuseppe, landing che converte) */
+.solo-lettori { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.eroe h1 { font-size: clamp(2.1rem, 9vw, 4.2rem); margin-bottom: 0.6rem; }
+.eroe .attacco { font-size: 1.05rem; line-height: 1.45; margin: 0; }
+.modulo-eroe { margin: 1rem 0 0; padding: 1rem; }
+.modulo-eroe .campo { margin: 0 0 0.6rem; }
+.modulo-eroe .campo input[type="email"], .modulo-eroe .campo select { min-height: 2.85rem; padding: 0.6rem 0.75rem; }
+.modulo-eroe .spunta { font-size: 0.8rem; line-height: 1.38; margin: 0 0 0.5rem; gap: 0.6rem; }
+.modulo-eroe .bottone { margin-top: 0.75rem; }
+.modulo-eroe .rassicura { font-size: 0.85rem; text-align: center; margin: 0.5rem 0 0; }
+.campo-piccolo { margin: 0.9rem 0 0 !important; font-size: 0.85rem; }
+.campo-piccolo label { font-weight: 400; margin-bottom: 0.25rem; }
+.campo-piccolo input[type="text"] { min-height: 2.4rem; padding: 0.45rem 0.7rem; font-size: 0.9rem; }
+.video-titolo { display: block; font-size: 1.6rem; line-height: 1.15; color: var(--avorio); margin-bottom: 0.25rem; }
+.video-titolo em { color: var(--rosso); }
+.video-apertura figcaption { color: var(--grigio); }
+@media (max-width: 55.99rem) {
+  .nuova .pagina { padding-top: 0.9rem; }
+  .nuova .testata { padding-bottom: 0.6rem; margin-bottom: 1rem; }
+  .nuova .logo span { font-size: 1.6rem; }
+}

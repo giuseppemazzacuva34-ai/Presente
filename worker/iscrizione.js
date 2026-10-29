@@ -21,8 +21,12 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   versione_informativa TEXT NOT NULL
 )`;
 
-function grazie(request) {
-  return Response.redirect(new URL("/grazie", request.url).toString(), 303);
+// Dopo l'iscrizione si va a /grazie; se l'iscritto arriva da un canale (D26) l'indirizzo porta ?da=<canale>,
+// così il contatore delle visite (D43) conta /grazie per giorno e per sorgente. Solo il nome del canale, nessun dato personale.
+function grazie(request, canale = "") {
+  const url = new URL("/grazie", request.url);
+  if (canale) url.searchParams.set("da", canale);
+  return Response.redirect(url.toString(), 303);
 }
 
 // Accetta il modulo solo se arriva dal nostro sito: un altro sito non può iscrivere qualcuno a sua insaputa.
@@ -95,6 +99,6 @@ export async function iscrizione(request, env) {
   }
 
   if (nuova) await contaIscrizione(env, canale);
-  return grazie(request);
+  return grazie(request, canale);
 }
 

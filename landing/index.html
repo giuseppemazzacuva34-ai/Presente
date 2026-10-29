@@ -19,9 +19,9 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261027b">
+  <link rel="stylesheet" href="/stile.css?v=20261029c">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presenteincontri.app/","logo":"https://presenteincontri.app/favicon.svg","sameAs":["https://www.instagram.com/presente_app/","https://www.facebook.com/presenteincontrialbuio","https://www.tiktok.com/@presenteapp"]},{"@type":"WebSite","name":"Presente","url":"https://presenteincontri.app/","inLanguage":"it-IT"}]}</script>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"it-IT","mainEntity":[{"@type":"Question","name":"Chi vede le mie foto?","acceptedAnswer":{"@type":"Answer","text":"Nessuno, finché non vi scegliete a vicenda. Durante la settimana nella stanza vi conoscete solo a voce. Profilo e foto si scoprono solo dopo il sì di entrambi, e solo tra voi due."}},{"@type":"Question","name":"Come proteggete chi si iscrive?","acceptedAnswer":{"@type":"Answer","text":"Le foto restano nascoste fino alla scelta reciproca, un no non lo scopre nessuno e il primo incontro è in un locale che vi suggeriamo noi. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene. Prima dell'apertura pubblichiamo qui le regole complete."}},{"@type":"Question","name":"Quanto costa?","acceptedAnswer":{"@type":"Answer","text":"Entrare in lista d'attesa è gratis. La prima stanza sarà gratuita; dopo l'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura."}},{"@type":"Question","name":"Quando parte e in quali città?","acceptedAnswer":{"@type":"Answer","text":"Partiamo presto con la Stanza Italia, aperta a tutti: chi è in lista d'attesa lo sa per primo. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende."}},{"@type":"Question","name":"E se dal vivo non scatta niente?","acceptedAnswer":{"@type":"Answer","text":"Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa."}},{"@type":"Question","name":"Cosa fate con la mia email?","acceptedAnswer":{"@type":"Answer","text":"La usiamo solo per la lista d'attesa e per avvisarti quando apre la tua città. Non la vendiamo e non la diamo a nessuno. Dettagli nell'informativa privacy."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"it-IT","mainEntity":[{"@type":"Question","name":"Chi vede le mie foto?","acceptedAnswer":{"@type":"Answer","text":"Nessuno, finché non vi scegliete a vicenda. Durante la settimana nella stanza vi conoscete solo a voce. Profilo e foto si scoprono solo dopo il sì di entrambi, e solo tra voi due."}},{"@type":"Question","name":"Come proteggete chi si iscrive?","acceptedAnswer":{"@type":"Answer","text":"Le foto restano nascoste fino alla scelta reciproca, un no non lo scopre nessuno e il primo incontro è in un locale che vi suggeriamo noi. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene. Prima dell'apertura pubblichiamo qui le regole complete."}},{"@type":"Question","name":"Quanto costa?","acceptedAnswer":{"@type":"Answer","text":"Entrare in lista d'attesa è gratis. La prima stanza sarà gratuita; dopo l'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura."}},{"@type":"Question","name":"Quando parte e in quali città?","acceptedAnswer":{"@type":"Answer","text":"Partiamo presto con la Stanza Italia, aperta a tutti: chi è in lista d'attesa lo sa per primo. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende."}},{"@type":"Question","name":"E se dal vivo non scatta niente?","acceptedAnswer":{"@type":"Answer","text":"Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa."}},{"@type":"Question","name":"Chi dà buca, paga?","acceptedAnswer":{"@type":"Answer","text":"Solo dopo che vi siete scelti tutti e due, ognuno blocca qualche credito come garanzia. Se uno dei due dice no, i crediti tornano a entrambi. Se invece all'appuntamento qualcuno non si presenta, perde i suoi crediti e la maggior parte va a chi ha aspettato."}},{"@type":"Question","name":"Cosa fate con la mia email?","acceptedAnswer":{"@type":"Answer","text":"La usiamo solo per la lista d'attesa e per avvisarti quando apre la tua città. Non la vendiamo e non la diamo a nessuno. Dettagli nell'informativa privacy."}}]}</script>
 </head>
 <body class="nuova">
   <a class="salta" href="#iscriviti">Vai al modulo di iscrizione</a>
@@ -38,22 +38,64 @@
     <main id="contenuto">
       <section class="eroe" aria-labelledby="titolo">
         <div class="eroe-testo">
-          <p class="etichetta">Incontri al buio · In arrivo in Italia</p>
-          <h1 id="titolo">Ti innamoreresti <em>di una voce?</em></h1>
-          <p class="attacco">Presente è l'app di incontri dove <strong>nessuno vede le tue foto</strong> finché non vi scegliete tutti e due. Prima vi parlate a voce. Poi, se volete, vi vedete.</p>
-          <ul class="punti">
-            <li>Le tue foto restano tue</li>
-            <li>Chiamate da 15 minuti</li>
-            <li>Un no non lo scopre nessuno</li>
-          </ul>
-          <p class="azioni"><a class="bottone bottone-eroe" href="#iscriviti">Entra in lista d'attesa</a></p>
-          <p class="nota">La lista d'attesa è gratuita e ci vogliono 20 secondi. Ti scriviamo solo quando apre la tua città.</p>
+          <h1 id="titolo">Le app di incontri <em>ti hanno delusa?</em></h1>
+          <p class="attacco">Su Presente ci si conosce prima dalla voce. Le tue foto le vede solo chi scegli tu.</p>
+
+          <form class="modulo modulo-eroe" id="iscriviti" name="lista-attesa" aria-label="Entra in lista d'attesa" method="POST" action="/iscrizione">
+            <p class="nascosto"><label>Non compilare questo campo: <input name="campo-trappola" tabindex="-1" autocomplete="off"></label></p>
+
+            <div class="campo">
+              <label for="email" class="solo-lettori">La tua email</label>
+              <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="La tua email">
+            </div>
+
+            <div class="campo">
+              <label for="zona" class="solo-lettori">La tua città</label>
+              <select id="zona" name="zona" required>
+                <option value="" selected disabled>La tua città</option>
+                <option value="milano">Milano</option>
+                <option value="roma">Roma</option>
+                <option value="napoli">Napoli</option>
+                <option value="torino">Torino</option>
+                <option value="bologna">Bologna</option>
+                <option value="firenze">Firenze</option>
+                <option value="genova">Genova</option>
+                <option value="venezia-padova">Venezia e Padova</option>
+                <option value="verona">Verona</option>
+                <option value="brescia-bergamo">Brescia e Bergamo</option>
+                <option value="bari">Bari</option>
+                <option value="palermo">Palermo</option>
+                <option value="catania">Catania</option>
+                <option value="cagliari">Cagliari</option>
+                <option value="altra-citta-italia">Un'altra città italiana</option>
+                <option value="estero">Fuori dall'Italia</option>
+              </select>
+            </div>
+
+            <div class="spunta">
+              <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
+              <label for="maggiorenne">Ho almeno 18 anni.</label>
+            </div>
+
+            <div class="spunta">
+              <input id="consenso" name="consenso" type="checkbox" value="si" required>
+              <label for="consenso">Acconsento a usare la mia email, la mia città e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
+            </div>
+
+            <button class="bottone" type="submit">Voglio entrare</button>
+            <p class="rassicura">Gratis, 20 secondi. Ti scriviamo solo quando apre la tua città.</p>
+
+            <div class="campo campo-piccolo">
+              <label for="invito">Chi ti ha invitato? <span class="facoltativo">(facoltativo)</span></label>
+              <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome della tua amica o del tuo amico">
+            </div>
+          </form>
         </div>
         <figure class="video-apertura">
-          <video autoplay muted loop playsinline controls preload="metadata" poster="/media/presente-v3-poster.jpg" aria-label="Video con voce generata con AI: le app di incontri ti hanno delusa? Su Presente ci si conosce prima dalla voce, le tue foto le vede solo chi scegli tu, un no resta segreto e il primo sguardo è dal vivo.">
-            <source src="/media/presente-v3.mp4" type="video/mp4">
+          <video controls playsinline preload="none" poster="/media/presente-v3-leggero-poster.jpg" aria-label="Video con voce generata con AI: le app di incontri ti hanno delusa? Su Presente ci si conosce prima dalla voce, le tue foto le vede solo chi scegli tu, un no resta segreto e il primo sguardo è dal vivo.">
+            <source src="/media/presente-v3-leggero.mp4" type="video/mp4">
           </video>
-          <figcaption class="nota">Alza il volume: c'è la voce (generata con AI).</figcaption>
+          <figcaption><span class="video-titolo">Ti innamoreresti <em>di una voce?</em></span> Premi play e alza il volume (voce generata con AI).</figcaption>
         </figure>
       </section>
 
@@ -76,7 +118,6 @@
           <li><strong>Ti scelgono per come sei.</strong> Nella stanza conta come parli, come ridi, cosa racconti. Non l'angolazione giusta.</li>
           <li><strong>Un no resta segreto.</strong> Ogni settimana dai le tue chiavi in segreto. Le porte si aprono solo dove la scelta è reciproca: niente figuracce, niente spiegazioni.</li>
           <li><strong>Il primo incontro è in un locale.</strong> Dopo il sì di entrambi vi suggeriamo noi dove vedervi.</li>
-          <li><strong>Chi dà buca, paga.</strong> Confermando l'incontro bloccate 10 € a testa. Se l'altra persona non arriva, a te vanno 7 € in crediti.</li>
         </ul>
       </section>
 
@@ -85,57 +126,6 @@
         <p>Ogni città si accende quando arriva a <strong>36 iscritti</strong>: in una stanza servono persone compatibili e vicine. Porta un'amica single e la vostra città si accende prima. Nel modulo c'è un campo apposta: «Chi ti ha invitato?».</p>
       </section>
 
-      <form class="modulo" id="iscriviti" name="lista-attesa" method="POST" action="/iscrizione">
-        <h2>Entra in lista d'attesa</h2>
-        <p class="sotto">Ti chiediamo solo email e città: 20 secondi. L'iscrizione è gratuita e resta privata, non compare da nessuna parte. Ti scriviamo solo quando Presente apre nella tua città.</p>
-        <p class="nascosto"><label>Non compilare questo campo: <input name="campo-trappola" tabindex="-1" autocomplete="off"></label></p>
-
-        <div class="campo">
-          <label for="email">La tua email</label>
-          <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="nome@esempio.it">
-        </div>
-
-        <div class="campo">
-          <label for="zona">La tua città</label>
-          <select id="zona" name="zona" required>
-            <option value="" selected disabled>Scegli la tua città</option>
-            <option value="milano">Milano</option>
-            <option value="roma">Roma</option>
-            <option value="napoli">Napoli</option>
-            <option value="torino">Torino</option>
-            <option value="bologna">Bologna</option>
-            <option value="firenze">Firenze</option>
-            <option value="genova">Genova</option>
-            <option value="venezia-padova">Venezia e Padova</option>
-            <option value="verona">Verona</option>
-            <option value="brescia-bergamo">Brescia e Bergamo</option>
-            <option value="bari">Bari</option>
-            <option value="palermo">Palermo</option>
-            <option value="catania">Catania</option>
-            <option value="cagliari">Cagliari</option>
-            <option value="altra-citta-italia">Un'altra città italiana</option>
-            <option value="estero">Fuori dall'Italia</option>
-          </select>
-        </div>
-
-        <div class="campo">
-          <label for="invito">Chi ti ha invitato? <span class="facoltativo">(facoltativo)</span></label>
-          <input id="invito" name="invito" type="text" maxlength="40" autocomplete="off" placeholder="Il nome della tua amica o del tuo amico">
-        </div>
-
-        <div class="spunta">
-          <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
-          <label for="maggiorenne">Ho almeno 18 anni.</label>
-        </div>
-
-        <div class="spunta">
-          <input id="consenso" name="consenso" type="checkbox" value="si" required>
-          <label for="consenso">Acconsento a usare la mia email, la mia città e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
-        </div>
-
-        <button class="bottone" type="submit">Voglio entrare</button>
-        <p class="rassicura">Niente spam, niente dati venduti. Ti cancelli con una email.</p>
-      </form>
 
       <h2>Come funzionerà</h2>
       <p class="nota">In breve qui sotto; la guida completa è in <a href="/incontri-al-buio">Incontri al buio: cosa sono e come funzionano</a>.</p>
@@ -167,6 +157,10 @@
         <details>
           <summary>E se dal vivo non scatta niente?</summary>
           <p>Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa.</p>
+        </details>
+        <details>
+          <summary>Chi dà buca, paga?</summary>
+          <p>Solo dopo che vi siete scelti tutti e due, ognuno blocca qualche credito come garanzia. Se uno dei due dice no, i crediti tornano a entrambi. Se invece all'appuntamento qualcuno non si presenta, perde i suoi crediti e la maggior parte va a chi ha aspettato.</p>
         </details>
         <details>
           <summary>Cosa fate con la mia email?</summary>

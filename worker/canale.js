@@ -3,6 +3,7 @@
 // il Worker conta solo «canale, giorno, quante volte» in due tabelle D1. Nessun cookie, IP o user agent salvato,
 // e il canale NON viene scritto nella riga dell'iscritto.
 import { pulisciCodice } from "./invito.js";
+import { richiestaAutomatica } from "./automatiche.js";
 
 // Elenco chiuso: qualunque altro canale risponde 404. "meta" = sponsorizzate (D25), "creator" = link dei creator.
 export const CANALI = new Set(["instagram", "tiktok", "facebook", "whatsapp", "meta", "creator"]);
@@ -51,7 +52,8 @@ export async function daCanale(request, env) {
   const url = new URL(request.url);
   const canale = url.pathname.replace(/^\/da\/?/, "").replace(/\/$/, "");
   if (!CANALI.has(canale)) return null;
-  await contaVisita(env, canale);
+  // Anteprime dei link e robot (automatiche.js) ricevono lo stesso rimando ma non contano come visita.
+  if (!richiestaAutomatica(request)) await contaVisita(env, canale);
   const destinazione = new URL("/", url);
   destinazione.searchParams.set("da", canale);
   const codice = pulisciCodice(url.searchParams.get("invito"));
