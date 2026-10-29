@@ -313,6 +313,38 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   }
 }
 
+// Web app installabile (Fase 2, #1): servita sotto /app/ con intestazioni proprie, la landing resta senza script.
+{
+  const landingCsp = "default-src 'self'; script-src 'none'";
+  const ASSETS = { fetch: async (r) => new Response("<!doctype html>", { headers: { "content-type": "text/html", "content-security-policy": landingCsp } }) };
+  const r = await worker.fetch(new Request("https://presente.example/app/"), { ASSETS });
+  const csp = r.headers.get("content-security-policy") || "";
+  verifica(r.status === 200 && csp.includes("script-src 'self'") && !csp.includes("'unsafe-inline'") && !csp.includes("'unsafe-eval'"),
+    "/app/: script solo dal nostro dominio, niente codice in linea");
+  verifica(csp.includes("frame-ancestors 'none'") && csp.includes("object-src 'none'"), "/app/: non si può incorniciare in altri siti");
+  verifica((r.headers.get("permissions-policy") || "").includes("microphone=(self)"), "/app/: microfono ammesso solo per il nostro sito");
+  verifica(r.headers.get("x-robots-tag") === "noindex" && r.headers.get("cache-control") === "no-cache", "/app/: fuori da Google e sempre aggiornata");
+  const sw = await worker.fetch(new Request("https://presente.example/app/sw.js"), { ASSETS });
+  verifica(sw.headers.get("cache-control") === "no-cache", "/app/sw.js: il service worker si aggiorna subito");
+  const icona = await worker.fetch(new Request("https://presente.example/app/icone/icona-192.png"), { ASSETS });
+  verifica(icona.headers.get("cache-control") === "public, max-age=3600", "/app/ icone: in cache per un'ora");
+  const senzaBarra = await worker.fetch(new Request("https://presente.example/app"), { ASSETS });
+  verifica(senzaBarra.status === 301 && senzaBarra.headers.get("location") === "https://presente.example/app/", "/app rimanda a /app/");
+  const post = await worker.fetch(new Request("https://presente.example/app/", { method: "POST" }), { ASSETS });
+  verifica(post.status === 405, "/app/: solo lettura (GET e HEAD)");
+  const altra = await worker.fetch(new Request("https://presente.example/applicazione"), { ASSETS });
+  verifica(altra.headers.get("content-security-policy") === landingCsp, "le pagine che iniziano per «app» ma non sono /app/ restano della landing");
+  const manifesto = JSON.parse(readFileSync(new URL("../landing/app/manifest.webmanifest", import.meta.url), "utf8"));
+  verifica(manifesto.scope === "/app/" && manifesto.start_url === "/app/" && manifesto.display === "standalone"
+    && manifesto.icons.some((i) => i.sizes === "512x512") && manifesto.icons.some((i) => i.sizes === "192x192"),
+    "manifest: installabile (standalone, icone 192 e 512, ambito /app/)");
+  const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+  verifica(config.includes('"/app", "/app/*"'), "wrangler.jsonc: /app passa dal Worker (run_worker_first)");
+  const paginaApp = readFileSync(new URL("../landing/app/index.html", import.meta.url), "utf8");
+  verifica(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(paginaApp) && !/\son[a-z]+=/i.test(paginaApp) && !/https?:\/\//.test(paginaApp.replace(/<!--[\s\S]*?-->/g, "")),
+    "app/index.html: nessuno script in linea, nessun gestore on*, nessuna risorsa esterna");
+}
+
 if (errori) {
   console.log(`\n${errori} controlli non superati.`);
   process.exit(1);

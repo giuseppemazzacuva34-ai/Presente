@@ -10,7 +10,8 @@
     // "/" e "/grazie" passano dal Worker anche per il contatore delle visite (D43, solo totali).
     // "/" passa dal Worker per precompilare il codice dei link d'invito dei creator (?invito=CODICE)
     // e il campo nascosto del canale (?da=); "/da/*" sono i link per canale (D26).
-    "run_worker_first": ["/", "/grazie", "/grazie.html", "/iscrizione", "/conteggio", "/da", "/da/*"]
+    // "/app/*" è la web app installabile (Fase 2, #1): passa dal Worker per avere intestazioni di sicurezza sue.
+    "run_worker_first": ["/", "/grazie", "/grazie.html", "/iscrizione", "/conteggio", "/da", "/da/*", "/app", "/app/*"]
   },
   // Dominio comprato il 27 ottobre 2026 su Cloudflare: il sito risponde anche su presenteincontri.app (e www).
   "routes": [

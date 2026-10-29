@@ -1,0 +1,3 @@
+/* Stile della web app: parte da /stile.css (identità «Rivista», D4) e aggiunge solo ciò che serve all'app. */
+body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.stato { color: var(--grigio); font-size: 0.875rem; border-top: 1px solid var(--linea); padding-top: 1rem; margin-top: 2rem; }

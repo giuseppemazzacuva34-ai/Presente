@@ -1,6 +1,6 @@
 // Worker di Presente: serve la landing (cartella /landing) e gestisce le due rotte dinamiche.
 // Le pagine statiche sono servite direttamente da Cloudflare (gratis e senza limite); il Worker parte solo per
-// /iscrizione, /conteggio, i link per canale /da/<canale> e la home "/" (vedi "run_worker_first" in wrangler.jsonc).
+// /iscrizione, /conteggio, i link per canale /da/<canale>, la web app /app/ e la home "/" (vedi "run_worker_first" in wrangler.jsonc).
 import { iscrizione } from "./iscrizione.js";
 import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
@@ -8,6 +8,7 @@ import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
 import { daCanale } from "./canale.js";
 import { contaVisitaPagina } from "./visite.js";
+import { app, eApp } from "./app.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -27,6 +28,8 @@ export default {
       const rimando = request.method === "GET" || request.method === "HEAD" ? await daCanale(request, env) : null;
       return conSicurezza(rimando || pagina("Pagina non trovata.", "Questo indirizzo non esiste. Dai un'occhiata alla nostra home.", 404));
     }
+    // Web app installabile (Fase 2, #1): stessi file statici, ma con le intestazioni di sicurezza dell'app.
+    if (eApp(pathname)) return await app(request, env);
     if (pathname === "/conteggio") return conSicurezza(await conteggio(env));
     // Home: il Worker parte qui solo per precompilare il codice dei link d'invito (?invito=CODICE).
     if (pathname === "/") return conSicurezza(await homeConInvito(request, env));
