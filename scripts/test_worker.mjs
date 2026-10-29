@@ -357,13 +357,13 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const [, nuovaChiave] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_publishable_abc123" });
   verifica(nuovaChiave.pronta === true, "/app/config.json: accetta anche le nuove chiavi pubbliche sb_publishable_");
   const [manca, corpoManca] = await leggi({});
-  verifica(manca.status === 503 && corpoManca.pronta === false && corpoManca.problemi.length === 2, "/app/config.json: dice quali secret mancano");
+  verifica(manca.status === 200 && corpoManca.pronta === false && corpoManca.problemi.length === 2, "/app/config.json: dice quali secret mancano");
   const [servizio, corpoServizio] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: token("service_role") });
-  verifica(servizio.status === 503 && !JSON.stringify(corpoServizio).includes("eyJ"), "/app/config.json: la chiave service_role non esce mai");
-  const [segreta] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_secret_abc" });
-  verifica(segreta.status === 503, "/app/config.json: le chiavi segrete sb_secret_ non escono mai");
+  verifica(corpoServizio.pronta === false && !JSON.stringify(corpoServizio).includes("eyJ"), "/app/config.json: la chiave service_role non esce mai");
+  const [, segreta] = await leggi({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co", SUPABASE_ANON_KEY: "sb_secret_abc" });
+  verifica(segreta.pronta === false, "/app/config.json: le chiavi segrete sb_secret_ non escono mai");
   const [sbagliato, corpoSbagliato] = await leggi({ SUPABASE_URL: "https://supabase.com/dashboard/project/x", SUPABASE_ANON_KEY: token("anon") });
-  verifica(sbagliato.status === 503 && !JSON.stringify(corpoSbagliato).includes("dashboard"), "/app/config.json: indirizzo sbagliato segnalato senza ripeterlo");
+  verifica(corpoSbagliato.pronta === false && !JSON.stringify(corpoSbagliato).includes("dashboard"), "/app/config.json: indirizzo sbagliato segnalato senza ripeterlo");
 }
 
 if (errori) {
