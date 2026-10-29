@@ -1,5 +1,6 @@
 # Verifica segreti (solo a mano, da Actions → «Verifica segreti» → Run workflow).
-# Controlla che gli 8 segreti della Fase 2 esistano e che Supabase e Cloudflare Realtime li accettino.
+# Controlla che gli 8 segreti della Fase 2 esistano e che Supabase e Cloudflare Realtime li accettino,
+# e che i 2 secret del Worker «presente» (SUPABASE_URL, SUPABASE_ANON_KEY) siano messi in Cloudflare e giusti.
 # Non stampa MAI un valore: solo il NOME del segreto e «ok» / «manca» / «rifiutato».
 # GitHub oscura comunque i segreti nei log; in più qui niente echo dei valori e niente set -x.
 name: Verifica segreti
@@ -113,6 +114,18 @@ jobs:
               *)       male "REALTIME_APP_ID + REALTIME_APP_SECRET" "risposta inattesa da Cloudflare Realtime ($c)" ;;
             esac
           fi
+
+          # 8. Secret del Worker «presente» (Cloudflare) per la web app: /app/config.json dice solo se è pronta e perché no.
+          #    Non stampa mai indirizzo né chiave: legge soltanto «pronta» e l'elenco dei problemi.
+          risposta=$(curl -sS --max-time 20 "https://presenteincontri.app/app/config.json?controllo=$(date +%s)" 2>/dev/null || echo '{}')
+          esito_worker=$(printf '%s' "$risposta" | python3 -c 'import json,sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception:
+              print("risposta non leggibile"); sys.exit()
+          print("ok" if d.get("pronta") is True else "; ".join(d.get("problemi") or ["risposta inattesa"]))')
+          if [ "$esito_worker" = ok ]; then bene "Worker presente: SUPABASE_URL + SUPABASE_ANON_KEY" "messi in Cloudflare e giusti"
+          else male "Worker presente: SUPABASE_URL + SUPABASE_ANON_KEY" "$esito_worker"; fi
 
           echo
           if [ "$errori" -gt 0 ]; then
