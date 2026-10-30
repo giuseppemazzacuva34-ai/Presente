@@ -91,14 +91,14 @@ export function primaMancante(profilo) {
 
 
 // Domande per le 3 risposte a voce (passo 8): se ne scelgono 3 su 8, massimo 30 secondi ciascuna.
-// Le prime due vengono dalla specifica v1 del CPO; le altre sei sono una BOZZA da far rivedere a «contenuti».
+// Le prime due vengono dalla specifica v1 del CPO; le altre sei sono le versioni definitive di «contenuti» (30/10).
 export const DOMANDE_VOCE = [
   "Una cosa che ti fa ridere sempre",
   "Il posto dove ti senti a casa",
-  "Il viaggio che rifaresti domani",
-  "Una cosa che hai imparato tardi",
-  "La tua domenica perfetta",
-  "Un piccolo gesto che ti conquista",
-  "Una canzone che ti riporta indietro",
-  "Una cosa di cui vai fiero o fiera",
+  "Un viaggio che rifaresti domani: cosa ti è rimasto?",
+  "Una cosa che hai capito tardi, ma meglio tardi che mai.",
+  "Racconta la tua domenica perfetta, dalla colazione alla sera.",
+  "Un piccolo gesto che ti conquista ogni volta.",
+  "Una canzone che ti riporta indietro: dove ti porta?",
+  "Una cosa di cui vai fiera o fiero, anche piccola.",
 ];
