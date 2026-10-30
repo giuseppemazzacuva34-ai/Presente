@@ -41,6 +41,8 @@ Iscritti per codice dei creator (per il CMO): metti i codici assegnati in `CODIC
 
 L'informativa privacy (`landing/privacy.html`, indirizzo stabile `https://presenteincontri.app/privacy`) è la versione 1.2 del 30/10/2026, approvata da Giuseppe con D53 = A (prima: 1.0 con D5, 1.1 del 26/10). Copre anche il modulo d'iscrizione dentro Facebook e Instagram e le risposte automatiche a BUIO. Ogni nuova iscrizione salva `versione_informativa` = `1.2-2026-10-30` (`worker/iscrizione.js`).
 
+**Iscritti dal modulo dentro Facebook e Instagram (D53 = A, dal 30/10).** La tabella `iscrizioni` ha la colonna `sorgente`: `landing` per il modulo del sito, `meta_modulo` per i contatti del modulo di Meta. `/conteggio` mostra `per_sorgente` (solo totali). Fase 1, a mano: Giuseppe scarica il CSV dal Centro contatti di Meta e lo passa al CTO, che esegue `node scripts/importa_meta.mjs <file.csv> > import.sql` (fuori dal repository) e poi `npx wrangler d1 execute presente-lista --remote --file import.sql`. Si aggiungono solo email nuove (chi è già in lista non cambia), solo maggiorenni, con data del consenso = invio del modulo e versione dell'informativa in vigore; i contatti di prova di Meta sono scartati; il riepilogo dice solo numeri. Poi si cancellano il CSV e l'SQL e, entro 7 giorni, i contatti su Meta (informativa 1.2, punto 3). CSV e SQL non vanno mai nel repository (`.gitignore`). Test in `test/importa_meta.test.mjs`.
+
 Per provarla sul computer: `python3 -m http.server -d landing 8000` e apri http://localhost:8000 (il modulo funziona solo su Cloudflare).
 
 ## Web app (Fase 2)

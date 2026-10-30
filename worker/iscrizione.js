@@ -5,12 +5,12 @@ import { pagina } from "./pagina.js";
 import { canaleValido, contaIscrizione } from "./canale.js";
 
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città.
-const ZONE = new Set([
+export const ZONE = new Set([
   "milano", "roma", "napoli", "torino", "bologna", "firenze", "genova", "venezia-padova", "verona",
   "brescia-bergamo", "bari", "palermo", "catania", "cagliari", "altra-citta-italia", "estero",
 ]);
-const VERSIONE_INFORMATIVA = "1.2-2026-10-30";
-const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+export const VERSIONE_INFORMATIVA = "1.2-2026-10-30";
+export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,8 +18,12 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   zona TEXT NOT NULL,
   invito TEXT,
   consenso_il TEXT NOT NULL,
-  versione_informativa TEXT NOT NULL
+  versione_informativa TEXT NOT NULL,
+  sorgente TEXT NOT NULL DEFAULT 'landing'
 )`;
+// sorgente (dal 30/10, D53 = A): "landing" per il modulo del sito, "meta_modulo" per i contatti del modulo
+// dentro Facebook e Instagram importati con scripts/importa_meta.mjs. Nel database vero la colonna è stata
+// aggiunta il 30/10 con ALTER TABLE (le righe già presenti valgono "landing").
 
 // Dopo l'iscrizione si va a /grazie; se l'iscritto arriva da un canale (D26) l'indirizzo porta ?da=<canale>,
 // così il contatore delle visite (D43) conta /grazie per giorno e per sorgente. Solo il nome del canale, nessun dato personale.
@@ -130,7 +134,7 @@ async function gestisci(request, env) {
   try {
     await env.DB.prepare(SCHEMA).run();
     const esito = await env.DB.prepare(
-      "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING"
+      "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente) VALUES (?, ?, ?, ?, ?, 'landing') ON CONFLICT(email) DO NOTHING"
     ).bind(email, zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA).run();
     // Chi era già in lista non viene contato una seconda volta.
     nuova = Boolean(esito && esito.meta && esito.meta.changes > 0);
