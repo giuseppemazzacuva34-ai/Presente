@@ -32,8 +32,8 @@ insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_version
   values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'donne', now(), '1.2', 25, 40, 'citta');
 insert into public.questionario (utente_id, risposte, importanza) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '{"1":[0,1]}', '{"valori":3}');
 insert into storage.objects (bucket_id, name, owner) values
-  ('voci', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/presentazione.webm', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
-  ('foto', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/1.jpg', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  ('voci', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/presentazione', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+  ('foto', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/foto-1', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 select pg_temp.ok((select count(*) from public.profili) = 1 and (select count(*) from public.filtri) = 1
   and (select count(*) from public.questionario) = 1 and (select count(*) from storage.objects) = 2, 'A vede i suoi dati e i suoi file');
 select pg_temp.ok((select in_vigore_dal from public.questionario) > now(), 'il questionario vale dalla prossima apertura del lunedì');
@@ -52,7 +52,7 @@ update public.questionario set risposte = '{}' where true;
 delete from storage.objects where true;
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.profili (id, nome) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Finto')$$), 'B non crea un profilo a nome di A');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.questionario (utente_id) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')$$), 'B non scrive risposte a nome di A');
-select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/2.jpg')$$), 'B non carica file nella cartella di A');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/foto-2')$$), 'B non carica file nella cartella di A');
 select pg_temp.ok(pg_temp.rifiutato($$delete from public.profili$$), 'nessuno cancella righe del profilo a mano (si cancella l''account)');
 commit;
 
@@ -142,4 +142,26 @@ select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id =
 update public.filtri set cerco = null where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') is null,
   'consenso ritirato: anche la data si svuota');
+rollback;
+
+-- Requisito 4 del CISO: al massimo 4 voci e 3 foto per persona (nomi fissi, migrazione 20261030230000).
+begin;
+select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+insert into storage.objects (bucket_id, name, owner) values
+  ('voci', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/presentazione', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('voci', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/risposta-1', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('voci', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/risposta-2', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('voci', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/risposta-3', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-1', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-2', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+  ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-3', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+select pg_temp.ok((select count(*) from storage.objects) = 7, 'B carica 4 voci e 3 foto con i nomi fissi');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('voci', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/risposta-4')$$), 'una quinta voce non si carica');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-4')$$), 'una quarta foto non si carica');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/altra.jpg')$$), 'un nome diverso da quelli fissi non si carica');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/sotto/foto-1')$$), 'niente sottocartelle');
+select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, name) values ('foto', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-1')$$), 'lo stesso nome due volte non crea un secondo file');
+select pg_temp.ok(pg_temp.rifiutato($$update storage.objects set name = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-9' where name like '%/foto-3'$$), 'rinominare con un nome non ammesso è rifiutato');
+update storage.objects set created_at = now() where name = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-1';
+select pg_temp.ok((select count(*) from storage.objects where bucket_id = 'foto') = 3, 'sostituire una foto non aggiunge file');
 rollback;

@@ -118,3 +118,35 @@ test("passa dal Worker con le intestazioni dell'app e senza cache", async () => 
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.ok(r.headers.get("content-security-policy"));
 });
+
+test("limite di frequenza (requisito 5 del CISO): oltre il limite risponde 429 senza chiamare Supabase", async () => {
+  const conteggi = new Map();
+  const LIMITE_ELIMINA = {
+    async limit({ key }) {
+      const n = (conteggi.get(key) || 0) + 1;
+      conteggi.set(key, n);
+      return { success: n <= 3 };
+    },
+  };
+  const env = { ...ENV, LIMITE_ELIMINA };
+  const conIp = (ip) => {
+    const r = richiesta();
+    const h = new Headers(r.headers);
+    h.set("cf-connecting-ip", ip);
+    return new Request(r.url, { method: "POST", headers: h });
+  };
+  for (let i = 0; i < 3; i++) {
+    const s = supabaseFinto();
+    assert.equal((await eliminaAccount(conIp("203.0.113.7"), env, s.f)).status, 200);
+  }
+  const s = supabaseFinto();
+  const r = await eliminaAccount(conIp("203.0.113.7"), env, s.f);
+  assert.equal(r.status, 429);
+  assert.deepEqual(await r.json(), { ok: false, motivo: "troppe" });
+  assert.equal(s.chiamate.length, 0);
+  // Un'altra connessione non è toccata dal limite.
+  assert.equal((await eliminaAccount(conIp("198.51.100.4"), env, supabaseFinto().f)).status, 200);
+  // Se il limite non risponde, si lascia passare (resta il controllo del token).
+  const rotto = { async limit() { throw new Error("non disponibile"); } };
+  assert.equal((await eliminaAccount(conIp("203.0.113.7"), { ...ENV, LIMITE_ELIMINA: rotto }, supabaseFinto().f)).status, 200);
+});

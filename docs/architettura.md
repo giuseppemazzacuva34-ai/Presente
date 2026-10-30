@@ -47,7 +47,8 @@ Tutti in Supabase UE, tranne il trasporto delle chiamate (che non salva nulla). 
 
 Regole che valgono per tutto:
 - Nessun dato personale verso servizi esterni oltre a Supabase e Cloudflare (già indicati nell'informativa da aggiornare prima della beta).
-- Cancellazione dell'account: una sola funzione cancella righe e file in Supabase (D23 A: un solo posto). È `POST /app/api/elimina-account` (worker/elimina.js): Supabase dice chi è l'utente dal suo token, il Worker cancella prima tutti i file in `voci/<id>/` e `foto/<id>/`, controlla che le cartelle siano vuote e solo dopo cancella l'account (le righe collegate spariscono da sole, `on delete cascade`). Se i file non si cancellano l'account resta e si riprova: mai un account cancellato con file rimasti. Spento finché `ACCESSO_APP` non vale «si»; usa il secret del Worker `SUPABASE_SERVICE_ROLE_KEY`.
+- Cancellazione dell'account: una sola funzione cancella righe e file in Supabase (D23 A: un solo posto). È `POST /app/api/elimina-account` (worker/elimina.js): Supabase dice chi è l'utente dal suo token, il Worker cancella prima tutti i file in `voci/<id>/` e `foto/<id>/`, controlla che le cartelle siano vuote e solo dopo cancella l'account (le righe collegate spariscono da sole, `on delete cascade`). Se i file non si cancellano l'account resta e si riprova: mai un account cancellato con file rimasti. Spento finché `ACCESSO_APP` non vale «si»; usa il secret del Worker `SUPABASE_SERVICE_ROLE_KEY`; massimo 3 richieste al minuto per connessione (`LIMITE_ELIMINA`).
+- File di voce e foto con nomi fissi (`presentazione`, `risposta-1…3`, `foto-1…3`): al massimo 4 voci e 3 foto a persona, controllato dalle regole per riga dello Storage.
 - Le chiavi segrete stanno solo nei «secret» di Cloudflare e Supabase, mai nel repository.
 
 ### Dove stanno le chiavi (decisione del 29/10)
