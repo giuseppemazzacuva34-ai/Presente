@@ -3,6 +3,7 @@
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
 import { avvia } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
+import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -30,7 +31,10 @@ async function preparaAccesso() {
     // Arrivo dal link nell'email: si leggono i token e si tolgono subito dall'indirizzo e dalla cronologia.
     const dalLink = accesso.daLink(location.href);
     if (dalLink) history.replaceState(null, "", dalLink.indirizzo);
-    return { accesso, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Salvataggio passo per passo su Supabase, con il token dell'utente (regole per riga).
+    const archivio = creaSalvataggio({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), utenteId: () => accesso.utenteId(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

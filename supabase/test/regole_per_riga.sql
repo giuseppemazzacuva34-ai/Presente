@@ -81,7 +81,11 @@ commit;
 begin;
 select pg_temp.come('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 select pg_temp.ok(pg_temp.rifiutato($$update public.profili set data_nascita = '1990-01-01'$$), 'la data di nascita non si modifica');
-update public.profili set citta = 'Roma', passo = 7;
+update public.profili set citta = 'Roma', passo = 7, domande_voce = '{4,0,7}';
+select pg_temp.ok((select domande_voce from public.profili) = '{4,0,7}', 'A salva le 3 domande a voce scelte');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set domande_voce = '{1,2,3,4}'$$), 'più di 3 domande a voce: rifiutate');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set domande_voce = '{1,8}'$$), 'domanda a voce inesistente: rifiutata');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set domande_voce = '{2,2}'$$), 'la stessa domanda due volte: rifiutata');
 select pg_temp.ok((select citta from public.profili) = 'Roma', 'A modifica il suo profilo');
 commit;
 

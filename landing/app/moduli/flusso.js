@@ -4,11 +4,14 @@
 // MODALITÀ ANTEPRIMA: finché l'informativa privacy dell'app (T08) e la revisione di sicurezza (T15) non sono pronte,
 // questa è solo una bozza da provare. Niente viene inviato né salvato: voce, foto e risposte restano nella memoria
 // della pagina e spariscono quando la si chiude. Nessuna email viene mandata.
+// CON L'ACCESSO ACCESO (ACCESSO_APP = «si»): ogni «Continua» salva il passo su Supabase (salvataggio.js) e chi esce
+// a metà, al rientro, riparte dal passo lasciato.
 
 import { DOMANDE, TEMI, IMPORTANZA, DOMANDA_IMPORTANZA, DOMANDE_VOCE, erroreRisposta } from "./domande.js";
 import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registratore.js";
 import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
+import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -64,19 +67,97 @@ let radice;
 let registrazioneInCorso = null;
 // Accesso vero con email (accesso.js). null = anteprima: nessuna email, si passa direttamente al passo dopo.
 let accesso = null;
+// Salvataggio su Supabase (salvataggio.js). null = anteprima: niente lascia il telefono.
+let archivio = null;
+const salvataggio = { inCorso: false, errore: "" };
+let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
+
+const MESSAGGI_SALVATAGGIO = {
+  accesso: "La sessione è scaduta: rientra con la tua email.",
+  rete: "Non riusciamo a collegarci. Controlla la connessione e riprova.",
+  salvataggio: "Non siamo riusciti a salvare. Riprova tra poco.",
+};
 
 export function avvia(elemento, opzioni = {}) {
   radice = elemento;
   accesso = opzioni.accesso || null;
+  archivio = (accesso && opzioni.archivio) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
-  // Già dentro (dal link nell'email o da una sessione precedente): si riparte dalla maggiore età.
-  if (accesso && accesso.connesso()) stato.passo = 2;
+  // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
+  if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
   disegna();
+}
+
+// Al rientro: legge da Supabase ciò che è già stato salvato e riparte dal passo lasciato.
+async function riprendi() {
+  radice.replaceChildren(h("section", { classe: "schermata" }, h("h1", {}, "Un attimo…"), h("p", { classe: "sottotitolo" }, "Riprendiamo da dove eri rimasto.")));
+  const salvato = await archivio.leggi();
+  if (!salvato.ok) {
+    if (salvato.motivo === "accesso") { await accesso.esci(); stato.passo = 1; }
+    salvataggio.errore = MESSAGGI_SALVATAGGIO[salvato.motivo] || MESSAGGI_SALVATAGGIO.salvataggio;
+    disegna();
+    return;
+  }
+  stato.passo = statoDaSalvato(stato, salvato, CITTA);
+  passoMassimo = stato.passo;
+  const q = stato.questionario;
+  const mancante = DOMANDE.find((d) => erroreRisposta(d.n, q.risposte[d.n]) !== null);
+  q.domanda = mancante ? mancante.n : DOMANDE.length;
+  // File già caricati: si scaricano per poterli riascoltare e rivedere (solo i propri, regole per riga).
+  const scarica = async (cartella, nome) => {
+    const blob = await archivio.scaricaFile(cartella, nome);
+    return blob ? { blob, url: URL.createObjectURL(blob), secondi: 0, salvatoCome: nome } : null;
+  };
+  const attese = [];
+  if (salvato.voci.includes(FILE_VOCE)) attese.push(scarica("voci", FILE_VOCE).then((v) => { stato.voce = v; }));
+  stato.domandeVoce.forEach((i, k) => {
+    if (salvato.voci.includes(fileRisposta(k))) attese.push(scarica("voci", fileRisposta(k)).then((v) => { if (v) stato.risposteVoce[i] = v; }));
+  });
+  [0, 1, 2].forEach((i) => {
+    if (salvato.foto.includes(fileFoto(i))) attese.push(scarica("foto", fileFoto(i)).then((v) => { stato.foto[i] = v; }));
+  });
+  await Promise.all(attese);
+  disegna();
+}
+
+// Salva (se l'accesso è acceso) e poi va al passo indicato. In anteprima va subito avanti.
+async function salvaEVai(passo, ...operazioni) {
+  if (!archivio) { vai(passo); return; }
+  if (salvataggio.inCorso) return;
+  salvataggio.inCorso = true; salvataggio.errore = ""; disegna();
+  let esito = { ok: true };
+  // Il passo salvato non torna mai indietro: chi modifica il profilo completo resta «completo».
+  const raggiunto = Math.max(passo, passoMassimo);
+  for (const operazione of [...operazioni, () => archivio.salvaProfilo({ passo: raggiunto })]) {
+    esito = await operazione();
+    if (!esito.ok) break;
+  }
+  salvataggio.inCorso = false;
+  if (!esito.ok) {
+    salvataggio.errore = MESSAGGI_SALVATAGGIO[esito.motivo] || MESSAGGI_SALVATAGGIO.salvataggio;
+    if (esito.motivo === "accesso") { await accesso.esci(); stato.passo = 1; }
+    disegna();
+    return;
+  }
+  passoMassimo = raggiunto;
+  vai(passo);
+}
+
+// Carica un file solo se è nuovo o se deve cambiare nome (es. una risposta a voce passata da 2ª a 1ª).
+function caricaSeServe(cartella, nome, voce) {
+  return async () => {
+    if (!voce || voce.salvatoCome === nome) return { ok: true };
+    if (!voce.blob) return { ok: false, motivo: "salvataggio" };
+    const r = await archivio.caricaFile(cartella, nome, voce.blob);
+    if (r.ok) voce.salvatoCome = nome;
+    return r;
+  };
 }
 
 function vai(passo) {
   if (registrazioneInCorso) { registrazioneInCorso.ferma(); registrazioneInCorso = null; }
+  salvataggio.errore = "";
   stato.passo = Math.max(0, Math.min(PASSI.length - 1, passo));
   disegna();
   window.scrollTo(0, 0);
@@ -88,7 +169,7 @@ function disegna() {
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
   const parti = [
-    h("div", { classe: "anteprima", role: "note" }, accesso
+    archivio ? null : h("div", { classe: "anteprima", role: "note" }, accesso
       ? "Prova: l'accesso con email è vero, il resto del profilo non viene ancora salvato. Voce e foto restano su questo telefono."
       : "Anteprima: niente viene inviato né salvato. Voce e foto restano su questo telefono finché non chiudi la pagina."),
     stato.passo > 0 && stato.passo < PASSI.length - 1 ? barra() : null,
@@ -112,6 +193,8 @@ function schermata(titolo, sottotitolo, corpo, azioni) {
     h("h1", {}, titolo),
     sottotitolo ? h("p", { classe: "sottotitolo" }, sottotitolo) : null,
     h("div", { classe: "corpo" }, corpo),
+    errore(salvataggio.errore),
+    salvataggio.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
     h("div", { classe: "azioni" }, azioni));
 }
 
@@ -122,13 +205,14 @@ let pulsanteAvanti = null;
 let condizioneAvanti = null;
 function avanti(testo, quando, onclick) {
   const condizione = typeof quando === "function" ? quando : () => Boolean(quando);
-  const bottone = h("button", { classe: "bottone", type: "button", disabled: !condizione(), onclick: () => { if (condizione()) onclick(); } }, testo);
+  const pronto = () => condizione() && !salvataggio.inCorso;
+  const bottone = h("button", { classe: "bottone", type: "button", disabled: !pronto(), onclick: () => { if (pronto()) onclick(); } }, testo);
   pulsanteAvanti = bottone;
   condizioneAvanti = condizione;
   return bottone;
 }
 function ricontrolla() {
-  if (pulsanteAvanti && condizioneAvanti) pulsanteAvanti.disabled = !condizioneAvanti();
+  if (pulsanteAvanti && condizioneAvanti) pulsanteAvanti.disabled = !condizioneAvanti() || salvataggio.inCorso;
 }
 function indietro() {
   return h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(stato.passo - 1) }, "Indietro");
@@ -182,7 +266,7 @@ function emailVera() {
     email.attesa = true; email.errore = ""; disegna();
     const r = await accesso.verificaCodice(stato.email, email.codice);
     email.attesa = false;
-    if (r.ok) { email.inviata = false; vai(2); } else { email.errore = MESSAGGI[r.motivo] || MESSAGGI.codice; disegna(); }
+    if (r.ok) { email.inviata = false; if (archivio) riprendi(); else vai(2); } else { email.errore = MESSAGGI[r.motivo] || MESSAGGI.codice; disegna(); }
   };
   const codice = h("input", { type: "text", id: "codice", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "7", value: email.codice,
     placeholder: "123456", oninput: (e) => { email.codice = e.target.value.replace(/[^\d]/g, ""); ricontrolla(); } });
@@ -255,8 +339,8 @@ const SCHERMATE = {
       [indietro(), avanti("Continua", () => Boolean(stato.dataNascita), () => {
         const eta = etaDa(stato.dataNascita);
         if (eta === null || eta > 106) return;
-        if (eta < 18) { stato.minorenne = true; disegna(); return; }
-        vai(3);
+        if (eta < 18) { stato.minorenne = true; if (archivio) eliminaAccount(); disegna(); return; }
+        salvaEVai(3, () => archivio.salvaProfilo({ data_nascita: stato.dataNascita }));
       })]);
   },
 
@@ -271,7 +355,7 @@ const SCHERMATE = {
     return schermata("Quattro regole", null,
       [h("ol", { classe: "regole" }, regole.map(([t, d]) => h("li", {}, h("strong", {}, t), " ", d))),
         h("label", { classe: "casella", for: "accetto" }, casella, "Accetto le regole")],
-      [indietro(), avanti("Continua", stato.regole, () => vai(4))]);
+      [indietro(), avanti("Continua", stato.regole, () => salvaEVai(4, () => archivio.salvaProfilo({ regole_accettate_il: new Date().toISOString() })))]);
   },
 
   chi() {
@@ -299,7 +383,7 @@ const SCHERMATE = {
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
           oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
-      [indietro(), avanti("Continua", () => Boolean(nomeOk() && cittaOk() && presentoOk()), () => vai(5))]);
+      [indietro(), avanti("Continua", () => Boolean(nomeOk() && cittaOk() && presentoOk()), () => salvaEVai(5, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
   },
 
   cerchi() {
@@ -329,14 +413,14 @@ const SCHERMATE = {
         scelte("figli", [["ne_voglio", "Ne voglio"], ["forse", "Forse"], ["no", "No"], ["ne_ho", "Ne ho"]], stato.figli, (v) => { stato.figli = v; disegna(); }),
         h("p", { classe: "etichetta" }, "Fumo"),
         scelte("fumo", [["si", "Sì"], ["no", "No"], ["indifferente", "Indifferente"]], stato.fumo, (v) => { stato.fumo = v; disegna(); })],
-      [indietro(), avanti("Continua", tutto, () => vai(6))]);
+      [indietro(), avanti("Continua", tutto, () => salvaEVai(6, () => archivio.salvaFiltri(filtriDaStato(stato))))]);
   },
 
   voce() {
     return schermata("La tua voce",
       "Presentati come faresti a una cena tra amici. Hai 20 secondi.",
       [registratoreVoce(stato.voce, 20, (esito) => { stato.voce = esito; disegna(); })],
-      [indietro(), avanti("Continua", Boolean(stato.voce), () => vai(7))]);
+      [indietro(), avanti("Continua", Boolean(stato.voce), () => salvaEVai(7, caricaSeServe("voci", FILE_VOCE, stato.voce)))]);
   },
 
   risposte() {
@@ -353,7 +437,9 @@ const SCHERMATE = {
         scelte3.map((i) => h("div", { classe: "risposta-voce" },
           h("p", { classe: "etichetta" }, DOMANDE_VOCE[i]),
           registratoreVoce(stato.risposteVoce[i], 30, (esito) => { stato.risposteVoce[i] = esito; disegna(); })))],
-      [indietro(), avanti("Continua", tutteFatte, () => vai(8))]);
+      [indietro(), avanti("Continua", tutteFatte, () => salvaEVai(8,
+        ...scelte3.map((i, k) => caricaSeServe("voci", fileRisposta(k), stato.risposteVoce[i])),
+        () => archivio.salvaProfilo({ domande_voce: scelte3 })))]);
   },
 
   questionario() {
@@ -380,8 +466,17 @@ const SCHERMATE = {
     const conta = ultimaDelTema ? h("div", { classe: "quanto-conta" },
       h("p", { classe: "etichetta" }, `${DOMANDA_IMPORTANZA} · ${TEMI[d.tema].nome}`),
       scelte(`imp-${d.tema}`, IMPORTANZA.map((t, i) => [i + 1, t]), q.importanza[d.tema], (v) => { q.importanza[d.tema] = v; disegna(); })) : null;
-    const prossima = () => {
-      if (d.n < DOMANDE.length) { q.domanda = d.n + 1; disegna(); window.scrollTo(0, 0); } else vai(9);
+    const salvaRisposte = () => archivio.salvaQuestionario(q.risposte, q.importanza);
+    const prossima = async () => {
+      if (d.n === DOMANDE.length) { salvaEVai(9, salvaRisposte); return; }
+      // Con l'accesso acceso le risposte si salvano alla fine di ogni tema: chi esce a metà le ritrova.
+      if (archivio && ultimaDelTema) {
+        salvataggio.inCorso = true; salvataggio.errore = ""; disegna();
+        const r = await salvaRisposte();
+        salvataggio.inCorso = false;
+        if (!r.ok) { salvataggio.errore = MESSAGGI_SALVATAGGIO[r.motivo] || MESSAGGI_SALVATAGGIO.salvataggio; disegna(); return; }
+      }
+      q.domanda = d.n + 1; salvataggio.errore = ""; disegna(); window.scrollTo(0, 0);
     };
     const precedente = () => { if (d.n > 1) { q.domanda = d.n - 1; disegna(); } else vai(7); };
     return schermata(d.testo,
@@ -397,7 +492,7 @@ const SCHERMATE = {
       "Nessuno le vede fino a quando entrambi aprite la porta. Servono 3 foto, con il volto visibile in almeno una.",
       [h("div", { classe: "griglia-foto" }, stato.foto.map((f, i) => casellaFoto(f, i))),
         h("p", { classe: "nota" }, "Prima di tutto il telefono toglie dalle foto i dati nascosti (posizione, modello, data).")],
-      [indietro(), avanti("Continua", pronte === 3, () => vai(10))]);
+      [indietro(), avanti("Continua", pronte === 3, () => salvaEVai(10, ...stato.foto.map((f, i) => caricaSeServe("foto", fileFoto(i), f))))]);
   },
 
   fatto() {
@@ -408,8 +503,15 @@ const SCHERMATE = {
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${citta}`),
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, città, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
-        h("p", { classe: "nota" }, "Era un'anteprima: niente è stato inviato o salvato.")],
-      [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")]);
+        h("p", { classe: "nota" }, archivio
+          ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
+          : "Era un'anteprima: niente è stato inviato o salvato.")],
+      archivio
+        ? [h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(4) }, "Modifica il profilo"),
+          h("button", { classe: "link", type: "button", onclick: () => {
+            if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
+          } }, "Elimina il mio account")]
+        : [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")]);
   },
 };
 
@@ -428,7 +530,7 @@ function registratoreVoce(esistente, massimo, onFatto) {
     if (stato.errore) box.append(errore(messaggi[stato.errore] || messaggi.altro));
     if (esistente && !stato.registrando) {
       box.append(h("audio", { controls: true, src: esistente.url }),
-        h("p", { classe: "nota" }, `${esistente.secondi.toFixed(0)} secondi`),
+        esistente.secondi ? h("p", { classe: "nota" }, `${esistente.secondi.toFixed(0)} secondi`) : null,
         h("button", { classe: "bottone-secondario", type: "button", onclick: inizia }, "Rifai"));
       return;
     }
@@ -451,7 +553,7 @@ function registratoreVoce(esistente, massimo, onFatto) {
     const esito = await r.finita;
     registrazioneInCorso = null;
     if (esito.errore) { mostra({ errore: esito.errore }); return; }
-    onFatto({ url: esito.url, secondi: esito.secondi });
+    onFatto({ url: esito.url, secondi: esito.secondi, blob: esito.blob });
   }
   mostra({});
   return box;
@@ -463,11 +565,28 @@ function casellaFoto(f, i) {
       const file = e.target.files && e.target.files[0];
       const esito = await preparaFoto(file);
       if (esito.errore) { alert(esito.errore); return; }
-      stato.foto[i] = { url: esito.url };
+      stato.foto[i] = { url: esito.url, blob: esito.blob };
       disegna();
     } });
   return h("div", { classe: "casella-foto" },
     f ? h("img", { src: f.url, alt: `Foto ${i + 1}` }) : h("span", { classe: "piu", "aria-hidden": "true" }, "+"),
     h("label", { for: `foto-${i}`, classe: "bottone-secondario" }, f ? "Cambia" : `Foto ${i + 1}`),
     input);
+}
+
+// «Elimina il mio account» (e uscita del minorenne): il server cancella file, righe e account (worker/elimina.js).
+async function eliminaAccount() {
+  const t = accesso && (await accesso.token());
+  if (!t) { stato.passo = 1; disegna(); return; }
+  salvataggio.inCorso = true; disegna();
+  let ok = false;
+  try {
+    const r = await fetch("/app/api/elimina-account", { method: "POST", headers: { authorization: `Bearer ${t}` } });
+    ok = r.ok;
+  } catch { ok = false; }
+  salvataggio.inCorso = false;
+  if (!ok) { salvataggio.errore = "Non siamo riusciti a eliminare l'account. Riprova tra poco."; disegna(); return; }
+  await accesso.esci();
+  if (stato.minorenne) { disegna(); return; } // resta la schermata «solo per maggiorenni»
+  location.replace("/app/");
 }

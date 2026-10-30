@@ -8,7 +8,11 @@ from playwright.async_api import async_playwright
 S = sys.argv[1]
 SUPA = "https://abcdefghijklmnopqrst.supabase.co"
 CONFIG = {"pronta": True, "accesso": True, "supabaseUrl": SUPA, "supabaseAnonKey": "sb_publishable_finta"}
-TOKEN = {"access_token": "acc", "refresh_token": "ref", "expires_in": 3600, "user": {"id": "u1"}}
+import base64
+ID = "11111111-2222-4333-8444-555555555555"
+# Token finto con la forma di un JWT (il campo «sub» è l'id dell'utente, come in Supabase). Nessuna firma vera.
+ACC = "eyJhbGciOiJIUzI1NiJ9." + base64.urlsafe_b64encode(json.dumps({"sub": ID, "role": "authenticated"}).encode()).decode().rstrip("=") + ".firma"
+TOKEN = {"access_token": ACC, "refresh_token": "ref", "expires_in": 3600, "user": {"id": ID}}
 
 async def main():
     async with async_playwright() as p:
@@ -25,6 +29,9 @@ async def main():
                 if corpo.get("token") == "123456":
                     return await route.fulfill(status=200, body=json.dumps(TOKEN), content_type="application/json")
                 return await route.fulfill(status=403, body=json.dumps({"error_code": "otp_expired"}), content_type="application/json")
+            # Rientro dopo l'accesso: un account nuovo non ha ancora nulla di salvato (vedi scripts/prova_salvataggio.py).
+            if "/rest/v1/" in r.url or "/storage/v1/object/list/" in r.url:
+                return await route.fulfill(status=200, body="[]", content_type="application/json")
             await route.fulfill(status=404, body="{}")
         await ctx.route(SUPA + "/**", supabase)
         await ctx.route("**/app/config.json", lambda route: route.fulfill(status=200, body=json.dumps(CONFIG), content_type="application/json"))
@@ -44,7 +51,8 @@ async def main():
         # 1. Email → codice sbagliato → codice giusto
         pg = await nuova()
         await pg.goto("http://localhost:8787/app/"); await pg.wait_for_timeout(500)
-        assert "accesso con email è vero" in await pg.locator(".anteprima").inner_text()
+        # Con l'accesso acceso il profilo si salva davvero: niente fascia «anteprima».
+        assert await pg.locator(".anteprima").count() == 0
         await clic(pg, "Entra"); await pg.fill("#email", "Prova@Example.com"); await clic(pg, "Mandami il link")
         await pg.wait_for_selector("#codice"); await pg.screenshot(path=f"{S}/accesso-1-codice.png")
         otp = [c for c in chiamate if "/otp" in c[0]][0]
@@ -63,7 +71,7 @@ async def main():
 
         # 2. Arrivo dal link nell'email
         pg = await nuova()
-        await pg.goto("http://localhost:8787/app/#access_token=acc&refresh_token=ref&expires_in=3600&token_type=bearer&type=magiclink")
+        await pg.goto("http://localhost:8787/app/#access_token=" + ACC + "&refresh_token=ref&expires_in=3600&token_type=bearer&type=magiclink")
         await pg.wait_for_selector("#giorno")
         assert "access_token" not in pg.url, pg.url
         await pg.evaluate("localStorage.clear()"); await pg.close()

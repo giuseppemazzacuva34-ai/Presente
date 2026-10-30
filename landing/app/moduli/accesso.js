@@ -127,6 +127,19 @@ export function creaAccesso({ supabaseUrl, supabaseAnonKey, fetch: f = globalThi
 
     connesso() { return Boolean(inMemoria); },
 
+    // Id dell'utente (serve per le cartelle voci/<id>/ e foto/<id>/). Se arriva dal link non c'è nella risposta:
+    // si legge dal token stesso (campo «sub»). Solo per comporre gli indirizzi: chi è davvero lo verifica Supabase.
+    utenteId() {
+      const s = inMemoria;
+      if (!s) return null;
+      if (s.utenteId) return s.utenteId;
+      try {
+        const parte = s.accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const sub = JSON.parse(atob(parte + "=".repeat((4 - (parte.length % 4)) % 4))).sub;
+        return /^[0-9a-f-]{36}$/.test(sub || "") ? sub : null;
+      } catch { return null; }
+    },
+
     async esci() {
       const s = inMemoria;
       imposta(null);

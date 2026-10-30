@@ -1,9 +1,9 @@
 // Service worker della web app (Fase 2, issue #1).
 // Rende l'app installabile e tiene in memoria solo i file pubblici dell'app (mai risposte con dati personali):
 // se la rete manca, mostra l'ultima versione salvata della pagina.
-const VERSIONE = "presente-app-4";
+const VERSIONE = "presente-app-5";
 const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js", "/app/moduli/domande.js", "/app/moduli/registratore.js",
-  "/app/moduli/foto.js", "/app/moduli/accesso.js", "/app/manifest.webmanifest", "/stile.css", "/favicon.svg"];
+  "/app/moduli/foto.js", "/app/moduli/accesso.js", "/app/moduli/salvataggio.js", "/app/manifest.webmanifest", "/stile.css", "/favicon.svg"];
 
 self.addEventListener("install", (evento) => {
   evento.waitUntil(caches.open(VERSIONE).then((cache) => cache.addAll(FILE)).then(() => self.skipWaiting()));
