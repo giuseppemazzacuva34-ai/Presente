@@ -128,3 +128,18 @@ select pg_temp.ok(not exists (
   where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity), 'tutte le tabelle pubbliche hanno le regole per riga attive');
 select pg_temp.ok((select bool_and(not public) from storage.buckets where id in ('voci', 'foto')) and (select count(*) from storage.buckets) = 2,
   'voci e foto sono cartelle private');
+
+-- Requisito 3 del CISO: la data del consenso a «cerco» la decide il server.
+begin;
+select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa)
+  values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'tutti', '2020-01-01', '1.2');
+select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') = now(),
+  'consenso: la data mandata dal telefono viene ignorata, vale l''ora del server');
+update public.filtri set consenso_cerco_il = '2021-01-01', raggio = 'italia' where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') = now(),
+  'consenso: senza cambiare «cerco» la data non si può modificare');
+update public.filtri set cerco = null where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') is null,
+  'consenso ritirato: anche la data si svuota');
+rollback;
