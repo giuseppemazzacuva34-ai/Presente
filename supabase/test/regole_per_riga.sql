@@ -169,3 +169,17 @@ select pg_temp.ok(pg_temp.rifiutato($$update storage.objects set name = 'bbbbbbb
 update storage.objects set created_at = now() where name = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/foto-1';
 select pg_temp.ok((select count(*) from storage.objects where bucket_id = 'foto') = 3, 'sostituire una foto non aggiunge file');
 rollback;
+
+-- Revisione CISO (30/10): la data di accettazione delle regole la decide il server e poi non si cambia.
+begin;
+select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+insert into public.profili (id, regole_accettate_il) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '2020-01-01');
+select pg_temp.ok((select regole_accettate_il from public.profili where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') = now(),
+  'regole: la data mandata dal telefono viene ignorata, vale l''ora del server');
+update public.profili set regole_accettate_il = '2021-01-01' where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+select pg_temp.ok((select regole_accettate_il from public.profili where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') = now(),
+  'regole: una volta accettate la data non si sposta');
+update public.profili set regole_accettate_il = null where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+select pg_temp.ok((select regole_accettate_il from public.profili where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') is not null,
+  'regole: una volta accettate la data non si cancella');
+rollback;

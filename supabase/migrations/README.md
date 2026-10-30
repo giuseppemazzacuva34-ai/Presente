@@ -14,3 +14,5 @@ Supabase (`supabase/test/supabase_finto.sql`), applica tutte le migrazioni e lan
 | `20261029234100_limiti_sicurezza.sql` | #2 | tetto di grandezza al questionario, `search_path` fisso nelle funzioni (revisione CISO) |
 | `20261030220000_consenso_dal_server.sql` | #2 | la data del consenso a «cerco» la scrive il server (requisito 3 del CISO) |
 | `20261030230000_limiti_file_elimina.sql` | #2 | al massimo 4 voci e 3 foto a persona: nelle cartelle si scrivono solo i nomi fissi `presentazione`, `risposta-1…3`, `foto-1…3` (requisito 4 del CISO) |
+| `20261030231000_domande_voce.sql` | #2 | `profili.domande_voce`: le 3 domande a voce scelte (solo numeri da 0 a 7, senza doppioni) |
+| `20261031000000_regole_dal_server.sql` | #2 | la data di accettazione delle regole la scrive il server e non si cambia più (revisione CISO) |
