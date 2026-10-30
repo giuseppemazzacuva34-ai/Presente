@@ -32,6 +32,12 @@
       "name": "LIMITE_ISCRIZIONI",
       "namespace_id": "47011",
       "simple": { "limit": 5, "period": 60 }
+    },
+    // «Elimina il mio account» (/app/api/elimina-account): 3 richieste al minuto dalla stessa connessione (requisito 5 del CISO).
+    {
+      "name": "LIMITE_ELIMINA",
+      "namespace_id": "47012",
+      "simple": { "limit": 3, "period": 60 }
     }
   ],
   // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.

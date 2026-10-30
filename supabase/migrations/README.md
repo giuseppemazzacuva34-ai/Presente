@@ -11,3 +11,6 @@ Supabase (`supabase/test/supabase_finto.sql`), applica tutte le migrazioni e lan
 | Migrazione | Issue | Cosa crea |
 |---|---|---|
 | `20261029140000_profilo.sql` | #2 | `profili` (solo maggiorenni, data di nascita non modificabile), `filtri` («cerco» solo con consenso, data e versione dell'informativa), `questionario` (una versione per settimana, vale dal lunedì alle 9:00 di Roma), cartelle private `voci` e `foto` (ognuno solo nella sua cartella) |
+| `20261029234100_limiti_sicurezza.sql` | #2 | tetto di grandezza al questionario, `search_path` fisso nelle funzioni (revisione CISO) |
+| `20261030220000_consenso_dal_server.sql` | #2 | la data del consenso a «cerco» la scrive il server (requisito 3 del CISO) |
+| `20261030230000_limiti_file_elimina.sql` | #2 | al massimo 4 voci e 3 foto a persona: nelle cartelle si scrivono solo i nomi fissi `presentazione`, `risposta-1…3`, `foto-1…3` (requisito 4 del CISO) |

@@ -25,7 +25,8 @@ create table storage.buckets (
 create table storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text references storage.buckets (id), name text not null, owner uuid,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (bucket_id, name) -- come in Supabase: un nome per cartella, un secondo caricamento sostituisce il primo
 );
 alter table storage.objects enable row level security;
 alter table storage.buckets enable row level security;

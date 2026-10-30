@@ -23,6 +23,7 @@ function risposta(stato, corpo) {
 export async function eliminaAccount(request, env, f = fetch) {
   if (request.method !== "POST") return new Response("Metodo non ammesso.", { status: 405, headers: { allow: "POST" } });
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
+  if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
 
   // Solo dalla nostra web app: un altro sito non può far partire la cancellazione.
   const origine = request.headers.get("origin");
@@ -99,4 +100,18 @@ async function elencaFile(f, base, admin, cartella, id) {
     if (pagina.length < PAGINA) return nomi;
   }
   return nomi;
+}
+
+// Requisito 5 del CISO: limite di frequenza (binding LIMITE_ELIMINA in wrangler.jsonc, 3 richieste al minuto dalla
+// stessa connessione). Ogni richiesta fa lavorare Supabase con la chiave amministratore: così nessuno la può usare
+// per tempestarlo. L'indirizzo IP serve solo a contare in memoria: non si salva e non va nei log.
+// Se il limite non risponde si lascia passare: la cancellazione resta comunque protetta dal token dell'utente.
+async function troppeRichieste(request, env) {
+  if (!env.LIMITE_ELIMINA) return false;
+  try {
+    const { success } = await env.LIMITE_ELIMINA.limit({ key: "elimina:" + (request.headers.get("cf-connecting-ip") || "sconosciuto") });
+    return !success;
+  } catch {
+    return false;
+  }
 }
