@@ -39,7 +39,7 @@ Per vedere gli iscritti: D1 → `presente-lista` → Console, per esempio
 
 Iscritti per codice dei creator (per il CMO): metti i codici assegnati in `CODICI_INVITO` in `wrangler.jsonc`, separati da virgola (es. `"SILVIA,NEVADA"`), con una modifica su `main`. Da quel momento `/conteggio` mostra `per_codice` con un totale per ciascun codice; chi ha scritto il codice a mano in minuscolo o con spazi viene contato lo stesso. Nessuna email e nessun nome scritto liberamente nel campo invito esce da `/conteggio`.
 
-L'informativa privacy (`landing/privacy.html`) è la versione 1.0 approvata con D5.
+L'informativa privacy (`landing/privacy.html`, indirizzo stabile `https://presenteincontri.app/privacy`) è la versione 1.2 del 30/10/2026, approvata da Giuseppe con D53 = A (prima: 1.0 con D5, 1.1 del 26/10). Copre anche il modulo d'iscrizione dentro Facebook e Instagram e le risposte automatiche a BUIO. Ogni nuova iscrizione salva `versione_informativa` = `1.2-2026-10-30` (`worker/iscrizione.js`).
 
 Per provarla sul computer: `python3 -m http.server -d landing 8000` e apri http://localhost:8000 (il modulo funziona solo su Cloudflare).
 
