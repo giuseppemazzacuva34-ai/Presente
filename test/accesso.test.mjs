@@ -144,3 +144,15 @@ test("rifiuta indirizzi che non sono Supabase", () => {
   assert.throws(() => creaAccesso({ supabaseUrl: "https://attaccante.example", supabaseAnonKey: "anon" }));
   assert.throws(() => creaAccesso({ supabaseUrl: "http://abcdefghijklmnopqrst.supabase.co", supabaseAnonKey: "anon" }));
 });
+
+test("utenteId: dalla risposta del codice o, arrivando dal link, dal token stesso", async () => {
+  const s = supabaseFinto({ "/auth/v1/verify": [200, { ...token(1), user: { id: "11111111-2222-4333-8444-555555555555" } }] });
+  const a = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", fetch: s.f, memoria: memoriaFinta() });
+  assert.equal(a.utenteId(), null);
+  await a.verificaCodice("a@example.com", "123456");
+  assert.equal(a.utenteId(), "11111111-2222-4333-8444-555555555555");
+  const corpo = Buffer.from(JSON.stringify({ sub: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", role: "authenticated" })).toString("base64url");
+  const b = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", fetch: s.f, memoria: memoriaFinta() });
+  b.daLink(`https://presenteincontri.app/app/#access_token=eyJhbGciOi.${corpo}.firma&refresh_token=r&expires_in=3600`);
+  assert.equal(b.utenteId(), "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+});

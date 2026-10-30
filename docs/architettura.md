@@ -87,6 +87,14 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 
 Da fare in Supabase prima di accendere (pannello Authentication, lo fa Giuseppe con le istruzioni del CTO): Site URL `https://presenteincontri.app/app/` e solo questo indirizzo tra i Redirect URL; modello dell'email «Magic link» in italiano con link e `{{ .Token }}`; scadenza del codice 1 ora (specifica). Il servizio email incluso basta per le prove interne, non per la beta (vedi «Email di servizio» nelle scelte aperte).
 
+## Salvataggio dell'iscrizione (#2, pronto dal 30/10 ma spento)
+
+1. Il telefono parla direttamente con Supabase (`landing/app/moduli/salvataggio.js`), sempre con il token dell'utente: valgono le regole per riga, nessuna chiave amministratore.
+2. Ogni «Continua» salva il passo: `profili` (data di nascita, regole, chi sei, domande a voce scelte, `passo` raggiunto), `filtri` (senza data del consenso: la mette il server), file `voci/<id>/presentazione`, `risposta-1…3`, `foto/<id>/foto-1…3` (sostituiti, mai aggiunti), `questionario` alla fine di ogni tema (una sola riga «della prossima settimana»).
+3. Al rientro l'app legge tutto, riscarica voce e foto per riascoltarle e riparte dal passo salvato (il passo salvato non torna mai indietro quando si modifica il profilo).
+4. Minorenne: l'account creato con l'email viene cancellato subito con `/app/api/elimina-account`.
+5. Chi esce dall'estero senza indicare il paese è salvato con il codice `ZZ` (sconosciuto) finché non arriva la scelta del paese.
+
 ## Flusso di una chiamata (#4)
 
 1. A tocca «Chiama». La web app chiede al Worker `presente-api` di aprire la chiamata, con il token di accesso Supabase di A.

@@ -16,6 +16,9 @@ async def main():
         n = [0]
         async def foto(nome):
             n[0] += 1; await pg.screenshot(path=f"{S}/schermo-{n[0]:02d}-{nome}.png", full_page=True)
+        async def ferma():
+            # Durante la registrazione il pulsante si ridisegna ogni decimo di secondo: lo si preme dalla pagina.
+            await pg.evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Ferma').click()")
         async def clic(testo):
             await pg.locator("button").filter(has_text=re.compile("^" + re.escape(testo) + "$")).first.click()
         await pg.goto("http://localhost:8787/app/"); await pg.wait_for_timeout(500)
@@ -31,13 +34,13 @@ async def main():
         await pg.select_option("#citta", "Milano"); await clic("Donna"); await foto("chi-sei"); await clic("Continua")
         await clic("Uomini"); await pg.check("#consenso-cerco"); await clic("Una storia seria"); await clic("Forse"); await clic("Indifferente")
         await foto("chi-cerchi"); await clic("Continua")
-        await clic("● Registra"); await pg.wait_for_timeout(2500); await foto("voce-registra"); await pg.wait_for_timeout(4000); await clic("Ferma")
+        await clic("● Registra"); await pg.wait_for_timeout(2500); await foto("voce-registra"); await pg.wait_for_timeout(4000); await ferma()
         await pg.wait_for_selector(".registratore audio"); await foto("voce-fatta"); await clic("Continua")
-        for d in ["Una cosa che ti fa ridere sempre", "Il posto dove ti senti a casa", "La tua domenica perfetta"]:
+        for d in ["Una cosa che ti fa ridere sempre", "Il posto dove ti senti a casa", "Racconta la tua domenica perfetta, dalla colazione alla sera."]:
             await clic(d)
         for i in range(3):
             await pg.locator("button", has_text="Registra").first.click(); await pg.wait_for_timeout(6200)
-            await clic("Ferma"); await pg.wait_for_timeout(400)
+            await ferma(); await pg.wait_for_timeout(400)
         await foto("risposte-voce"); await clic("Continua")
         # questionario: prima opzione (o le prime necessarie), importanza "Molto"
         for q in range(1, 16):
