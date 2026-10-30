@@ -3,7 +3,7 @@
 // Controlla che /iscrizione: resti chiusa finché ISCRIZIONI_APERTE non vale "si", rifiuti i moduli inviati da altri siti,
 // rispetti il limite di frequenza, scriva nel database solo con parametri e non riveli dettagli quando qualcosa va storto.
 import { readFileSync, readdirSync } from "node:fs";
-import { iscrizione } from "../worker/iscrizione.js";
+import { iscrizione, perEsiti } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
 import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
@@ -23,7 +23,16 @@ function verifica(condizione, descrizione) {
   }
 }
 
-function databaseFinto({ rompi = false } = {}) {
+// Dal 30/10 ogni tentativo conta il proprio esito (tabella esiti_iscrizione, solo giorno + nome dell'esito):
+// "nessuna scrittura" significa nessuna query fuori da quella tabella e un solo esito, quello atteso.
+function soloEsito(env, esito) {
+  const q = env.DB.query;
+  const fuori = q.filter((x) => !x.sql.includes("esiti_iscrizione"));
+  const conta = q.filter((x) => x.sql.startsWith("INSERT INTO esiti_iscrizione"));
+  return fuori.length === 0 && conta.length === 1 && conta[0].valori.length === 2 && conta[0].valori[1] === esito;
+}
+
+function databaseFinto({ rompi = false, nuove = false } = {}) {
   const query = [];
   return {
     query,
@@ -32,7 +41,7 @@ function databaseFinto({ rompi = false } = {}) {
       query.push(voce);
       return {
         bind(...valori) { voce.valori = valori; return this; },
-        async run() { if (rompi) throw new Error("D1_ERROR: dettaglio interno segreto"); return {}; },
+        async run() { if (rompi) throw new Error("D1_ERROR: dettaglio interno segreto"); return nuove ? { meta: { changes: 1 } } : {}; },
       };
     },
   };
@@ -53,7 +62,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
 {
   const env = { ISCRIZIONI_APERTE: "no", DB: databaseFinto() };
   const r = await iscrizione(modulo(), env);
-  verifica(r.status === 503 && env.DB.query.length === 0, "iscrizioni chiuse: nessuna scrittura nel database");
+  verifica(r.status === 503 && soloEsito(env, "chiuse"), "iscrizioni chiuse: nessuna scrittura nel database");
 }
 
 // 2. Iscrizione valida dal nostro sito
@@ -70,7 +79,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
 {
   const env = aperte();
   const r = await iscrizione(modulo({}, { origin: "https://sito-cattivo.example" }), env);
-  verifica(r.status === 403 && env.DB.query.length === 0, "modulo da un altro sito: rifiutato, nessuna scrittura");
+  verifica(r.status === 403 && soloEsito(env, "altro_sito"), "modulo da un altro sito: rifiutato, nessuna scrittura");
 }
 
 // 4. Limite di frequenza
@@ -78,17 +87,17 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const chiavi = [];
   const env = aperte({ LIMITE_ISCRIZIONI: { async limit({ key }) { chiavi.push(key); return { success: false }; } } });
   const r = await iscrizione(modulo({}, { "cf-connecting-ip": "203.0.113.7" }), env);
-  verifica(r.status === 429 && env.DB.query.length === 0, "troppi tentativi: risposta 429, nessuna scrittura");
+  verifica(r.status === 429 && soloEsito(env, "troppi_tentativi"), "troppi tentativi: risposta 429, nessuna scrittura");
 }
 
 // 5. Dati non validi e campo trappola
 {
   const env = aperte();
   const r = await iscrizione(modulo({ email: "non-una-email", zona: "'; DROP TABLE iscrizioni; --" }), env);
-  verifica(r.status === 400 && env.DB.query.length === 0, "dati non validi: rifiutati prima del database");
+  verifica(r.status === 400 && soloEsito(env, "dati_mancanti"), "dati non validi: rifiutati prima del database");
   const env2 = aperte();
   const r2 = await iscrizione(modulo({ "campo-trappola": "bot" }), env2);
-  verifica(r2.status === 303 && env2.DB.query.length === 0, "campo trappola compilato: nessuna scrittura");
+  verifica(r2.status === 303 && soloEsito(env2, "trappola"), "campo trappola compilato: nessuna scrittura");
 }
 
 // 6. Errore del database: messaggio generico, nessun dettaglio interno
@@ -303,15 +312,24 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
       ["Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", {}],
       ["curl/8.5.0", {}],
       ["", {}],
-      [TELEFONO, { "x-purpose": "preview" }],
-      [TELEFONO, { "sec-purpose": "prefetch;prerender" }],
-      [TELEFONO, { purpose: "prefetch" }],
     ];
     for (const [ua, extra] of casi) {
       const env = { DB: dbVisite(), ASSETS };
       const { conta } = await apri("/?utm_source=meta", env, { headers: { "user-agent": ua, ...extra } });
       verifica(conta.length === 1 && conta[0].valori[0] === "automatiche", `automatica non contata come persona: ${ua || "(senza user agent)"} ${JSON.stringify(extra)}`);
       verifica(!JSON.stringify(env.DB.query).includes(ua || "§"), "automatiche: lo user agent non viene salvato");
+    }
+    // Precaricamenti da un telefono vero (inserzioni Meta): riga "precaricate", né persone né robot.
+    for (const extra of [{ "x-purpose": "preview" }, { "sec-purpose": "prefetch;prerender" }, { purpose: "prefetch" }]) {
+      const env = { DB: dbVisite(), ASSETS };
+      const { conta } = await apri("/?utm_source=meta&utm_campaign=lista_traffico", env, { headers: { "user-agent": TELEFONO, ...extra } });
+      verifica(conta.length === 1 && conta[0].valori[0] === "precaricate" && conta[0].valori[2] === "meta",
+        `telefono che precarica ${JSON.stringify(extra)}: conta in precaricate con la sorgente`);
+    }
+    {
+      const env = { DB: dbVisite(), ASSETS };
+      const { conta } = await apri("/", env, { headers: { "user-agent": "facebookexternalhit/1.1", "x-purpose": "preview" } });
+      verifica(conta[0].valori[0] === "automatiche", "robot di Meta che precarica: resta automatica");
     }
     for (const ua of [TELEFONO, "Mozilla/5.0 (Linux; Android 14; SM-S918B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0 Mobile Safari/537.36 [FBAN/EMA;FBLC/it_IT;FBAV/480.0.0.0;]"]) {
       const env = { DB: dbVisite(), ASSETS };
@@ -429,6 +447,24 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/.test(testo), `app/${nome}: niente HTML in stringa né eval`);
     verifica(!/affinita|PESI|peso/.test(testo), `app/${nome}: niente pesi né affinità nel browser`);
   }
+}
+
+// Esiti dei tentativi d'iscrizione e visite precaricate nei numeri di /conteggio (solo totali)
+{
+  const env = aperte({ DB: databaseFinto({ nuove: true }) });
+  await iscrizione(modulo({}, { origin: "https://presente.example" }), env);
+  const esito = env.DB.query.find((q) => q.sql.startsWith("INSERT INTO esiti_iscrizione"));
+  verifica(esito && esito.valori[1] === "nuova" && !JSON.stringify(esito.valori).includes("@"), "iscrizione valida: esito «nuova» contato, senza email");
+  const DB = { prepare: () => ({ all: async () => ({ results: [
+    { giorno: "2026-10-30", esito: "nuova", n: 2 }, { giorno: "2026-10-30", esito: "altro_sito", n: 5 } ] }) }) };
+  const e = await perEsiti({ DB });
+  verifica(e["2026-10-30"].nuova === 2 && e["2026-10-30"].altro_sito === 5, "perEsiti: totali per giorno ed esito");
+  const DBv = { prepare: () => ({ all: async () => ({ results: [
+    { pagina: "precaricate", giorno: "2026-10-30", sorgente: "meta", campagna: "lista_traffico", n: 9 },
+    { pagina: "home", giorno: "2026-10-30", sorgente: "meta", campagna: "lista_traffico", n: 3 } ] }) }) };
+  const v = await perVisite({ DB: DBv });
+  verifica(v.precaricate === 9 && v.home === 3 && v.per_giorno["2026-10-30"].precaricate === 9 && v.per_utm["meta/lista_traffico"].precaricate === 9,
+    "perVisite: precaricate separate da home, per giorno e per utm");
 }
 
 if (errori) {

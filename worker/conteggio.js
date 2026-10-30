@@ -1,10 +1,12 @@
 // Numeri della lista d'attesa per la plancia: solo totali, nessun dato personale.
 // per_canale: visite e iscrizioni per canale dei link /da/<canale> (D26), solo contatori.
 // visite: aperture di "/" e "/grazie" per giorno e per utm (D43), solo totali.
+// esiti_iscrizione: per giorno, quanti invii del modulo sono andati bene o sono stati respinti e perché (solo numeri).
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
 import { codiciConfigurati, pulisciCodice } from "./invito.js";
 import { perCanale } from "./canale.js";
 import { perVisite } from "./visite.js";
+import { perEsiti } from "./iscrizione.js";
 
 export async function conteggio(env) {
   const intestazioni = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -17,12 +19,14 @@ export async function conteggio(env) {
     const per_codice = await perCodice(env);
     const per_canale = await perCanale(env);
     const visite = await perVisite(env);
-    return new Response(JSON.stringify({ totale, per_zona, con_invito: conInvito, per_codice, per_canale, visite, aggiornato: new Date().toISOString() }), { headers: intestazioni });
+    const esiti_iscrizione = await perEsiti(env);
+    return new Response(JSON.stringify({ totale, per_zona, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
   } catch {
     // La tabella nasce con la prima iscrizione.
     const per_canale = await perCanale(env);
     const visite = await perVisite(env);
-    return new Response(JSON.stringify({ totale: 0, per_zona: {}, con_invito: 0, per_codice: {}, per_canale, visite }), { headers: intestazioni });
+    const esiti_iscrizione = await perEsiti(env);
+    return new Response(JSON.stringify({ totale: 0, per_zona: {}, con_invito: 0, per_codice: {}, per_canale, visite, esiti_iscrizione }), { headers: intestazioni });
   }
 }
 
