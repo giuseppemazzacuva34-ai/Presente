@@ -2,6 +2,7 @@
 // per_canale: visite e iscrizioni per canale dei link /da/<canale> (D26), solo contatori.
 // visite: aperture di "/" e "/grazie" per giorno e per utm (D43), solo totali.
 // esiti_iscrizione: per giorno, quanti invii del modulo sono andati bene o sono stati respinti e perché (solo numeri).
+// per_sorgente: iscritti dal modulo del sito ("landing") e dal modulo dentro Facebook/Instagram ("meta_modulo"), solo totali.
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
 import { codiciConfigurati, pulisciCodice } from "./invito.js";
 import { perCanale } from "./canale.js";
@@ -17,16 +18,26 @@ export async function conteggio(env) {
     const conInvito = await env.DB.prepare("SELECT COUNT(*) AS n FROM iscrizioni WHERE invito IS NOT NULL").first("n");
     const per_zona = Object.fromEntries((zone.results || []).map((r) => [r.zona, r.n]));
     const per_codice = await perCodice(env);
+    const per_sorgente = await perSorgente(env);
     const per_canale = await perCanale(env);
     const visite = await perVisite(env);
     const esiti_iscrizione = await perEsiti(env);
-    return new Response(JSON.stringify({ totale, per_zona, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
+    return new Response(JSON.stringify({ totale, per_zona, per_sorgente, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
   } catch {
     // La tabella nasce con la prima iscrizione.
     const per_canale = await perCanale(env);
     const visite = await perVisite(env);
     const esiti_iscrizione = await perEsiti(env);
     return new Response(JSON.stringify({ totale: 0, per_zona: {}, con_invito: 0, per_codice: {}, per_canale, visite, esiti_iscrizione }), { headers: intestazioni });
+  }
+}
+
+async function perSorgente(env) {
+  try {
+    const righe = await env.DB.prepare("SELECT sorgente, COUNT(*) AS n FROM iscrizioni GROUP BY sorgente").all();
+    return Object.fromEntries((righe.results || []).map((r) => [r.sorgente, r.n]));
+  } catch {
+    return {};
   }
 }
 
