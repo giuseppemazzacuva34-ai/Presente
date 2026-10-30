@@ -54,24 +54,66 @@ async function troppiTentativi(request, env) {
   }
 }
 
+// Esiti dei tentativi d'iscrizione per giorno (dal 30/10): solo il nome dell'esito e un numero, mai email, IP o user agent.
+// Serve a capire se le persone provano a iscriversi e vengono respinte (es. 0 iscrizioni con molte visite).
+const SCHEMA_ESITI = `CREATE TABLE IF NOT EXISTS esiti_iscrizione (
+  giorno TEXT NOT NULL,
+  esito TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (giorno, esito)
+)`;
+export const ESITI = ["nuova", "gia_in_lista", "chiuse", "altro_sito", "troppi_tentativi", "modulo_rotto", "trappola", "dati_mancanti", "errore_database"];
+
+async function contaEsito(env, esito) {
+  if (!env.DB) return;
+  try {
+    await env.DB.prepare(SCHEMA_ESITI).run();
+    await env.DB.prepare(
+      "INSERT INTO esiti_iscrizione (giorno, esito, n) VALUES (?, ?, 1) ON CONFLICT(giorno, esito) DO UPDATE SET n = n + 1"
+    ).bind(new Date().toISOString().slice(0, 10), esito).run();
+  } catch (errore) {
+    console.error("iscrizione: esito non contato", errore && errore.name);
+  }
+}
+
+// Numeri per /conteggio: { "AAAA-MM-GG": { esito: n } }. Solo totali.
+export async function perEsiti(env) {
+  const esiti = {};
+  if (!env.DB) return esiti;
+  try {
+    const righe = await env.DB.prepare("SELECT giorno, esito, n FROM esiti_iscrizione").all();
+    for (const r of righe.results || []) (esiti[r.giorno] ||= {})[r.esito] = r.n || 0;
+  } catch {
+    // La tabella nasce con il primo tentativo.
+  }
+  return esiti;
+}
+
 export async function iscrizione(request, env) {
+  const risposta = await gestisci(request, env);
+  await contaEsito(env, risposta.esito);
+  return risposta.risposta;
+}
+
+async function gestisci(request, env) {
+  const r = (esito, risposta) => ({ esito, risposta });
   if (env.ISCRIZIONI_APERTE !== "si" || !env.DB) {
-    return pagina("Ci siamo quasi.", "Le iscrizioni aprono tra pochissimo. Riprova tra qualche ora.", 503);
+    return r("chiuse", pagina("Ci siamo quasi.", "Le iscrizioni aprono tra pochissimo. Riprova tra qualche ora.", 503));
   }
   if (!stessoSito(request)) {
-    return pagina("Qualcosa non torna.", "Iscriviti direttamente dal modulo sul nostro sito.", 403);
+    return r("altro_sito", pagina("Qualcosa non torna.", "Iscriviti direttamente dal modulo sul nostro sito.", 403));
   }
   if (await troppiTentativi(request, env)) {
-    return pagina("Un attimo.", "Troppi tentativi in poco tempo. Riprova tra un minuto.", 429);
+    return r("troppi_tentativi", pagina("Un attimo.", "Troppi tentativi in poco tempo. Riprova tra un minuto.", 429));
   }
   let modulo;
   try {
     modulo = await request.formData();
   } catch {
-    return pagina("Qualcosa non torna.", "Il modulo non è arrivato completo. Riprova.", 400);
+    return r("modulo_rotto", pagina("Qualcosa non torna.", "Il modulo non è arrivato completo. Riprova.", 400));
   }
   // Campo trappola: le persone non lo vedono, i programmi automatici sì.
-  if (String(modulo.get("campo-trappola") || "") !== "") return grazie(request);
+  if (String(modulo.get("campo-trappola") || "") !== "") return r("trappola", grazie(request));
 
   const email = String(modulo.get("email") || "").trim().toLowerCase();
   const zona = String(modulo.get("zona") || "");
@@ -79,7 +121,7 @@ export async function iscrizione(request, env) {
   const valido = email.length <= 254 && EMAIL.test(email) && ZONE.has(zona)
     && modulo.get("maggiorenne") === "si" && modulo.get("consenso") === "si";
   if (!valido) {
-    return pagina("Manca qualcosa.", "Controlla l'email, scegli la città e spunta le due caselle.", 400);
+    return r("dati_mancanti", pagina("Manca qualcosa.", "Controlla l'email, scegli la città e spunta le due caselle.", 400));
   }
 
   // Canale del link /da/<canale> (D26): serve solo al contatore, non entra nella riga dell'iscritto.
@@ -95,10 +137,10 @@ export async function iscrizione(request, env) {
   } catch (errore) {
     // Nel log solo il tipo di errore: mai l'email o altri dati della persona.
     console.error("iscrizione: errore del database", errore && errore.name);
-    return pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare l'iscrizione. Riprova tra qualche minuto.", 500);
+    return r("errore_database", pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare l'iscrizione. Riprova tra qualche minuto.", 500));
   }
 
   if (nuova) await contaIscrizione(env, canale);
-  return grazie(request, canale);
+  return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale));
 }
 

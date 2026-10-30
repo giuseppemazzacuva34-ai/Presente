@@ -2,7 +2,7 @@
 // Serve a misurare quante visite diventano iscrizioni (anche per le sponsorizzate Meta con utm_source/utm_campaign).
 // Solo totali in D1: nessun IP, cookie, user agent o referrer salvato, nessuno script nella pagina.
 import { CANALI, canaleValido } from "./canale.js";
-import { richiestaAutomatica } from "./automatiche.js";
+import { tipoRichiesta } from "./automatiche.js";
 
 const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie" };
 
@@ -36,14 +36,16 @@ export function etichetteUtm(parametri, env) {
 }
 
 // Restituisce la promessa del conteggio (o null se la richiesta non va contata). Non lancia mai errori.
-// Le richieste HEAD non contano mai. Anteprime dei link, robot e prefetch (vedi automatiche.js) finiscono in una riga a parte, pagina "automatiche",
-// così i numeri di "home" e "grazie" sono solo persone e si vede quanto rumore è stato scartato.
+// Le richieste HEAD non contano mai. Anteprime dei link e robot (vedi automatiche.js) finiscono nella riga "automatiche";
+// i precaricamenti fatti da un telefono vero (inserzioni Meta) nella riga "precaricate", con giorno e utm,
+// così "home" e "grazie" restano solo persone sicure e le visite delle sponsorizzate non spariscono.
 // Sorgente: utm_source se c'è, altrimenti il canale di ?da= (link /da/<canale> e pagina /grazie dopo l'iscrizione).
 export function contaVisitaPagina(request, env) {
   const url = new URL(request.url);
   const paginaVera = PAGINE[url.pathname];
   if (!paginaVera || !env.DB || request.method !== "GET") return null;
-  const pagina = richiestaAutomatica(request) ? "automatiche" : paginaVera;
+  const tipo = tipoRichiesta(request);
+  const pagina = tipo === "persona" ? paginaVera : tipo === "precaricata" ? "precaricate" : "automatiche";
   const utm = etichetteUtm(url.searchParams, env);
   const sorgente = utm.sorgente || canaleValido(url.searchParams.get("da"));
   const campagna = utm.campagna;
@@ -60,7 +62,7 @@ export function contaVisitaPagina(request, env) {
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
+  const vuoto = { home: 0, grazie: 0, precaricate: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(
@@ -72,13 +74,13 @@ export async function perVisite(env) {
         vuoto.automatiche += n;
         continue;
       }
-      if (r.pagina !== "home" && r.pagina !== "grazie") continue;
+      if (r.pagina !== "home" && r.pagina !== "grazie" && r.pagina !== "precaricate") continue;
       vuoto[r.pagina] += n;
-      const g = (vuoto.per_giorno[r.giorno] ||= { home: 0, grazie: 0 });
+      const g = (vuoto.per_giorno[r.giorno] ||= { home: 0, grazie: 0, precaricate: 0 });
       g[r.pagina] += n;
       if (r.sorgente || r.campagna) {
         const chiave = `${r.sorgente || "-"}/${r.campagna || "-"}`;
-        const u = (vuoto.per_utm[chiave] ||= { home: 0, grazie: 0 });
+        const u = (vuoto.per_utm[chiave] ||= { home: 0, grazie: 0, precaricate: 0 });
         u[r.pagina] += n;
       }
     }

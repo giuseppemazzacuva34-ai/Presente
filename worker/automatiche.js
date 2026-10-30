@@ -10,13 +10,23 @@ const FIRME = /facebookexternalhit|facebot|facebookcatalog|meta-external|bot\b|b
 // Facebook e Instagram che precaricano le pagine delle inserzioni (X-Purpose: preview).
 const ANTICIPATE = ["sec-purpose", "purpose", "x-purpose", "x-moz"];
 
-export function richiestaAutomatica(request) {
-  if (request.method !== "GET") return true;
+// Tipo di richiesta: "persona", "precaricata" o "automatica".
+// "precaricata" = un telefono vero (non un robot) che carica la pagina in anticipo: è il caso delle inserzioni di Meta,
+// che precaricano la landing (X-Purpose: preview) e poi, quando la persona tocca l'inserzione, mostrano la copia già
+// scaricata SENZA una seconda richiesta. Per questo le precaricate si contano a parte: non sono sicuramente persone,
+// ma per le sponsorizzate sono la stima migliore delle visite vere (dal 30/10, richiesta di growth/coordinatore).
+export function tipoRichiesta(request) {
+  if (request.method !== "GET") return "automatica";
+  const ua = request.headers.get("user-agent") || "";
+  if (!ua.trim() || FIRME.test(ua)) return "automatica";
   for (const nome of ANTICIPATE) {
     const valore = (request.headers.get(nome) || "").toLowerCase();
-    if (valore.includes("prefetch") || valore.includes("preview") || valore.includes("prerender")) return true;
+    if (valore.includes("prefetch") || valore.includes("preview") || valore.includes("prerender")) return "precaricata";
   }
-  const ua = request.headers.get("user-agent") || "";
-  if (!ua.trim()) return true;
-  return FIRME.test(ua);
+  return "persona";
+}
+
+// Vero per tutto ciò che non è una persona che apre la pagina adesso (robot, anteprime e precaricamenti).
+export function richiestaAutomatica(request) {
+  return tipoRichiesta(request) !== "persona";
 }
