@@ -9,7 +9,7 @@ const ZONE = new Set([
   "milano", "roma", "napoli", "torino", "bologna", "firenze", "genova", "venezia-padova", "verona",
   "brescia-bergamo", "bari", "palermo", "catania", "cagliari", "altra-citta-italia", "estero",
 ]);
-const VERSIONE_INFORMATIVA = "1.1-2026-10-26";
+const VERSIONE_INFORMATIVA = "1.2-2026-10-30";
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
