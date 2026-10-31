@@ -4,6 +4,7 @@
 // e il canale NON viene scritto nella riga dell'iscritto.
 import { pulisciCodice } from "./invito.js";
 import { richiestaAutomatica } from "./automatiche.js";
+import { semplifica } from "./citta.js";
 
 // Elenco chiuso: qualunque altro canale risponde 404. "meta" = sponsorizzate (D25), "creator" = link dei creator,
 // "amico" = link «porta un amico» della pagina /grazie (D64, punto 3).
@@ -59,6 +60,9 @@ export async function daCanale(request, env) {
   destinazione.searchParams.set("da", canale);
   const codice = pulisciCodice(url.searchParams.get("invito"));
   if (codice) destinazione.searchParams.set("invito", codice);
+  // Link personale «porta un'amica»: la città di chi invita passa alla home solo insieme al codice, già semplificata.
+  const citta = codice ? semplifica(url.searchParams.get("citta")) : "";
+  if (citta) destinazione.searchParams.set("citta", citta);
   return new Response(null, { status: 302, headers: { location: destinazione.toString(), "cache-control": "no-store" } });
 }
 

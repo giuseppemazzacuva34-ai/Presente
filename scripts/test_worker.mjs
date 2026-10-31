@@ -5,11 +5,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { iscrizione, perEsiti, perRisposte, MINIMO_CERCHI } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
-import { conteggio } from "../worker/conteggio.js";
-import { pulisciCodice } from "../worker/invito.js";
+import { conteggio, invitiPersonali, codiceNelCampo } from "../worker/conteggio.js";
+import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSONALE } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
-import { grazieConCitta, htmlMancano } from "../worker/grazie.js";
+import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO } from "../worker/grazie.js";
 import { numeriPubblici, conNumeri, svuotaMemoria, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
@@ -234,7 +234,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const piu = env3.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni_canale"));
   verifica(r3.status === 303 && piu && piu.valori[0] === "instagram", "iscrizione da /da/instagram: +1 in iscrizioni_canale");
   verifica(riga && !riga.sql.includes("canale") && !riga.valori.includes("instagram"), "iscrizione: il canale NON entra nella riga dell'iscritto");
-  verifica(r3.headers.get("location") === "https://presente.example/grazie?da=instagram&citta=milano", "iscrizione con canale: va a /grazie?da=instagram (il contatore conta /grazie per sorgente) con la città");
+  verifica(/^https:\/\/presente\.example\/grazie\?da=instagram&citta=milano&c=[A-HJ-NP-Z2-9]{6}$/.test(r3.headers.get("location")), "iscrizione con canale: va a /grazie?da=instagram (il contatore conta /grazie per sorgente) con la città e il codice personale");
 
   const env4 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti({ nuova: false }) };
   await iscrizione(modulo({ canale: "instagram" }), env4);
@@ -589,14 +589,14 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     return { r, ins: env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni")) };
   };
   const a = await salva({});
-  verifica(a.r.status === 303 && a.ins.valori.slice(6).every((v) => v === null), "senza domande facoltative: iscrizione valida, risposte vuote");
+  verifica(a.r.status === 303 && a.ins.valori.slice(6, 10).every((v) => v === null), "senza domande facoltative: iscrizione valida, risposte vuote");
   const b = await salva({ presento: "donna", cerchi: "uomini", fascia: "25-34" });
   verifica(b.r.status === 303 && b.ins.valori[6] === "donna" && b.ins.valori[7] === null && b.ins.valori[8] === "25-34" && b.ins.valori[9] === null,
     "«chi cerchi» senza la casella a parte: la risposta NON si salva, le altre sì");
   const c = await salva({ cerchi: "uomini", "consenso-cerchi": "si" });
   verifica(c.ins.valori[7] === "uomini" && /^\d{4}-\d{2}-\d{2}T/.test(c.ins.valori[9]), "«chi cerchi» con la casella spuntata: salvata con la data del consenso");
   const d = await salva({ presento: "'; DROP TABLE iscrizioni; --", cerchi: "tutto", "consenso-cerchi": "si", fascia: "12-17" });
-  verifica(d.r.status === 303 && d.ins.valori.slice(6).every((v) => v === null) && !d.ins.sql.includes("DROP"), "valori fuori elenco: scartati, iscrizione comunque valida");
+  verifica(d.r.status === 303 && d.ins.valori.slice(6, 10).every((v) => v === null) && !d.ins.sql.includes("DROP"), "valori fuori elenco: scartati, iscrizione comunque valida");
   const e = await salva({ "consenso-cerchi": "si" });
   verifica(e.ins.valori[7] === null && e.ins.valori[9] === null, "casella spuntata senza risposta: nessuna data di consenso");
 
@@ -610,6 +610,92 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   verifica(home.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(home)
     && home.includes("se le do, le mie risposte su come mi presento e sulla fascia d'età"), "home: testi D65 A e casella a parte non spuntata");
+}
+
+// 20. «Porta un'amica» (spec referral parte 2, D69 A): codice personale casuale, link personale su /grazie,
+// città di chi invita precompilata, conteggi solo totali.
+{
+  // Codice: 6 caratteri, senza 0/O/1/I, casuale e mai derivato dall'email.
+  const codici = new Set(Array.from({ length: 2000 }, () => generaCodice()));
+  verifica([...codici].every((c) => CODICE_PERSONALE.test(c) && !/[01OI]/.test(c)) && codici.size > 1990, "codice personale: 6 caratteri leggibili, casuale");
+
+  // Iscrizione nuova: codice salvato nella riga e mostrato in /grazie; email già in lista: nessun codice, nessun +1.
+  const dbConCodice = ({ nuove = true, collisioni = 0, rompiIndice = false } = {}) => {
+    const query = [];
+    let doppi = collisioni;
+    let colonnaAggiunta = false;
+    return { query, prepare(sql) {
+      const voce = { sql, valori: [] };
+      query.push(voce);
+      return {
+        bind(...valori) { voce.valori = valori; return this; },
+        async run() {
+          if (sql.startsWith("ALTER TABLE iscrizioni ADD COLUMN codice")) colonnaAggiunta = true;
+          if (rompiIndice && sql.startsWith("CREATE UNIQUE INDEX") && !colonnaAggiunta) throw new Error("D1_ERROR: no such column: codice");
+          if (sql.startsWith("INSERT INTO iscrizioni ") && doppi > 0) { doppi--; throw new Error("D1_ERROR: UNIQUE constraint failed: iscrizioni.codice"); }
+          return nuove && sql.startsWith("INSERT INTO iscrizioni ") ? { meta: { changes: 1 } } : { meta: { changes: 0 } };
+        },
+      };
+    } };
+  };
+  const env = aperte({ DB: dbConCodice() });
+  const r = await iscrizione(modulo({ email: "nuova@example.com" }, { origin: "https://presente.example" }), env);
+  const ins = env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni "));
+  const salvato = ins.valori[10];
+  verifica(CODICE_PERSONALE.test(salvato) && !ins.valori.slice(0, 10).includes(salvato), "iscrizione nuova: codice personale nella riga");
+  verifica(!salvato.includes("NUOVA") && r.headers.get("location").endsWith("&c=" + salvato), "iscrizione nuova: /grazie riceve il codice (non derivato dall'email)");
+  const envG = aperte({ DB: dbConCodice({ nuove: false }) });
+  const rg = await iscrizione(modulo({}, { origin: "https://presente.example" }), envG);
+  verifica(!rg.headers.get("location").includes("c="), "email già in lista: nessun codice mostrato (né nuovo né vecchio)");
+  const envC = aperte({ DB: dbConCodice({ collisioni: 2 }) });
+  const rc = await iscrizione(modulo({}, { origin: "https://presente.example" }), envC);
+  const tentativi = envC.DB.query.filter((q) => q.sql.startsWith("INSERT INTO iscrizioni "));
+  verifica(rc.status === 303 && tentativi.length === 3 && new Set(tentativi.map((q) => q.valori[10])).size === 3, "collisione di codice: se ne genera un altro prima di salvare");
+  const envV = aperte({ DB: dbConCodice({ rompiIndice: true }) });
+  const rv = await iscrizione(modulo({}, { origin: "https://presente.example" }), envV);
+  verifica(rv.status === 303 && envV.DB.query.some((q) => q.sql === "ALTER TABLE iscrizioni ADD COLUMN codice TEXT"), "database senza colonna codice: si aggiunge da sola");
+  const envX = aperte({ DB: dbConCodice() });
+  const rx = await iscrizione(modulo({ invito: "ZZ%%<b>" }, { origin: "https://presente.example" }), envX);
+  verifica(rx.status === 303, "codice d'invito inesistente o malformato: l'iscrizione va avanti");
+
+  // /grazie con il codice: link personale con città; codice falso: pagina com'è.
+  const grazieHtml = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+  verifica(grazieHtml.includes(INIZIO_INVITO) && grazieHtml.indexOf(FINE_INVITO) > grazieHtml.indexOf(INIZIO_INVITO), "grazie.html: blocco invito delimitato");
+  const ASSETS = { fetch: async () => new Response(grazieHtml, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const DB = { prepare: () => ({ first: async () => 6, all: async () => ({ results: [{ zona: "milano", citta: null, n: 6 }] }), bind() { return this; }, run: async () => ({}) }) };
+  svuotaMemoria();
+  const p = await (await grazieConCitta(new Request("https://presenteincontri.app/grazie?citta=milano&c=K7MQ2P"), { ASSETS, DB })).text();
+  verifica(p.includes("https://presenteincontri.app/da/amico?invito=K7MQ2P&amp;citta=milano") && p.includes(encodeURIComponent("https://presenteincontri.app/da/amico?invito=K7MQ2P&citta=milano")),
+    "/grazie?c=: link personale visibile e dentro i messaggi WhatsApp/Telegram");
+  verifica(p.includes("fa salire <strong>Milano</strong>") && p.includes("mancano <strong>30</strong>") && !p.includes("scrivi%20il%20mio%20nome"), "/grazie?c=: la città di chi invita sale, niente più «scrivi il mio nome»");
+  verifica(!/premi|regalo per te|prime stanze/i.test(p.slice(p.indexOf(INIZIO_INVITO), p.indexOf(FINE_INVITO))), "/grazie?c=: nessuna promessa di premi (DPR 430/2001 da chiarire)");
+  const falso = await (await grazieConCitta(new Request("https://presenteincontri.app/grazie?c=%3Cscript%3E"), { ASSETS, DB })).text();
+  verifica(falso === grazieHtml, "/grazie con codice malformato: pagina identica");
+  const soloCodice = await (await grazieConCitta(new Request("https://presenteincontri.app/grazie?c=K7MQ2P&citta=estero"), { ASSETS, DB })).text();
+  verifica(soloCodice.includes("invito=K7MQ2P\"") === false && soloCodice.includes("/da/amico?invito=K7MQ2P") && !soloCodice.includes("citta=estero"), "/grazie dall'estero: link senza città");
+  svuotaMemoria();
+
+  // Link personale → home con codice e città precompilati.
+  const rd = await worker.fetch(new Request("https://presente.example/da/amico?invito=K7MQ2P&citta=Reggio%20Emilia", { headers: { "user-agent": TELEFONO } }), { DB: databaseFinto() }, { waitUntil() {} });
+  verifica(rd.headers.get("location") === "https://presente.example/?da=amico&invito=K7MQ2P&citta=reggio+emilia", "/da/amico?invito=&citta=: porta codice e città semplificata");
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  const AH = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const h = await (await worker.fetch(new Request("https://presente.example/?da=amico&invito=K7MQ2P&citta=reggio+emilia"), { ASSETS: AH })).text();
+  verifica(h.includes('name="invito" value="K7MQ2P"') && h.includes('<input id="zona" name="zona" value="Reggio Emilia"'), "home dal link personale: invito e città già compilati");
+  const hc = await (await worker.fetch(new Request("https://presente.example/?citta=%22%3E%3Cscript%3E"), { ASSETS: AH })).text();
+  verifica(!hc.includes('id="zona" name="zona" value='), "home con ?citta= senza codice: la città non si precompila");
+  verifica(cittaDelLink('"><script>alert(1)</script>') === "Scriptalert Script" && cittaDelLink("estero") === "" && cittaDelLink("mi") === "Milano", "città del link: solo lettere, estero escluso");
+  verifica(linkPersonale("https://x.example/grazie", "K7MQ2P", "altra-citta-italia") === "https://x.example/da/amico?invito=K7MQ2P", "link personale: senza città se generica");
+
+  // Conteggi: due iscrizioni con lo stesso invito contano 2; nomi e codici inesistenti non contano; i codici non escono.
+  verifica(codiceNelCampo("Giulia k7mq2p", new Set(["K7MQ2P"])) === "K7MQ2P" && codiceNelCampo("Giulia", new Set(["K7MQ2P"])) === "", "codice scritto insieme al nome: conta solo il codice");
+  const DBi = { prepare: (sql) => ({ all: async () => ({ results: sql.startsWith("SELECT codice")
+    ? [{ codice: "K7MQ2P" }, { codice: "AB34CD" }, { codice: "ZZ99ZZ" }]
+    : [{ invito: "K7MQ2P", n: 2 }, { invito: "Marco Rossi", n: 4 }, { invito: "AB34CD", n: 3 }, { invito: "QQQQQQ", n: 5 }] }) }) };
+  const ip = await invitiPersonali({ DB: DBi });
+  verifica(ip.iscritti_con_invito === 5 && ip.persone_che_hanno_invitato === 2 && ip.per_numero_di_amici["2"] === 1 && ip.per_numero_di_amici["3+"] === 1,
+    "inviti_personali: stesso codice due volte = 2, nomi e codici inesistenti ignorati");
+  verifica(!JSON.stringify(ip).includes("K7MQ2P"), "inviti_personali: i codici non compaiono nei numeri pubblici");
 }
 
 if (errori) {
