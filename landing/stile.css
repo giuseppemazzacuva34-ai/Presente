@@ -268,3 +268,4 @@ body.nuova { position: relative; overflow-x: hidden; }
 .mancano { margin: 1.2rem 0 0; padding: 0.9rem 1rem; border-left: 3px solid var(--rosso); font-size: 1.05rem; line-height: 1.45; }
 .mancano strong { color: var(--avorio); }
 .regalo { margin: 2rem 0 0; }
+.posti-nota { margin: 0.3rem 0 0; font-size: 0.72rem; line-height: 1.35; text-align: center; color: #5b5751; }

@@ -527,7 +527,12 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const spento = conNumeri(home, n, { MOSTRA_POSTI: "no" });
   verifica(!spento.includes("posti</p>") && !spento.includes("class=\"posti\""), "posti: con MOSTRA_POSTI diverso da «si» la frase non compare");
   const acceso = conNumeri(home, n, { MOSTRA_POSTI: "si" });
-  verifica(acceso.includes("Restano <strong>49</strong> posti"), "posti: N = 150 − iscritti (101 → 49)");
+  verifica(acceso.includes("I primi 150 iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. Restano <strong>49</strong> posti.")
+    && acceso.includes("Crediti non convertibili in denaro."), "posti: testo del CFO con N = 150 − iscritti (101 → 49) e nota");
+  svuotaMemoria();
+  verifica(conNumeri(home, await numeriPubblici({ DB: DBn(149, []) }, 1000), { MOSTRA_POSTI: "si" }).includes("Resta <strong>1</strong> posto."), "posti: singolare a 1");
+  svuotaMemoria();
+  await numeriPubblici({ DB: DBn(101, righe) }, 1000);
   verifica(/Milano<\/span> <strong>12/.test(acceso) && /Pisa<\/span> <strong>10/.test(acceso) && !acceso.includes("Roma</span>")
     && !/estero|altra-citta/i.test(acceso.slice(acceso.indexOf("contatore-citta"), acceso.indexOf("contatore-citta") + 400)),
     "contatore: solo città con 10+ iscritti, senza «estero» e «altre città»");
@@ -566,7 +571,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(!cattiva.includes("<script>") && !cattiva.includes("alert(1)"), "/grazie: la città dell'indirizzo non può inserire codice");
   verifica((await apri("")) === grazieHtml && (await apri("?citta=estero")) === grazieHtml, "/grazie senza città o dall'estero: pagina identica");
   verifica(htmlMancano("Pisa", 0).includes("mancano <strong>36</strong>"), "htmlMancano: città nuova → mancano 36");
-  verifica(grazieHtml.includes('href="/media/presente-30-carte.pdf"') && readFileSync(new URL("../landing/media/presente-30-carte.pdf", import.meta.url)).subarray(0, 5).toString() === "%PDF-",
+  verifica(["presente-30-domande-primo-appuntamento.pdf", "presente-30-carte.pdf"].every((f) => grazieHtml.includes(`href="/media/${f}"`)
+    && readFileSync(new URL("../landing/media/" + f, import.meta.url)).subarray(0, 5).toString() === "%PDF-"),
     "/grazie: pulsante delle 30 carte e PDF presente");
   verifica((grazieHtml.match(/presenteincontri\.app%2Fda%2Famico/g) || []).length === 2, "/grazie: WhatsApp e Telegram condividono il link /da/amico");
   const r = await worker.fetch(new Request("https://presente.example/da/amico", { headers: { "user-agent": TELEFONO } }), { DB: databaseFinto() }, { waitUntil() {} });

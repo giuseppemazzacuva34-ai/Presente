@@ -1,5 +1,5 @@
 // Numeri pubblici della home (decisione D64, punti 2 e 4), scritti dal Worker dentro l'HTML: la pagina resta senza script.
-// - «Restano N posti»: N = 150 − iscritti totali. Appare solo con MOSTRA_POSTI = "si" (testo esatto dopo l'ok del CFO).
+// - «I primi 150 iscritti hanno 9 crediti in regalo… Restano N posti.»: N = 150 − iscritti totali, solo con MOSTRA_POSTI = "si".
 // - Contatore per città: solo le città con almeno 10 iscritti; sotto quella soglia non si mostra nulla.
 // Solo totali, mai email o altri dati delle persone. I numeri restano in memoria 60 secondi per non leggere D1 a ogni visita.
 import { perCitta, nomeCitta } from "./citta.js";
@@ -29,12 +29,14 @@ export async function numeriPubblici(env, adesso = Date.now(), { fresco = false 
   }
 }
 
-// Frase sotto il pulsante. Testo segnaposto in attesa del CFO (D42 per il regalo, D64 per la frase).
+// Frase sotto il pulsante: testo esatto del CFO (31/10), regalo deciso con D42. Si accende con MOSTRA_POSTI = "si".
 export function htmlPosti(numeri, env) {
   if (env.MOSTRA_POSTI !== "si" || !numeri) return "";
   const restano = POSTI_REGALO - numeri.totale;
   if (restano <= 0) return "";
-  return `<p class="posti">I primi ${POSTI_REGALO} entrano con una stanza in regalo. Restano <strong>${restano}</strong> posti.</p>`;
+  const coda = restano === 1 ? "Resta <strong>1</strong> posto." : `Restano <strong>${restano}</strong> posti.`;
+  return `<p class="posti">I primi ${POSTI_REGALO} iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. ${coda}</p>`
+    + `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è gratis per tutti. Crediti non convertibili in denaro.</p>`;
 }
 
 export function htmlContatore(numeri) {
