@@ -279,3 +279,27 @@ body.nuova { position: relative; overflow-x: hidden; }
   .spunta-cerchi { display: none; }
   .facoltative:has(#cerchi option:checked:not([value=""])) .spunta-cerchi { display: flex; }
 }
+
+/* D74 A (31/10): classifica pubblica delle città su /grazie, solo città e totali, scritta dal Worker. */
+.classifica { margin: 2rem 0 0; }
+.classifica ol { margin: 0.6rem 0 0; padding: 0; list-style: none; counter-reset: posto; }
+.classifica li { counter-increment: posto; display: flex; align-items: baseline; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid var(--linea); }
+.classifica li::before { content: counter(posto) "."; color: var(--grigio); min-width: 1.6rem; }
+.classifica li span { flex: 1; }
+.classifica li strong { color: var(--rosso); }
+.classifica li small { color: var(--grigio); min-width: 5.5rem; text-align: right; }
+
+/* D74 A, punto 5 (31/10): sul telefono il pulsante «Voglio entrare» entra nella prima schermata anche nei browser
+   dentro Instagram e Facebook (barre in alto e in basso). Stessi campi e stessi testi: cambiano solo gli spazi. */
+@media (max-width: 55.99rem) {
+  .nuova .testata { padding-bottom: 0.4rem; margin-bottom: 0.6rem; }
+  .eroe h1 { margin-bottom: 0.4rem; }
+  .modulo-eroe { margin-top: 0.75rem; padding: 0.8rem 0.85rem; }
+  .modulo-eroe .campo { margin: 0 0 0.5rem; }
+  .modulo-eroe .campo input[type="email"], .modulo-eroe .campo #zona { min-height: 2.65rem; padding: 0.5rem 0.75rem; }
+  .facoltative { margin: 0 0 0.5rem; }
+  .facoltative summary { margin-bottom: 0.3rem; font-size: 0.8rem; }
+  .modulo-eroe .spunta { margin: 0 0 0.4rem; }
+  .modulo-eroe .bottone { margin-top: 0.5rem; }
+}
+.link-personale strong { overflow-wrap: anywhere; }

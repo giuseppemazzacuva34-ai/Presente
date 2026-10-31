@@ -3,7 +3,7 @@
 // La città dell'indirizzo passa di nuovo dalla normalizzazione (solo lettere e spazi) e non viene salvata né contata.
 // N = 36 − iscritti di quella città (stanze di città a 36 iscritti, D19). Solo totali, mai dati delle persone.
 import { normalizzaCitta, chiaveCitta, nomeCitta } from "./citta.js";
-import { numeriPubblici } from "./numeri.js";
+import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA } from "./numeri.js";
 import { CODICE_PERSONALE, linkPersonale } from "./invito.js";
 
 export const SOGLIA_STANZA = 36;
@@ -33,7 +33,7 @@ export function htmlInvito(link, nome) {
   const telegram = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&amp;text=" + encodeURIComponent(testo.replace(/ da qui 👉 .*$/, ""));
   return `<p>Si parte con la Stanza Italia. Le stanze della tua città aprono a ${SOGLIA_STANZA} iscritti: chi si iscrive con il tuo link fa salire ${dove}. Pensa a un'amica stanca delle solite app, o a un amico.</p>
         <p class="link-personale">Il tuo link personale: <strong>${link.replace(/&/g, "&amp;")}</strong></p>
-        <p><a class="bottone" href="${whatsapp}" rel="noopener">Invia su WhatsApp</a></p>
+        <p><a class="bottone" href="${whatsapp}" rel="noopener">Mandalo a un'amica su WhatsApp</a></p>
         <p><a class="bottone bottone-chiaro" href="${telegram}" rel="noopener">Invia su Telegram</a></p>
         <p class="nota">Il codice nel link è casuale e non dice nulla di te: serve solo a contare quante persone arrivano con il tuo invito.</p>
 `;
@@ -49,13 +49,16 @@ export async function grazieConCitta(request, env) {
   const nome = chiave ? nomeCitta(chiave) : "";
   const codice = String(parametri.get("c") || "");
   const personale = CODICE_PERSONALE.test(codice);
-  if (!nome && !personale) return risposta;
   let html = await risposta.text();
   const originale = html;
-  if (nome && html.includes(SEGNAPOSTO_MANCANO)) {
-    const numeri = await numeriPubblici(env, Date.now(), { fresco: true });
-    if (numeri) html = html.replace(SEGNAPOSTO_MANCANO, htmlMancano(nome, numeri.citta[chiave] || 0));
+  const serveClassifica = html.includes(SEGNAPOSTO_CLASSIFICA);
+  if (!nome && !personale && !serveClassifica) return new Response(html, risposta);
+  // Numeri freschi quando c'è la città (conta anche chi si è appena iscritto); altrimenti bastano quelli in memoria.
+  const numeri = (nome || serveClassifica) ? await numeriPubblici(env, Date.now(), { fresco: Boolean(nome) }) : null;
+  if (nome && numeri && html.includes(SEGNAPOSTO_MANCANO)) {
+    html = html.replace(SEGNAPOSTO_MANCANO, htmlMancano(nome, numeri.citta[chiave] || 0));
   }
+  if (numeri && serveClassifica) html = html.replace(SEGNAPOSTO_CLASSIFICA, htmlClassifica(numeri));
   const inizio = html.indexOf(INIZIO_INVITO);
   const fine = html.indexOf(FINE_INVITO);
   if (personale && inizio !== -1 && fine > inizio) {
