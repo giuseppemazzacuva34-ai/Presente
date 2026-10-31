@@ -3,12 +3,11 @@
 // Le iscrizioni restano chiuse finché la variabile ISCRIZIONI_APERTE non vale "si" (dopo l'approvazione dell'informativa, D5).
 import { pagina } from "./pagina.js";
 import { canaleValido, contaIscrizione } from "./canale.js";
+import { ZONE, normalizzaCitta } from "./citta.js";
 
-// Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città.
-export const ZONE = new Set([
-  "milano", "roma", "napoli", "torino", "bologna", "firenze", "genova", "venezia-padova", "verona",
-  "brescia-bergamo", "bari", "palermo", "catania", "cagliari", "altra-citta-italia", "estero",
-]);
+// Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
+// e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
+export { ZONE };
 export const VERSIONE_INFORMATIVA = "1.2-2026-10-30";
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
@@ -19,8 +18,17 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   invito TEXT,
   consenso_il TEXT NOT NULL,
   versione_informativa TEXT NOT NULL,
-  sorgente TEXT NOT NULL DEFAULT 'landing'
+  sorgente TEXT NOT NULL DEFAULT 'landing',
+  citta TEXT
 )`;
+// citta (dal 31/10, D64): solo per zona «altra-citta-italia», la città scritta e semplificata (es. «reggio emilia»).
+// Nel database vero la colonna si aggiunge da sola alla prima iscrizione (ALTER TABLE qui sotto) se non c'è ancora.
+const AGGIUNGI_CITTA = "ALTER TABLE iscrizioni ADD COLUMN citta TEXT";
+const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta) VALUES (?, ?, ?, ?, ?, 'landing', ?) ON CONFLICT(email) DO NOTHING";
+
+function mancaColonnaCitta(errore) {
+  return /no column named citta|has no column|no such column/i.test(String(errore && errore.message));
+}
 // sorgente (dal 30/10, D53 = A): "landing" per il modulo del sito, "meta_modulo" per i contatti del modulo
 // dentro Facebook e Instagram importati con scripts/importa_meta.mjs. Nel database vero la colonna è stata
 // aggiunta il 30/10 con ALTER TABLE (le righe già presenti valgono "landing").
@@ -120,12 +128,12 @@ async function gestisci(request, env) {
   if (String(modulo.get("campo-trappola") || "") !== "") return r("trappola", grazie(request));
 
   const email = String(modulo.get("email") || "").trim().toLowerCase();
-  const zona = String(modulo.get("zona") || "");
+  const luogo = normalizzaCitta(String(modulo.get("zona") || "").slice(0, 80));
   const invito = String(modulo.get("invito") || "").replace(/\s+/g, " ").trim().slice(0, 40);
-  const valido = email.length <= 254 && EMAIL.test(email) && ZONE.has(zona)
+  const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
     && modulo.get("maggiorenne") === "si" && modulo.get("consenso") === "si";
   if (!valido) {
-    return r("dati_mancanti", pagina("Manca qualcosa.", "Controlla l'email, scegli la città e spunta le due caselle.", 400));
+    return r("dati_mancanti", pagina("Manca qualcosa.", "Controlla l'email, scrivi la tua città e spunta le due caselle.", 400));
   }
 
   // Canale del link /da/<canale> (D26): serve solo al contatore, non entra nella riga dell'iscritto.
@@ -133,9 +141,15 @@ async function gestisci(request, env) {
   let nuova = false;
   try {
     await env.DB.prepare(SCHEMA).run();
-    const esito = await env.DB.prepare(
-      "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente) VALUES (?, ?, ?, ?, ?, 'landing') ON CONFLICT(email) DO NOTHING"
-    ).bind(email, zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA).run();
+    const valori = [email, luogo.zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA, luogo.citta];
+    let esito;
+    try {
+      esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
+    } catch (errore) {
+      if (!mancaColonnaCitta(errore)) throw errore;
+      await env.DB.prepare(AGGIUNGI_CITTA).run();
+      esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
+    }
     // Chi era già in lista non viene contato una seconda volta.
     nuova = Boolean(esito && esito.meta && esito.meta.changes > 0);
   } catch (errore) {

@@ -9,6 +9,7 @@ import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
+import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
 // User agent di un telefono vero (browser interno di Instagram): le richieste senza user agent contano come automatiche.
 const TELEFONO = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0";
@@ -465,6 +466,47 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const v = await perVisite({ DB: DBv });
   verifica(v.precaricate === 9 && v.home === 3 && v.per_giorno["2026-10-30"].precaricate === 9 && v.per_utm["meta/lista_traffico"].precaricate === 9,
     "perVisite: precaricate separate da home, per giorno e per utm");
+}
+
+// 16. Città scritta a mano (D64, punto 1): normalizzata verso le zone, il resto in «altra-citta-italia» con la città.
+{
+  const casi = [["Milano", "milano", null], ["MI", "milano", null], [" Milan ", "milano", null], ["RM", "roma", null],
+    ["Mestre", "venezia-padova", null], ["bergamo", "brescia-bergamo", null], ["venezia-padova", "venezia-padova", null],
+    ["Fuori dall'Italia", "estero", null], ["Forlì", "altra-citta-italia", "forli"], ["REGGIO  EMILIA", "altra-citta-italia", "reggio emilia"]];
+  verifica(casi.every(([v, z, c]) => { const r = normalizzaCitta(v); return r && r.zona === z && r.citta === c; }),
+    "città: sigle, nomi stranieri, accenti e maiuscole portati alla zona giusta");
+  verifica(normalizzaCitta("") === null && normalizzaCitta("x") === null && normalizzaCitta("ZZ") === null && normalizzaCitta("123") === null,
+    "città vuota, troppo corta o senza lettere: rifiutata");
+  const strana = normalizzaCitta("<b>Pisa</b>\"; DROP");
+  verifica(strana && /^[a-z ]+$/.test(strana.citta), "città con simboli: restano solo lettere e spazi");
+  verifica(nomeCitta(chiaveCitta("altra-citta-italia", "l aquila")) === "L'Aquila" && nomeCitta("milano") === "Milano", "nome leggibile della città");
+
+  const env = aperte({ DB: databaseFinto({ nuove: true }) });
+  const r = await iscrizione(modulo({ zona: "Reggio Emilia" }, { origin: "https://presente.example" }), env);
+  const ins = env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni"));
+  verifica(r.status === 303 && ins.valori[1] === "altra-citta-italia" && ins.valori[5] === "reggio emilia" && !ins.sql.includes("reggio"),
+    "iscrizione con città scritta: zona «altra-citta-italia» e città come parametro");
+  const env2 = aperte();
+  const r2 = await iscrizione(modulo({ zona: "a" }), env2);
+  verifica(r2.status === 400 && soloEsito(env2, "dati_mancanti"), "città non valida: rifiutata prima del database");
+
+  // Database vero senza la colonna «citta»: la aggiunge e riprova una volta.
+  const query = [];
+  let primo = true;
+  const DBv = { query, prepare(sql) { const voce = { sql, valori: [] }; query.push(voce); return {
+    bind(...v) { voce.valori = v; return this; },
+    async run() { if (sql.startsWith("INSERT INTO iscrizioni") && primo) { primo = false; throw new Error("D1_ERROR: table iscrizioni has no column named citta"); } return { meta: { changes: 1 } }; } }; } };
+  const r3 = await iscrizione(modulo({}, { origin: "https://presente.example" }), { ISCRIZIONI_APERTE: "si", DB: DBv });
+  verifica(r3.status === 303 && query.some((q) => q.sql.startsWith("ALTER TABLE iscrizioni ADD COLUMN citta"))
+    && query.filter((q) => q.sql.startsWith("INSERT INTO iscrizioni")).length === 2, "colonna citta mancante: aggiunta e iscrizione salvata");
+
+  const DBc = { prepare: () => ({ all: async () => ({ results: [
+    { zona: "milano", citta: null, n: 4 }, { zona: "altra-citta-italia", citta: "pisa", n: 2 }, { zona: "altra-citta-italia", citta: null, n: 1 }] }) }) };
+  const pc = await perCitta({ DB: DBc });
+  verifica(pc.milano === 4 && pc.pisa === 2 && pc["altra-citta-italia"] === 1, "perCitta: totali per zona e per città scritta");
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(home) && (home.match(/<option value=/g) || []).length >= 100 && !home.includes("<select"),
+    "home: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
 }
 
 if (errori) {
