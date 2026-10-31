@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { iscrizione, perEsiti, perRisposte, MINIMO_CERCHI } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
-import { conteggio, invitiPersonali, codiceNelCampo } from "../worker/conteggio.js";
+import { conteggio, invitiPersonali, codiceNelCampo, raggruppaCittaPiccole } from "../worker/conteggio.js";
 import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSONALE } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
@@ -708,6 +708,13 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(ip.iscritti_con_invito === 5 && ip.persone_che_hanno_invitato === 2 && ip.per_numero_di_amici["2"] === 1 && ip.per_numero_di_amici["3+"] === 1,
     "inviti_personali: stesso codice due volte = 2, nomi e codici inesistenti ignorati");
   verifica(!JSON.stringify(ip).includes("K7MQ2P"), "inviti_personali: i codici non compaiono nei numeri pubblici");
+}
+
+// /conteggio è pubblico: le città scritte a mano sotto 10 iscritti non escono col nome (revisione CISO 31/10).
+{
+  const r = raggruppaCittaPiccole({ torino: 2, "reggio emilia": 1, "mario rossi": 1, "altra-citta-italia": 1, monza: 12 });
+  verifica(r.torino === 2 && r.monza === 12 && r["altra-citta-italia"] === 3 && !("reggio emilia" in r) && !("mario rossi" in r),
+    "/conteggio per_citta: città scritte a mano sotto 10 iscritti sommate in «altra-citta-italia», zone sempre visibili");
 }
 
 if (errori) {
