@@ -161,6 +161,43 @@
               </datalist>
             </div>
 
+            <details class="facoltative">
+              <summary>Tre domande facoltative <span class="facoltativo">(aiutano a comporre stanze equilibrate)</span></summary>
+              <div class="campo">
+                <label for="presento" class="solo-lettori">Mi presento come (facoltativo)</label>
+                <select id="presento" name="presento">
+                  <option value="" selected>Mi presento come…</option>
+                  <option value="donna">Donna</option>
+                  <option value="uomo">Uomo</option>
+                  <option value="non_binario">Non binario</option>
+                  <option value="altro">Altro</option>
+                </select>
+              </div>
+              <div class="campo">
+                <label for="cerchi" class="solo-lettori">Chi cerchi (facoltativo)</label>
+                <select id="cerchi" name="cerchi">
+                  <option value="" selected>Chi cerchi…</option>
+                  <option value="donne">Donne</option>
+                  <option value="uomini">Uomini</option>
+                  <option value="tutti">Mi va bene chiunque</option>
+                </select>
+              </div>
+              <div class="spunta spunta-cerchi">
+                <input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">
+                <label for="consenso-cerchi">Acconsento a che Presente usi la mia risposta su chi cerco solo in conteggi totali, per comporre stanze equilibrate. So che può far capire il mio orientamento sessuale. È facoltativo: posso iscrivermi anche senza e revocare il consenso quando voglio.</label>
+              </div>
+              <div class="campo">
+                <label for="fascia" class="solo-lettori">La tua fascia d'età (facoltativo)</label>
+                <select id="fascia" name="fascia">
+                  <option value="" selected>La tua fascia d'età…</option>
+                  <option value="18-24">18–24</option>
+                  <option value="25-34">25–34</option>
+                  <option value="35-44">35–44</option>
+                  <option value="45+">45 o più</option>
+                </select>
+              </div>
+            </details>
+
             <div class="spunta">
               <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
               <label for="maggiorenne">Ho almeno 18 anni.</label>
@@ -168,7 +205,7 @@
 
             <div class="spunta">
               <input id="consenso" name="consenso" type="checkbox" value="si" required>
-              <label for="consenso">Acconsento a usare la mia email, la mia città e, se lo scrivo, il nome di chi mi ha invitato solo per la lista d'attesa e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
+              <label for="consenso">Acconsento a usare la mia email, la mia città, se lo scrivo il nome di chi mi ha invitato e, se le do, le mie risposte su come mi presento e sulla fascia d'età, solo per la lista d'attesa, per conteggi totali e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
             </div>
 
             <button class="bottone" type="submit">Voglio entrare</button>

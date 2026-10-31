@@ -269,3 +269,13 @@ body.nuova { position: relative; overflow-x: hidden; }
 .mancano strong { color: var(--avorio); }
 .regalo { margin: 2rem 0 0; }
 .posti-nota { margin: 0.3rem 0 0; font-size: 0.72rem; line-height: 1.35; text-align: center; color: #5b5751; }
+
+/* Domande facoltative (D33, testi D65): chiuse di default. La casella a parte per «chi cerchi» compare solo
+   quando si sceglie una risposta; nei browser senza :has() resta sempre visibile (mai nascosta per errore). */
+.facoltative { margin: 0 0 0.7rem; font-size: 0.85rem; }
+.facoltative summary { cursor: pointer; margin-bottom: 0.5rem; text-decoration: underline; text-underline-offset: 0.2em; }
+.facoltative[open] summary { margin-bottom: 0.6rem; }
+@supports selector(:has(*)) {
+  .spunta-cerchi { display: none; }
+  .facoltative:has(#cerchi option:checked:not([value=""])) .spunta-cerchi { display: flex; }
+}

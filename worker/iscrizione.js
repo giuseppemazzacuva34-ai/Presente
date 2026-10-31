@@ -19,15 +19,56 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   consenso_il TEXT NOT NULL,
   versione_informativa TEXT NOT NULL,
   sorgente TEXT NOT NULL DEFAULT 'landing',
-  citta TEXT
+  citta TEXT,
+  presento TEXT,
+  cerchi TEXT,
+  fascia TEXT,
+  consenso_cerchi_il TEXT
 )`;
 // citta (dal 31/10, D64): solo per zona «altra-citta-italia», la città scritta e semplificata (es. «reggio emilia»).
 // Nel database vero la colonna si aggiunge da sola alla prima iscrizione (ALTER TABLE qui sotto) se non c'è ancora.
-const AGGIUNGI_CITTA = "ALTER TABLE iscrizioni ADD COLUMN citta TEXT";
-const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta) VALUES (?, ?, ?, ?, ?, 'landing', ?) ON CONFLICT(email) DO NOTHING";
+// Domande facoltative (dal 31/10, D33 A con i testi approvati in D65 A): presento, cerchi, fascia e, solo se si
+// risponde a «chi cerchi», la data del consenso a parte (art. 9 GDPR). Le colonne si aggiungono da sole come «citta».
+const AGGIUNGI_COLONNE = [
+  "ALTER TABLE iscrizioni ADD COLUMN citta TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN presento TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN cerchi TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN fascia TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN consenso_cerchi_il TEXT",
+];
+const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
 
-function mancaColonnaCitta(errore) {
-  return /no column named citta|has no column|no such column/i.test(String(errore && errore.message));
+function mancaColonna(errore) {
+  return /no column named|has no column|no such column/i.test(String(errore && errore.message));
+}
+
+// Aggiunge le colonne che mancano nel database vero; quelle già presenti danno «duplicate column» e si saltano.
+async function aggiungiColonne(env) {
+  for (const sql of AGGIUNGI_COLONNE) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (errore) {
+      if (!/duplicate column/i.test(String(errore && errore.message))) throw errore;
+    }
+  }
+}
+
+// Solo valori dell'elenco: qualunque altra cosa vale «nessuna risposta».
+export const RISPOSTE = {
+  presento: ["donna", "uomo", "non_binario", "altro"],
+  cerchi: ["donne", "uomini", "tutti"],
+  fascia: ["18-24", "25-34", "35-44", "45+"],
+};
+export function risposteFacoltative(modulo) {
+  const scelta = (campo) => {
+    const v = String(modulo.get(campo) || "");
+    return RISPOSTE[campo].includes(v) ? v : null;
+  };
+  const presento = scelta("presento");
+  const fascia = scelta("fascia");
+  // «Chi cerchi» si salva SOLO con la casella a parte spuntata; senza spunta la risposta si scarta.
+  const cerchi = modulo.get("consenso-cerchi") === "si" ? scelta("cerchi") : null;
+  return { presento, cerchi, fascia };
 }
 // sorgente (dal 30/10, D53 = A): "landing" per il modulo del sito, "meta_modulo" per i contatti del modulo
 // dentro Facebook e Instagram importati con scripts/importa_meta.mjs. Nel database vero la colonna è stata
@@ -103,6 +144,31 @@ export async function perEsiti(env) {
   return esiti;
 }
 
+// Totali per /conteggio delle domande facoltative: { presento: {donna: n, …}, cerchi: {…} | "meno di 10", fascia: {…} }.
+// Una domanda alla volta, mai incrociata con città o altre risposte: solo conteggi totali, come promesso nel consenso.
+export const MINIMO_CERCHI = 10;
+const TOTALI_RISPOSTE = {
+  presento: "SELECT presento AS valore, COUNT(*) AS n FROM iscrizioni WHERE presento IS NOT NULL GROUP BY presento",
+  cerchi: "SELECT cerchi AS valore, COUNT(*) AS n FROM iscrizioni WHERE cerchi IS NOT NULL GROUP BY cerchi",
+  fascia: "SELECT fascia AS valore, COUNT(*) AS n FROM iscrizioni WHERE fascia IS NOT NULL GROUP BY fascia",
+};
+export async function perRisposte(env) {
+  const risultato = {};
+  if (!env.DB) return risultato;
+  for (const campo of Object.keys(RISPOSTE)) {
+    try {
+      const righe = await env.DB.prepare(TOTALI_RISPOSTE[campo]).all();
+      const totali = {};
+      for (const r of righe.results || []) if (RISPOSTE[campo].includes(r.valore)) totali[r.valore] = r.n;
+      const somma = Object.values(totali).reduce((x, y) => x + y, 0);
+      risultato[campo] = campo === "cerchi" && somma < MINIMO_CERCHI ? `meno di ${MINIMO_CERCHI}` : totali;
+    } catch {
+      risultato[campo] = {}; // colonna non ancora creata: nessuna risposta
+    }
+  }
+  return risultato;
+}
+
 export async function iscrizione(request, env) {
   const risposta = await gestisci(request, env);
   await contaEsito(env, risposta.esito);
@@ -143,13 +209,16 @@ async function gestisci(request, env) {
   let nuova = false;
   try {
     await env.DB.prepare(SCHEMA).run();
-    const valori = [email, luogo.zona, invito || null, new Date().toISOString(), VERSIONE_INFORMATIVA, luogo.citta];
+    const adesso = new Date().toISOString();
+    const { presento, cerchi, fascia } = risposteFacoltative(modulo);
+    const valori = [email, luogo.zona, invito || null, adesso, VERSIONE_INFORMATIVA, luogo.citta,
+      presento, cerchi, fascia, cerchi ? adesso : null];
     let esito;
     try {
       esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
     } catch (errore) {
-      if (!mancaColonnaCitta(errore)) throw errore;
-      await env.DB.prepare(AGGIUNGI_CITTA).run();
+      if (!mancaColonna(errore)) throw errore;
+      await aggiungiColonne(env);
       esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
     }
     // Chi era già in lista non viene contato una seconda volta.
