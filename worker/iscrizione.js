@@ -4,6 +4,7 @@
 import { pagina } from "./pagina.js";
 import { canaleValido, contaIscrizione } from "./canale.js";
 import { ZONE, normalizzaCitta } from "./citta.js";
+import { generaCodice, codiciConfigurati } from "./invito.js";
 
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
 // e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
@@ -23,7 +24,8 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
   presento TEXT,
   cerchi TEXT,
   fascia TEXT,
-  consenso_cerchi_il TEXT
+  consenso_cerchi_il TEXT,
+  codice TEXT
 )`;
 // citta (dal 31/10, D64): solo per zona «altra-citta-italia», la città scritta e semplificata (es. «reggio emilia»).
 // Nel database vero la colonna si aggiunge da sola alla prima iscrizione (ALTER TABLE qui sotto) se non c'è ancora.
@@ -35,8 +37,17 @@ const AGGIUNGI_COLONNE = [
   "ALTER TABLE iscrizioni ADD COLUMN cerchi TEXT",
   "ALTER TABLE iscrizioni ADD COLUMN fascia TEXT",
   "ALTER TABLE iscrizioni ADD COLUMN consenso_cerchi_il TEXT",
+  // Codice invito personale (dal 31/10, spec referral parte 2, D69 A): casuale, unico, mai derivato dall'email.
+  "ALTER TABLE iscrizioni ADD COLUMN codice TEXT",
 ];
-const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+// L'indice impedisce due codici uguali: in caso di collisione il Worker ne genera un altro (al massimo 5 tentativi).
+const INDICE_CODICE = "CREATE UNIQUE INDEX IF NOT EXISTS iscrizioni_codice ON iscrizioni(codice)";
+const TENTATIVI_CODICE = 5;
+const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il, codice) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+
+function codiceDoppio(errore) {
+  return /UNIQUE constraint failed: iscrizioni\.codice/i.test(String(errore && errore.message));
+}
 
 function mancaColonna(errore) {
   return /no column named|has no column|no such column/i.test(String(errore && errore.message));
@@ -77,10 +88,12 @@ export function risposteFacoltative(modulo) {
 // Dopo l'iscrizione si va a /grazie; se l'iscritto arriva da un canale (D26) l'indirizzo porta ?da=<canale>,
 // così il contatore delle visite (D43) conta /grazie per giorno e per sorgente. Solo il nome del canale, nessun dato personale.
 // Dal 31/10 (D64) porta anche ?citta=<città> per la frase «mancano N persone»: la pagina non la salva.
-function grazie(request, canale = "", citta = "") {
+// Solo per le iscrizioni NUOVE porta ?c=<codice personale>: chi riscrive un'email già in lista non vede il codice di nessuno.
+function grazie(request, canale = "", citta = "", codice = "") {
   const url = new URL("/grazie", request.url);
   if (canale) url.searchParams.set("da", canale);
   if (citta) url.searchParams.set("citta", citta);
+  if (codice) url.searchParams.set("c", codice);
   return Response.redirect(url.toString(), 303);
 }
 
@@ -207,22 +220,39 @@ async function gestisci(request, env) {
   // Canale del link /da/<canale> (D26): serve solo al contatore, non entra nella riga dell'iscritto.
   const canale = canaleValido(modulo.get("canale"));
   let nuova = false;
+  let codice = "";
   try {
     await env.DB.prepare(SCHEMA).run();
-    const adesso = new Date().toISOString();
-    const { presento, cerchi, fascia } = risposteFacoltative(modulo);
-    const valori = [email, luogo.zona, invito || null, adesso, VERSIONE_INFORMATIVA, luogo.citta,
-      presento, cerchi, fascia, cerchi ? adesso : null];
-    let esito;
     try {
-      esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
+      await env.DB.prepare(INDICE_CODICE).run();
     } catch (errore) {
       if (!mancaColonna(errore)) throw errore;
       await aggiungiColonne(env);
-      esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
+      await env.DB.prepare(INDICE_CODICE).run();
     }
-    // Chi era già in lista non viene contato una seconda volta.
+    const adesso = new Date().toISOString();
+    const { presento, cerchi, fascia } = risposteFacoltative(modulo);
+    const creator = codiciConfigurati(env);
+    let esito;
+    for (let tentativo = 1; ; tentativo++) {
+      do codice = generaCodice(); while (creator.has(codice)); // mai uguale a un codice dei creator
+      const valori = [email, luogo.zona, invito || null, adesso, VERSIONE_INFORMATIVA, luogo.citta,
+        presento, cerchi, fascia, cerchi ? adesso : null, codice];
+      try {
+        esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
+        break;
+      } catch (errore) {
+        if (mancaColonna(errore)) {
+          await aggiungiColonne(env);
+        } else if (!codiceDoppio(errore) || tentativo >= TENTATIVI_CODICE) {
+          throw errore;
+        }
+      }
+      if (tentativo >= TENTATIVI_CODICE) throw new Error("codice");
+    }
+    // Chi era già in lista non viene contato una seconda volta (e non riceve un codice nuovo).
     nuova = Boolean(esito && esito.meta && esito.meta.changes > 0);
+    if (!nuova) codice = "";
   } catch (errore) {
     // Nel log solo il tipo di errore: mai l'email o altri dati della persona.
     console.error("iscrizione: errore del database", errore && errore.name);
@@ -230,6 +260,6 @@ async function gestisci(request, env) {
   }
 
   if (nuova) await contaIscrizione(env, canale);
-  return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, luogo.citta || luogo.zona));
+  return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, luogo.citta || luogo.zona, codice));
 }
 

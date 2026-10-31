@@ -7,7 +7,9 @@
 // per_risposta (dal 31/10, D33/D65): totali nazionali di ciascuna domanda facoltativa, mai incrociati con città o email;
 //   «chi cerchi» si mostra solo da 10 risposte in su, prima vale "meno di 10".
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
-import { codiciConfigurati, pulisciCodice } from "./invito.js";
+// inviti_personali (dal 31/10, «porta un'amica», D69 A): quante persone si sono iscritte con il codice personale di un
+//   altro iscritto e quante persone hanno portato 1, 2 o 3+ amici. Solo totali: i codici personali non escono mai qui.
+import { codiciConfigurati, pulisciCodice, CODICE_PERSONALE } from "./invito.js";
 import { perCanale } from "./canale.js";
 import { perVisite } from "./visite.js";
 import { perEsiti, perRisposte } from "./iscrizione.js";
@@ -28,7 +30,8 @@ export async function conteggio(env) {
     const visite = await perVisite(env);
     const esiti_iscrizione = await perEsiti(env);
     const per_risposta = await perRisposte(env);
-    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_risposta, per_sorgente, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
+    const inviti_personali = await invitiPersonali(env);
+    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_risposta, per_sorgente, con_invito: conInvito, per_codice, inviti_personali, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
   } catch {
     // La tabella nasce con la prima iscrizione.
     const per_canale = await perCanale(env);
@@ -59,4 +62,37 @@ async function perCodice(env) {
     if (codici.has(codice)) conteggi[codice] += r.n;
   }
   return conteggi;
+}
+
+// Nel campo «Chi ti ha invitato?» può esserci il codice (dal link) o un nome con il codice scritto a mano
+// («Giulia K7MQ2P»): conta solo una parola di 6 caratteri che è il codice di un iscritto; i nomi non si sommano mai.
+export function codiceNelCampo(invito, esistenti) {
+  const parole = String(invito || "").toUpperCase().split(/[^A-Z0-9]+/).filter((p) => CODICE_PERSONALE.test(p));
+  const intero = pulisciCodice(invito);
+  if (CODICE_PERSONALE.test(intero)) parole.unshift(intero);
+  return parole.find((p) => esistenti.has(p)) || "";
+}
+
+export async function invitiPersonali(env) {
+  const vuoto = { iscritti_con_invito: 0, persone_che_hanno_invitato: 0, per_numero_di_amici: { "1": 0, "2": 0, "3+": 0 } };
+  try {
+    const codici = await env.DB.prepare("SELECT codice FROM iscrizioni WHERE codice IS NOT NULL").all();
+    const esistenti = new Set((codici.results || []).map((r) => r.codice));
+    if (!esistenti.size) return vuoto;
+    const inviti = await env.DB.prepare("SELECT invito, COUNT(*) AS n FROM iscrizioni WHERE invito IS NOT NULL GROUP BY invito").all();
+    const perCodice = {};
+    for (const r of inviti.results || []) {
+      const c = codiceNelCampo(r.invito, esistenti);
+      if (c) perCodice[c] = (perCodice[c] || 0) + (r.n || 0);
+    }
+    const risultato = vuoto;
+    for (const n of Object.values(perCodice)) {
+      risultato.iscritti_con_invito += n;
+      risultato.persone_che_hanno_invitato += 1;
+      risultato.per_numero_di_amici[n >= 3 ? "3+" : String(n)] += 1;
+    }
+    return risultato;
+  } catch {
+    return vuoto; // colonna codice non ancora creata
+  }
 }
