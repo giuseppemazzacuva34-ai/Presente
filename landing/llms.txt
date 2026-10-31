@@ -18,6 +18,9 @@
 ## Pagine
 - [Home e lista d'attesa](https://presenteincontri.app/): cos'è Presente, regole principali, domande frequenti.
 - [Incontri al buio: cosa sono e come funzionano su Presente](https://presenteincontri.app/incontri-al-buio): guida completa.
+- [Domande e risposte su Presente](https://presenteincontri.app/domande): risposte brevi su foto, voce, sicurezza, costi e città.
+- [Guide](https://presenteincontri.app/guide): [perché le app di incontri deludono](https://presenteincontri.app/guide/perche-le-app-di-incontri-deludono), [primo appuntamento al buio: consigli di sicurezza](https://presenteincontri.app/guide/primo-appuntamento-al-buio).
+- Pagine città: [Milano](https://presenteincontri.app/incontri-al-buio/milano), [Roma](https://presenteincontri.app/incontri-al-buio/roma), [Napoli](https://presenteincontri.app/incontri-al-buio/napoli), [Torino](https://presenteincontri.app/incontri-al-buio/torino), [Bologna](https://presenteincontri.app/incontri-al-buio/bologna), [Firenze](https://presenteincontri.app/incontri-al-buio/firenze), [Genova](https://presenteincontri.app/incontri-al-buio/genova), [Venezia](https://presenteincontri.app/incontri-al-buio/venezia), [Padova](https://presenteincontri.app/incontri-al-buio/padova), [Verona](https://presenteincontri.app/incontri-al-buio/verona), [Brescia](https://presenteincontri.app/incontri-al-buio/brescia), [Bergamo](https://presenteincontri.app/incontri-al-buio/bergamo), [Bari](https://presenteincontri.app/incontri-al-buio/bari), [Palermo](https://presenteincontri.app/incontri-al-buio/palermo), [Catania](https://presenteincontri.app/incontri-al-buio/catania), [Cagliari](https://presenteincontri.app/incontri-al-buio/cagliari).
 
 ## Contatti e social
 - Email: presentemilano+info@gmail.com

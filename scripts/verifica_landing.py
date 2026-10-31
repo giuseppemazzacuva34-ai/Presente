@@ -19,6 +19,9 @@ import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
+# Pagine SEO (città, guide, domande): controllate anche loro, tranne la web app in /app.
+PAGINE += sorted(str(p.relative_to(CARTELLA)) for p in CARTELLA.rglob("*.html")
+                 if p.relative_to(CARTELLA).parts[0] != "app" and str(p.relative_to(CARTELLA)) not in PAGINE)
 CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale",
                  "presento", "cerchi", "consenso-cerchi", "fascia"}
 # Domande facoltative (D33 A, testi approvati con D65 A): mai obbligatorie; la casella per «chi cerchi» mai spuntata in partenza.
