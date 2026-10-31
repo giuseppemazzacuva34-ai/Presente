@@ -6,6 +6,7 @@ import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
+import { grazieConCitta } from "./grazie.js";
 import { daCanale } from "./canale.js";
 import { contaVisitaPagina } from "./visite.js";
 import { app, eApp } from "./app.js";
@@ -36,6 +37,8 @@ export default {
     if (pathname === "/conteggio") return conSicurezza(await conteggio(env));
     // Home: il Worker parte qui solo per precompilare il codice dei link d'invito (?invito=CODICE).
     if (pathname === "/") return conSicurezza(await homeConInvito(request, env));
+    // Pagina dopo l'iscrizione (D64): «<Città>: mancano N persone per aprire la tua stanza».
+    if (pathname === "/grazie" || pathname === "/grazie.html") return conSicurezza(await grazieConCitta(request, env));
     return env.ASSETS.fetch(request);
   },
 };

@@ -5,8 +5,9 @@
 import { pulisciCodice } from "./invito.js";
 import { richiestaAutomatica } from "./automatiche.js";
 
-// Elenco chiuso: qualunque altro canale risponde 404. "meta" = sponsorizzate (D25), "creator" = link dei creator.
-export const CANALI = new Set(["instagram", "tiktok", "facebook", "whatsapp", "meta", "creator"]);
+// Elenco chiuso: qualunque altro canale risponde 404. "meta" = sponsorizzate (D25), "creator" = link dei creator,
+// "amico" = link «porta un amico» della pagina /grazie (D64, punto 3).
+export const CANALI = new Set(["instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"]);
 
 const SCHEMA_VISITE = `CREATE TABLE IF NOT EXISTS visite_canale (
   canale TEXT NOT NULL,
