@@ -10,7 +10,7 @@ import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSON
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
 import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO } from "../worker/grazie.js";
-import { numeriPubblici, conNumeri, svuotaMemoria, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE } from "../worker/numeri.js";
+import { numeriPubblici, conNumeri, svuotaMemoria, htmlClassifica, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE, SEGNAPOSTO_CLASSIFICA } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
 // User agent di un telefono vero (browser interno di Instagram): le richieste senza user agent contano come automatiche.
@@ -569,7 +569,18 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(letture === 3, "/grazie: numeri sempre freschi (conta anche chi si è appena iscritto)");
   const cattiva = await apri("?citta=%3Cscript%3Ealert(1)%3C%2Fscript%3E");
   verifica(!cattiva.includes("<script>") && !cattiva.includes("alert(1)"), "/grazie: la città dell'indirizzo non può inserire codice");
-  verifica((await apri("")) === grazieHtml && (await apri("?citta=estero")) === grazieHtml, "/grazie senza città o dall'estero: pagina identica");
+  const senza = await apri("");
+  verifica(!senza.includes("class=\"mancano\"") && (await apri("?citta=estero")) === senza, "/grazie senza città o dall'estero: nessun «mancano N»");
+  // Classifica pubblica delle città (D74 A): solo città e totali, da 10 iscritti in su, Milano (6) non compare.
+  verifica(senza.includes("<li><span>Roma</span> <strong>40</strong> <small>apre</small></li>")
+    && senza.indexOf("Roma") < senza.indexOf("Reggio Emilia") && senza.includes("<strong>35</strong> <small>mancano 1</small>")
+    && !senza.includes("<span>Milano</span>") && !senza.includes(SEGNAPOSTO_CLASSIFICA), "/grazie: classifica delle città, ordinata, solo da 10 iscritti");
+  verifica(htmlClassifica({ totale: 9, citta: { milano: 9 } }).includes("Nessuna città ha ancora 10 iscritti") && !htmlClassifica({ totale: 9, citta: { milano: 9 } }).includes("<ol>"),
+    "classifica: sotto i 10 iscritti nessuna città e nessun numero");
+  verifica(htmlClassifica(null) === "", "classifica: senza database niente");
+  const senzaDb = await (await grazieConCitta(new Request("https://presente.example/grazie"), { ASSETS })).text();
+  verifica(senzaDb === grazieHtml, "/grazie senza database: pagina identica");
+  verifica(!/@|email/i.test(htmlClassifica({ totale: 50, citta: { roma: 50 } })), "classifica: nessun dato personale");
   verifica(htmlMancano("Pisa", 0).includes("mancano <strong>36</strong>"), "htmlMancano: città nuova → mancano 36");
   verifica(["presente-30-domande-primo-appuntamento.pdf", "presente-30-carte.pdf"].every((f) => grazieHtml.includes(`href="/media/${f}"`)
     && readFileSync(new URL("../landing/media/" + f, import.meta.url)).subarray(0, 5).toString() === "%PDF-"),
@@ -670,7 +681,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(p.includes("fa salire <strong>Milano</strong>") && p.includes("mancano <strong>30</strong>") && !p.includes("scrivi%20il%20mio%20nome"), "/grazie?c=: la città di chi invita sale, niente più «scrivi il mio nome»");
   verifica(!/premi|regalo per te|prime stanze/i.test(p.slice(p.indexOf(INIZIO_INVITO), p.indexOf(FINE_INVITO))), "/grazie?c=: nessuna promessa di premi (DPR 430/2001 da chiarire)");
   const falso = await (await grazieConCitta(new Request("https://presenteincontri.app/grazie?c=%3Cscript%3E"), { ASSETS, DB })).text();
-  verifica(falso === grazieHtml, "/grazie con codice malformato: pagina identica");
+  verifica(!falso.includes("<script>") && falso.slice(falso.indexOf(INIZIO_INVITO), falso.indexOf(FINE_INVITO)) === grazieHtml.slice(grazieHtml.indexOf(INIZIO_INVITO), grazieHtml.indexOf(FINE_INVITO)),
+    "/grazie con codice malformato: blocco invito identico, nessun codice inserito");
   const soloCodice = await (await grazieConCitta(new Request("https://presenteincontri.app/grazie?c=K7MQ2P&citta=estero"), { ASSETS, DB })).text();
   verifica(soloCodice.includes("invito=K7MQ2P\"") === false && soloCodice.includes("/da/amico?invito=K7MQ2P") && !soloCodice.includes("citta=estero"), "/grazie dall'estero: link senza città");
   svuotaMemoria();
