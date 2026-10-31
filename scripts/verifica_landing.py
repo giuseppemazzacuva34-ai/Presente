@@ -20,7 +20,7 @@ CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
 CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale"}
 # «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
-CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator"}
+CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",

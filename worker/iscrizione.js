@@ -35,9 +35,11 @@ function mancaColonnaCitta(errore) {
 
 // Dopo l'iscrizione si va a /grazie; se l'iscritto arriva da un canale (D26) l'indirizzo porta ?da=<canale>,
 // così il contatore delle visite (D43) conta /grazie per giorno e per sorgente. Solo il nome del canale, nessun dato personale.
-function grazie(request, canale = "") {
+// Dal 31/10 (D64) porta anche ?citta=<città> per la frase «mancano N persone»: la pagina non la salva.
+function grazie(request, canale = "", citta = "") {
   const url = new URL("/grazie", request.url);
   if (canale) url.searchParams.set("da", canale);
+  if (citta) url.searchParams.set("citta", citta);
   return Response.redirect(url.toString(), 303);
 }
 
@@ -159,6 +161,6 @@ async function gestisci(request, env) {
   }
 
   if (nuova) await contaIscrizione(env, canale);
-  return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale));
+  return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, luogo.citta || luogo.zona));
 }
 

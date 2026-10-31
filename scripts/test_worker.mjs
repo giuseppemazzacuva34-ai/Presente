@@ -9,6 +9,7 @@ import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
+import { grazieConCitta, htmlMancano } from "../worker/grazie.js";
 import { numeriPubblici, conNumeri, svuotaMemoria, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
@@ -233,7 +234,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const piu = env3.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni_canale"));
   verifica(r3.status === 303 && piu && piu.valori[0] === "instagram", "iscrizione da /da/instagram: +1 in iscrizioni_canale");
   verifica(riga && !riga.sql.includes("canale") && !riga.valori.includes("instagram"), "iscrizione: il canale NON entra nella riga dell'iscritto");
-  verifica(r3.headers.get("location") === "https://presente.example/grazie?da=instagram", "iscrizione con canale: va a /grazie?da=instagram (il contatore conta /grazie per sorgente)");
+  verifica(r3.headers.get("location") === "https://presente.example/grazie?da=instagram&citta=milano", "iscrizione con canale: va a /grazie?da=instagram (il contatore conta /grazie per sorgente) con la città");
 
   const env4 = { ISCRIZIONI_APERTE: "si", DB: contatoriFinti({ nuova: false }) };
   await iscrizione(modulo({ canale: "instagram" }), env4);
@@ -545,6 +546,31 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const t = await r.text();
   verifica(r.status === 200 && t.includes("Restano <strong>130</strong> posti") && (r.headers.get("content-security-policy") || "").includes("script-src 'none'")
     && (r.headers.get("cache-control") || "").includes("no-store"), "home dal Worker: numeri scritti, CSP invariata, nessuna cache condivisa");
+  svuotaMemoria();
+}
+
+// 18. Pagina /grazie (D64, punto 3): «<Città>: mancano N persone», link «porta un amico», carte da scaricare.
+{
+  const grazieHtml = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+  const ASSETS = { fetch: async () => new Response(grazieHtml, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const righe = [{ zona: "milano", citta: null, n: 6 }, { zona: "altra-citta-italia", citta: "reggio emilia", n: 35 }, { zona: "roma", citta: null, n: 40 }];
+  let letture = 0;
+  const DB = { prepare: () => ({ first: async () => { letture++; return 81; }, all: async () => ({ results: righe }), bind() { return this; }, run: async () => ({}) }) };
+  const apri = async (q) => (await grazieConCitta(new Request("https://presente.example/grazie" + q), { ASSETS, DB })).text();
+  svuotaMemoria();
+  verifica((await apri("?citta=milano")).includes("<strong>Milano</strong>: mancano <strong>30</strong> persone"), "/grazie: Milano a 6 → mancano 30");
+  verifica((await apri("?citta=reggio%20emilia")).includes("<strong>Reggio Emilia</strong>: manca <strong>1</strong> persona"), "/grazie: città scritta, singolare");
+  verifica((await apri("?citta=roma")).includes("ha già 36 iscritti"), "/grazie: città a quota 36");
+  verifica(letture === 3, "/grazie: numeri sempre freschi (conta anche chi si è appena iscritto)");
+  const cattiva = await apri("?citta=%3Cscript%3Ealert(1)%3C%2Fscript%3E");
+  verifica(!cattiva.includes("<script>") && !cattiva.includes("alert(1)"), "/grazie: la città dell'indirizzo non può inserire codice");
+  verifica((await apri("")) === grazieHtml && (await apri("?citta=estero")) === grazieHtml, "/grazie senza città o dall'estero: pagina identica");
+  verifica(htmlMancano("Pisa", 0).includes("mancano <strong>36</strong>"), "htmlMancano: città nuova → mancano 36");
+  verifica(grazieHtml.includes('href="/media/presente-30-carte.pdf"') && readFileSync(new URL("../landing/media/presente-30-carte.pdf", import.meta.url)).subarray(0, 5).toString() === "%PDF-",
+    "/grazie: pulsante delle 30 carte e PDF presente");
+  verifica((grazieHtml.match(/presenteincontri\.app%2Fda%2Famico/g) || []).length === 2, "/grazie: WhatsApp e Telegram condividono il link /da/amico");
+  const r = await worker.fetch(new Request("https://presente.example/da/amico", { headers: { "user-agent": TELEFONO } }), { DB: databaseFinto() }, { waitUntil() {} });
+  verifica(r.status === 302 && r.headers.get("location") === "https://presente.example/?da=amico", "/da/amico: rimanda alla home con il canale «amico»");
   svuotaMemoria();
 }
 

@@ -15,9 +15,10 @@ export function svuotaMemoria() {
   memoria = { quando: 0, numeri: null };
 }
 
-export async function numeriPubblici(env, adesso = Date.now()) {
+// fresco = true (pagina /grazie, subito dopo l'iscrizione): rilegge D1 per contare anche la persona appena entrata.
+export async function numeriPubblici(env, adesso = Date.now(), { fresco = false } = {}) {
   if (!env.DB) return null;
-  if (memoria.numeri && adesso - memoria.quando < 60_000) return memoria.numeri;
+  if (!fresco && memoria.numeri && adesso - memoria.quando < 60_000) return memoria.numeri;
   try {
     const totale = Number(await env.DB.prepare("SELECT COUNT(*) AS n FROM iscrizioni").first("n")) || 0;
     const citta = await perCitta(env);
