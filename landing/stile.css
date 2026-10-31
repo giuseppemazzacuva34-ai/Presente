@@ -242,7 +242,7 @@ body.nuova { position: relative; overflow-x: hidden; }
 .eroe .attacco { font-size: 1.05rem; line-height: 1.45; margin: 0; }
 .modulo-eroe { margin: 1rem 0 0; padding: 1rem; }
 .modulo-eroe .campo { margin: 0 0 0.6rem; }
-.modulo-eroe .campo input[type="email"], .modulo-eroe .campo select { min-height: 2.85rem; padding: 0.6rem 0.75rem; }
+.modulo-eroe .campo input[type="email"], .modulo-eroe .campo #zona, .modulo-eroe .campo select { min-height: 2.85rem; padding: 0.6rem 0.75rem; }
 .modulo-eroe .spunta { font-size: 0.8rem; line-height: 1.38; margin: 0 0 0.5rem; gap: 0.6rem; }
 .modulo-eroe .bottone { margin-top: 0.75rem; }
 .modulo-eroe .rassicura { font-size: 0.85rem; text-align: center; margin: 0.5rem 0 0; }
@@ -257,3 +257,11 @@ body.nuova { position: relative; overflow-x: hidden; }
   .nuova .testata { padding-bottom: 0.6rem; margin-bottom: 1rem; }
   .nuova .logo span { font-size: 1.6rem; }
 }
+
+/* D64: «Restano N posti» e contatore per città, scritti dal Worker solo quando ci sono numeri da mostrare. */
+.posti { margin: 0.7rem 0 0; font-size: 0.95rem; text-align: center; }
+.posti strong { color: #b8321f; font-size: 1.1em; }
+.contatore-citta { margin: 0.9rem 0 0; text-align: center; font-size: 0.85rem; }
+.contatore-citta p { margin: 0 0 0.3rem; color: #5b5751; }
+.contatore-citta ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem 0.9rem; }
+.contatore-citta strong { color: #b8321f; }
