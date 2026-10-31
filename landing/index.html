@@ -19,7 +19,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261031d">
+  <link rel="stylesheet" href="/stile.css?v=20261031e">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presenteincontri.app/","logo":"https://presenteincontri.app/favicon.svg","sameAs":["https://www.instagram.com/presente_app/","https://www.facebook.com/presenteincontrialbuio","https://www.tiktok.com/@presenteapp"]},{"@type":"WebSite","name":"Presente","url":"https://presenteincontri.app/","inLanguage":"it-IT"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"it-IT","mainEntity":[{"@type":"Question","name":"Chi vede le mie foto?","acceptedAnswer":{"@type":"Answer","text":"Nessuno, finché non vi scegliete a vicenda. Durante la settimana nella stanza vi conoscete solo a voce. Profilo e foto si scoprono solo dopo il sì di entrambi, e solo tra voi due."}},{"@type":"Question","name":"Come proteggete chi si iscrive?","acceptedAnswer":{"@type":"Answer","text":"Le foto restano nascoste fino alla scelta reciproca, un no non lo scopre nessuno e il primo incontro è in un locale che vi suggeriamo noi. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene. Prima dell'apertura pubblichiamo qui le regole complete."}},{"@type":"Question","name":"Quanto costa?","acceptedAnswer":{"@type":"Answer","text":"Entrare in lista d'attesa è gratis. La prima stanza sarà gratuita; dopo l'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura."}},{"@type":"Question","name":"Quando parte e in quali città?","acceptedAnswer":{"@type":"Answer","text":"Partiamo presto con la Stanza Italia, aperta a tutti: chi è in lista d'attesa lo sa per primo. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende."}},{"@type":"Question","name":"E se dal vivo non scatta niente?","acceptedAnswer":{"@type":"Answer","text":"Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa."}},{"@type":"Question","name":"Chi dà buca, paga?","acceptedAnswer":{"@type":"Answer","text":"Solo dopo che vi siete scelti tutti e due, ognuno blocca qualche credito come garanzia. Se uno dei due dice no, i crediti tornano a entrambi. Se invece all'appuntamento qualcuno non si presenta, perde i suoi crediti e la maggior parte va a chi ha aspettato."}},{"@type":"Question","name":"Cosa fate con la mia email?","acceptedAnswer":{"@type":"Answer","text":"La usiamo solo per la lista d'attesa e per avvisarti quando apre la tua città. Non la vendiamo e non la diamo a nessuno. Dettagli nell'informativa privacy."}}]}</script>
 </head>
@@ -161,6 +161,17 @@
               </datalist>
             </div>
 
+            <div class="spunta">
+              <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
+              <label for="maggiorenne">Ho almeno 18 anni.</label>
+            </div>
+
+            <div class="spunta">
+              <input id="consenso" name="consenso" type="checkbox" value="si" required>
+              <label for="consenso">Acconsento a usare la mia email, la mia città, se lo scrivo il nome di chi mi ha invitato e, se le do, le mie risposte su come mi presento e sulla fascia d'età, solo per la lista d'attesa, per conteggi totali e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
+            </div>
+
+            <button class="bottone" type="submit">Voglio entrare</button>
             <details class="facoltative">
               <summary>Tre domande facoltative <span class="facoltativo">(aiutano a comporre stanze equilibrate)</span></summary>
               <div class="campo">
@@ -197,18 +208,6 @@
                 </select>
               </div>
             </details>
-
-            <div class="spunta">
-              <input id="maggiorenne" name="maggiorenne" type="checkbox" value="si" required>
-              <label for="maggiorenne">Ho almeno 18 anni.</label>
-            </div>
-
-            <div class="spunta">
-              <input id="consenso" name="consenso" type="checkbox" value="si" required>
-              <label for="consenso">Acconsento a usare la mia email, la mia città, se lo scrivo il nome di chi mi ha invitato e, se le do, le mie risposte su come mi presento e sulla fascia d'età, solo per la lista d'attesa, per conteggi totali e per sapere quando Presente apre, come spiegato nell'<a href="/privacy">informativa privacy</a>. Posso cancellarmi quando voglio.</label>
-            </div>
-
-            <button class="bottone" type="submit">Voglio entrare</button>
             <!--posti-->
             <p class="rassicura">Lista d'attesa gratuita, 20 secondi. Ti scriviamo solo quando apre la tua città.</p>
             <p class="rassicura">In regalo subito: 30 domande per non annoiarsi mai al primo appuntamento.</p>

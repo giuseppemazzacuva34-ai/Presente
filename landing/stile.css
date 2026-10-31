@@ -303,3 +303,6 @@ body.nuova { position: relative; overflow-x: hidden; }
   .modulo-eroe .bottone { margin-top: 0.5rem; }
 }
 .link-personale strong { overflow-wrap: anywhere; }
+
+/* Prova E9 di Growth (D74 A, punto 5): le tre domande facoltative sotto il pulsante, dentro lo stesso modulo. */
+.modulo-eroe .bottone + .facoltative { margin: 0.7rem 0 0; }
