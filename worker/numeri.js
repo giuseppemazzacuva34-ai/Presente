@@ -8,6 +8,8 @@ export const POSTI_REGALO = 150;
 export const SOGLIA_CONTATORE = 10;
 export const SEGNAPOSTO_POSTI = "<!--posti-->";
 export const SEGNAPOSTO_CONTATORE = "<!--contatore-citta-->";
+export const SEGNAPOSTO_CLASSIFICA = "<!--classifica-->";
+export const SOGLIA_APERTURA = 36;
 
 let memoria = { quando: 0, numeri: null };
 
@@ -49,6 +51,27 @@ export function htmlContatore(numeri) {
   if (!voci.length) return "";
   const elenco = voci.map(([nome, n]) => `<li><span>${nome}</span> <strong>${n}</strong></li>`).join("");
   return `<div class="contatore-citta"><p>Già in lista</p><ul>${elenco}</ul></div>`;
+}
+
+// Classifica pubblica delle città (D74 A, punto 4 «passaparola»): solo nome della città e conteggio, mai nomi di persone.
+// Stessa soglia del contatore (10 iscritti): sotto, una città non compare, così nessun numero piccolo fa intuire chi c'è.
+export function htmlClassifica(numeri) {
+  if (!numeri) return "";
+  const voci = Object.entries(numeri.citta)
+    .map(([chiave, n]) => [nomeCitta(chiave), n])
+    .filter(([nome, n]) => nome && n >= SOGLIA_CONTATORE)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it"))
+    .slice(0, 10);
+  const titolo = `<h2 id="classifica">La corsa delle città. <em>La prima a ${SOGLIA_APERTURA} apre.</em></h2>`;
+  if (!voci.length) {
+    return `<section class="classifica" aria-labelledby="classifica">${titolo}<p>Nessuna città ha ancora ${SOGLIA_CONTATORE} iscritti: con il tuo link la tua può essere la prima a entrare in classifica.</p></section>`;
+  }
+  const righe = voci.map(([nome, n]) => {
+    const mancano = SOGLIA_APERTURA - n;
+    const stato = mancano > 0 ? `mancano ${mancano}` : "apre";
+    return `<li><span>${nome}</span> <strong>${n}</strong> <small>${stato}</small></li>`;
+  }).join("");
+  return `<section class="classifica" aria-labelledby="classifica">${titolo}<ol>${righe}</ol><p class="nota">Solo i totali per città, da ${SOGLIA_CONTATORE} iscritti in su. Nessun nome.</p></section>`;
 }
 
 // Inserisce i numeri nei segnaposto; se non c'è nulla da mostrare l'HTML resta identico.
