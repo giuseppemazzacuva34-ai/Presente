@@ -3,6 +3,7 @@
 // Il codice viene ripulito: solo lettere e numeri, massimo 20 caratteri, in maiuscolo. Nient'altro entra nella pagina.
 
 import { canaleValido } from "./canale.js";
+import { numeriPubblici, conNumeri } from "./numeri.js";
 
 const SEGNAPOSTO = '<input id="invito" name="invito"';
 
@@ -23,9 +24,14 @@ export async function homeConInvito(request, env) {
   // così anche le iscrizioni dalla campagna finiscono nel contatore iscrizioni_canale.
   const canale = canaleValido(parametri.get("da")) || canaleValido(parametri.get("utm_source"));
   const tipo = risposta.headers.get("content-type") || "";
-  if ((!codice && !canale) || risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
+  if (risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
+  // Numeri pubblici della home (D64): «restano N posti» e contatore per città, solo totali.
+  const numeri = await numeriPubblici(env);
+  if (!codice && !canale && !numeri) return risposta;
 
-  let html = await risposta.text();
+  const originale = await risposta.text();
+  let html = conNumeri(originale, numeri, env);
+  if (!codice && !canale && html === originale) return new Response(originale, risposta);
   if (codice && html.includes(SEGNAPOSTO)) html = html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`);
   if (canale && html.includes(SEGNAPOSTO_CANALE)) {
     html = html.replace(SEGNAPOSTO_CANALE, `${SEGNAPOSTO_CANALE}\n        <input type="hidden" name="canale" value="${canale}">`);

@@ -9,6 +9,7 @@ import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm } from "../worker/visite.js";
+import { numeriPubblici, conNumeri, svuotaMemoria, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
 // User agent di un telefono vero (browser interno di Instagram): le richieste senza user agent contano come automatiche.
@@ -507,6 +508,44 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(home) && (home.match(/<option value=/g) || []).length >= 100 && !home.includes("<select"),
     "home: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
+}
+
+// 17. Home con i numeri (D64, punti 2 e 4): «restano N posti» solo con MOSTRA_POSTI = "si",
+// contatore solo per le città con almeno 10 iscritti; senza numeri la pagina resta identica.
+{
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  verifica(home.includes(SEGNAPOSTO_POSTI) && home.includes(SEGNAPOSTO_CONTATORE), "home: segnaposto dei posti e del contatore presenti");
+  const DBn = (totale, righe) => ({ prepare: (sql) => ({
+    first: async () => totale,
+    all: async () => ({ results: righe }),
+    bind() { return this; }, run: async () => ({}) }) });
+  const righe = [{ zona: "milano", citta: null, n: 12 }, { zona: "roma", citta: null, n: 9 }, { zona: "altra-citta-italia", citta: "pisa", n: 10 },
+    { zona: "estero", citta: null, n: 30 }, { zona: "altra-citta-italia", citta: null, n: 40 }];
+  svuotaMemoria();
+  const n = await numeriPubblici({ DB: DBn(101, righe) }, 1000);
+  const spento = conNumeri(home, n, { MOSTRA_POSTI: "no" });
+  verifica(!spento.includes("posti</p>") && !spento.includes("class=\"posti\""), "posti: con MOSTRA_POSTI diverso da «si» la frase non compare");
+  const acceso = conNumeri(home, n, { MOSTRA_POSTI: "si" });
+  verifica(acceso.includes("Restano <strong>49</strong> posti"), "posti: N = 150 − iscritti (101 → 49)");
+  verifica(/Milano<\/span> <strong>12/.test(acceso) && /Pisa<\/span> <strong>10/.test(acceso) && !acceso.includes("Roma</span>")
+    && !/estero|altra-citta/i.test(acceso.slice(acceso.indexOf("contatore-citta"), acceso.indexOf("contatore-citta") + 400)),
+    "contatore: solo città con 10+ iscritti, senza «estero» e «altre città»");
+  svuotaMemoria();
+  const pieno = conNumeri(home, await numeriPubblici({ DB: DBn(150, []) }, 1000), { MOSTRA_POSTI: "si" });
+  verifica(pieno === home, "posti finiti e nessuna città a 10: pagina identica");
+  svuotaMemoria();
+  let letture = 0;
+  const DBc = { prepare: () => ({ first: async () => { letture++; return 3; }, all: async () => ({ results: [] }) }) };
+  await numeriPubblici({ DB: DBc }, 1000); await numeriPubblici({ DB: DBc }, 30_000); await numeriPubblici({ DB: DBc }, 62_000);
+  verifica(letture === 2, "numeri in memoria per 60 secondi: D1 letto una volta al minuto");
+  svuotaMemoria();
+  const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const r = await worker.fetch(new Request("https://presente.example/", { headers: { "user-agent": TELEFONO } }),
+    { ASSETS, DB: DBn(20, righe), MOSTRA_POSTI: "si" }, { waitUntil() {} });
+  const t = await r.text();
+  verifica(r.status === 200 && t.includes("Restano <strong>130</strong> posti") && (r.headers.get("content-security-policy") || "").includes("script-src 'none'")
+    && (r.headers.get("cache-control") || "").includes("no-store"), "home dal Worker: numeri scritti, CSP invariata, nessuna cache condivisa");
+  svuotaMemoria();
 }
 
 if (errori) {

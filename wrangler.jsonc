@@ -49,6 +49,9 @@
     "CODICI_INVITO": "",
     // Campagne utm contate per nome in /conteggio (D43); le altre finiscono in "altro". Separate da virgola.
     "CAMPAGNE_UTM": "lista_traffico",
+    // «I primi 150 entrano con una stanza in regalo. Restano N posti.» sotto il pulsante (D64, punto 2; regalo D42).
+    // "no" finché il CFO non approva il testo esatto; con "si" il Worker scrive la frase con N = 150 − iscritti.
+    "MOSTRA_POSTI": "no",
     // Accesso vero alla web app con email (issue #2). "no" = l'app resta in anteprima e non manda nulla a Supabase.
     // Si mette "si" solo dopo l'informativa privacy dell'app (T08) e la revisione di sicurezza del CISO (T15).
     "ACCESSO_APP": "no",
