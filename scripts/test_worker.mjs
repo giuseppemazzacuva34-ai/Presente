@@ -3,7 +3,7 @@
 // Controlla che /iscrizione: resti chiusa finché ISCRIZIONI_APERTE non vale "si", rifiuti i moduli inviati da altri siti,
 // rispetti il limite di frequenza, scriva nel database solo con parametri e non riveli dettagli quando qualcosa va storto.
 import { readFileSync, readdirSync } from "node:fs";
-import { iscrizione, perEsiti } from "../worker/iscrizione.js";
+import { iscrizione, perEsiti, perRisposte, MINIMO_CERCHI } from "../worker/iscrizione.js";
 import worker from "../worker/index.js";
 import { conteggio } from "../worker/conteggio.js";
 import { pulisciCodice } from "../worker/invito.js";
@@ -507,7 +507,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const pc = await perCitta({ DB: DBc });
   verifica(pc.milano === 4 && pc.pisa === 2 && pc["altra-citta-italia"] === 1, "perCitta: totali per zona e per città scritta");
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
-  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(home) && (home.match(/<option value=/g) || []).length >= 100 && !home.includes("<select"),
+  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(home) && (home.match(/<option value=/g) || []).length >= 100 && !/<select[^>]*name="zona"/.test(home),
     "home: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
 }
 
@@ -578,6 +578,38 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const r = await worker.fetch(new Request("https://presente.example/da/amico", { headers: { "user-agent": TELEFONO } }), { DB: databaseFinto() }, { waitUntil() {} });
   verifica(r.status === 302 && r.headers.get("location") === "https://presente.example/?da=amico", "/da/amico: rimanda alla home con il canale «amico»");
   svuotaMemoria();
+}
+
+// 19. Domande facoltative (D33 A, testi D65 A): solo valori dell'elenco; «chi cerchi» si salva solo con la casella a parte;
+// ci si iscrive anche senza rispondere; /conteggio mostra solo totali per domanda.
+{
+  const salva = async (campi) => {
+    const env = aperte({ DB: databaseFinto({ nuove: true }) });
+    const r = await iscrizione(modulo(campi, { origin: "https://presente.example" }), env);
+    return { r, ins: env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni")) };
+  };
+  const a = await salva({});
+  verifica(a.r.status === 303 && a.ins.valori.slice(6).every((v) => v === null), "senza domande facoltative: iscrizione valida, risposte vuote");
+  const b = await salva({ presento: "donna", cerchi: "uomini", fascia: "25-34" });
+  verifica(b.r.status === 303 && b.ins.valori[6] === "donna" && b.ins.valori[7] === null && b.ins.valori[8] === "25-34" && b.ins.valori[9] === null,
+    "«chi cerchi» senza la casella a parte: la risposta NON si salva, le altre sì");
+  const c = await salva({ cerchi: "uomini", "consenso-cerchi": "si" });
+  verifica(c.ins.valori[7] === "uomini" && /^\d{4}-\d{2}-\d{2}T/.test(c.ins.valori[9]), "«chi cerchi» con la casella spuntata: salvata con la data del consenso");
+  const d = await salva({ presento: "'; DROP TABLE iscrizioni; --", cerchi: "tutto", "consenso-cerchi": "si", fascia: "12-17" });
+  verifica(d.r.status === 303 && d.ins.valori.slice(6).every((v) => v === null) && !d.ins.sql.includes("DROP"), "valori fuori elenco: scartati, iscrizione comunque valida");
+  const e = await salva({ "consenso-cerchi": "si" });
+  verifica(e.ins.valori[7] === null && e.ins.valori[9] === null, "casella spuntata senza risposta: nessuna data di consenso");
+
+  const DBr = (righe) => ({ prepare: (sql) => ({ all: async () => ({ results: righe[sql.match(/SELECT (\w+)/)[1]] || [] }) }) });
+  const pochi = await perRisposte({ DB: DBr({ presento: [{ valore: "donna", n: 3 }, { valore: "x", n: 9 }], cerchi: [{ valore: "uomini", n: 2 }], fascia: [] }) });
+  verifica(pochi.presento.donna === 3 && !("x" in pochi.presento) && pochi.cerchi === `meno di ${MINIMO_CERCHI}` && Object.keys(pochi.fascia).length === 0,
+    "perRisposte: totali per domanda, «chi cerchi» nascosto sotto 10 risposte");
+  const tanti = await perRisposte({ DB: DBr({ cerchi: [{ valore: "uomini", n: 7 }, { valore: "donne", n: 4 }] }) });
+  verifica(tanti.cerchi.uomini === 7 && tanti.cerchi.donne === 4, "perRisposte: «chi cerchi» visibile da 10 risposte");
+
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  verifica(home.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(home)
+    && home.includes("se le do, le mie risposte su come mi presento e sulla fascia d'età"), "home: testi D65 A e casella a parte non spuntata");
 }
 
 if (errori) {

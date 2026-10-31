@@ -3,7 +3,8 @@
 
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
-- il modulo raccolga solo email, zona, invito facoltativo, maggiore età e consenso (più il campo trappola anti-spam);
+- il modulo raccolga solo email, zona, invito facoltativo, maggiore età, consenso e le tre domande facoltative D33
+  con la casella a parte per «chi cerchi» (più il campo trappola anti-spam);
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
 - l'informativa (approvata con la decisione D5) non contenga più parti da completare né il marchio BOZZA;
@@ -18,7 +19,10 @@ import sys
 
 CARTELLA = Path(__file__).resolve().parent.parent / "landing"
 PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
-CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale"}
+CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale",
+                 "presento", "cerchi", "consenso-cerchi", "fascia"}
+# Domande facoltative (D33 A, testi approvati con D65 A): mai obbligatorie; la casella per «chi cerchi» mai spuntata in partenza.
+FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
 # «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
 CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
@@ -145,6 +149,11 @@ for nome in PAGINE:
                 errori.append(f"index.html: manca il campo {campo}")
             elif "required" not in p.campi[campo]:
                 errori.append(f"index.html: il campo {campo} deve essere obbligatorio")
+        for campo in FACOLTATIVI & set(p.campi):
+            if "required" in p.campi[campo] or "checked" in p.campi[campo]:
+                errori.append(f"index.html: il campo facoltativo {campo} non può essere obbligatorio né già spuntato")
+        if "cerchi" in p.campi and "consenso-cerchi" not in p.campi:
+            errori.append("index.html: «chi cerchi» richiede la casella di consenso a parte (art. 9 GDPR)")
         peso = len(testo.encode()) + (CARTELLA / "stile.css").stat().st_size
         if peso > PESO_MASSIMO:
             errori.append(f"index.html: pagina troppo pesante ({peso} byte, massimo {PESO_MASSIMO})")

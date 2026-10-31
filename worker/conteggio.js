@@ -4,11 +4,13 @@
 // esiti_iscrizione: per giorno, quanti invii del modulo sono andati bene o sono stati respinti e perché (solo numeri).
 // per_sorgente: iscritti dal modulo del sito ("landing") e dal modulo dentro Facebook/Instagram ("meta_modulo"), solo totali.
 // per_citta: iscritti per città (le zone, più le «altre città italiane» scritte a mano dal 31/10, D64), solo totali.
+// per_risposta (dal 31/10, D33/D65): totali nazionali di ciascuna domanda facoltativa, mai incrociati con città o email;
+//   «chi cerchi» si mostra solo da 10 risposte in su, prima vale "meno di 10".
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
 import { codiciConfigurati, pulisciCodice } from "./invito.js";
 import { perCanale } from "./canale.js";
 import { perVisite } from "./visite.js";
-import { perEsiti } from "./iscrizione.js";
+import { perEsiti, perRisposte } from "./iscrizione.js";
 import { perCitta } from "./citta.js";
 
 export async function conteggio(env) {
@@ -25,7 +27,8 @@ export async function conteggio(env) {
     const per_canale = await perCanale(env);
     const visite = await perVisite(env);
     const esiti_iscrizione = await perEsiti(env);
-    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_sorgente, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
+    const per_risposta = await perRisposte(env);
+    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_risposta, per_sorgente, con_invito: conInvito, per_codice, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
   } catch {
     // La tabella nasce con la prima iscrizione.
     const per_canale = await perCanale(env);
