@@ -6,8 +6,8 @@ import { tipoRichiesta } from "./automatiche.js";
 
 const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie" };
 
-// Sorgenti utm ammesse: i canali dei link /da più google; tutto il resto diventa "altro".
-const SORGENTI = new Set([...CANALI, "google"]);
+// Sorgenti utm ammesse: i canali dei link /da più google, pinterest e reddit (Growth, 1/11); tutto il resto diventa "altro".
+const SORGENTI = new Set([...CANALI, "google", "pinterest", "reddit"]);
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS visite_pagina (
   pagina TEXT NOT NULL,

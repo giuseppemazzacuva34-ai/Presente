@@ -2,7 +2,7 @@
 // Servono a capire da quale canale arrivano visite e iscrizioni, senza alcun dato personale:
 // il Worker conta solo «canale, giorno, quante volte» in due tabelle D1. Nessun cookie, IP o user agent salvato,
 // e il canale NON viene scritto nella riga dell'iscritto.
-import { pulisciCodice } from "./invito.js";
+import { pulisciCodice, sceltaTitolo } from "./invito.js";
 import { richiestaAutomatica } from "./automatiche.js";
 import { semplifica } from "./citta.js";
 
@@ -63,6 +63,14 @@ export async function daCanale(request, env) {
   // Link personale «porta un'amica»: la città di chi invita passa alla home solo insieme al codice, già semplificata.
   const citta = codice ? semplifica(url.searchParams.get("citta")) : "";
   if (citta) destinazione.searchParams.set("citta", citta);
+  // Variante del titolo (D79 A) e utm passano alla home (richiesta Growth, 1/11): ?v= solo dall'elenco fisso dei titoli,
+  // utm ripuliti (minuscole, cifre, - e _); la home li riconta solo se sono negli elenchi chiusi di visite.js.
+  const variante = sceltaTitolo(url.searchParams);
+  if (variante) destinazione.searchParams.set("v", variante);
+  for (const nome of ["utm_source", "utm_campaign"]) {
+    const valore = String(url.searchParams.get(nome) || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+    if (valore) destinazione.searchParams.set(nome, valore);
+  }
   return new Response(null, { status: 302, headers: { location: destinazione.toString(), "cache-control": "no-store" } });
 }
 

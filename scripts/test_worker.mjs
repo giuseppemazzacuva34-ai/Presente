@@ -893,11 +893,22 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const apri = async (q) => (await (await worker.fetch(new Request("https://presente.example/" + q), { ASSETS: AH })).text());
     const titolo = (h) => h.slice(h.indexOf('<h1 id="titolo">'), h.indexOf("</h1>") + 5);
     verifica(titolo(await apri("")) === '<h1 id="titolo">Prima la voce. <em>Poi il resto.</em></h1>', "titolo neutro senza parametro");
-    verifica(titolo(await apri("?v=voce")).includes(TITOLI.voce) && titolo(await apri("?utm_content=BUCA")).includes(TITOLI.buca)
-      && titolo(await apri("?v=donne&utm_source=meta")).includes(TITOLI.donne), "?v= o utm_content scelgono il titolo dall'elenco fisso");
+    verifica(titolo(await apri("?v=voce")).includes(TITOLI.voce[0]) && titolo(await apri("?utm_content=BUCA")).includes(TITOLI.buca[0])
+      && titolo(await apri("?v=donne&utm_source=meta")).includes(TITOLI.donne[0]), "?v= o utm_content scelgono il titolo dall'elenco fisso");
     const strano = await apri("?v=%3Cscript%3Ealert(1)%3C%2Fscript%3E&utm_content=ciao");
     verifica(titolo(strano).includes("Prima la voce.") && !strano.includes("<script>alert") && sceltaTitolo(new URLSearchParams("v=constructor")) === "",
       "valori fuori elenco: titolo neutro, nessun testo dell'indirizzo nella pagina");
+    const rv = await apri("?v=foto");
+    verifica(rv.includes(`<p class="attacco">${TITOLI.foto[1]}</p>`) && (await apri("")).includes("<p class=\"attacco\">L'app di incontri al buio: vi parlate a voce per una settimana, le foto solo se vi scegliete.</p>"),
+      "variante: cambia anche la riga sotto il titolo (testi di Contenuti), senza variante resta quella neutra");
+    const da = await worker.fetch(new Request("https://presente.example/da/instagram?v=voce&utm_source=Pinterest&utm_campaign=pin%3Cx%3E&utm_content=x", { headers: { "user-agent": "curl/8" } }), { DB: { prepare: () => ({ bind() { return this; }, async run() { return {}; } }) } });
+    const dl = new URL(da.headers.get("location"));
+    verifica(dl.searchParams.get("v") === "voce" && dl.searchParams.get("utm_source") === "pinterest" && dl.searchParams.get("utm_campaign") === "pinx" && !dl.searchParams.has("utm_content"),
+      "/da/<canale>: ?v= (solo elenco) e utm ripuliti passano alla home");
+    const daBrutto = new URL((await worker.fetch(new Request("https://presente.example/da/meta?v=%3Cscript%3E"), { DB: { prepare: () => ({ bind() { return this; }, async run() { return {}; } }) } })).headers.get("location"));
+    verifica(!daBrutto.searchParams.has("v"), "/da/<canale>: ?v= fuori elenco non passa");
+    const e = etichetteUtm(new URLSearchParams("utm_source=pinterest&utm_campaign=pin"), { CAMPAGNE_UTM: "lista_traffico,pin" });
+    verifica(e.sorgente === "pinterest" && e.campagna === "pin" && etichetteUtm(new URLSearchParams("utm_source=reddit"), {}).sorgente === "reddit", "utm: pinterest e reddit sono sorgenti ammesse");
     const campi = [...home.matchAll(/<(?:input|select|textarea)[^>]*name="([^"]+)"/g)].map((m) => m[1]);
     verifica(!campi.includes("zona") && !campi.includes("presento") && campi.includes("email") && campi.includes("consenso"), "home (passo 1): solo email, caselle e invito");
     verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf('type="submit"'), "home: posti sopra il modulo, nota del CFO sotto il pulsante");
