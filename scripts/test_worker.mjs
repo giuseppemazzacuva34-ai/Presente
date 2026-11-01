@@ -533,9 +533,9 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(conNumeri(home, await numeriPubblici({ DB: DBn(149, []) }, 1000), { MOSTRA_POSTI: "si" }).includes("Resta <strong>1</strong> posto."), "posti: singolare a 1");
   svuotaMemoria();
   await numeriPubblici({ DB: DBn(101, righe) }, 1000);
-  verifica(/Milano<\/span> <strong>12/.test(acceso) && /Pisa<\/span> <strong>10/.test(acceso) && !acceso.includes("Roma</span>")
+  verifica(/Milano<\/span> <strong>12/.test(acceso) && !acceso.includes("Pisa</span>") && !acceso.includes("Roma</span>")
     && !/estero|altra-citta/i.test(acceso.slice(acceso.indexOf("contatore-citta"), acceso.indexOf("contatore-citta") + 400)),
-    "contatore: solo città con 10+ iscritti, senza «estero» e «altre città»");
+    "contatore: solo le 14 città con stanza e 10+ iscritti (D76 A: Pisa scritta a mano non compare), senza «estero» e «altre città»");
   svuotaMemoria();
   const pieno = conNumeri(home, await numeriPubblici({ DB: DBn(150, []) }, 1000), { MOSTRA_POSTI: "si" });
   verifica(pieno === home, "posti finiti e nessuna città a 10: pagina identica");
@@ -564,20 +564,25 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const apri = async (q) => (await grazieConCitta(new Request("https://presente.example/grazie" + q), { ASSETS, DB })).text();
   svuotaMemoria();
   verifica((await apri("?citta=milano")).includes("<strong>Milano</strong>: mancano <strong>30</strong> persone"), "/grazie: Milano a 6 → mancano 30");
-  verifica((await apri("?citta=reggio%20emilia")).includes("<strong>Reggio Emilia</strong>: manca <strong>1</strong> persona"), "/grazie: città scritta, singolare");
+  const libera = await apri("?citta=reggio%20emilia");
+  verifica(libera.includes("La tua città apre a 36 iscritti: invita un'amica o un amico.") && !libera.includes("<strong>Reggio Emilia</strong>")
+    && !/<strong>35<\/strong>|manca <strong>1/.test(libera), "/grazie (D76 A): città scritta a mano → frase fissa, senza numero e senza nome");
+  verifica((await apri("?citta=a%20caso%20qualsiasi")).includes("La tua città apre a 36 iscritti"), "/grazie (D76 A): testo qualsiasi nel campo città → frase fissa");
   verifica((await apri("?citta=roma")).includes("ha già 36 iscritti"), "/grazie: città a quota 36");
-  verifica(letture === 3, "/grazie: numeri sempre freschi (conta anche chi si è appena iscritto)");
+  verifica(letture === 4, "/grazie: numeri sempre freschi (conta anche chi si è appena iscritto)");
   const cattiva = await apri("?citta=%3Cscript%3Ealert(1)%3C%2Fscript%3E");
   verifica(!cattiva.includes("<script>") && !cattiva.includes("alert(1)"), "/grazie: la città dell'indirizzo non può inserire codice");
   const senza = await apri("");
   verifica(!senza.includes("class=\"mancano\"") && (await apri("?citta=estero")) === senza, "/grazie senza città o dall'estero: nessun «mancano N»");
   // Classifica pubblica delle città (D74 A): solo città e totali, da 10 iscritti in su, Milano (6) non compare.
   verifica(senza.includes("<li><span>Roma</span> <strong>40</strong> <small>apre</small></li>")
-    && senza.indexOf("Roma") < senza.indexOf("Reggio Emilia") && senza.includes("<strong>35</strong> <small>mancano 1</small>")
-    && !senza.includes("<span>Milano</span>") && !senza.includes(SEGNAPOSTO_CLASSIFICA), "/grazie: classifica delle città, ordinata, solo da 10 iscritti");
+    && !senza.includes("Reggio Emilia") && !senza.includes("<strong>35</strong>")
+    && !senza.includes("<span>Milano</span>") && !senza.includes(SEGNAPOSTO_CLASSIFICA), "/grazie: classifica solo delle 14 città con stanza (D76 A), da 10 iscritti");
   verifica(htmlClassifica({ totale: 9, citta: { milano: 9 } }).includes("Nessuna città ha ancora 10 iscritti") && !htmlClassifica({ totale: 9, citta: { milano: 9 } }).includes("<ol>"),
     "classifica: sotto i 10 iscritti nessuna città e nessun numero");
   verifica(htmlClassifica(null) === "", "classifica: senza database niente");
+  const soloLibere = htmlClassifica({ totale: 200, citta: { pisa: 100, "l aquila": 50, estero: 30 } });
+  verifica(soloLibere.includes("Nessuna città ha ancora 10 iscritti") && !/Pisa|Aquila|<ol>/.test(soloLibere), "classifica (D76 A): città scritte a mano mai in classifica");
   const senzaDb = await (await grazieConCitta(new Request("https://presente.example/grazie"), { ASSETS })).text();
   verifica(senzaDb === grazieHtml, "/grazie senza database: pagina identica");
   verifica(!/@|email/i.test(htmlClassifica({ totale: 50, citta: { roma: 50 } })), "classifica: nessun dato personale");
