@@ -8,7 +8,7 @@ import worker from "../worker/index.js";
 import { conteggio, invitiPersonali, codiceNelCampo, raggruppaCittaPiccole } from "../worker/conteggio.js";
 import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSONALE } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
-import { perVisite, etichetteUtm } from "../worker/visite.js";
+import { perVisite, etichetteUtm, etichettePixel } from "../worker/visite.js";
 import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO } from "../worker/grazie.js";
 import { numeriPubblici, conNumeri, svuotaMemoria, htmlClassifica, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE, SEGNAPOSTO_CLASSIFICA } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
@@ -379,6 +379,64 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const v = await perVisite({ DB });
     verifica(v.home === 17 && v.grazie === 2 && v.automatiche === 120 && v.per_giorno["2026-10-29"].home === 17 && v.per_utm["meta/lista_traffico"].home === 7,
       "/conteggio visite: totali, per giorno e per utm");
+  }
+}
+
+// Misura vera (D79 A, punto 1): /p.gif conta «home-persona» / «grazie-persona» solo per i browser veri.
+{
+  const db = () => {
+    const query = [];
+    return { query, prepare(sql) { const v = { sql, valori: [] }; query.push(v); return { bind(...x) { v.valori = x; return this; }, async run() { return { meta: { changes: 1 } }; } }; } };
+  };
+  const apri = async (percorso, ua, extra = {}, env = { DB: db(), CAMPAGNE_UTM: "lista_traffico" }) => {
+    const r = await worker.fetch(new Request("https://presente.example" + percorso, { headers: { "user-agent": ua, ...extra } }), env);
+    return { r, conta: env.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")), env };
+  };
+  {
+    const { r, conta, env } = await apri("/p.gif?pg=home", TELEFONO, {
+      referer: "https://presente.example/?utm_source=meta&utm_campaign=lista_traffico&fbclid=XYZ", "cf-connecting-ip": "203.0.113.9" });
+    const corpo = new Uint8Array(await r.arrayBuffer());
+    verifica(r.status === 200 && r.headers.get("content-type") === "image/gif" && corpo.length === 42 && corpo[0] === 0x47,
+      "/p.gif: risponde con una GIF 1×1");
+    verifica((r.headers.get("cache-control") || "").includes("no-store"), "/p.gif: mai in cache (ogni pagina caricata conta)");
+    verifica(conta.length === 1 && conta[0].valori[0] === "home-persona" && conta[0].valori[2] === "meta" && conta[0].valori[3] === "lista_traffico",
+      "/p.gif?pg=home da un telefono: +1 home-persona con sorgente e campagna lette dal Referer");
+    const tutto = JSON.stringify(env.DB.query);
+    verifica(!tutto.includes("XYZ") && !tutto.includes("203.0.113.9") && !tutto.includes("iPhone"), "/p.gif: nessun IP, user agent o altro parametro salvato");
+  }
+  {
+    const { conta } = await apri("/p.gif?pg=grazie", TELEFONO, { referer: "https://presente.example/grazie?da=instagram&citta=milano" });
+    verifica(conta.length === 1 && conta[0].valori[0] === "grazie-persona" && conta[0].valori[2] === "instagram",
+      "/p.gif?pg=grazie: +1 grazie-persona con il canale di ?da=");
+  }
+  for (const ua of ["facebookexternalhit/1.1", "python-requests/2.31", "curl/8.5.0", "Wget/1.21", "node", "Go-http-client/2.0",
+    "Mozilla/5.0 (compatible; AhrefsBot/7.0)", "SomeCrawler/1.0", "Mozilla/5.0 Spider", "Mozilla/5.0 (Preview)", ""]) {
+    const { r, conta } = await apri("/p.gif?pg=home", ua);
+    verifica(r.status === 200 && conta.length === 0, `/p.gif da «${ua || "(vuoto)"}»: GIF sì, nessun conteggio`);
+  }
+  {
+    const pref = await apri("/p.gif?pg=home", TELEFONO, { "sec-purpose": "prefetch" });
+    const strana = await apri("/p.gif?pg=privacy", TELEFONO);
+    const fuori = await apri("/p.gif?pg=home", TELEFONO, { referer: "https://altro.example/?utm_source=meta" });
+    verifica(pref.conta.length === 0 && strana.conta.length === 0, "/p.gif: precaricamenti e pagine fuori elenco non contano");
+    verifica(fuori.conta.length === 1 && fuori.conta[0].valori[2] === "", "/p.gif: Referer di un altro sito ignorato (nessuna sorgente)");
+    const e = etichettePixel(new Request("https://presente.example/p.gif", { headers: { referer: "https://presente.example/?utm_source=%3Cb%3E&utm_campaign=x" } }), { CAMPAGNE_UTM: "lista_traffico" });
+    verifica(e.sorgente === "altro" && e.campagna === "altro", "/p.gif: utm sconosciuti dal Referer diventano «altro»");
+  }
+  {
+    const righe = [
+      { pagina: "home", giorno: "2026-11-01", sorgente: "", campagna: "", n: 30 },
+      { pagina: "home-persona", giorno: "2026-11-01", sorgente: "", campagna: "", n: 12 },
+      { pagina: "home-persona", giorno: "2026-11-01", sorgente: "meta", campagna: "lista_traffico", n: 5 },
+      { pagina: "grazie-persona", giorno: "2026-11-01", sorgente: "", campagna: "", n: 1 },
+    ];
+    const v = await perVisite({ DB: { prepare: () => ({ all: async () => ({ results: righe }) }) } });
+    verifica(v.home === 30 && v.home_persona === 17 && v.grazie_persona === 1 && v.per_giorno["2026-11-01"].home_persona === 17
+      && v.per_utm["meta/lista_traffico"].home_persona === 5, "/conteggio visite: home_persona e grazie_persona, per giorno e per utm");
+  }
+  for (const f of ["index.html", "grazie.html"]) {
+    const t = readFileSync(new URL("../landing/" + f, import.meta.url), "utf8");
+    verifica(t.includes(`src="/p.gif?pg=${f === "index.html" ? "home" : "grazie"}"`), `landing/${f}: contiene l'immagine della misura vera`);
   }
 }
 

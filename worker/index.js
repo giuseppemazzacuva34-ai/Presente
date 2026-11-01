@@ -8,7 +8,7 @@ import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
 import { grazieConCitta } from "./grazie.js";
 import { daCanale } from "./canale.js";
-import { contaVisitaPagina } from "./visite.js";
+import { contaVisitaPagina, pixel, PERCORSO_PIXEL } from "./visite.js";
 import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
 
@@ -23,6 +23,8 @@ export default {
     }
     // Webhook di Meta per i commenti «BUIO» (docs/meta-webhook.md): nessuna intestazione HTML, risponde solo a Meta.
     if (pathname === PERCORSO_META) return await metaWebhook(request, env, ctx);
+    // Misura vera (D79 A): l'immagine 1×1 che solo un browser vero scarica insieme alla pagina.
+    if (pathname === PERCORSO_PIXEL) return await pixel(request, env, ctx);
     if (pathname === "/iscrizione") {
       if (request.method === "POST") return conSicurezza(await iscrizione(request, env));
       return conSicurezza(Response.redirect(new URL("/#iscriviti", request.url).toString(), 303));

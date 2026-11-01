@@ -60,9 +60,56 @@ export function contaVisitaPagina(request, env) {
   })();
 }
 
+// MISURA VERA (D79 A, punto 1, dal 1/11): una visita conta come «persona» solo se il browser carica anche l'immagine
+// trasparente 1×1 della pagina (<img src="/p.gif?pg=home">). Anteprime dei link, robot e precaricamenti di solito scaricano
+// l'HTML ma non le immagini; e anche qui si scartano gli user agent automatici (automatiche.js).
+// Righe «home-persona» e «grazie-persona» in visite_pagina. Sorgente e campagna si leggono dall'intestazione Referer
+// (l'indirizzo della pagina che ha chiesto l'immagine: utm_source, utm_campaign o ?da=), passano dagli stessi elenchi
+// chiusi di sopra e il Referer si butta. Niente cookie, IP o user agent salvati; l'immagine non va mai in cache.
+export const PERCORSO_PIXEL = "/p.gif";
+const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona" };
+// GIF trasparente di 1×1 pixel (42 byte).
+const GIF = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
+
+export function etichettePixel(request, env) {
+  let parametri = new URLSearchParams();
+  try {
+    const da = new URL(request.headers.get("referer") || "");
+    if (da.host === new URL(request.url).host) parametri = da.searchParams;
+  } catch {
+    // nessun Referer o Referer non valido: nessuna sorgente
+  }
+  const utm = etichetteUtm(parametri, env);
+  return { sorgente: utm.sorgente || canaleValido(parametri.get("da")), campagna: utm.campagna };
+}
+
+export async function pixel(request, env, ctx) {
+  const pagina = PIXEL_PAGINE[new URL(request.url).searchParams.get("pg")];
+  if (pagina && env.DB && tipoRichiesta(request) === "persona") {
+    const { sorgente, campagna } = etichettePixel(request, env);
+    const giorno = new Date().toISOString().slice(0, 10);
+    const conto = (async () => {
+      try {
+        await env.DB.prepare(SCHEMA).run();
+        await env.DB.prepare(PIU_UNO).bind(pagina, giorno, sorgente, campagna).run();
+      } catch (errore) {
+        console.error("visite: pixel non contato", errore && errore.name);
+      }
+    })();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(conto);
+    else await conto;
+  }
+  return new Response(request.method === "HEAD" ? null : GIF, {
+    headers: { "content-type": "image/gif", "cache-control": "no-store, max-age=0", "x-robots-tag": "noindex" },
+  });
+}
+
+const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona" };
+const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0 });
+
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, precaricate: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(
@@ -74,14 +121,15 @@ export async function perVisite(env) {
         vuoto.automatiche += n;
         continue;
       }
-      if (r.pagina !== "home" && r.pagina !== "grazie" && r.pagina !== "precaricate") continue;
-      vuoto[r.pagina] += n;
-      const g = (vuoto.per_giorno[r.giorno] ||= { home: 0, grazie: 0, precaricate: 0 });
-      g[r.pagina] += n;
+      const voce = CHIAVI_CONTEGGIO[r.pagina];
+      if (!voce) continue;
+      vuoto[voce] += n;
+      const g = (vuoto.per_giorno[r.giorno] ||= nuovaRiga());
+      g[voce] += n;
       if (r.sorgente || r.campagna) {
         const chiave = `${r.sorgente || "-"}/${r.campagna || "-"}`;
-        const u = (vuoto.per_utm[chiave] ||= { home: 0, grazie: 0, precaricate: 0 });
-        u[r.pagina] += n;
+        const u = (vuoto.per_utm[chiave] ||= nuovaRiga());
+        u[voce] += n;
       }
     }
   } catch {

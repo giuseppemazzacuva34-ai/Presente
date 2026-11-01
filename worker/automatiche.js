@@ -4,7 +4,7 @@
 
 // Firme dei programmi automatici più comuni. Il browser interno di Instagram e Facebook (FBAN/FBAV, "Instagram")
 // NON è in elenco: sono persone vere che hanno cliccato.
-const FIRME = /facebookexternalhit|facebot|facebookcatalog|meta-external|bot\b|bot\/|crawler|spider|slurp|preview|whatsapp|telegram|skype|discord|slack|linkedin|pinterest|embedly|vkshare|headless|lighthouse|pagespeed|gtmetrix|curl\/|wget|python|go-http-client|java\/|okhttp|axios|node-fetch|undici|httpclient|libwww|scrapy|monitor|uptime|checkly/i;
+const FIRME = /facebookexternalhit|facebot|facebookcatalog|meta-external|bot\b|bot\/|crawl|spider|slurp|preview|whatsapp|telegram|skype|discord|slack|linkedin|pinterest|embedly|vkshare|headless|lighthouse|pagespeed|gtmetrix|curl\/|wget|python|go-http-client|java\/|okhttp|axios|node-fetch|\bnode\b|undici|httpclient|libwww|scrapy|monitor|uptime|checkly/i;
 
 // Intestazioni dei caricamenti anticipati: Chrome e Safari (Sec-Purpose / Purpose: prefetch), Firefox (X-Moz),
 // Facebook e Instagram che precaricano le pagine delle inserzioni (X-Purpose: preview).
