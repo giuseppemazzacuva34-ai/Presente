@@ -47,15 +47,16 @@ const SEGNAPOSTO_CANALE = 'action="/iscrizione">';
 
 // TITOLO CHE CONTINUA L'INSERZIONE (D79 A, punto 4): ?v= (o utm_content) sceglie il titolo SOLO da questo elenco fisso.
 // Nessun testo dell'indirizzo entra mai nella pagina: un valore sconosciuto lascia il titolo neutro dell'HTML.
-// Testi provvisori del Coordinatore (1/11); quelli definitivi li manda Contenuti.
+// Titolo e riga sotto: testi di Contenuti (1/11 sera). Il titolo neutro e la sua riga sono quelli dell'HTML.
 export const TITOLI = {
-  voce: "Qui ti scelgono <em>per come parli.</em>",
-  match: "200 match. <em>Nessuno ti ha mai sentito parlare.</em>",
-  foto: "Le tue foto le vede <em>solo chi scegli tu.</em>",
-  buca: "Qui chi dà buca, <em>paga.</em>",
-  donne: "Le app di incontri <em>ti hanno delusa?</em>",
+  voce: ["Qui ti scelgono <em>per come parli.</em>", "Una settimana di chiamate solo voce. Le foto si vedono solo dopo il sì di entrambi."],
+  match: ["200 match. <em>Nessuno ti ha mai sentito parlare.</em>", "Qui non si scorre: si comincia dalla voce, con chiamate da 15 minuti."],
+  foto: ["Le tue foto le vede <em>solo chi scegli tu.</em>", "Restano nascoste finché non vi scegliete a vicenda. Prima vi conoscete a voce."],
+  buca: ["Qui chi dà buca, <em>paga.</em>", "Dopo il sì di entrambi ognuno blocca qualche credito come garanzia: chi non si presenta lo perde."],
+  donne: ["Le app di incontri <em>ti hanno delusa?</em>", "Su Presente ci si conosce prima dalla voce. Le tue foto le vede solo chi scegli tu."],
 };
 const INIZIO_TITOLO = '<h1 id="titolo">';
+const INIZIO_RIGA = '<p class="attacco">';
 
 export function sceltaTitolo(parametri) {
   for (const nome of ["v", "utm_content"]) {
@@ -70,7 +71,12 @@ export function conTitolo(html, variante) {
   const inizio = html.indexOf(INIZIO_TITOLO);
   const fine = html.indexOf("</h1>", inizio);
   if (inizio === -1 || fine === -1) return html;
-  return html.slice(0, inizio + INIZIO_TITOLO.length) + TITOLI[variante] + html.slice(fine);
+  const [titolo, riga] = TITOLI[variante];
+  html = html.slice(0, inizio + INIZIO_TITOLO.length) + titolo + html.slice(fine);
+  const ia = html.indexOf(INIZIO_RIGA, inizio);
+  const fa = html.indexOf("</p>", ia);
+  if (ia === -1 || fa === -1) return html;
+  return html.slice(0, ia + INIZIO_RIGA.length) + riga + html.slice(fa);
 }
 
 // Serve la home; se l'indirizzo ha ?invito=CODICE valido, restituisce la stessa pagina con il campo già compilato.

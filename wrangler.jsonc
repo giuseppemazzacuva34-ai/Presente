@@ -49,7 +49,7 @@
     // Solo lettere e numeri, massimo 20 caratteri. Vuoto finché i codici non sono assegnati.
     "CODICI_INVITO": "",
     // Campagne utm contate per nome in /conteggio (D43); le altre finiscono in "altro". Separate da virgola.
-    "CAMPAGNE_UTM": "lista_traffico",
+    "CAMPAGNE_UTM": "lista_traffico,bio,storie,amica,pin,reddit,red_flag_green_flag,idee_primo_appuntamento,primo_appuntamento_sicurezza,appuntamento_al_buio,frasi_amore",
     // «I primi 150 iscritti hanno 9 crediti in regalo… Restano N posti.» sotto il pulsante (D64, punto 2; regalo D42).
     // Testo approvato dal CFO il 31/10. "si" = il Worker scrive la frase con N = 150 − iscritti; "no" la nasconde.
     "MOSTRA_POSTI": "si",
