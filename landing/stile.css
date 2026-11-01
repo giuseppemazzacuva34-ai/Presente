@@ -306,3 +306,6 @@ body.nuova { position: relative; overflow-x: hidden; }
 
 /* Prova E9 di Growth (D74 A, punto 5): le tre domande facoltative sotto il pulsante, dentro lo stesso modulo. */
 .modulo-eroe .bottone + .facoltative { margin: 0.7rem 0 0; }
+
+/* Immagine 1×1 della misura vera (D79 A): invisibile, non sposta nulla. */
+.px { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
