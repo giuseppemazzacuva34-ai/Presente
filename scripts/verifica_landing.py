@@ -3,8 +3,9 @@
 
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
-- il modulo raccolga solo email, zona, invito facoltativo, maggiore età, consenso e le tre domande facoltative D33
-  con la casella a parte per «chi cerchi» (più il campo trappola anti-spam);
+- il modulo della home (passo 1, D79 A) raccolga solo email, invito facoltativo, maggiore età e consenso
+  (più il campo trappola anti-spam); il passo 2 su grazie.html solo città e le tre domande facoltative D33
+  con la casella a parte per «chi cerchi»;
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
 - l'informativa (approvata con la decisione D5) non contenga più parti da completare né il marchio BOZZA;
@@ -28,7 +29,9 @@ CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "co
 FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
 # «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
-CAMPI_OBBLIGATORI = {"email", "zona", "maggiorenne", "consenso"}
+CAMPI_OBBLIGATORI = {"email", "maggiorenne", "consenso"}
+# Passo 2 (D79 A): grazie.html, modulo verso /completa. Il gettone «t» e il canale li aggiunge il Worker, nascosti.
+CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
          "path", "rect", "circle"}
@@ -160,6 +163,20 @@ for nome in PAGINE:
         peso = len(testo.encode()) + (CARTELLA / "stile.css").stat().st_size
         if peso > PESO_MASSIMO:
             errori.append(f"index.html: pagina troppo pesante ({peso} byte, massimo {PESO_MASSIMO})")
+    if nome == "grazie.html":
+        if len(p.moduli) != 1 or p.moduli[0].get("action") != "/completa" or p.moduli[0].get("method", "").upper() != "POST":
+            errori.append("grazie.html: serve esattamente un modulo POST verso /completa (passo 2)")
+        if set(p.campi) - CAMPI_PASSO2:
+            errori.append(f"grazie.html: il passo 2 raccoglie dati non previsti: {sorted(set(p.campi) - CAMPI_PASSO2)}")
+        if "zona" not in p.campi or "required" not in p.campi["zona"]:
+            errori.append("grazie.html: nel passo 2 la città deve essere obbligatoria")
+        for campo in FACOLTATIVI & set(p.campi):
+            if "required" in p.campi[campo] or "checked" in p.campi[campo]:
+                errori.append(f"grazie.html: il campo facoltativo {campo} non può essere obbligatorio né già spuntato")
+        if "cerchi" in p.campi and "consenso-cerchi" not in p.campi:
+            errori.append("grazie.html: «chi cerchi» richiede la casella di consenso a parte (art. 9 GDPR)")
+        if testo.count("<!--passo2-->") != 1 or testo.count("<!--/passo2-->") != 1 or "<!--nascosti-passo2-->" not in testo:
+            errori.append("grazie.html: mancano i segnaposto del passo 2 per il Worker")
     if nome == "privacy.html" and any(x in testo for x in ("BOZZA", "da-completare", "DA VERIFICARE", "DA CONFERMARE")):
         errori.append("privacy.html: l'informativa approvata (D5) contiene ancora parti da completare o il marchio BOZZA")
 

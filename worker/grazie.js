@@ -5,6 +5,8 @@
 import { normalizzaCitta, chiaveCitta, nomeCitta } from "./citta.js";
 import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA, cittaConStanza } from "./numeri.js";
 import { CODICE_PERSONALE, linkPersonale } from "./invito.js";
+import { GETTONE } from "./iscrizione.js";
+import { canaleValido } from "./canale.js";
 
 export const SOGLIA_STANZA = 36;
 export const SEGNAPOSTO_MANCANO = "<!--mancano-->";
@@ -42,20 +44,49 @@ export function htmlInvito(link, nome) {
 `;
 }
 
+// Passo 2 del modulo (D79 A): il blocco fra <!--passo2--> e <!--/passo2--> di grazie.html resta SOLO con un gettone
+// della forma giusta (?t=, 32 caratteri esadecimali); il Worker ci scrive il gettone e il canale nei campi nascosti
+// e il suggerimento della città (link di un'amica). Senza gettone il blocco sparisce. Se il gettone è scaduto lo dice /completa.
+export const INIZIO_PASSO2 = "<!--passo2-->";
+export const FINE_PASSO2 = "<!--/passo2-->";
+const NASCOSTI_PASSO2 = "<!--nascosti-passo2-->";
+const CAMPO_CITTA_PASSO2 = '<input id="zona" name="zona"';
+
+export function conPasso2(html, gettone, canale, nomeSuggerito) {
+  const inizio = html.indexOf(INIZIO_PASSO2);
+  const fine = html.indexOf(FINE_PASSO2);
+  if (inizio === -1 || fine < inizio) return html;
+  if (!GETTONE.test(gettone)) return html.slice(0, inizio) + html.slice(fine + FINE_PASSO2.length);
+  let blocco = html.slice(inizio, fine + FINE_PASSO2.length);
+  const nascosti = `<input type="hidden" name="t" value="${gettone}">`
+    + (canale ? `<input type="hidden" name="canale" value="${canale}">` : "");
+  blocco = blocco.replace(NASCOSTI_PASSO2, nascosti);
+  if (nomeSuggerito) blocco = blocco.replace(CAMPO_CITTA_PASSO2, `${CAMPO_CITTA_PASSO2} value="${nomeSuggerito.replace(/"/g, "")}"`);
+  return html.slice(0, inizio) + blocco + html.slice(fine + FINE_PASSO2.length);
+}
+
 export async function grazieConCitta(request, env) {
   const risposta = await env.ASSETS.fetch(request);
   const tipo = risposta.headers.get("content-type") || "";
   if (risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
   const parametri = new URL(request.url).searchParams;
   const luogo = normalizzaCitta(String(parametri.get("citta") || "").slice(0, 80));
-  const chiave = luogo ? chiaveCitta(luogo.zona, luogo.citta) : "";
-  const nome = chiave ? nomeCitta(chiave) : "";
+  let chiave = luogo ? chiaveCitta(luogo.zona, luogo.citta) : "";
+  let nome = chiave ? nomeCitta(chiave) : "";
   const codice = String(parametri.get("c") || "");
   const personale = CODICE_PERSONALE.test(codice);
+  const gettone = String(parametri.get("t") || "");
+  const passo2 = GETTONE.test(gettone);
   let html = await risposta.text();
   const originale = html;
+  // Passo 2 ancora da fare: la città dell'indirizzo è solo il suggerimento del campo, niente «mancano N».
+  html = conPasso2(html, gettone, canaleValido(parametri.get("da")), passo2 ? nome : "");
+  if (passo2) {
+    nome = "";
+    chiave = "";
+  }
   const serveClassifica = html.includes(SEGNAPOSTO_CLASSIFICA);
-  if (!nome && !personale && !serveClassifica) return new Response(html, risposta);
+  if (!nome && !personale && !serveClassifica && html === originale) return new Response(html, risposta);
   // Numeri freschi quando c'è la città (conta anche chi si è appena iscritto); altrimenti bastano quelli in memoria.
   const numeri = (nome || serveClassifica) ? await numeriPubblici(env, Date.now(), { fresco: Boolean(nome) }) : null;
   if (nome && numeri && html.includes(SEGNAPOSTO_MANCANO)) {

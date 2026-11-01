@@ -39,11 +39,33 @@ const AGGIUNGI_COLONNE = [
   "ALTER TABLE iscrizioni ADD COLUMN consenso_cerchi_il TEXT",
   // Codice invito personale (dal 31/10, spec referral parte 2, D69 A): casuale, unico, mai derivato dall'email.
   "ALTER TABLE iscrizioni ADD COLUMN codice TEXT",
+  // Gettone del passo 2 (D79 A, dal 1/11): impronta SHA-256 di un valore casuale monouso, scade in 24 ore.
+  "ALTER TABLE iscrizioni ADD COLUMN gettone TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN gettone_scade TEXT",
 ];
 // L'indice impedisce due codici uguali: in caso di collisione il Worker ne genera un altro (al massimo 5 tentativi).
 const INDICE_CODICE = "CREATE UNIQUE INDEX IF NOT EXISTS iscrizioni_codice ON iscrizioni(codice)";
+const INDICE_GETTONE = "CREATE INDEX IF NOT EXISTS iscrizioni_gettone ON iscrizioni(gettone)";
 const TENTATIVI_CODICE = 5;
-const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il, codice) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il, codice, gettone, gettone_scade) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+
+// MODULO IN DUE PASSI (D79 A, punto 3, dal 1/11). Passo 1 (home): solo email e caselle; la zona resta «non-indicata»
+// (esclusa da contatori e classifiche) e il Worker crea un gettone casuale monouso che scade in 24 ore: NON è il codice
+// invito che si condivide. Nel database va solo la sua impronta SHA-256, nell'indirizzo il valore. Passo 2 (/grazie?t=):
+// città e domande facoltative, inviate a /completa, che aggiorna solo la riga con quel gettone e zona «non-indicata»
+// e poi cancella il gettone. Il modulo vecchio con la città (pagine rimaste in cache) continua a funzionare come prima.
+export const ZONA_NON_INDICATA = "non-indicata";
+export const GETTONE = /^[0-9a-f]{32}$/;
+const DURATA_GETTONE = 24 * 60 * 60 * 1000;
+
+export function nuovoGettone() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function impronta(gettone) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(gettone));
+  return Array.from(new Uint8Array(h), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 function codiceDoppio(errore) {
   return /UNIQUE constraint failed: iscrizioni\.codice/i.test(String(errore && errore.message));
@@ -89,8 +111,10 @@ export function risposteFacoltative(modulo) {
 // così il contatore delle visite (D43) conta /grazie per giorno e per sorgente. Solo il nome del canale, nessun dato personale.
 // Dal 31/10 (D64) porta anche ?citta=<città> per la frase «mancano N persone»: la pagina non la salva.
 // Solo per le iscrizioni NUOVE porta ?c=<codice personale>: chi riscrive un'email già in lista non vede il codice di nessuno.
-function grazie(request, canale = "", citta = "", codice = "") {
+// Con il gettone (?t=) la pagina mostra il passo 2; ?citta= allora è solo un suggerimento per il campo città.
+function grazie(request, canale = "", citta = "", codice = "", gettone = "") {
   const url = new URL("/grazie", request.url);
+  if (gettone) url.searchParams.set("t", gettone);
   if (canale) url.searchParams.set("da", canale);
   if (citta) url.searchParams.set("citta", citta);
   if (codice) url.searchParams.set("c", codice);
@@ -111,9 +135,9 @@ function stessoSito(request) {
 
 // Limite di frequenza: al massimo 5 invii al minuto dalla stessa connessione (binding LIMITE_ISCRIZIONI in wrangler.jsonc).
 // L'indirizzo IP serve solo a contare i tentativi in memoria: non viene salvato né scritto nei log.
-async function troppiTentativi(request, env) {
+async function troppiTentativi(request, env, prefisso = "iscrizione:") {
   if (!env.LIMITE_ISCRIZIONI) return false;
-  const chiave = "iscrizione:" + (request.headers.get("cf-connecting-ip") || "sconosciuto");
+  const chiave = prefisso + (request.headers.get("cf-connecting-ip") || "sconosciuto");
   try {
     const { success } = await env.LIMITE_ISCRIZIONI.limit({ key: chiave });
     return !success;
@@ -130,7 +154,9 @@ const SCHEMA_ESITI = `CREATE TABLE IF NOT EXISTS esiti_iscrizione (
   n INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (giorno, esito)
 )`;
-export const ESITI = ["nuova", "gia_in_lista", "chiuse", "altro_sito", "troppi_tentativi", "modulo_rotto", "trappola", "dati_mancanti", "errore_database"];
+export const ESITI = ["nuova", "gia_in_lista", "chiuse", "altro_sito", "troppi_tentativi", "modulo_rotto", "trappola", "dati_mancanti", "errore_database",
+  // passo 2 (D79 A): completato, gettone scaduto/già usato, dati mancanti
+  "passo2_completato", "passo2_scaduto", "passo2_dati_mancanti"];
 
 async function contaEsito(env, esito) {
   if (!env.DB) return;
@@ -209,13 +235,19 @@ async function gestisci(request, env) {
   if (String(modulo.get("campo-trappola") || "") !== "") return r("trappola", grazie(request));
 
   const email = String(modulo.get("email") || "").trim().toLowerCase();
-  const luogo = normalizzaCitta(String(modulo.get("zona") || "").slice(0, 80));
+  const zonaScritta = String(modulo.get("zona") || "").trim();
+  // Passo 1 del modulo nuovo: nessuna città → «non-indicata» e gettone per il passo 2.
+  const duePassi = zonaScritta === "";
+  const luogo = duePassi ? { zona: ZONA_NON_INDICATA, citta: null } : normalizzaCitta(zonaScritta.slice(0, 80));
   const invito = String(modulo.get("invito") || "").replace(/\s+/g, " ").trim().slice(0, 40);
   const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
     && modulo.get("maggiorenne") === "si" && modulo.get("consenso") === "si";
   if (!valido) {
-    return r("dati_mancanti", pagina("Manca qualcosa.", "Controlla l'email, scrivi la tua città e spunta le due caselle.", 400));
+    return r("dati_mancanti", pagina("Manca qualcosa.", duePassi ? "Controlla l'email e spunta le due caselle." : "Controlla l'email, scrivi la tua città e spunta le due caselle.", 400));
   }
+  // Città del link personale di un'amica (campo nascosto «suggerita» scritto dal Worker): solo un suggerimento per il passo 2.
+  const suggerita = duePassi ? normalizzaCitta(String(modulo.get("suggerita") || "").slice(0, 60)) : null;
+  const gettone = duePassi ? nuovoGettone() : "";
 
   // Canale del link /da/<canale> (D26): serve solo al contatore, non entra nella riga dell'iscritto.
   const canale = canaleValido(modulo.get("canale"));
@@ -225,19 +257,23 @@ async function gestisci(request, env) {
     await env.DB.prepare(SCHEMA).run();
     try {
       await env.DB.prepare(INDICE_CODICE).run();
+      await env.DB.prepare(INDICE_GETTONE).run();
     } catch (errore) {
       if (!mancaColonna(errore)) throw errore;
       await aggiungiColonne(env);
       await env.DB.prepare(INDICE_CODICE).run();
+      await env.DB.prepare(INDICE_GETTONE).run();
     }
     const adesso = new Date().toISOString();
     const { presento, cerchi, fascia } = risposteFacoltative(modulo);
     const creator = codiciConfigurati(env);
+    const improntaGettone = gettone ? await impronta(gettone) : null;
+    const scade = gettone ? new Date(Date.now() + DURATA_GETTONE).toISOString() : null;
     let esito;
     for (let tentativo = 1; ; tentativo++) {
       do codice = generaCodice(); while (creator.has(codice)); // mai uguale a un codice dei creator
       const valori = [email, luogo.zona, invito || null, adesso, VERSIONE_INFORMATIVA, luogo.citta,
-        presento, cerchi, fascia, cerchi ? adesso : null, codice];
+        presento, cerchi, fascia, cerchi ? adesso : null, codice, improntaGettone, scade];
       try {
         esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
         break;
@@ -260,6 +296,65 @@ async function gestisci(request, env) {
   }
 
   if (nuova) await contaIscrizione(env, canale);
+  if (duePassi) {
+    // Chi era già in lista non riceve il gettone: non può cambiare la riga di nessuno.
+    const s = suggerita && suggerita.zona !== "estero" ? (suggerita.citta || suggerita.zona) : "";
+    return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, nuova ? s : "", codice, nuova ? gettone : ""));
+  }
   return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, luogo.citta || luogo.zona, codice));
+}
+
+// POST /completa (passo 2): città obbligatoria, domande facoltative come nel modulo vecchio.
+// Aggiorna SOLO la riga con l'impronta di quel gettone, non scaduto e con zona «non-indicata»; poi il gettone sparisce.
+// Le risposte facoltative già date non vengono sovrascritte (COALESCE). Stessi controlli di /iscrizione.
+const COMPLETA = `UPDATE iscrizioni SET zona = ?, citta = ?,
+  presento = COALESCE(presento, ?), fascia = COALESCE(fascia, ?),
+  consenso_cerchi_il = CASE WHEN cerchi IS NULL AND ? IS NOT NULL THEN ? ELSE consenso_cerchi_il END,
+  cerchi = COALESCE(cerchi, ?), gettone = NULL, gettone_scade = NULL
+  WHERE gettone = ? AND gettone_scade > ? AND zona = '${ZONA_NON_INDICATA}' RETURNING codice`;
+
+export async function completa(request, env) {
+  const risposta = await gestisciCompleta(request, env);
+  await contaEsito(env, risposta.esito);
+  return risposta.risposta;
+}
+
+async function gestisciCompleta(request, env) {
+  const r = (esito, risposta) => ({ esito, risposta });
+  if (env.ISCRIZIONI_APERTE !== "si" || !env.DB) {
+    return r("chiuse", pagina("Ci siamo quasi.", "Riprova tra qualche ora: la tua iscrizione è comunque salvata.", 503));
+  }
+  if (!stessoSito(request)) return r("altro_sito", pagina("Qualcosa non torna.", "Completa l'iscrizione dal nostro sito.", 403));
+  if (await troppiTentativi(request, env, "completa:")) {
+    return r("troppi_tentativi", pagina("Un attimo.", "Troppi tentativi in poco tempo. Riprova tra un minuto.", 429));
+  }
+  let modulo;
+  try {
+    modulo = await request.formData();
+  } catch {
+    return r("modulo_rotto", pagina("Qualcosa non torna.", "Il modulo non è arrivato completo. Riprova.", 400));
+  }
+  const gettone = String(modulo.get("t") || "");
+  const luogo = normalizzaCitta(String(modulo.get("zona") || "").slice(0, 80));
+  if (!GETTONE.test(gettone) || !luogo) {
+    return r("passo2_dati_mancanti", pagina("Manca qualcosa.", "Scrivi la tua città e riprova.", 400));
+  }
+  const canale = canaleValido(modulo.get("canale"));
+  const { presento, cerchi, fascia } = risposteFacoltative(modulo);
+  const adesso = new Date().toISOString();
+  let codice = null;
+  try {
+    const esito = await env.DB.prepare(COMPLETA).bind(luogo.zona, luogo.citta, presento, fascia, cerchi, cerchi ? adesso : null,
+      cerchi, await impronta(gettone), adesso).all();
+    const riga = (esito && esito.results || [])[0];
+    if (!riga) {
+      return r("passo2_scaduto", pagina("Sei già in lista.", "Questo link non vale più (scade dopo 24 ore e si usa una volta sola). La tua iscrizione è salvata: ti scriviamo quando apre Presente.", 410));
+    }
+    codice = riga.codice || "";
+  } catch (errore) {
+    console.error("completa: errore del database", errore && errore.name);
+    return r("errore_database", pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare la città. Riprova tra qualche minuto.", 500));
+  }
+  return r("passo2_completato", grazie(request, canale, luogo.citta || luogo.zona, codice));
 }
 

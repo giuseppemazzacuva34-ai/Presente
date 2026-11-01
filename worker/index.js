@@ -1,7 +1,7 @@
 // Worker di Presente: serve la landing (cartella /landing) e gestisce le due rotte dinamiche.
 // Le pagine statiche sono servite direttamente da Cloudflare (gratis e senza limite); il Worker parte solo per
 // /iscrizione, /conteggio, /meta/webhook, i link per canale /da/<canale>, la web app /app/ e la home "/" (vedi "run_worker_first" in wrangler.jsonc).
-import { iscrizione } from "./iscrizione.js";
+import { iscrizione, completa } from "./iscrizione.js";
 import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
@@ -28,6 +28,11 @@ export default {
     if (pathname === "/iscrizione") {
       if (request.method === "POST") return conSicurezza(await iscrizione(request, env));
       return conSicurezza(Response.redirect(new URL("/#iscriviti", request.url).toString(), 303));
+    }
+    // Passo 2 del modulo (D79 A): città e domande facoltative dopo l'iscrizione con sola email.
+    if (pathname === "/completa") {
+      if (request.method === "POST") return conSicurezza(await completa(request, env));
+      return conSicurezza(Response.redirect(new URL("/grazie", request.url).toString(), 303));
     }
     // Link per canale (D26): /da/instagram, /da/tiktok, ... contano la visita e rimandano alla home.
     if (pathname === "/da" || pathname.startsWith("/da/")) {

@@ -9,7 +9,9 @@ import { conteggio, invitiPersonali, codiceNelCampo, raggruppaCittaPiccole } fro
 import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSONALE } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
 import { perVisite, etichetteUtm, etichettePixel } from "../worker/visite.js";
-import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO } from "../worker/grazie.js";
+import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO, conPasso2 } from "../worker/grazie.js";
+import { completa, impronta, ZONA_NON_INDICATA } from "../worker/iscrizione.js";
+import { TITOLI, sceltaTitolo } from "../worker/invito.js";
 import { numeriPubblici, conNumeri, svuotaMemoria, htmlClassifica, SEGNAPOSTO_POSTI, SEGNAPOSTO_CONTATORE, SEGNAPOSTO_CLASSIFICA } from "../worker/numeri.js";
 import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/citta.js";
 
@@ -564,9 +566,10 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     { zona: "milano", citta: null, n: 4 }, { zona: "altra-citta-italia", citta: "pisa", n: 2 }, { zona: "altra-citta-italia", citta: null, n: 1 }] }) }) };
   const pc = await perCitta({ DB: DBc });
   verifica(pc.milano === 4 && pc.pisa === 2 && pc["altra-citta-italia"] === 1, "perCitta: totali per zona e per città scritta");
-  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
-  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(home) && (home.match(/<option value=/g) || []).length >= 100 && !/<select[^>]*name="zona"/.test(home),
-    "home: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
+  // Dal 1/11 (D79 A) il campo città sta nel passo 2, su /grazie.
+  const passo2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(passo2) && (passo2.match(/<option value=/g) || []).length >= 100 && !/<select[^>]*name="zona"/.test(passo2),
+    "passo 2: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
 }
 
 // 17. Home con i numeri (D64, punti 2 e 4): «restano N posti» solo con MOSTRA_POSTI = "si",
@@ -642,7 +645,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const soloLibere = htmlClassifica({ totale: 200, citta: { pisa: 100, "l aquila": 50, estero: 30 } });
   verifica(soloLibere.includes("Nessuna città ha ancora 10 iscritti") && !/Pisa|Aquila|<ol>/.test(soloLibere), "classifica (D76 A): città scritte a mano mai in classifica");
   const senzaDb = await (await grazieConCitta(new Request("https://presente.example/grazie"), { ASSETS })).text();
-  verifica(senzaDb === grazieHtml, "/grazie senza database: pagina identica");
+  verifica(senzaDb === conPasso2(grazieHtml, ""), "/grazie senza database: pagina identica (tolto solo il passo 2, senza gettone)");
   verifica(!/@|email/i.test(htmlClassifica({ totale: 50, citta: { roma: 50 } })), "classifica: nessun dato personale");
   verifica(htmlMancano("Pisa", 0).includes("mancano <strong>36</strong>"), "htmlMancano: città nuova → mancano 36");
   verifica(["presente-30-domande-primo-appuntamento.pdf", "presente-30-carte.pdf"].every((f) => grazieHtml.includes(`href="/media/${f}"`)
@@ -682,8 +685,9 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(tanti.cerchi.uomini === 7 && tanti.cerchi.donne === 4, "perRisposte: «chi cerchi» visibile da 10 risposte");
 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
-  verifica(home.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(home)
-    && home.includes("se le do, le mie risposte su come mi presento e sulla fascia d'età"), "home: testi D65 A e casella a parte non spuntata");
+  const g2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+  verifica(g2.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(g2)
+    && home.includes("se le do, le mie risposte su come mi presento e sulla fascia d'età"), "testi D65 A: consenso in home, casella a parte non spuntata nel passo 2");
 }
 
 // 20. «Porta un'amica» (spec referral parte 2, D69 A): codice personale casuale, link personale su /grazie,
@@ -756,9 +760,9 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const AH = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
   const h = await (await worker.fetch(new Request("https://presente.example/?da=amico&invito=K7MQ2P&citta=reggio+emilia"), { ASSETS: AH })).text();
-  verifica(h.includes('name="invito" value="K7MQ2P"') && h.includes('<input id="zona" name="zona" value="Reggio Emilia"'), "home dal link personale: invito e città già compilati");
+  verifica(h.includes('name="invito" value="K7MQ2P"') && h.includes('<input type="hidden" name="suggerita" value="Reggio Emilia">'), "home dal link personale: invito compilato e città suggerita per il passo 2");
   const hc = await (await worker.fetch(new Request("https://presente.example/?citta=%22%3E%3Cscript%3E"), { ASSETS: AH })).text();
-  verifica(!hc.includes('id="zona" name="zona" value='), "home con ?citta= senza codice: la città non si precompila");
+  verifica(!hc.includes('name="suggerita"') && !hc.includes("<script>"), "home con ?citta= senza codice: nessuna città suggerita");
   verifica(cittaDelLink('"><script>alert(1)</script>') === "Scriptalert Script" && cittaDelLink("estero") === "" && cittaDelLink("mi") === "Milano", "città del link: solo lettere, estero escluso");
   verifica(linkPersonale("https://x.example/grazie", "K7MQ2P", "altra-citta-italia") === "https://x.example/da/amico?invito=K7MQ2P", "link personale: senza città se generica");
 
@@ -778,6 +782,126 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const r = raggruppaCittaPiccole({ torino: 2, "reggio emilia": 1, "mario rossi": 1, "altra-citta-italia": 1, monza: 12 });
   verifica(r.torino === 2 && r.monza === 12 && r["altra-citta-italia"] === 3 && !("reggio emilia" in r) && !("mario rossi" in r),
     "/conteggio per_citta: città scritte a mano sotto 10 iscritti sommate in «altra-citta-italia», zone sempre visibili");
+}
+
+// D79 A, punto 3: modulo in due passi. Passo 1 solo email + caselle → zona «non-indicata» e gettone monouso di 24 ore;
+// passo 2 su /grazie?t= → /completa aggiorna solo la riga con quel gettone. Punto 4: titolo dall'elenco fisso.
+{
+  const dbI = ({ nuove = true, completa: righe = [{ codice: "K7MQ2P" }] } = {}) => {
+    const query = [];
+    return { query, prepare(sql) { const v = { sql, valori: [] }; query.push(v); return {
+      bind(...x) { v.valori = x; return this; },
+      async run() { return { meta: { changes: nuove ? 1 : 0 } }; },
+      async all() { return { results: sql.startsWith("UPDATE iscrizioni") ? righe : [] }; },
+    }; } };
+  };
+  const env = (db) => ({ DB: db, ISCRIZIONI_APERTE: "si" });
+  const soloEmail = (campi = {}) => new Request("https://presente.example/iscrizione", { method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://presente.example" },
+    body: new URLSearchParams({ email: "Prova@Example.com", maggiorenne: "si", consenso: "si", ...campi }).toString() });
+  {
+    const db = dbI();
+    const r = await iscrizione(soloEmail({ canale: "meta" }), env(db));
+    const loc = new URL(r.headers.get("location"));
+    const ins = db.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni"));
+    const t = loc.searchParams.get("t") || "";
+    verifica(r.status === 303 && loc.pathname === "/grazie" && /^[0-9a-f]{32}$/.test(t) && /^[A-HJ-NP-Z2-9]{6}$/.test(loc.searchParams.get("c")) && loc.searchParams.get("da") === "meta",
+      "passo 1 (solo email): /grazie?t=<gettone>&c=<codice>&da=<canale>");
+    verifica(ins.valori[1] === ZONA_NON_INDICATA && ins.valori[0] === "prova@example.com", "passo 1: zona «non-indicata»");
+    verifica(ins.valori[11] === await impronta(t) && ins.valori[11] !== t && !JSON.stringify(db.query).includes(t), "passo 1: nel database solo l'impronta SHA-256 del gettone, mai il gettone");
+    const scade = Date.parse(ins.valori[12]) - Date.now();
+    verifica(scade > 23.9 * 3600e3 && scade <= 24 * 3600e3, "passo 1: il gettone scade in 24 ore");
+    verifica(t !== loc.searchParams.get("c"), "passo 1: il gettone non è il codice invito");
+  }
+  {
+    const r = await iscrizione(soloEmail({ suggerita: "Reggio Emilia" }), env(dbI()));
+    verifica(new URL(r.headers.get("location")).searchParams.get("citta") === "reggio emilia", "passo 1 dal link di un'amica: città suggerita portata al passo 2");
+    const gia = await iscrizione(soloEmail(), env(dbI({ nuove: false })));
+    const lg = new URL(gia.headers.get("location"));
+    verifica(!lg.searchParams.has("t") && !lg.searchParams.has("c"), "passo 1 con email già in lista: nessun gettone, nessun codice");
+    const vecchio = dbI();
+    const rv = await iscrizione(soloEmail({ zona: "Milano" }), env(vecchio));
+    const iv = vecchio.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni"));
+    verifica(!new URL(rv.headers.get("location")).searchParams.has("t") && iv.valori[1] === "milano" && iv.valori[11] === null,
+      "modulo vecchio con la città (pagine in cache): salvato come prima, senza gettone");
+    const manca = await iscrizione(soloEmail({ consenso: "" }), env(dbI()));
+    verifica(manca.status === 400, "passo 1 senza consenso: rifiutato");
+  }
+  const passo2 = (campi = {}, intest = {}) => new Request("https://presente.example/completa", { method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://presente.example", ...intest },
+    body: new URLSearchParams({ t: "0123456789abcdef0123456789abcdef", zona: "Pisa", ...campi }).toString() });
+  {
+    const db = dbI();
+    const r = await completa(passo2({ presento: "donna", cerchi: "uomini", "consenso-cerchi": "si", fascia: "25-34", canale: "instagram" }), env(db));
+    const up = db.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
+    const loc = new URL(r.headers.get("location"));
+    verifica(r.status === 303 && loc.pathname === "/grazie" && loc.searchParams.get("citta") === "pisa" && loc.searchParams.get("c") === "K7MQ2P"
+      && loc.searchParams.get("da") === "instagram" && !loc.searchParams.has("t"), "passo 2: torna a /grazie con città e codice per «mancano N» e il link personale");
+    verifica(/WHERE gettone = \? AND gettone_scade > \? AND zona = 'non-indicata'/.test(up.sql) && /gettone = NULL/.test(up.sql)
+      && up.valori[7] === await impronta("0123456789abcdef0123456789abcdef"), "passo 2: aggiorna solo la riga con l'impronta del gettone, non scaduto e «non-indicata», poi lo cancella");
+    verifica(up.valori[0] === "altra-citta-italia" && up.valori[1] === "pisa" && up.valori[2] === "donna" && up.valori[6] === "uomini" && up.valori[5],
+      "passo 2: città e risposte facoltative salvate, «chi cerchi» con la data del consenso");
+    verifica(db.query.some((q) => q.sql.startsWith("INSERT INTO esiti_iscrizione") && q.valori[1] === "passo2_completato"), "passo 2: completamento contato negli esiti");
+  }
+  {
+    const senzaC = dbI();
+    await completa(passo2({ cerchi: "uomini" }), env(senzaC));
+    const up = senzaC.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
+    verifica(up.valori[4] === null && up.valori[6] === null, "passo 2: «chi cerchi» senza casella a parte viene scartato");
+    const scad = dbI({ completa: [] });
+    const rs = await completa(passo2(), env(scad));
+    verifica(rs.status === 410 && scad.query.some((q) => q.valori[1] === "passo2_scaduto"), "passo 2 con gettone scaduto o già usato: 410, nessun dato cambiato");
+    const brutti = [passo2({ t: "abc" }), passo2({ t: "0123456789ABCDEF0123456789ABCDEF" }), passo2({ zona: "" })];
+    for (const req of brutti) {
+      const db = dbI();
+      const rb = await completa(req, env(db));
+      verifica(rb.status === 400 && !db.query.some((q) => q.sql.startsWith("UPDATE")), "passo 2 con gettone malformato o senza città: 400, nessuna scrittura");
+    }
+    const fuori = dbI();
+    const rf = await completa(passo2({}, { origin: "https://cattivo.example" }), env(fuori));
+    verifica(rf.status === 403 && !fuori.query.some((q) => q.sql.startsWith("UPDATE")), "passo 2 da un altro sito: rifiutato");
+    const limite = { ...env(dbI()), LIMITE_ISCRIZIONI: { limit: async ({ key }) => ({ success: !key.startsWith("completa:") }) } };
+    verifica((await completa(passo2(), limite)).status === 429, "passo 2: limite di frequenza come /iscrizione");
+    const chiuse = await completa(passo2(), { DB: dbI(), ISCRIZIONI_APERTE: "no" });
+    verifica(chiuse.status === 503, "passo 2 con iscrizioni chiuse: 503");
+    const get = await worker.fetch(new Request("https://presente.example/completa"), { DB: dbI() });
+    verifica(get.status === 303 && get.headers.get("location").endsWith("/grazie"), "GET /completa: rimanda a /grazie");
+  }
+  {
+    const g = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+    const t = "0123456789abcdef0123456789abcdef";
+    const con = conPasso2(g, t, "meta", "Reggio Emilia");
+    verifica(con.includes(`<input type="hidden" name="t" value="${t}">`) && con.includes('<input type="hidden" name="canale" value="meta">')
+      && con.includes('<input id="zona" name="zona" value="Reggio Emilia"') && con.includes('action="/completa"'), "/grazie?t=: passo 2 con gettone, canale e città suggerita");
+    const senza = conPasso2(g, "<script>", "", "");
+    verifica(!senza.includes("/completa") && !senza.includes("<script>") && !senza.includes("Ultimo passo"), "/grazie senza gettone valido: niente passo 2");
+    const ASSETS = { fetch: async () => new Response(g, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+    svuotaMemoria();
+    const DBg = { prepare: (sql) => ({ bind() { return this; }, async first() { return 40; }, async all() { return { results: [{ zona: "milano", citta: null, n: 6 }] }; } }) };
+    const pagina2 = await (await grazieConCitta(new Request(`https://presente.example/grazie?t=${t}&citta=milano&c=K7MQ2P`), { ASSETS, DB: DBg })).text();
+    verifica(pagina2.includes('name="zona" value="Milano"') && !pagina2.includes('class="mancano"') && pagina2.includes("/da/amico?invito=K7MQ2P"),
+      "/grazie?t=&citta=: città solo come suggerimento (niente «mancano N» prima del passo 2), link personale già pronto");
+    svuotaMemoria();
+  }
+  {
+    const pc = await perCitta({ DB: { prepare: () => ({ all: async () => ({ results: [{ zona: "non-indicata", citta: null, n: 9 }, { zona: "roma", citta: null, n: 3 }] }) }) } });
+    verifica(!("non-indicata" in pc) && pc.roma === 3, "zona «non-indicata»: fuori da contatori, classifica e per_citta");
+  }
+  {
+    const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+    const AH = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+    const apri = async (q) => (await (await worker.fetch(new Request("https://presente.example/" + q), { ASSETS: AH })).text());
+    const titolo = (h) => h.slice(h.indexOf('<h1 id="titolo">'), h.indexOf("</h1>") + 5);
+    verifica(titolo(await apri("")) === '<h1 id="titolo">Prima la voce. <em>Poi il resto.</em></h1>', "titolo neutro senza parametro");
+    verifica(titolo(await apri("?v=voce")).includes(TITOLI.voce) && titolo(await apri("?utm_content=BUCA")).includes(TITOLI.buca)
+      && titolo(await apri("?v=donne&utm_source=meta")).includes(TITOLI.donne), "?v= o utm_content scelgono il titolo dall'elenco fisso");
+    const strano = await apri("?v=%3Cscript%3Ealert(1)%3C%2Fscript%3E&utm_content=ciao");
+    verifica(titolo(strano).includes("Prima la voce.") && !strano.includes("<script>alert") && sceltaTitolo(new URLSearchParams("v=constructor")) === "",
+      "valori fuori elenco: titolo neutro, nessun testo dell'indirizzo nella pagina");
+    const campi = [...home.matchAll(/<(?:input|select|textarea)[^>]*name="([^"]+)"/g)].map((m) => m[1]);
+    verifica(!campi.includes("zona") && !campi.includes("presento") && campi.includes("email") && campi.includes("consenso"), "home (passo 1): solo email, caselle e invito");
+    verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf('type="submit"'), "home: posti sopra il modulo, nota del CFO sotto il pulsante");
+  }
 }
 
 if (errori) {

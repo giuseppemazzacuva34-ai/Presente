@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0e0d10">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261031e">
+  <link rel="stylesheet" href="/stile.css?v=20261101a">
 </head>
 <body>
   <div class="pagina">
@@ -18,6 +18,165 @@
       </a>
     </header>
     <main>
+      <!--passo2-->
+      <section class="passo2" aria-labelledby="passo2-titolo">
+        <p class="etichetta">Sei dentro · manca un passo</p>
+        <h2 id="passo2-titolo" class="passo2-titolo">Ultimo passo: <em>da quale città?</em></h2>
+        <p class="attacco">Così ti scriviamo quando si accende la tua città.</p>
+        <form class="modulo" name="passo2" aria-label="Completa l'iscrizione con la tua città" method="POST" action="/completa">
+          <!--nascosti-passo2-->
+            <div class="campo">
+              <label for="zona" class="solo-lettori">La tua città</label>
+              <input id="zona" name="zona" type="text" required list="citta-italiane" autocomplete="address-level2" autocapitalize="words" spellcheck="false" minlength="2" maxlength="60" placeholder="La tua città (es. Milano)">
+              <datalist id="citta-italiane">
+                <option value="Milano"></option>
+                <option value="Roma"></option>
+                <option value="Napoli"></option>
+                <option value="Torino"></option>
+                <option value="Bologna"></option>
+                <option value="Firenze"></option>
+                <option value="Genova"></option>
+                <option value="Venezia"></option>
+                <option value="Padova"></option>
+                <option value="Verona"></option>
+                <option value="Brescia"></option>
+                <option value="Bergamo"></option>
+                <option value="Bari"></option>
+                <option value="Palermo"></option>
+                <option value="Catania"></option>
+                <option value="Cagliari"></option>
+                <option value="Trieste"></option>
+                <option value="Parma"></option>
+                <option value="Modena"></option>
+                <option value="Reggio Emilia"></option>
+                <option value="Reggio Calabria"></option>
+                <option value="Prato"></option>
+                <option value="Livorno"></option>
+                <option value="Perugia"></option>
+                <option value="Ravenna"></option>
+                <option value="Rimini"></option>
+                <option value="Ferrara"></option>
+                <option value="Salerno"></option>
+                <option value="Sassari"></option>
+                <option value="Monza"></option>
+                <option value="Siracusa"></option>
+                <option value="Pescara"></option>
+                <option value="Latina"></option>
+                <option value="Vicenza"></option>
+                <option value="Terni"></option>
+                <option value="Trento"></option>
+                <option value="Bolzano"></option>
+                <option value="Novara"></option>
+                <option value="Piacenza"></option>
+                <option value="Ancona"></option>
+                <option value="Andria"></option>
+                <option value="Udine"></option>
+                <option value="Arezzo"></option>
+                <option value="Lecce"></option>
+                <option value="Cesena"></option>
+                <option value="Pesaro"></option>
+                <option value="La Spezia"></option>
+                <option value="Pisa"></option>
+                <option value="Catanzaro"></option>
+                <option value="Lucca"></option>
+                <option value="Brindisi"></option>
+                <option value="Treviso"></option>
+                <option value="Como"></option>
+                <option value="Varese"></option>
+                <option value="Messina"></option>
+                <option value="Pistoia"></option>
+                <option value="Asti"></option>
+                <option value="Cuneo"></option>
+                <option value="Alessandria"></option>
+                <option value="Caserta"></option>
+                <option value="Foggia"></option>
+                <option value="Taranto"></option>
+                <option value="Potenza"></option>
+                <option value="Matera"></option>
+                <option value="Cosenza"></option>
+                <option value="Crotone"></option>
+                <option value="Campobasso"></option>
+                <option value="L&#39;Aquila"></option>
+                <option value="Teramo"></option>
+                <option value="Chieti"></option>
+                <option value="Viterbo"></option>
+                <option value="Frosinone"></option>
+                <option value="Siena"></option>
+                <option value="Grosseto"></option>
+                <option value="Massa"></option>
+                <option value="Savona"></option>
+                <option value="Imperia"></option>
+                <option value="Aosta"></option>
+                <option value="Biella"></option>
+                <option value="Vercelli"></option>
+                <option value="Lodi"></option>
+                <option value="Cremona"></option>
+                <option value="Mantova"></option>
+                <option value="Pavia"></option>
+                <option value="Lecco"></option>
+                <option value="Rovigo"></option>
+                <option value="Belluno"></option>
+                <option value="Pordenone"></option>
+                <option value="Gorizia"></option>
+                <option value="Forlì"></option>
+                <option value="Ascoli Piceno"></option>
+                <option value="Macerata"></option>
+                <option value="Benevento"></option>
+                <option value="Avellino"></option>
+                <option value="Agrigento"></option>
+                <option value="Trapani"></option>
+                <option value="Ragusa"></option>
+                <option value="Olbia"></option>
+                <option value="Sanremo"></option>
+                <option value="Viareggio"></option>
+                <option value="Barletta"></option>
+                <option value="Fiumicino"></option>
+                <option value="Pozzuoli"></option>
+                <option value="Lamezia Terme"></option>
+                <option value="Fuori dall&#39;Italia"></option>
+              </datalist>
+            </div>
+            <details class="facoltative" open>
+              <summary>Tre domande facoltative <span class="facoltativo">(aiutano a comporre stanze equilibrate)</span></summary>
+              <div class="campo">
+                <label for="presento" class="solo-lettori">Mi presento come (facoltativo)</label>
+                <select id="presento" name="presento">
+                  <option value="" selected>Mi presento come…</option>
+                  <option value="donna">Donna</option>
+                  <option value="uomo">Uomo</option>
+                  <option value="non_binario">Non binario</option>
+                  <option value="altro">Altro</option>
+                </select>
+              </div>
+              <div class="campo">
+                <label for="cerchi" class="solo-lettori">Chi cerchi (facoltativo)</label>
+                <select id="cerchi" name="cerchi">
+                  <option value="" selected>Chi cerchi…</option>
+                  <option value="donne">Donne</option>
+                  <option value="uomini">Uomini</option>
+                  <option value="tutti">Mi va bene chiunque</option>
+                </select>
+              </div>
+              <div class="spunta spunta-cerchi">
+                <input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">
+                <label for="consenso-cerchi">Acconsento a che Presente usi la mia risposta su chi cerco solo in conteggi totali, per comporre stanze equilibrate. So che può far capire il mio orientamento sessuale. È facoltativo: posso iscrivermi anche senza e revocare il consenso quando voglio.</label>
+              </div>
+              <div class="campo">
+                <label for="fascia" class="solo-lettori">La tua fascia d'età (facoltativo)</label>
+                <select id="fascia" name="fascia">
+                  <option value="" selected>La tua fascia d'età…</option>
+                  <option value="18-24">18–24</option>
+                  <option value="25-34">25–34</option>
+                  <option value="35-44">35–44</option>
+                  <option value="45+">45 o più</option>
+                </select>
+              </div>
+            </details>
+          <button class="bottone" type="submit">Fatto</button>
+          <p class="nota">Se chiudi la pagina sei comunque in lista. Il link vale 24 ore.</p>
+        </form>
+      </section>
+      <!--/passo2-->
       <p class="etichetta">N° 00 · Iscrizione ricevuta</p>
       <h1>Sei in lista. <em>Niente «vediamo».</em></h1>
       <p class="attacco">Grazie. Ti scriviamo quando si accende la tua città.</p>
