@@ -1,11 +1,11 @@
-// Importa nella lista d'attesa (D1 «presente-lista») i contatti del modulo dentro Facebook e Instagram (D53 = A, informativa 1.2).
+// Importa nella lista d'attesa (D1 «presente-lista») i contatti del modulo dentro Facebook e Instagram (D53 = A, informativa 1.2; dal 1/11 in vigore la 1.3).
 // Fase 1: Giuseppe scarica il file CSV dal Centro contatti di Meta; questo programma lo trasforma in istruzioni SQL
 // che aggiungono solo le email nuove (ON CONFLICT DO NOTHING: chi è già in lista, anche dalla landing, non cambia).
 //
 // Uso:  node scripts/importa_meta.mjs <file.csv> [--maggiorenne-nel-modulo] > /cartella/temporanea/import.sql
 //       npx wrangler d1 execute presente-lista --remote --file /cartella/temporanea/import.sql
 // Il riepilogo (solo numeri, mai email) esce su stderr. Dopo l'import: cancellare il CSV e l'SQL, poi i contatti da Meta
-// entro 7 giorni (informativa 1.2, punto 3). Il CSV e l'SQL contengono dati personali: MAI nel repository.
+// entro 7 giorni (informativa 1.3, punto 3). Il CSV e l'SQL contengono dati personali: MAI nel repository.
 //
 // Regole: email valida; città riconosciuta (altrimenti «altra-citta-italia»); maggiore età confermata da una colonna
 // del modulo (o, con --maggiorenne-nel-modulo, da una dichiarazione obbligatoria del modulo); data del consenso = data

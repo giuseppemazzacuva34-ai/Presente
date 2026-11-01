@@ -8,7 +8,7 @@ import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
 import { grazieConCitta } from "./grazie.js";
 import { daCanale } from "./canale.js";
-import { contaVisitaPagina, pixel, PERCORSO_PIXEL } from "./visite.js";
+import { contaVisitaPagina, pixel, PERCORSO_PIXEL, segui, PERCORSO_SEGUI } from "./visite.js";
 import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
 
@@ -25,6 +25,8 @@ export default {
     if (pathname === PERCORSO_META) return await metaWebhook(request, env, ctx);
     // Misura vera (D79 A): l'immagine 1×1 che solo un browser vero scarica insieme alla pagina.
     if (pathname === PERCORSO_PIXEL) return await pixel(request, env, ctx);
+    // Pulsante «Segui @presente_app» della pagina grazie (D82 A): conta il clic e rimanda a Instagram.
+    if (pathname === PERCORSO_SEGUI) return conSicurezza(await segui(request, env, ctx));
     if (pathname === "/iscrizione") {
       if (request.method === "POST") return conSicurezza(await iscrizione(request, env));
       return conSicurezza(Response.redirect(new URL("/#iscriviti", request.url).toString(), 303));

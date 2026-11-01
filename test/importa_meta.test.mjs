@@ -34,14 +34,14 @@ test("solo email valide, maggiorenni, senza doppioni né contatti di prova", () 
   assert.equal(iscrizioni[1].zona, "venezia-padova");
   assert.equal(iscrizioni[2].zona, "altra-citta-italia");
   assert.equal(iscrizioni[0].consenso_il, "2026-10-31T10:12:33.000Z");
-  assert.ok(iscrizioni.every((i) => i.sorgente === SORGENTE && i.versione_informativa === "1.2-2026-10-30"));
+  assert.ok(iscrizioni.every((i) => i.sorgente === SORGENTE && i.versione_informativa === "1.3-2026-11-01"));
 });
 
 test("senza conferma dei 18 anni si ferma, salvo dichiarazione obbligatoria nel modulo", () => {
   const righe = [{ email: "a@example.com", city: "Torino", created_time: "" }];
   assert.throws(() => prepara(righe), /18 anni/);
   const { iscrizioni } = prepara(righe, { maggiorenneNelModulo: true, adesso: new Date("2026-11-01T00:00:00Z") });
-  assert.deepEqual(iscrizioni[0], { email: "a@example.com", zona: "torino", consenso_il: "2026-11-01T00:00:00.000Z", versione_informativa: "1.2-2026-10-30", sorgente: "meta_modulo" });
+  assert.deepEqual(iscrizioni[0], { email: "a@example.com", zona: "torino", consenso_il: "2026-11-01T00:00:00.000Z", versione_informativa: "1.3-2026-11-01", sorgente: "meta_modulo" });
   assert.throws(() => prepara([{ telefono: "1" }], { maggiorenneNelModulo: true }), /email/);
 });
 

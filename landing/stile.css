@@ -317,3 +317,7 @@ body.nuova { position: relative; overflow-x: hidden; }
 .passo2-titolo { margin: 0.2rem 0 0.4rem; }
 .passo2 .modulo { margin-top: 1rem; }
 .passo2 .facoltative { margin-top: 0.6rem; }
+
+/* Pulsante «Segui @presente_app» della pagina grazie (D82 A) */
+.segui-ig { margin: 1.5rem 0 2rem; }
+.segui-ig p { margin: 0 0 .75rem; }
