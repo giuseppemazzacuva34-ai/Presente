@@ -67,6 +67,29 @@ export function contaVisitaPagina(request, env) {
 // (l'indirizzo della pagina che ha chiesto l'immagine: utm_source, utm_campaign o ?da=), passano dagli stessi elenchi
 // chiusi di sopra e il Referer si butta. Niente cookie, IP o user agent salvati; l'immagine non va mai in cache.
 export const PERCORSO_PIXEL = "/p.gif";
+
+// PULSANTE «SEGUI @presente_app» (D82 A, dal 1/11): il link della pagina grazie passa da /segui, che conta il clic
+// (riga «grazie-ig» in visite_pagina, solo persone vere, senza sorgente né campagna) e rimanda al profilo Instagram.
+// Nessun dato salvato oltre al totale del giorno; il rimando non va mai in cache, così ogni clic arriva al Worker.
+export const PERCORSO_SEGUI = "/segui";
+export const PROFILO_INSTAGRAM = "https://www.instagram.com/presente_app/";
+
+export async function segui(request, env, ctx) {
+  if (request.method === "GET" && env.DB && tipoRichiesta(request) === "persona") {
+    const giorno = new Date().toISOString().slice(0, 10);
+    const conto = (async () => {
+      try {
+        await env.DB.prepare(SCHEMA).run();
+        await env.DB.prepare(PIU_UNO).bind("grazie-ig", giorno, "", "").run();
+      } catch (errore) {
+        console.error("visite: clic Instagram non contato", errore && errore.name);
+      }
+    })();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(conto);
+    else await conto;
+  }
+  return new Response(null, { status: 302, headers: { location: PROFILO_INSTAGRAM, "cache-control": "no-store, max-age=0", "x-robots-tag": "noindex" } });
+}
 const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona" };
 // GIF trasparente di 1×1 pixel (42 byte).
 const GIF = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
@@ -104,12 +127,12 @@ export async function pixel(request, env, ctx) {
   });
 }
 
-const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona" };
-const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0 });
+const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona", "grazie-ig": "grazie_ig" };
+const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0 });
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(

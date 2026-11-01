@@ -8,7 +8,7 @@ import { normalizzaCitta, chiaveCitta, nomeCitta } from "./citta.js";
 
 // «Porta un'amica» (spec referral, parte 2; D69 A): a ogni nuova iscrizione il Worker crea un codice personale casuale
 // di 6 caratteri, senza 0/O/1/I (si leggono male), unico e NON derivato dall'email. Serve solo a contare quante persone
-// si iscrivono con quell'invito (informativa 1.2). 32 simboli ^ 6 = circa un miliardo di combinazioni.
+// si iscrivono con quell'invito (informativa 1.2 e 1.3). 32 simboli ^ 6 = circa un miliardo di combinazioni.
 export const ALFABETO_CODICE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const CODICE_PERSONALE = /^[A-HJ-NP-Z2-9]{6}$/;
 

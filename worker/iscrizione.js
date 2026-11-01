@@ -9,7 +9,7 @@ import { generaCodice, codiciConfigurati } from "./invito.js";
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
 // e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
 export { ZONE };
-export const VERSIONE_INFORMATIVA = "1.2-2026-10-30";
+export const VERSIONE_INFORMATIVA = "1.3-2026-11-01";
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
@@ -241,9 +241,11 @@ async function gestisci(request, env) {
   const luogo = duePassi ? { zona: ZONA_NON_INDICATA, citta: null } : normalizzaCitta(zonaScritta.slice(0, 80));
   const invito = String(modulo.get("invito") || "").replace(/\s+/g, " ").trim().slice(0, 40);
   const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
-    && modulo.get("maggiorenne") === "si" && modulo.get("consenso") === "si";
+    // D80 A (informativa 1.3): una sola casella, «Ho almeno 18 anni e voglio entrare…», vale come conferma dei 18 anni e consenso.
+    // Le pagine vecchie in cache mandano ancora «maggiorenne» a parte: se c'è, deve essere «si».
+    && modulo.get("consenso") === "si" && [null, "si"].includes(modulo.get("maggiorenne"));
   if (!valido) {
-    return r("dati_mancanti", pagina("Manca qualcosa.", duePassi ? "Controlla l'email e spunta le due caselle." : "Controlla l'email, scrivi la tua città e spunta le due caselle.", 400));
+    return r("dati_mancanti", pagina("Manca qualcosa.", duePassi ? "Controlla l'email e spunta la casella." : "Controlla l'email, scrivi la tua città e spunta la casella.", 400));
   }
   // Città del link personale di un'amica (campo nascosto «suggerita» scritto dal Worker): solo un suggerimento per il passo 2.
   const suggerita = duePassi ? normalizzaCitta(String(modulo.get("suggerita") || "").slice(0, 60)) : null;

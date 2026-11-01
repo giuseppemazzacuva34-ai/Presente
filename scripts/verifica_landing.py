@@ -3,7 +3,7 @@
 
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
-- il modulo della home (passo 1, D79 A) raccolga solo email, invito facoltativo, maggiore età e consenso
+- il modulo della home (passo 1, D79 A) raccolga solo email, invito facoltativo e la casella unica «18 anni e consenso» (D80 A)
   (più il campo trappola anti-spam); il passo 2 su grazie.html solo città e le tre domande facoltative D33
   con la casella a parte per «chi cerchi»;
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
@@ -29,7 +29,7 @@ CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "co
 FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
 # «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
-CAMPI_OBBLIGATORI = {"email", "maggiorenne", "consenso"}
+CAMPI_OBBLIGATORI = {"email", "consenso"}  # D80 A: una sola casella per 18 anni e consenso
 # Passo 2 (D79 A): grazie.html, modulo verso /completa. Il gettone «t» e il canale li aggiunge il Worker, nascosti.
 CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia"}
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
@@ -87,9 +87,15 @@ def esterno(url):
     return url.startswith(("http://", "https://", "//"))
 
 
+# Rotte servite dal Worker (non file): /segui conta il clic su «Segui @presente_app» e rimanda a Instagram (D82 A).
+ROTTE_WORKER = {"/segui"}
+
+
 def destinazione(href):
     percorso = href.split("#")[0].split("?")[0]
     if percorso in ("", "/"):
+        return CARTELLA / "index.html"
+    if percorso in ROTTE_WORKER:
         return CARTELLA / "index.html"
     percorso = percorso.lstrip("/")
     for candidato in (percorso, percorso + ".html", percorso + "/index.html"):

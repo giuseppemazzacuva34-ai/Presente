@@ -687,7 +687,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const g2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
   verifica(g2.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(g2)
-    && home.includes("se le do, le mie risposte su come mi presento e sulla fascia d'età"), "testi D65 A: consenso in home, casella a parte non spuntata nel passo 2");
+    && home.includes("Ho almeno 18 anni e voglio entrare nella lista d'attesa di Presente: usate i miei dati solo per avvisarmi quando apre e per conteggi totali")
+    && !home.includes('name="maggiorenne"'), "testi D80 A: casella unica in home, casella a parte non spuntata nel passo 2");
 }
 
 // 20. «Porta un'amica» (spec referral parte 2, D69 A): codice personale casuale, link personale su /grazie,
@@ -911,6 +912,22 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(e.sorgente === "pinterest" && e.campagna === "pin" && etichetteUtm(new URLSearchParams("utm_source=reddit"), {}).sorgente === "reddit", "utm: pinterest e reddit sono sorgenti ammesse");
     const campi = [...home.matchAll(/<(?:input|select|textarea)[^>]*name="([^"]+)"/g)].map((m) => m[1]);
     verifica(!campi.includes("zona") && !campi.includes("presento") && campi.includes("email") && campi.includes("consenso"), "home (passo 1): solo email, caselle e invito");
+    // D80 A: casella unica. Senza «maggiorenne» si entra; con un valore diverso da «si» no.
+    const unica = await iscrizione(new Request("https://presente.example/iscrizione", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ email: "unica@example.com", consenso: "si" }).toString() }), env(dbI()));
+    const strana = await iscrizione(new Request("https://presente.example/iscrizione", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ email: "unica@example.com", consenso: "si", maggiorenne: "no" }).toString() }), env(dbI()));
+    verifica(unica.status === 303 && strana.status === 400, "D80 A: casella unica accettata, «maggiorenne» diverso da «si» rifiutato");
+    // D82 A: /segui conta il clic (solo persone) e rimanda al profilo Instagram.
+    const clic = [];
+    const dbClic = { prepare: (sql) => ({ bind(...v) { clic.push(v); return this; }, async run() { return {}; } }) };
+    const persona = { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" };
+    const sg = await worker.fetch(new Request("https://presente.example/segui", { headers: persona }), { DB: dbClic });
+    const robot = await worker.fetch(new Request("https://presente.example/segui", { headers: { "user-agent": "facebookexternalhit/1.1" } }), { DB: dbClic });
+    verifica(sg.status === 302 && sg.headers.get("location") === "https://www.instagram.com/presente_app/" && robot.status === 302
+      && clic.length === 1 && clic[0][0] === "grazie-ig", "D82 A: /segui conta un clic per persona (non i robot) e rimanda a Instagram");
+    const g = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
+    verifica(g.includes('href="/segui"') && g.includes("Segui @presente_app") && g.includes("Le città e i primi posti li annunciamo prima su Instagram"), "D82 A: pulsante e frase sulla pagina grazie");
     verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf('type="submit"'), "home: posti sopra il modulo, nota del CFO sotto il pulsante");
   }
 }
