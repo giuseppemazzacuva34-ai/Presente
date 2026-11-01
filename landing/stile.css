@@ -309,3 +309,11 @@ body.nuova { position: relative; overflow-x: hidden; }
 
 /* Immagine 1×1 della misura vera (D79 A): invisibile, non sposta nulla. */
 .px { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* D79 A (1/11): prova sociale sopra il modulo, riga piccola sotto il pulsante, passo 2 su /grazie. */
+.eroe-testo > .posti { margin: 0.6rem 0 0; font-size: 0.9rem; line-height: 1.4; text-align: left; }
+.modulo-eroe .rassicura-piccola { font-size: 0.74rem; line-height: 1.35; }
+.passo2 { margin: 0 0 2.5rem; }
+.passo2-titolo { margin: 0.2rem 0 0.4rem; }
+.passo2 .modulo { margin-top: 1rem; }
+.passo2 .facoltative { margin-top: 0.6rem; }

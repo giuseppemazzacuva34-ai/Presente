@@ -82,6 +82,7 @@ export async function perCitta(env) {
   const conta = (righe) => {
     const totali = {};
     for (const r of righe.results || []) {
+      if (r.zona === "non-indicata") continue; // passo 2 non ancora fatto (D79 A): fuori da contatori e classifiche
       const k = chiaveCitta(r.zona, r.citta);
       totali[k] = (totali[k] || 0) + (r.n || 0);
     }

@@ -42,8 +42,36 @@ export function pulisciCodice(valore) {
 
 // Punto del modulo dove il Worker aggiunge il campo nascosto «canale» (link /da/<canale>, D26).
 const SEGNAPOSTO_CANALE = 'action="/iscrizione">';
-// Campo città del modulo: con ?citta= del link personale viene precompilato (la persona può sempre cambiarlo).
-const SEGNAPOSTO_CITTA = '<input id="zona" name="zona"';
+// Dal 1/11 (D79 A, modulo in due passi) la home non chiede più la città: quella del link personale viaggia in un campo
+// nascosto «suggerita» e precompila il campo città del passo 2 su /grazie (la persona può sempre cambiarla).
+
+// TITOLO CHE CONTINUA L'INSERZIONE (D79 A, punto 4): ?v= (o utm_content) sceglie il titolo SOLO da questo elenco fisso.
+// Nessun testo dell'indirizzo entra mai nella pagina: un valore sconosciuto lascia il titolo neutro dell'HTML.
+// Testi provvisori del Coordinatore (1/11); quelli definitivi li manda Contenuti.
+export const TITOLI = {
+  voce: "Qui ti scelgono <em>per come parli.</em>",
+  match: "200 match. <em>Nessuno ti ha mai sentito parlare.</em>",
+  foto: "Le tue foto le vede <em>solo chi scegli tu.</em>",
+  buca: "Qui chi dà buca, <em>paga.</em>",
+  donne: "Le app di incontri <em>ti hanno delusa?</em>",
+};
+const INIZIO_TITOLO = '<h1 id="titolo">';
+
+export function sceltaTitolo(parametri) {
+  for (const nome of ["v", "utm_content"]) {
+    const v = String(parametri.get(nome) || "").trim().toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(TITOLI, v)) return v;
+  }
+  return "";
+}
+
+export function conTitolo(html, variante) {
+  if (!variante) return html;
+  const inizio = html.indexOf(INIZIO_TITOLO);
+  const fine = html.indexOf("</h1>", inizio);
+  if (inizio === -1 || fine === -1) return html;
+  return html.slice(0, inizio + INIZIO_TITOLO.length) + TITOLI[variante] + html.slice(fine);
+}
 
 // Serve la home; se l'indirizzo ha ?invito=CODICE valido, restituisce la stessa pagina con il campo già compilato.
 // Se ha ?da=<canale> dell'elenco chiuso (vedi canale.js), aggiunge al modulo il campo nascosto «canale».
@@ -56,20 +84,20 @@ export async function homeConInvito(request, env) {
   const canale = canaleValido(parametri.get("da")) || canaleValido(parametri.get("utm_source"));
   // La città si precompila solo insieme a un codice d'invito (link personale «porta un'amica»).
   const citta = codice ? cittaDelLink(parametri.get("citta")) : "";
+  const variante = sceltaTitolo(parametri);
   const tipo = risposta.headers.get("content-type") || "";
   if (risposta.status !== 200 || !tipo.includes("text/html")) return risposta;
   // Numeri pubblici della home (D64): «restano N posti» e contatore per città, solo totali.
   const numeri = await numeriPubblici(env);
-  if (!codice && !canale && !numeri) return risposta;
+  if (!codice && !canale && !numeri && !variante) return risposta;
 
   const originale = await risposta.text();
-  let html = conNumeri(originale, numeri, env);
+  let html = conTitolo(conNumeri(originale, numeri, env), variante);
   if (!codice && !canale && html === originale) return new Response(originale, risposta);
   if (codice && html.includes(SEGNAPOSTO)) html = html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`);
-  if (citta && html.includes(SEGNAPOSTO_CITTA)) html = html.replace(SEGNAPOSTO_CITTA, `${SEGNAPOSTO_CITTA} value="${citta}"`);
-  if (canale && html.includes(SEGNAPOSTO_CANALE)) {
-    html = html.replace(SEGNAPOSTO_CANALE, `${SEGNAPOSTO_CANALE}\n        <input type="hidden" name="canale" value="${canale}">`);
-  }
+  const nascosti = (canale ? `\n        <input type="hidden" name="canale" value="${canale}">` : "")
+    + (citta ? `\n        <input type="hidden" name="suggerita" value="${citta.replace(/"/g, "")}">` : "");
+  if (nascosti && html.includes(SEGNAPOSTO_CANALE)) html = html.replace(SEGNAPOSTO_CANALE, SEGNAPOSTO_CANALE + nascosti);
   const nuova = new Response(html, risposta);
   // Pagina personalizzata: nessuna copia in cache condivisa.
   nuova.headers.set("cache-control", "private, no-store");

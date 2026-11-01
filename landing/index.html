@@ -21,7 +21,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261031e">
+  <link rel="stylesheet" href="/stile.css?v=20261101a">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Presente","url":"https://presenteincontri.app/","logo":"https://presenteincontri.app/favicon.svg","sameAs":["https://www.instagram.com/presente_app/","https://www.facebook.com/presenteincontrialbuio","https://www.tiktok.com/@presenteapp"]},{"@type":"WebSite","name":"Presente","url":"https://presenteincontri.app/","inLanguage":"it-IT"}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"it-IT","mainEntity":[{"@type":"Question","name":"Chi vede le mie foto?","acceptedAnswer":{"@type":"Answer","text":"Nessuno, finché non vi scegliete a vicenda. Durante la settimana nella stanza vi conoscete solo a voce. Profilo e foto si scoprono solo dopo il sì di entrambi, e solo tra voi due."}},{"@type":"Question","name":"Come proteggete chi si iscrive?","acceptedAnswer":{"@type":"Answer","text":"Le foto restano nascoste fino alla scelta reciproca, un no non lo scopre nessuno e il primo incontro è in un locale che vi suggeriamo noi. Dopo l'incontro ognuno lascia una valutazione privata (è arrivata? le foto erano sue?) che protegge la community da chi non si comporta bene. Prima dell'apertura pubblichiamo qui le regole complete."}},{"@type":"Question","name":"Quanto costa?","acceptedAnswer":{"@type":"Answer","text":"Entrare in lista d'attesa è gratis. L'app funzionerà a crediti. I prezzi li pubblichiamo qui prima dell'apertura."}},{"@type":"Question","name":"Quando parte e in quali città?","acceptedAnswer":{"@type":"Answer","text":"Partiamo presto con la Stanza Italia, aperta a tutti: chi è in lista d'attesa lo sa per primo. Le stanze della tua città aprono quando arriva a 36 iscritti: scegli la città nel modulo e ti scriviamo quando si accende."}},{"@type":"Question","name":"E se dal vivo non scatta niente?","acceptedAnswer":{"@type":"Answer","text":"Nessun obbligo di continuare. Vi siete conosciuti davvero, e questo vale già qualcosa."}},{"@type":"Question","name":"Chi dà buca, paga?","acceptedAnswer":{"@type":"Answer","text":"Solo dopo che vi siete scelti tutti e due, ognuno blocca qualche credito come garanzia. Se uno dei due dice no, i crediti tornano a entrambi. Se invece all'appuntamento qualcuno non si presenta, perde i suoi crediti e la maggior parte va a chi ha aspettato."}},{"@type":"Question","name":"Cosa fate con la mia email?","acceptedAnswer":{"@type":"Answer","text":"La usiamo solo per la lista d'attesa e per avvisarti quando apre la tua città. Non la vendiamo e non la diamo a nessuno. Dettagli nell'informativa privacy."}}]}</script>
 </head>
@@ -40,8 +40,9 @@
     <main id="contenuto">
       <section class="eroe" aria-labelledby="titolo">
         <div class="eroe-testo">
-          <h1 id="titolo">Le app di incontri <em>ti hanno delusa?</em></h1>
-          <p class="attacco">Su Presente ci si conosce prima dalla voce. Le tue foto le vede solo chi scegli tu.</p>
+          <h1 id="titolo">Prima la voce. <em>Poi il resto.</em></h1>
+          <p class="attacco">L'app di incontri al buio: vi parlate a voce per una settimana, le foto solo se vi scegliete.</p>
+          <!--posti-->
 
           <form class="modulo modulo-eroe" id="iscriviti" name="lista-attesa" aria-label="Entra in lista d'attesa" method="POST" action="/iscrizione">
             <p class="nascosto"><label>Non compilare questo campo: <input name="campo-trappola" tabindex="-1" autocomplete="off"></label></p>
@@ -49,118 +50,6 @@
             <div class="campo">
               <label for="email" class="solo-lettori">La tua email</label>
               <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="La tua email">
-            </div>
-
-            <div class="campo">
-              <label for="zona" class="solo-lettori">La tua città</label>
-              <input id="zona" name="zona" type="text" required list="citta-italiane" autocomplete="address-level2" autocapitalize="words" spellcheck="false" minlength="2" maxlength="60" placeholder="La tua città (es. Milano)">
-              <datalist id="citta-italiane">
-                <option value="Milano"></option>
-                <option value="Roma"></option>
-                <option value="Napoli"></option>
-                <option value="Torino"></option>
-                <option value="Bologna"></option>
-                <option value="Firenze"></option>
-                <option value="Genova"></option>
-                <option value="Venezia"></option>
-                <option value="Padova"></option>
-                <option value="Verona"></option>
-                <option value="Brescia"></option>
-                <option value="Bergamo"></option>
-                <option value="Bari"></option>
-                <option value="Palermo"></option>
-                <option value="Catania"></option>
-                <option value="Cagliari"></option>
-                <option value="Trieste"></option>
-                <option value="Parma"></option>
-                <option value="Modena"></option>
-                <option value="Reggio Emilia"></option>
-                <option value="Reggio Calabria"></option>
-                <option value="Prato"></option>
-                <option value="Livorno"></option>
-                <option value="Perugia"></option>
-                <option value="Ravenna"></option>
-                <option value="Rimini"></option>
-                <option value="Ferrara"></option>
-                <option value="Salerno"></option>
-                <option value="Sassari"></option>
-                <option value="Monza"></option>
-                <option value="Siracusa"></option>
-                <option value="Pescara"></option>
-                <option value="Latina"></option>
-                <option value="Vicenza"></option>
-                <option value="Terni"></option>
-                <option value="Trento"></option>
-                <option value="Bolzano"></option>
-                <option value="Novara"></option>
-                <option value="Piacenza"></option>
-                <option value="Ancona"></option>
-                <option value="Andria"></option>
-                <option value="Udine"></option>
-                <option value="Arezzo"></option>
-                <option value="Lecce"></option>
-                <option value="Cesena"></option>
-                <option value="Pesaro"></option>
-                <option value="La Spezia"></option>
-                <option value="Pisa"></option>
-                <option value="Catanzaro"></option>
-                <option value="Lucca"></option>
-                <option value="Brindisi"></option>
-                <option value="Treviso"></option>
-                <option value="Como"></option>
-                <option value="Varese"></option>
-                <option value="Messina"></option>
-                <option value="Pistoia"></option>
-                <option value="Asti"></option>
-                <option value="Cuneo"></option>
-                <option value="Alessandria"></option>
-                <option value="Caserta"></option>
-                <option value="Foggia"></option>
-                <option value="Taranto"></option>
-                <option value="Potenza"></option>
-                <option value="Matera"></option>
-                <option value="Cosenza"></option>
-                <option value="Crotone"></option>
-                <option value="Campobasso"></option>
-                <option value="L&#39;Aquila"></option>
-                <option value="Teramo"></option>
-                <option value="Chieti"></option>
-                <option value="Viterbo"></option>
-                <option value="Frosinone"></option>
-                <option value="Siena"></option>
-                <option value="Grosseto"></option>
-                <option value="Massa"></option>
-                <option value="Savona"></option>
-                <option value="Imperia"></option>
-                <option value="Aosta"></option>
-                <option value="Biella"></option>
-                <option value="Vercelli"></option>
-                <option value="Lodi"></option>
-                <option value="Cremona"></option>
-                <option value="Mantova"></option>
-                <option value="Pavia"></option>
-                <option value="Lecco"></option>
-                <option value="Rovigo"></option>
-                <option value="Belluno"></option>
-                <option value="Pordenone"></option>
-                <option value="Gorizia"></option>
-                <option value="Forlì"></option>
-                <option value="Ascoli Piceno"></option>
-                <option value="Macerata"></option>
-                <option value="Benevento"></option>
-                <option value="Avellino"></option>
-                <option value="Agrigento"></option>
-                <option value="Trapani"></option>
-                <option value="Ragusa"></option>
-                <option value="Olbia"></option>
-                <option value="Sanremo"></option>
-                <option value="Viareggio"></option>
-                <option value="Barletta"></option>
-                <option value="Fiumicino"></option>
-                <option value="Pozzuoli"></option>
-                <option value="Lamezia Terme"></option>
-                <option value="Fuori dall&#39;Italia"></option>
-              </datalist>
             </div>
 
             <div class="spunta">
@@ -174,44 +63,8 @@
             </div>
 
             <button class="bottone" type="submit">Voglio entrare</button>
-            <details class="facoltative">
-              <summary>Tre domande facoltative <span class="facoltativo">(aiutano a comporre stanze equilibrate)</span></summary>
-              <div class="campo">
-                <label for="presento" class="solo-lettori">Mi presento come (facoltativo)</label>
-                <select id="presento" name="presento">
-                  <option value="" selected>Mi presento come…</option>
-                  <option value="donna">Donna</option>
-                  <option value="uomo">Uomo</option>
-                  <option value="non_binario">Non binario</option>
-                  <option value="altro">Altro</option>
-                </select>
-              </div>
-              <div class="campo">
-                <label for="cerchi" class="solo-lettori">Chi cerchi (facoltativo)</label>
-                <select id="cerchi" name="cerchi">
-                  <option value="" selected>Chi cerchi…</option>
-                  <option value="donne">Donne</option>
-                  <option value="uomini">Uomini</option>
-                  <option value="tutti">Mi va bene chiunque</option>
-                </select>
-              </div>
-              <div class="spunta spunta-cerchi">
-                <input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">
-                <label for="consenso-cerchi">Acconsento a che Presente usi la mia risposta su chi cerco solo in conteggi totali, per comporre stanze equilibrate. So che può far capire il mio orientamento sessuale. È facoltativo: posso iscrivermi anche senza e revocare il consenso quando voglio.</label>
-              </div>
-              <div class="campo">
-                <label for="fascia" class="solo-lettori">La tua fascia d'età (facoltativo)</label>
-                <select id="fascia" name="fascia">
-                  <option value="" selected>La tua fascia d'età…</option>
-                  <option value="18-24">18–24</option>
-                  <option value="25-34">25–34</option>
-                  <option value="35-44">35–44</option>
-                  <option value="45+">45 o più</option>
-                </select>
-              </div>
-            </details>
-            <!--posti-->
-            <p class="rassicura">Lista d'attesa gratuita, 20 secondi. Ti scriviamo solo quando apre la tua città.</p>
+            <p class="rassicura rassicura-piccola">Gratis · ti scriviamo solo quando apre la tua città · dati in Europa · ti cancelli quando vuoi</p>
+            <!--posti-nota-->
             <p class="rassicura">In regalo subito: 30 domande per non annoiarsi mai al primo appuntamento.</p>
             <!--contatore-citta-->
 

@@ -7,6 +7,8 @@ import { perCitta, nomeCitta, NOMI_ZONE } from "./citta.js";
 export const POSTI_REGALO = 150;
 export const SOGLIA_CONTATORE = 10;
 export const SEGNAPOSTO_POSTI = "<!--posti-->";
+// Dal 1/11 (D79 A, punto 2) la frase dei posti sta SOPRA il modulo con «N persone già in lista»; la nota del CFO sotto il pulsante.
+export const SEGNAPOSTO_POSTI_NOTA = "<!--posti-nota-->";
 export const SEGNAPOSTO_CONTATORE = "<!--contatore-citta-->";
 export const SEGNAPOSTO_CLASSIFICA = "<!--classifica-->";
 export const SOGLIA_APERTURA = 36;
@@ -31,14 +33,18 @@ export async function numeriPubblici(env, adesso = Date.now(), { fresco = false 
   }
 }
 
-// Frase sotto il pulsante: testo esatto del CFO (31/10), regalo deciso con D42. Si accende con MOSTRA_POSTI = "si".
-export function htmlPosti(numeri, env) {
+// Frase dei posti: testo esatto del CFO (31/10), regalo deciso con D42. Si accende con MOSTRA_POSTI = "si".
+// Dal 1/11 (D79 A, prova sociale) davanti c'è «N persone già in lista.», con N = iscritti totali (stesso numero di sempre).
+export const NOTA_POSTI = `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è gratis per tutti. Crediti non convertibili in denaro.</p>`;
+
+export function htmlPosti(numeri, env, { conNota = true } = {}) {
   if (env.MOSTRA_POSTI !== "si" || !numeri) return "";
   const restano = POSTI_REGALO - numeri.totale;
   if (restano <= 0) return "";
   const coda = restano === 1 ? "Resta <strong>1</strong> posto." : `Restano <strong>${restano}</strong> posti.`;
-  return `<p class="posti">I primi ${POSTI_REGALO} iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. ${coda}</p>`
-    + `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è gratis per tutti. Crediti non convertibili in denaro.</p>`;
+  const persone = numeri.totale === 1 ? "<strong>1</strong> persona già in lista." : `<strong>${numeri.totale}</strong> persone già in lista.`;
+  return `<p class="posti">${numeri.totale > 0 ? persone + " " : ""}I primi ${POSTI_REGALO} iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. ${coda}</p>`
+    + (conNota ? NOTA_POSTI : "");
 }
 
 // D76 A (1/11): contatore e classifica mostrano solo le 14 città con stanza prevista (NOMI_ZONE).
@@ -84,9 +90,11 @@ export function htmlClassifica(numeri) {
 
 // Inserisce i numeri nei segnaposto; se non c'è nulla da mostrare l'HTML resta identico.
 export function conNumeri(html, numeri, env) {
-  const posti = htmlPosti(numeri, env);
+  const notaSeparata = html.includes(SEGNAPOSTO_POSTI_NOTA);
+  const posti = htmlPosti(numeri, env, { conNota: !notaSeparata });
   const contatore = htmlContatore(numeri);
   if (posti && html.includes(SEGNAPOSTO_POSTI)) html = html.replace(SEGNAPOSTO_POSTI, posti);
+  if (posti && notaSeparata) html = html.replace(SEGNAPOSTO_POSTI_NOTA, NOTA_POSTI);
   if (contatore && html.includes(SEGNAPOSTO_CONTATORE)) html = html.replace(SEGNAPOSTO_CONTATORE, contatore);
   return html;
 }
