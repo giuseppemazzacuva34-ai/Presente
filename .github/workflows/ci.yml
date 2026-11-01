@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # tutta la storia: serve alle date <lastmod> della sitemap
 
       - name: Controlla che le azioni siano fissate e i permessi minimi
         run: python3 scripts/verifica_azioni.py
@@ -30,6 +32,10 @@ jobs:
       - name: Verifica la landing della lista d'attesa
         if: hashFiles('landing/index.html') != ''
         run: python3 scripts/verifica_landing.py
+
+      - name: Sitemap con lastmod aggiornati e chiave IndexNow
+        if: github.event_name == 'pull_request' && hashFiles('landing/sitemap.xml') != ''
+        run: python3 scripts/sitemap.py controlla
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: hashFiles('worker/index.js') != ''
