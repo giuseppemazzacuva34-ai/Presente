@@ -3,11 +3,14 @@
 // La città dell'indirizzo passa di nuovo dalla normalizzazione (solo lettere e spazi) e non viene salvata né contata.
 // N = 36 − iscritti di quella città (stanze di città a 36 iscritti, D19). Solo totali, mai dati delle persone.
 import { normalizzaCitta, chiaveCitta, nomeCitta } from "./citta.js";
-import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA } from "./numeri.js";
+import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA, cittaConStanza } from "./numeri.js";
 import { CODICE_PERSONALE, linkPersonale } from "./invito.js";
 
 export const SOGLIA_STANZA = 36;
 export const SEGNAPOSTO_MANCANO = "<!--mancano-->";
+
+// D76 A (1/11): per le città scritte a mano (fuori dalle 14 con stanza prevista) nessun numero e nessun nome.
+export const FRASE_CITTA_LIBERA = `<p class="mancano">La tua città apre a ${SOGLIA_STANZA} iscritti: invita un'amica o un amico.</p>`;
 
 export function htmlMancano(nome, iscritti) {
   const mancano = SOGLIA_STANZA - iscritti;
@@ -56,7 +59,8 @@ export async function grazieConCitta(request, env) {
   // Numeri freschi quando c'è la città (conta anche chi si è appena iscritto); altrimenti bastano quelli in memoria.
   const numeri = (nome || serveClassifica) ? await numeriPubblici(env, Date.now(), { fresco: Boolean(nome) }) : null;
   if (nome && numeri && html.includes(SEGNAPOSTO_MANCANO)) {
-    html = html.replace(SEGNAPOSTO_MANCANO, htmlMancano(nome, numeri.citta[chiave] || 0));
+    html = html.replace(SEGNAPOSTO_MANCANO,
+      cittaConStanza(chiave) ? htmlMancano(nome, numeri.citta[chiave] || 0) : FRASE_CITTA_LIBERA);
   }
   if (numeri && serveClassifica) html = html.replace(SEGNAPOSTO_CLASSIFICA, htmlClassifica(numeri));
   const inizio = html.indexOf(INIZIO_INVITO);

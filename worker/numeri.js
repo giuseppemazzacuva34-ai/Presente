@@ -2,7 +2,7 @@
 // - «I primi 150 iscritti hanno 9 crediti in regalo… Restano N posti.»: N = 150 − iscritti totali, solo con MOSTRA_POSTI = "si".
 // - Contatore per città: solo le città con almeno 10 iscritti; sotto quella soglia non si mostra nulla.
 // Solo totali, mai email o altri dati delle persone. I numeri restano in memoria 60 secondi per non leggere D1 a ogni visita.
-import { perCitta, nomeCitta } from "./citta.js";
+import { perCitta, nomeCitta, NOMI_ZONE } from "./citta.js";
 
 export const POSTI_REGALO = 150;
 export const SOGLIA_CONTATORE = 10;
@@ -41,9 +41,16 @@ export function htmlPosti(numeri, env) {
     + `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è gratis per tutti. Crediti non convertibili in denaro.</p>`;
 }
 
+// D76 A (1/11): contatore e classifica mostrano solo le 14 città con stanza prevista (NOMI_ZONE).
+// Le città scritte a mano non compaiono mai per nome nelle pagine pubbliche, a qualunque numero.
+export function cittaConStanza(chiave) {
+  return Object.prototype.hasOwnProperty.call(NOMI_ZONE, chiave);
+}
+
 export function htmlContatore(numeri) {
   if (!numeri) return "";
   const voci = Object.entries(numeri.citta)
+    .filter(([chiave]) => cittaConStanza(chiave))
     .map(([chiave, n]) => [nomeCitta(chiave), n])
     .filter(([nome, n]) => nome && n >= SOGLIA_CONTATORE)
     .sort((a, b) => b[1] - a[1])
@@ -58,6 +65,7 @@ export function htmlContatore(numeri) {
 export function htmlClassifica(numeri) {
   if (!numeri) return "";
   const voci = Object.entries(numeri.citta)
+    .filter(([chiave]) => cittaConStanza(chiave))
     .map(([chiave, n]) => [nomeCitta(chiave), n])
     .filter(([nome, n]) => nome && n >= SOGLIA_CONTATORE)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it"))
