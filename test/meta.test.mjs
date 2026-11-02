@@ -235,3 +235,25 @@ test("import diretto: nel log nessuna email, id o risposta", async () => {
   assert.match(testo, /meta_nuova 1/);
   assert.doesNotMatch(testo, /giulia|example|987654|Roma|Donna/i);
 });
+
+test("import diretto con la provincia (D84 A): sigla o nome → provincia, regione, zona; colonne mancanti aggiunte", async () => {
+  const DB = dbFinto();
+  let primo = true;
+  const prep = DB.prepare.bind(DB);
+  DB.prepare = (sql) => {
+    const p = prep(sql);
+    if (sql.startsWith("INSERT INTO iscrizioni") && primo) {
+      primo = false;
+      return { bind: () => ({ run: async () => { throw new Error("D1_ERROR: table iscrizioni has no column named provincia"); } }) };
+    }
+    return p;
+  };
+  const campi = [{ name: "email", values: ["p@example.com"] }, { name: "hai_almeno_18_anni?", values: ["Sì"] }, { name: "in_quale_provincia_vivi?", values: ["Lecce"] }];
+  assert.equal(await importaContatto("1", { ...ENV_IMPORT, DB }, metaContatti(campi).f), "meta_nuova");
+  assert.deepEqual(DB.scritte[0].v.slice(1, 2).concat(DB.scritte[0].v.slice(7)), ["altra-citta-italia", "lecce", "LE", "Puglia"]);
+  const DB2 = dbFinto();
+  const roma = [{ name: "email", values: ["r@example.com"] }, { name: "hai_almeno_18_anni?", values: ["Sì"] }, { name: "provincia", values: ["RM"] }];
+  await importaContatto("2", { ...ENV_IMPORT, DB: DB2 }, metaContatti(roma).f);
+  assert.deepEqual(DB2.scritte[0].v.slice(7), [null, "RM", "Lazio"]);
+  assert.equal(DB2.scritte[0].v[1], "roma");
+});
