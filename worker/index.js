@@ -7,7 +7,9 @@ import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
 import { grazieConCitta } from "./grazie.js";
-import { daCanale } from "./canale.js";
+import { daCanale, contaVisita } from "./canale.js";
+import { paginaDaMeta, PERCORSO_DA_META } from "./dameta.js";
+import { richiestaAutomatica } from "./automatiche.js";
 import { contaVisitaPagina, pixel, PERCORSO_PIXEL, segui, PERCORSO_SEGUI } from "./visite.js";
 import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
@@ -37,6 +39,11 @@ export default {
       return conSicurezza(Response.redirect(new URL("/grazie", request.url).toString(), 303));
     }
     // Link per canale (D26): /da/instagram, /da/tiktok, ... contano la visita e rimandano alla home.
+    // /da/meta (D92 A): pagina «Sei in lista!» per chi arriva dal pulsante «Vai al sito» del modulo Meta v1.
+    if ((pathname === PERCORSO_DA_META || pathname === PERCORSO_DA_META + "/") && (request.method === "GET" || request.method === "HEAD")) {
+      if (request.method === "GET" && !richiestaAutomatica(request)) await contaVisita(env, "meta");
+      return conSicurezza(paginaDaMeta(request));
+    }
     if (pathname === "/da" || pathname.startsWith("/da/")) {
       const rimando = request.method === "GET" || request.method === "HEAD" ? await daCanale(request, env) : null;
       return conSicurezza(rimando || pagina("Pagina non trovata.", "Questo indirizzo non esiste. Dai un'occhiata alla nostra home.", 404));
