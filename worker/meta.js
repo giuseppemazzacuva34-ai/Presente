@@ -21,6 +21,7 @@
 // Interruttore: IMPORT_META in wrangler.jsonc ("no" = Meta può avvisare ma non si legge e non si salva nulla).
 
 import { contatto, trovaColonne } from "./contatti_meta.js";
+import { codiciConfigurati } from "./invito.js";
 import { contaEsito } from "./iscrizione.js";
 
 export const PERCORSO_META = "/meta/webhook";
@@ -126,7 +127,7 @@ export function righeDaContatto(dati) {
   return riga;
 }
 
-const INSERISCI_META = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, presento) VALUES (?, ?, NULL, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+const INSERISCI_META = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, presento) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
 
 // Legge un contatto da Meta e lo salva. Restituisce l'esito: meta_nuova, meta_gia_in_lista, meta_scartata, meta_errore.
 export async function importaContatto(id, env, f = fetch) {
@@ -144,12 +145,12 @@ export async function importaContatto(id, env, f = fetch) {
   const riga = righeDaContatto(dati);
   const colonne = trovaColonne(Object.keys(riga));
   if (!colonne.email) return "meta_scartata";
-  const esito = contatto(riga, colonne, { maggiorenneNelModulo: env.META_MAGGIORENNE_NEL_MODULO === "si" });
+  const esito = contatto(riga, colonne, { maggiorenneNelModulo: env.META_MAGGIORENNE_NEL_MODULO === "si", codiciAmmessi: codiciConfigurati(env) });
   if (esito.scarto) return "meta_scartata";
   const i = esito.iscrizione;
   try {
     const r = await env.DB.prepare(INSERISCI_META)
-      .bind(i.email, i.zona, i.consenso_il, i.versione_informativa, i.sorgente, i.presento || null).run();
+      .bind(i.email, i.zona, i.invito || null, i.consenso_il, i.versione_informativa, i.sorgente, i.presento || null).run();
     return r && r.meta && r.meta.changes > 0 ? "meta_nuova" : "meta_gia_in_lista";
   } catch (errore) {
     console.error("meta: contatto non salvato", errore && errore.name);
