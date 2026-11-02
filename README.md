@@ -4,7 +4,7 @@ App di incontri per vedersi davvero, sul modello di «L'amore è cieco»: niente
 
 ## Stato
 
-Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe; beta il 6 dicembre 2026. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md).
+Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe; beta il 6 dicembre 2026. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md). Stanze della settimana (#3, calcoli in `api/stanze.js`): [`docs/stanze.md`](docs/stanze.md).
 
 ## Automatismi attivi
 
@@ -49,9 +49,11 @@ Le iscrizioni sono aperte (`ISCRIZIONI_APERTE` vale `si` in `wrangler.jsonc`) do
 Per vedere gli iscritti: D1 → `presente-lista` → Console, per esempio
 `SELECT invito, COUNT(*) AS iscritti FROM iscrizioni GROUP BY invito ORDER BY iscritti DESC;`
 
-Iscritti per codice dei creator (per il CMO): metti i codici assegnati in `CODICI_INVITO` in `wrangler.jsonc`, separati da virgola (es. `"SILVIA,NEVADA"`), con una modifica su `main`. Da quel momento `/conteggio` mostra `per_codice` con un totale per ciascun codice; chi ha scritto il codice a mano in minuscolo o con spazi viene contato lo stesso. Nessuna email e nessun nome scritto liberamente nel campo invito esce da `/conteggio`.
+Iscritti per codice dei creator (per il CMO): metti i codici assegnati in `CODICI_INVITO` in `wrangler.jsonc`, separati da virgola (es. `"SILVIA,NEVADA"`), con una modifica su `main`. Da quel momento `/conteggio` mostra `per_codice` con un totale per ciascun codice; chi ha scritto il codice a mano in minuscolo o con spazi viene contato lo stesso. Nessuna email e nessun nome scritto liberamente nel campo invito esce da `/conteggio`. **Dal 2/11 (D88 A, codici delle presentatrici):** `/conteggio` mostra anche `per_codice_validi` (iscritti validi per codice, senza email usa e getta né doppioni, `sospeso` se oltre 15 in un'ora) e il campo «codice» del modulo Meta finisce nel campo invito, solo se è un codice dell'elenco. Dettagli in [`docs/codici-presentatrici.md`](docs/codici-presentatrici.md).
 
 L'informativa privacy (`landing/privacy.html`, indirizzo stabile `https://presenteincontri.app/privacy`) è la versione 1.3 del 1/11/2026, approvata da Giuseppe con D80 = A (prima: 1.0 con D5, 1.1 del 26/10, 1.2 del 30/10 con D53 = A). Copre il modulo in due passi, il modulo dentro Facebook e Instagram con il passaggio automatico ogni ora (fornitori Composio e Anthropic, punto 8), le risposte automatiche a BUIO. **Da verificare con un legale** (D80). Ogni nuova iscrizione salva `versione_informativa` = `1.3-2026-11-01` (`worker/iscrizione.js`); la stessa versione è in plancia › progetto/stato › `informativa` per gli import di Contatori.
+
+**Visite delle guide e delle pagine città (E10 di Growth, dal 2/11).** Le pagine `/guide/*` e `/incontri-al-buio/*` hanno la stessa immagine 1×1 con `?pg=<percorso>` (solo percorsi di un elenco chiuso in `worker/visite.js`, solo persone vere). In `/conteggio`: `visite.per_pagina` e `visite.per_giorno[g].per_pagina`; accanto a `home_persona` di ogni giorno anche `invii_modulo` (nuove + già in lista) e `iscrizioni_nuove`.
 
 **Pulsante «Segui @presente_app» (D82 A, dal 1/11).** Sulla pagina grazie, sotto la conferma, la frase «Le città e i primi posti li annunciamo prima su Instagram» e il pulsante verso `/segui`: il Worker conta il clic (riga `grazie-ig` in `visite_pagina`, solo persone vere, nessun dato) e rimanda a https://www.instagram.com/presente_app/. In `/conteggio` è `visite.grazie_ig`.
 
