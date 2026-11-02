@@ -163,7 +163,7 @@ const CAMPI = [
   { name: "hai_almeno_18_anni?", values: ["Sì"] },
   { name: "mi_presento_come", values: ["Donna"] },
 ];
-const ENV_IMPORT = { ...ENV, RISPOSTE_META: "no", IMPORT_META: "si" };
+const ENV_IMPORT = { ...ENV, RISPOSTE_META: "no", IMPORT_META: "si", ISCRIZIONI_APERTE: "si" };
 
 test("contatti del modulo: solo campo leadgen della nostra Pagina, id numerici", () => {
   assert.deepEqual(contattiModulo(lead(), ENV), ["123456"]);
@@ -214,6 +214,8 @@ test("webhook: senza IMPORT_META o senza firma non si legge nulla da Meta; acces
   const m = metaContatti(CAMPI);
   await metaWebhook(await notifica(lead()), { ...ENV_IMPORT, IMPORT_META: "no", DB }, null, m.f);
   await metaWebhook(await notifica(lead(), { firmaRotta: true }), { ...ENV_IMPORT, DB }, null, m.f);
+  // contenimento d'emergenza: iscrizioni chiuse = nessun contatto letto né salvato
+  await metaWebhook(await notifica(lead()), { ...ENV_IMPORT, ISCRIZIONI_APERTE: "no", DB }, null, m.f);
   assert.equal(m.chiamate.length, 0);
   const r = await metaWebhook(await notifica(lead()), { ...ENV_IMPORT, DB }, null, m.f);
   assert.equal(r.status, 200);
