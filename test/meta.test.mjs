@@ -116,3 +116,122 @@ test("il Worker instrada /meta/webhook e nel log non finiscono testi né id", as
   const log = righe.join("\n");
   assert.doesNotMatch(log, /segreto-del-commento|c1|999|qualcuno/);
 });
+
+// ── Import diretto dei contatti del modulo Meta (D85 A). Meta e D1 finti: nessun dato reale. ──
+import { contattiModulo, importaContatto, righeDaContatto } from "../worker/meta.js";
+
+const lead = (id = "123456", pagina = "111") => ({ object: "page", entry: [{ id: pagina, changes: [{ field: "leadgen", value: { leadgen_id: id, page_id: pagina, form_id: "9" } }] }] });
+
+function dbFinto() {
+  const scritte = [];
+  const email = new Set();
+  return {
+    scritte,
+    prepare(sql) {
+      return {
+        bind(...v) {
+          return {
+            async run() {
+              if (sql.startsWith("INSERT INTO iscrizioni")) {
+                scritte.push({ sql, v });
+                const nuova = !email.has(v[0]);
+                email.add(v[0]);
+                return { meta: { changes: nuova ? 1 : 0 } };
+              }
+              return { meta: { changes: 1 } };
+            },
+          };
+        },
+        async run() { return {}; },
+      };
+    },
+  };
+}
+
+function metaContatti(campi, { ok = true } = {}) {
+  const chiamate = [];
+  const f = async (url, opzioni = {}) => {
+    chiamate.push({ url, metodo: opzioni.method || "GET", auth: opzioni.headers && opzioni.headers.authorization });
+    return new Response(JSON.stringify({ created_time: "2026-11-02T08:00:00+0000", id: "123456", field_data: campi }), { status: ok ? 200 : 400 });
+  };
+  return { f, chiamate };
+}
+
+const CAMPI = [
+  { name: "email", values: ["Giulia.Prova@Example.com"] },
+  { name: "in_quale_città_vivi?", values: ["Roma"] },
+  { name: "hai_almeno_18_anni?", values: ["Sì"] },
+  { name: "mi_presento_come", values: ["Donna"] },
+];
+const ENV_IMPORT = { ...ENV, RISPOSTE_META: "no", IMPORT_META: "si" };
+
+test("contatti del modulo: solo campo leadgen della nostra Pagina, id numerici", () => {
+  assert.deepEqual(contattiModulo(lead(), ENV), ["123456"]);
+  assert.deepEqual(contattiModulo(lead("123456", "777"), ENV), []);
+  assert.deepEqual(contattiModulo(lead("1; DROP"), ENV), []);
+  assert.deepEqual(contattiModulo(fb("BUIO"), ENV), []);
+  assert.deepEqual(contattiModulo({ object: "instagram", entry: [] }, ENV), []);
+  assert.deepEqual(righeDaContatto({ created_time: "x", field_data: [{ name: "email", values: ["a@b.it"] }, null, { values: [] }] }), { created_time: "x", email: "a@b.it" });
+});
+
+test("import diretto: salva email, città, presento e data del modulo; un doppione non cambia nulla", async () => {
+  const DB = dbFinto();
+  const m = metaContatti(CAMPI);
+  const env = { ...ENV_IMPORT, DB };
+  assert.equal(await importaContatto("123456", env, m.f), "meta_nuova");
+  assert.equal(await importaContatto("123456", env, m.f), "meta_gia_in_lista");
+  assert.match(m.chiamate[0].url, /\/v24\.0\/123456\?fields=created_time,field_data$/);
+  assert.equal(m.chiamate[0].metodo, "GET");
+  assert.equal(m.chiamate[0].auth, "Bearer token-finto");
+  const [email, zona, consenso, versione, sorgente, presento] = DB.scritte[0].v;
+  assert.deepEqual([email, zona, consenso, versione, sorgente, presento],
+    ["giulia.prova@example.com", "roma", "2026-11-02T08:00:00.000Z", "1.3-2026-11-01", "meta_modulo", "donna"]);
+  assert.match(DB.scritte[0].sql, /ON CONFLICT\(email\) DO NOTHING$/);
+});
+
+test("import diretto: scarta prova di Meta, minorenni, email sbagliate; errore di Meta non salva", async () => {
+  const casi = [
+    [[{ name: "email", values: ["<test lead: dummy data for email>"] }, { name: "hai_almeno_18_anni?", values: ["Sì"] }], "meta_scartata"],
+    [[{ name: "email", values: ["a@example.com"] }, { name: "hai_almeno_18_anni?", values: ["No"] }], "meta_scartata"],
+    [[{ name: "email", values: ["non-email"] }, { name: "hai_almeno_18_anni?", values: ["Sì"] }], "meta_scartata"],
+    [[{ name: "email", values: ["a@example.com"] }], "meta_scartata"],
+    [[{ name: "telefono", values: ["1"] }], "meta_scartata"],
+  ];
+  for (const [campi, atteso] of casi) {
+    const DB = dbFinto();
+    assert.equal(await importaContatto("1", { ...ENV_IMPORT, DB }, metaContatti(campi).f), atteso);
+    assert.equal(DB.scritte.length, 0);
+  }
+  const DB = dbFinto();
+  assert.equal(await importaContatto("1", { ...ENV_IMPORT, DB }, metaContatti(CAMPI, { ok: false }).f), "meta_errore");
+  // dichiarazione obbligatoria dei 18 anni nel modulo (senza domanda): vale solo con l'interruttore
+  const soloEmail = [{ name: "email", values: ["b@example.com"] }];
+  assert.equal(await importaContatto("1", { ...ENV_IMPORT, DB, META_MAGGIORENNE_NEL_MODULO: "si" }, metaContatti(soloEmail).f), "meta_nuova");
+});
+
+test("webhook: senza IMPORT_META o senza firma non si legge nulla da Meta; acceso importa", async () => {
+  const DB = dbFinto();
+  const m = metaContatti(CAMPI);
+  await metaWebhook(await notifica(lead()), { ...ENV_IMPORT, IMPORT_META: "no", DB }, null, m.f);
+  await metaWebhook(await notifica(lead(), { firmaRotta: true }), { ...ENV_IMPORT, DB }, null, m.f);
+  assert.equal(m.chiamate.length, 0);
+  const r = await metaWebhook(await notifica(lead()), { ...ENV_IMPORT, DB }, null, m.f);
+  assert.equal(r.status, 200);
+  assert.equal(DB.scritte.length, 1);
+});
+
+test("import diretto: nel log nessuna email, id o risposta", async () => {
+  const righe = [];
+  const [log, err] = [console.log, console.error];
+  console.log = (...a) => righe.push(a.join(" "));
+  console.error = (...a) => righe.push(a.join(" "));
+  try {
+    await metaWebhook(await notifica(lead("987654")), { ...ENV_IMPORT, DB: dbFinto() }, null, metaContatti(CAMPI).f);
+  } finally {
+    console.log = log;
+    console.error = err;
+  }
+  const testo = righe.join("\n");
+  assert.match(testo, /meta_nuova 1/);
+  assert.doesNotMatch(testo, /giulia|example|987654|Roma|Donna/i);
+});

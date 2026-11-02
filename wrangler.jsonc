@@ -63,7 +63,13 @@
     // Id pubblici della Pagina Facebook e dell'account Instagram di Presente: servono per non rispondere ai nostri commenti.
     "META_PAGE_ID": "1409616645567240",
     "META_IG_ID": "",
-    "META_GRAPH_VERSIONE": "v24.0"
+    "META_GRAPH_VERSIONE": "v24.0",
+    // Import diretto dei contatti del modulo Meta in D1, senza AI (D85 A, docs/meta-contatti.md). "no" = spento.
+    // Si mette "si" quando Giuseppe ha dato all'app Meta il permesso leads_retrieval e il contatto di prova arriva in D1.
+    "IMPORT_META": "no",
+    // "si" solo se nel modulo Meta i 18 anni sono una dichiarazione obbligatoria senza domanda propria;
+    // con una domanda «Hai almeno 18 anni?» resta "no" e il Worker controlla la risposta.
+    "META_MAGGIORENNE_NEL_MODULO": "no"
   },
   // Anteprime dei rami (Worker Previews di Workers Builds, comando "npx wrangler preview"): il blocco "previews"
   // è obbligatorio, senza di esso la build di anteprima fallisce. Le anteprime non usano le impostazioni di produzione:
@@ -72,7 +78,8 @@
     "vars": {
       "ISCRIZIONI_APERTE": "no",
       "ACCESSO_APP": "no",
-      "RISPOSTE_META": "no"
+      "RISPOSTE_META": "no",
+      "IMPORT_META": "no"
     }
   }
 }

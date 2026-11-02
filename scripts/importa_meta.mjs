@@ -11,9 +11,9 @@
 // del modulo (o, con --maggiorenne-nel-modulo, da una dichiarazione obbligatoria del modulo); data del consenso = data
 // d'invio del modulo; sorgente = "meta_modulo"; versione_informativa = quella in vigore. I contatti di prova di Meta vengono scartati.
 import { readFileSync } from "node:fs";
-import { EMAIL, VERSIONE_INFORMATIVA } from "../worker/iscrizione.js";
+import { SORGENTE, zonaDa, dataConsenso, contatto, trovaColonne } from "../worker/contatti_meta.js";
 
-export const SORGENTE = "meta_modulo";
+export { SORGENTE };
 
 // Meta esporta in UTF-16 con tabulazioni; a volte in UTF-8 con virgole. Si riconoscono entrambi.
 export function decodifica(buffer) {
@@ -56,59 +56,25 @@ export function leggiCsv(testo) {
   return righe.slice(1).map((r) => Object.fromEntries(intestazioni.map((h, i) => [h, (r[i] ?? "").trim()])));
 }
 
-const semplice = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-// Le città del modulo del sito (worker/iscrizione.js, campo «zona»). Il resto d'Italia va in «altra-citta-italia».
-const CITTA = [
-  ["venezia-padova", ["venezia", "padova", "mestre"]],
-  ["brescia-bergamo", ["brescia", "bergamo"]],
-  ["milano", ["milano"]], ["roma", ["roma"]], ["napoli", ["napoli"]], ["torino", ["torino"]],
-  ["bologna", ["bologna"]], ["firenze", ["firenze"]], ["genova", ["genova"]], ["verona", ["verona"]],
-  ["bari", ["bari"]], ["palermo", ["palermo"]], ["catania", ["catania"]], ["cagliari", ["cagliari"]],
-  ["estero", ["estero", "abroad", "fuori italia"]],
-];
-export function zonaDa(valore) {
-  const v = ` ${semplice(valore)} `;
-  for (const [zona, nomi] of CITTA) if (nomi.some((n) => v.includes(` ${n} `))) return zona;
-  return "altra-citta-italia";
-}
-
-const SI = new Set(["si", "yes", "true", "1", "vero", "ho almeno 18 anni", "confermo"]);
-const colonna = (intestazioni, prove) => intestazioni.find((h) => prove.some((p) => semplice(h).includes(p)));
-
-// Data d'invio del modulo (es. 2026-10-31T10:12:33+0000) in formato ISO; se manca o è strana, adesso.
-export function dataConsenso(valore, adesso = new Date()) {
-  const d = new Date(String(valore || "").replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
-  return Number.isNaN(d.getTime()) ? adesso.toISOString() : d.toISOString();
-}
+// Regole comuni con l'import diretto dal webhook (D85 = A): worker/contatti_meta.js.
+export { zonaDa, dataConsenso };
 
 // Trasforma le righe del CSV nelle iscrizioni da salvare. Restituisce anche il riepilogo (solo numeri).
 export function prepara(righe, { maggiorenneNelModulo = false, adesso = new Date() } = {}) {
-  const intestazioni = righe.length ? Object.keys(righe[0]) : [];
-  const colEmail = intestazioni.find((h) => semplice(h) === "email") || colonna(intestazioni, ["email", "e mail"]);
-  const colCitta = colonna(intestazioni, ["citta", "city", "zona"]);
-  const colEta = colonna(intestazioni, ["18", "maggiorenn", "maggiore eta"]);
-  if (!colEmail) throw new Error("Nel file non c'è una colonna email.");
-  if (!colEta && !maggiorenneNelModulo) {
+  const colonne = trovaColonne(righe.length ? Object.keys(righe[0]) : []);
+  if (!colonne.email) throw new Error("Nel file non c'è una colonna email.");
+  if (!colonne.eta && !maggiorenneNelModulo) {
     throw new Error("Nel file non c'è la conferma dei 18 anni. Se il modulo la chiedeva come dichiarazione obbligatoria, usa --maggiorenne-nel-modulo.");
   }
   const riepilogo = { righe: righe.length, da_importare: 0, email_non_valida: 0, prova_meta: 0, senza_18: 0, doppione_nel_file: 0 };
   const viste = new Set();
   const iscrizioni = [];
   for (const r of righe) {
-    const email = String(r[colEmail] || "").trim().toLowerCase();
-    if (/test lead|dummy data|^test@(fb|meta)\.com$/.test(email) || r.is_test_lead === "true") { riepilogo.prova_meta++; continue; }
-    if (email.length > 254 || !EMAIL.test(email)) { riepilogo.email_non_valida++; continue; }
-    if (colEta && !SI.has(semplice(r[colEta]))) { riepilogo.senza_18++; continue; }
-    if (viste.has(email)) { riepilogo.doppione_nel_file++; continue; }
-    viste.add(email);
-    iscrizioni.push({
-      email,
-      zona: zonaDa(colCitta ? r[colCitta] : ""),
-      consenso_il: dataConsenso(r.created_time, adesso),
-      versione_informativa: VERSIONE_INFORMATIVA,
-      sorgente: SORGENTE,
-    });
+    const esito = contatto(r, colonne, { maggiorenneNelModulo, adesso });
+    if (esito.scarto) { riepilogo[esito.scarto]++; continue; }
+    if (viste.has(esito.iscrizione.email)) { riepilogo.doppione_nel_file++; continue; }
+    viste.add(esito.iscrizione.email);
+    iscrizioni.push(esito.iscrizione);
   }
   riepilogo.da_importare = iscrizioni.length;
   return { iscrizioni, riepilogo };
