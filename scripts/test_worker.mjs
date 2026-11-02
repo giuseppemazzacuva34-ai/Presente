@@ -852,6 +852,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const gia = await iscrizione(soloEmail(), env(dbI({ nuove: false })));
     const lg = new URL(gia.headers.get("location"));
     verifica(!lg.searchParams.has("t") && !lg.searchParams.has("c"), "passo 1 con email già in lista: nessun gettone, nessun codice");
+    verifica(gia.status === 303 && lg.pathname === "/grazie" && lg.searchParams.get("gia") === "1", "già in lista (2/11): /grazie?gia=1");
     const vecchio = dbI();
     const rv = await iscrizione(soloEmail({ zona: "Milano" }), env(vecchio));
     const iv = vecchio.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni"));
@@ -875,6 +876,14 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(up.valori[0] === "altra-citta-italia" && up.valori[1] === "pisa" && up.valori[2] === "donna" && up.valori[6] === "uomini" && up.valori[5],
       "passo 2: città e risposte facoltative salvate, «chi cerchi» con la data del consenso");
     verifica(db.query.some((q) => q.sql.startsWith("INSERT INTO esiti_iscrizione") && q.valori[1] === "passo2_completato"), "passo 2: completamento contato negli esiti");
+    verifica(!db.query.some((q) => q.sql.includes("SET invito")), "passo 2 senza «Chi ti ha invitato?»: nessun aggiornamento dell'invito");
+  }
+  {
+    const db = dbI();
+    await completa(passo2({ invito: "  Giulia   R. " }), env(db));
+    const inv = db.query.find((q) => q.sql.includes("SET invito"));
+    verifica(inv && /WHERE codice = \? AND invito IS NULL/.test(inv.sql) && inv.valori[0] === "Giulia R." && inv.valori[1] === "K7MQ2P",
+      "passo 2 (2/11): «Chi ti ha invitato?» salvato solo sulla propria riga e solo se non c'è già un invito");
   }
   {
     const senzaC = dbI();
@@ -983,7 +992,31 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(pxMeta.length === 1 && pxMeta[0][0] === "da-meta-persona", "D92 A: l'immagine 1×1 di /da/meta conta «da-meta-persona»");
     const altri = await worker.fetch(new Request("https://presente.example/da/instagram", { headers: persona }), { DB: dbMeta });
     verifica(altri.status === 302, "D92 A: gli altri canali /da/<canale> rimandano ancora alla home");
-    verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf('type="submit"'), "home: posti sopra il modulo, nota del CFO sotto il pulsante");
+    verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf("<summary>Quanto costa?</summary>"),
+      "home: posti sopra il modulo, nota del CFO nella domanda «Quanto costa?» (2/11)");
+    // Correzioni CRO del 2/11 (deciso da Giuseppe).
+    verifica(!/gratis per tutti/.test(readFileSync(new URL("../worker/numeri.js", import.meta.url), "utf8")) && !/niente foto/i.test(home),
+      "2/11: «gratis» solo per la lista d'attesa, nessun «niente foto» nella home");
+    const pulsanti = home.match(/>Iscriviti gratis alla lista d'attesa</g) || [];
+    verifica(pulsanti.length === 3 && !home.includes("Voglio entrare") && !home.includes('id="invito"'),
+      "2/11: stesso testo del pulsante in testata, nel modulo e in fondo; «Chi ti ha invitato?» non è più nella home");
+    verifica(etichetteUtm(new URLSearchParams("utm_source=threads&utm_medium=bio"), {}).sorgente === "threads", "2/11: threads è una sorgente ammessa");
+    const css = readFileSync(new URL("../landing/stile.css", import.meta.url), "utf8");
+    const pxInizio = [];
+    const dbIn = { prepare: () => ({ bind(...v) { pxInizio.push(v); return this; }, async run() { return {}; } }) };
+    await worker.fetch(new Request("https://presente.example/p.gif?pg=inizio", { headers: { ...persona, "sec-fetch-dest": "image", "sec-fetch-mode": "no-cors",
+      referer: "https://presente.example/stile.css?v=1" } }), { DB: dbIn });
+    verifica(css.includes('.modulo-eroe:focus-within { background-image: url("/p.gif?pg=inizio")') && pxInizio.length === 1 && pxInizio[0][0] === "inizio"
+      && pxInizio[0][2] === "" && pxInizio[0][3] === "", "2/11: chi inizia a compilare il modulo conta «inizio», senza script");
+    verifica(dmHtml.includes("Porta un'amica o un amico.") && dmHtml.includes("https%3A%2F%2Fpresenteincontri.app%2Fda%2Famico") && dmHtml.includes("https://t.me/share/url")
+      && dmHtml.indexOf("Porta un'amica") > dmHtml.indexOf("Segui @presente_app") && !/[?&]invito=/.test(dmHtml),
+      "2/11: /da/meta ha il blocco «porta un'amica» sotto Instagram (link /da/amico, senza codice personale)");
+    const gAssets = { fetch: async () => new Response(g, { headers: { "content-type": "text/html; charset=utf-8" } }) };
+    const giaHtml = await (await grazieConCitta(new Request("https://presente.example/grazie?gia=1"), { ASSETS: gAssets })).text();
+    verifica(giaHtml.includes("Eri già in lista: ti scriviamo quando apre la tua città.") && !giaHtml.includes("Grazie. Ti scriviamo") && !giaHtml.includes("Il tuo link personale"),
+      "2/11: /grazie?gia=1 dice «Eri già in lista…», senza codice personale");
+    const inv = await (await worker.fetch(new Request("https://presente.example/?invito=nevada"), { ASSETS: { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) } })).text();
+    verifica(inv.includes('<input type="hidden" name="invito" value="NEVADA">'), "2/11: il codice di ?invito= resta automatico (campo nascosto nella home)");
   }
 }
 

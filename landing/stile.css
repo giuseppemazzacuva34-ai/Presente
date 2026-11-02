@@ -124,7 +124,7 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
 .invita { margin: 2.5rem 0; padding: 1.5rem; border: 1px solid var(--linea); border-radius: 0.5rem; }
 .invita h2 { margin-top: 0; }
 .campo .facoltativo { color: var(--grigio); font-weight: 400; }
-a.bottone { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--avorio); }
+a.bottone { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--avorio); text-align: center; padding: 0.6rem 1rem; }
 
 /* Landing nazionale (27 ottobre): bottone in testata, punti chiave, domande frequenti */
 .bottone-piccolo {
@@ -132,6 +132,12 @@ a.bottone { display: flex; align-items: center; justify-content: center; text-de
   padding: 0.55rem 0.9rem; border-radius: 3px; white-space: nowrap;
 }
 .bottone-piccolo:hover { color: #fff; background: #c9351f; }
+@media (max-width: 520px) {
+  .bottone-piccolo { white-space: normal; text-align: center; max-width: 12rem; font-size: 0.82rem; line-height: 1.25; padding: 0.45rem 0.7rem; }
+}
+/* Chi inizia a compilare il modulo della home (2/11, senza script): al primo campo toccato il browser chiede l'immagine
+   trasparente 1×1 e il Worker conta la riga «inizio» in visite_pagina (solo il totale del giorno, solo persone vere). */
+.modulo-eroe:focus-within { background-image: url("/p.gif?pg=inizio"); background-repeat: no-repeat; background-size: 1px 1px; }
 .punti { list-style: none; padding: 0; margin: 1.25rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .punti li { border: 1px solid var(--linea); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.95rem; }
 .punti li::before { content: "●"; color: var(--rosso); font-size: 0.6rem; margin-right: 0.5rem; vertical-align: 0.15em; }
