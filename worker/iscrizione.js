@@ -156,9 +156,11 @@ const SCHEMA_ESITI = `CREATE TABLE IF NOT EXISTS esiti_iscrizione (
 )`;
 export const ESITI = ["nuova", "gia_in_lista", "chiuse", "altro_sito", "troppi_tentativi", "modulo_rotto", "trappola", "dati_mancanti", "errore_database",
   // passo 2 (D79 A): completato, gettone scaduto/già usato, dati mancanti
-  "passo2_completato", "passo2_scaduto", "passo2_dati_mancanti"];
+  "passo2_completato", "passo2_scaduto", "passo2_dati_mancanti",
+  // import diretto dal modulo Meta (D85 A, worker/meta.js): nuovo, già in lista, scartato (prova, email, 18 anni), errore
+  "meta_nuova", "meta_gia_in_lista", "meta_scartata", "meta_errore"];
 
-async function contaEsito(env, esito) {
+export async function contaEsito(env, esito) {
   if (!env.DB) return;
   try {
     await env.DB.prepare(SCHEMA_ESITI).run();
