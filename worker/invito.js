@@ -34,6 +34,9 @@ export function linkPersonale(base, codice, chiave = "") {
   return url.toString();
 }
 
+// Dal 2/11 (CRO, deciso da Giuseppe) il campo visibile «Chi ti ha invitato?» è nel passo 2 su /grazie. Il codice del link
+// personale (?invito=) resta automatico: il Worker lo mette in un campo nascosto del modulo della home. Le pagine vecchie
+// in cache con il campo visibile vengono ancora precompilate (SEGNAPOSTO).
 const SEGNAPOSTO = '<input id="invito" name="invito"';
 
 export function pulisciCodice(valore) {
@@ -100,8 +103,10 @@ export async function homeConInvito(request, env) {
   const originale = await risposta.text();
   let html = conTitolo(conNumeri(originale, numeri, env), variante);
   if (!codice && !canale && html === originale) return new Response(originale, risposta);
-  if (codice && html.includes(SEGNAPOSTO)) html = html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`);
+  const campoVisibile = html.includes(SEGNAPOSTO);
+  if (codice && campoVisibile) html = html.replace(SEGNAPOSTO, `${SEGNAPOSTO} value="${codice}"`);
   const nascosti = (canale ? `\n        <input type="hidden" name="canale" value="${canale}">` : "")
+    + (codice && !campoVisibile ? `\n        <input type="hidden" name="invito" value="${codice}">` : "")
     + (citta ? `\n        <input type="hidden" name="suggerita" value="${citta.replace(/"/g, "")}">` : "");
   if (nascosti && html.includes(SEGNAPOSTO_CANALE)) html = html.replace(SEGNAPOSTO_CANALE, SEGNAPOSTO_CANALE + nascosti);
   const nuova = new Response(html, risposta);

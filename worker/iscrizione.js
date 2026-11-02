@@ -210,9 +210,22 @@ export async function perRisposte(env) {
   return risultato;
 }
 
+function testoInvito(valore) {
+  return String(valore || "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+const INVITO_PASSO2 = "UPDATE iscrizioni SET invito = ? WHERE codice = ? AND invito IS NULL";
+
+// Esito «già in lista» (2/11, CRO): /grazie?gia=1 mostra «Eri già in lista…», senza codice personale né passo 2.
+export const GIA_IN_LISTA = "gia";
+
 export async function iscrizione(request, env) {
   const risposta = await gestisci(request, env);
   await contaEsito(env, risposta.esito);
+  if (risposta.esito === "gia_in_lista") {
+    const dove = new URL(risposta.risposta.headers.get("location") || "/grazie", request.url);
+    dove.searchParams.set(GIA_IN_LISTA, "1");
+    return Response.redirect(dove.toString(), 303);
+  }
   return risposta.risposta;
 }
 
@@ -241,7 +254,7 @@ async function gestisci(request, env) {
   // Passo 1 del modulo nuovo: nessuna città → «non-indicata» e gettone per il passo 2.
   const duePassi = zonaScritta === "";
   const luogo = duePassi ? { zona: ZONA_NON_INDICATA, citta: null } : normalizzaCitta(zonaScritta.slice(0, 80));
-  const invito = String(modulo.get("invito") || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const invito = testoInvito(modulo.get("invito"));
   const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
     // D80 A (informativa 1.3): una sola casella, «Ho almeno 18 anni e voglio entrare…», vale come conferma dei 18 anni e consenso.
     // Le pagine vecchie in cache mandano ancora «maggiorenne» a parte: se c'è, deve essere «si».
@@ -358,6 +371,15 @@ async function gestisciCompleta(request, env) {
   } catch (errore) {
     console.error("completa: errore del database", errore && errore.name);
     return r("errore_database", pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare la città. Riprova tra qualche minuto.", 500));
+  }
+  // «Chi ti ha invitato?» (dal 2/11 nel passo 2): si salva solo se la riga non ha già un invito (es. il codice di un link personale).
+  const invito = testoInvito(modulo.get("invito"));
+  if (invito && codice) {
+    try {
+      await env.DB.prepare(INVITO_PASSO2).bind(invito, codice).run();
+    } catch (errore) {
+      console.error("completa: invito non salvato", errore && errore.name);
+    }
   }
   return r("passo2_completato", grazie(request, canale, luogo.citta || luogo.zona, codice));
 }

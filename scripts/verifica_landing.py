@@ -31,7 +31,7 @@ FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
 CAMPI_OBBLIGATORI = {"email", "consenso"}  # D80 A: una sola casella per 18 anni e consenso
 # Passo 2 (D79 A): grazie.html, modulo verso /completa. Il gettone «t» e il canale li aggiunge il Worker, nascosti.
-CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia"}
+CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia", "invito"}  # invito: dal 2/11 nel passo 2 (CRO)
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
          "path", "rect", "circle"}
