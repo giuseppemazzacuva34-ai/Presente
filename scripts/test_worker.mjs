@@ -8,7 +8,7 @@ import worker from "../worker/index.js";
 import { conteggio, invitiPersonali, codiceNelCampo, raggruppaCittaPiccole } from "../worker/conteggio.js";
 import { pulisciCodice, generaCodice, cittaDelLink, linkPersonale, CODICE_PERSONALE } from "../worker/invito.js";
 import { perCanale } from "../worker/canale.js";
-import { perVisite, etichetteUtm, etichettePixel } from "../worker/visite.js";
+import { perVisite, etichetteUtm, etichettePixel, conInvii, PAGINE_CONTATE } from "../worker/visite.js";
 import { grazieConCitta, htmlMancano, INIZIO_INVITO, FINE_INVITO, conPasso2 } from "../worker/grazie.js";
 import { completa, impronta, ZONA_NON_INDICATA } from "../worker/iscrizione.js";
 import { TITOLI, sceltaTitolo } from "../worker/invito.js";
@@ -435,6 +435,38 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const v = await perVisite({ DB: { prepare: () => ({ all: async () => ({ results: righe }) }) } });
     verifica(v.home === 30 && v.home_persona === 17 && v.grazie_persona === 1 && v.per_giorno["2026-11-01"].home_persona === 17
       && v.per_utm["meta/lista_traffico"].home_persona === 5, "/conteggio visite: home_persona e grazie_persona, per giorno e per utm");
+  }
+  // E10 (Growth, 2/11): guide e pagine città contano per percorso, solo persone vere, solo percorsi dell'elenco.
+  {
+    const guida = await apri("/p.gif?pg=/guide/primo-appuntamento-al-buio", TELEFONO, { referer: "https://presente.example/guide/primo-appuntamento-al-buio?utm_source=meta" });
+    const citta = await apri("/p.gif?pg=/incontri-al-buio/milano", TELEFONO);
+    const robot = await apri("/p.gif?pg=/incontri-al-buio/milano", "facebookexternalhit/1.1");
+    const inventata = await apri("/p.gif?pg=/incontri-al-buio/" + "x".repeat(30), TELEFONO);
+    const fuori = await apri("/p.gif?pg=/privacy", TELEFONO);
+    verifica(guida.conta.length === 1 && guida.conta[0].valori[0] === "pagina:/guide/primo-appuntamento-al-buio" && guida.conta[0].valori[2] === ""
+      && citta.conta.length === 1 && citta.conta[0].valori[0] === "pagina:/incontri-al-buio/milano",
+      "E10: /p.gif?pg=<percorso> conta guide e città per percorso, senza sorgente");
+    verifica(robot.conta.length === 0 && inventata.conta.length === 0 && fuori.conta.length === 0, "E10: robot e percorsi fuori elenco non contano");
+    const righe = [
+      { pagina: "pagina:/guide/primo-appuntamento-al-buio", giorno: "2026-11-02", sorgente: "", campagna: "", n: 3 },
+      { pagina: "pagina:/incontri-al-buio/roma", giorno: "2026-11-02", sorgente: "", campagna: "", n: 2 },
+      { pagina: "pagina:/inventata", giorno: "2026-11-02", sorgente: "", campagna: "", n: 9 },
+      { pagina: "home-persona", giorno: "2026-11-02", sorgente: "", campagna: "", n: 10 },
+    ];
+    const v = conInvii(await perVisite({ DB: { prepare: () => ({ all: async () => ({ results: righe }) }) } }),
+      { "2026-11-02": { nuova: 1, gia_in_lista: 2, trappola: 5 }, "2026-11-01": { nuova: 4 } });
+    const g = v.per_giorno["2026-11-02"];
+    verifica(v.per_pagina["/guide/primo-appuntamento-al-buio"] === 3 && v.per_pagina["/incontri-al-buio/roma"] === 2 && !("/inventata" in v.per_pagina)
+      && g.per_pagina["/incontri-al-buio/roma"] === 2 && g.home_persona === 10, "E10: /conteggio per_pagina totale e per giorno");
+    verifica(g.invii_modulo === 3 && g.iscrizioni_nuove === 1 && v.per_giorno["2026-11-01"].invii_modulo === 4,
+      "E10: invii del modulo per giorno accanto a home_persona (senza trappole)");
+    for (const f of [...readdirSync(new URL("../landing/guide/", import.meta.url)).map((x) => "guide/" + x),
+      ...readdirSync(new URL("../landing/incontri-al-buio/", import.meta.url)).map((x) => "incontri-al-buio/" + x), "guide.html", "incontri-al-buio.html"]) {
+      if (!f.endsWith(".html")) continue;
+      const percorso = "/" + f.slice(0, -5);
+      const t = readFileSync(new URL("../landing/" + f, import.meta.url), "utf8");
+      verifica(PAGINE_CONTATE.has(percorso) && t.includes(`src="/p.gif?pg=${percorso}"`), `E10: landing/${f} ha l'immagine della misura ed è nell'elenco`);
+    }
   }
   for (const f of ["index.html", "grazie.html"]) {
     const t = readFileSync(new URL("../landing/" + f, import.meta.url), "utf8");

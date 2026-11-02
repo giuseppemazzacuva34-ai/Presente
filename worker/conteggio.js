@@ -9,12 +9,14 @@
 //   non diventa pubblico. Revisione CISO del 31/10.
 // per_risposta (dal 31/10, D33/D65): totali nazionali di ciascuna domanda facoltativa, mai incrociati con città o email;
 //   «chi cerchi» si mostra solo da 10 risposte in su, prima vale "meno di 10".
+// visite.per_pagina e visite.per_giorno[g].per_pagina (E10, 2/11): visite vere di /guide/* e /incontri-al-buio/*;
+//   visite.per_giorno[g].invii_modulo e iscrizioni_nuove accanto a home_persona.
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
 // inviti_personali (dal 31/10, «porta un'amica», D69 A): quante persone si sono iscritte con il codice personale di un
 //   altro iscritto e quante persone hanno portato 1, 2 o 3+ amici. Solo totali: i codici personali non escono mai qui.
 import { codiciConfigurati, pulisciCodice, CODICE_PERSONALE } from "./invito.js";
 import { perCanale } from "./canale.js";
-import { perVisite } from "./visite.js";
+import { perVisite, conInvii } from "./visite.js";
 import { perEsiti, perRisposte } from "./iscrizione.js";
 import { perCitta, ZONE } from "./citta.js";
 
@@ -30,8 +32,8 @@ export async function conteggio(env) {
     const per_sorgente = await perSorgente(env);
     const per_citta = raggruppaCittaPiccole(await perCitta(env));
     const per_canale = await perCanale(env);
-    const visite = await perVisite(env);
     const esiti_iscrizione = await perEsiti(env);
+    const visite = conInvii(await perVisite(env), esiti_iscrizione);
     const per_risposta = await perRisposte(env);
     const inviti_personali = await invitiPersonali(env);
     return new Response(JSON.stringify({ totale, per_zona, per_citta, per_risposta, per_sorgente, con_invito: conInvito, per_codice, inviti_personali, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
