@@ -1,5 +1,13 @@
+# SEO v3: /grazie, /da/meta, /privacy, /app/ e le pagine città hanno «noindex» nella pagina o nelle intestazioni:
+# restano scansionabili, così i motori vedono il noindex e le tolgono dall'indice.
+# Si bloccano solo gli indirizzi tecnici che non sono pagine.
 User-agent: *
 Allow: /
-Disallow: /grazie
+Disallow: /iscrizione
+Disallow: /completa
+Disallow: /conteggio
+Disallow: /p.gif
+Disallow: /segui
+Disallow: /meta/
 
 Sitemap: https://presenteincontri.app/sitemap.xml
