@@ -12,6 +12,7 @@
 // d'invio del modulo; sorgente = "meta_modulo"; versione_informativa = quella in vigore. I contatti di prova di Meta vengono scartati.
 import { readFileSync } from "node:fs";
 import { SORGENTE, zonaDa, dataConsenso, contatto, trovaColonne } from "../worker/contatti_meta.js";
+import { codiciConfigurati } from "../worker/invito.js";
 
 export { SORGENTE };
 
@@ -60,7 +61,8 @@ export function leggiCsv(testo) {
 export { zonaDa, dataConsenso };
 
 // Trasforma le righe del CSV nelle iscrizioni da salvare. Restituisce anche il riepilogo (solo numeri).
-export function prepara(righe, { maggiorenneNelModulo = false, adesso = new Date() } = {}) {
+// codiciAmmessi: i codici delle presentatrici (variabile d'ambiente CODICI_INVITO, come nel Worker, D88 A).
+export function prepara(righe, { maggiorenneNelModulo = false, adesso = new Date(), codiciAmmessi = codiciConfigurati(process.env) } = {}) {
   const colonne = trovaColonne(righe.length ? Object.keys(righe[0]) : []);
   if (!colonne.email) throw new Error("Nel file non c'è una colonna email.");
   if (!colonne.eta && !maggiorenneNelModulo) {
@@ -70,7 +72,7 @@ export function prepara(righe, { maggiorenneNelModulo = false, adesso = new Date
   const viste = new Set();
   const iscrizioni = [];
   for (const r of righe) {
-    const esito = contatto(r, colonne, { maggiorenneNelModulo, adesso });
+    const esito = contatto(r, colonne, { maggiorenneNelModulo, adesso, codiciAmmessi });
     if (esito.scarto) { riepilogo[esito.scarto]++; continue; }
     if (viste.has(esito.iscrizione.email)) { riepilogo.doppione_nel_file++; continue; }
     viste.add(esito.iscrizione.email);
@@ -85,7 +87,7 @@ const testoSql = (s) => `'${String(s).replace(/'/g, "''")}'`;
 export function sql(iscrizioni) {
   return iscrizioni.map((i) =>
     "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente) VALUES ("
-    + [i.email, i.zona].map(testoSql).join(", ") + ", NULL, "
+    + [i.email, i.zona].map(testoSql).join(", ") + ", " + (i.invito ? testoSql(i.invito) : "NULL") + ", "
     + [i.consenso_il, i.versione_informativa, i.sorgente].map(testoSql).join(", ")
     + ") ON CONFLICT(email) DO NOTHING;").join("\n") + (iscrizioni.length ? "\n" : "");
 }

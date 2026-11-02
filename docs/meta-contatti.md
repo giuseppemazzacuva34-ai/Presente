@@ -17,7 +17,7 @@ Regole uguali all'import a mano dal CSV (`scripts/importa_meta.mjs`), scritte un
 - si aggiungono solo email nuove: chi è già in lista (anche dal sito) non cambia;
 - solo chi ha confermato i 18 anni;
 - i contatti di prova di Meta vengono scartati;
-- si salvano solo email, zona (città), «mi presento come» se c'è, data d'invio del modulo, versione dell'informativa, `sorgente = meta_modulo`;
+- si salvano solo email, zona (città), «mi presento come» se c'è, il codice della presentatrice se c'è (D88, docs/codici-presentatrici.md), data d'invio del modulo, versione dell'informativa, `sorgente = meta_modulo`;
 - nei log e in `/conteggio` solo numeri (`esiti_iscrizione`: `meta_nuova`, `meta_gia_in_lista`, `meta_scartata`, `meta_errore`).
 
 Restano a mano, come oggi: cancellare i contatti dal Centro contatti di Meta entro 7 giorni (informativa, punto 3).

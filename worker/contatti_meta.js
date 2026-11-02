@@ -2,6 +2,7 @@
 // Le usano sia l'import a mano dal CSV (scripts/importa_meta.mjs) sia l'import diretto senza AI (worker/meta.js, D85 = A):
 // così le due strade salvano le stesse cose, nello stesso modo.
 import { EMAIL, VERSIONE_INFORMATIVA, RISPOSTE } from "./iscrizione.js";
+import { pulisciCodice, CODICE_PERSONALE } from "./invito.js";
 
 export const SORGENTE = "meta_modulo";
 
@@ -42,9 +43,16 @@ export function contattoDiProva(email) {
   return /test lead|dummy data|^test@(fb|meta)\.com$/.test(email);
 }
 
+// Campo facoltativo «codice» del modulo Meta (D88 A): si salva solo un codice delle presentatrici (CODICI_INVITO)
+// o un codice personale «porta un'amica» (6 caratteri). Un nome o un testo qualsiasi scritto lì non si salva mai.
+export function codiceDa(valore, codiciAmmessi = new Set()) {
+  const c = pulisciCodice(valore);
+  return c && (codiciAmmessi.has(c) || CODICE_PERSONALE.test(c)) ? c : null;
+}
+
 // Un contatto (oggetto { nome colonna: valore }) → { iscrizione } oppure { scarto: motivo }.
 // colonne: i nomi delle colonne già trovati (email, città, 18 anni, «mi presento come»).
-export function contatto(r, colonne, { maggiorenneNelModulo = false, adesso = new Date() } = {}) {
+export function contatto(r, colonne, { maggiorenneNelModulo = false, adesso = new Date(), codiciAmmessi = new Set() } = {}) {
   const email = String(r[colonne.email] || "").trim().toLowerCase();
   if (contattoDiProva(email) || r.is_test_lead === "true") return { scarto: "prova_meta" };
   if (email.length > 254 || !EMAIL.test(email)) return { scarto: "email_non_valida" };
@@ -58,6 +66,8 @@ export function contatto(r, colonne, { maggiorenneNelModulo = false, adesso = ne
   };
   const presento = colonne.presento ? presentoDa(r[colonne.presento]) : null;
   if (presento) iscrizione.presento = presento;
+  const codice = colonne.codice ? codiceDa(r[colonne.codice], codiciAmmessi) : null;
+  if (codice) iscrizione.invito = codice;
   return { iscrizione };
 }
 
@@ -67,5 +77,6 @@ export function trovaColonne(intestazioni) {
     citta: colonna(intestazioni, ["citta", "city", "zona"]),
     eta: colonna(intestazioni, ["18", "maggiorenn", "maggiore eta"]),
     presento: colonna(intestazioni, ["presento", "presenti", "genere", "gender"]),
+    codice: colonna(intestazioni, ["codice", "invito", "code"]),
   };
 }

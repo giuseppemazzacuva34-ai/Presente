@@ -183,9 +183,9 @@ test("import diretto: salva email, città, presento e data del modulo; un doppio
   assert.match(m.chiamate[0].url, /\/v24\.0\/123456\?fields=created_time,field_data$/);
   assert.equal(m.chiamate[0].metodo, "GET");
   assert.equal(m.chiamate[0].auth, "Bearer token-finto");
-  const [email, zona, consenso, versione, sorgente, presento] = DB.scritte[0].v;
-  assert.deepEqual([email, zona, consenso, versione, sorgente, presento],
-    ["giulia.prova@example.com", "roma", "2026-11-02T08:00:00.000Z", "1.3-2026-11-01", "meta_modulo", "donna"]);
+  const [email, zona, invito, consenso, versione, sorgente, presento] = DB.scritte[0].v;
+  assert.deepEqual([email, zona, invito, consenso, versione, sorgente, presento],
+    ["giulia.prova@example.com", "roma", null, "2026-11-02T08:00:00.000Z", "1.3-2026-11-01", "meta_modulo", "donna"]);
   assert.match(DB.scritte[0].sql, /ON CONFLICT\(email\) DO NOTHING$/);
 });
 
