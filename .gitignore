@@ -10,3 +10,7 @@ supabase/.branches/
 # Dati personali: mai nel repository (import dal modulo Meta, D53)
 *.csv
 import*.sql
+
+# File generati da Python
+__pycache__/
+*.pyc
