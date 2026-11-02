@@ -7,6 +7,7 @@ import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA, cittaConStanza }
 import { CODICE_PERSONALE, linkPersonale } from "./invito.js";
 import { GETTONE } from "./iscrizione.js";
 import { canaleValido } from "./canale.js";
+import { provinciaDaZona } from "./province.js";
 
 export const SOGLIA_STANZA = 36;
 export const SEGNAPOSTO_MANCANO = "<!--mancano-->";
@@ -46,11 +47,10 @@ export function htmlInvito(link, nome) {
 
 // Passo 2 del modulo (D79 A): il blocco fra <!--passo2--> e <!--/passo2--> di grazie.html resta SOLO con un gettone
 // della forma giusta (?t=, 32 caratteri esadecimali); il Worker ci scrive il gettone e il canale nei campi nascosti
-// e il suggerimento della città (link di un'amica). Senza gettone il blocco sparisce. Se il gettone è scaduto lo dice /completa.
+// e preseleziona la provincia della città suggerita (link di un'amica). Senza gettone il blocco sparisce. Se il gettone è scaduto lo dice /completa.
 export const INIZIO_PASSO2 = "<!--passo2-->";
 export const FINE_PASSO2 = "<!--/passo2-->";
 const NASCOSTI_PASSO2 = "<!--nascosti-passo2-->";
-const CAMPO_CITTA_PASSO2 = '<input id="zona" name="zona"';
 
 export function conPasso2(html, gettone, canale, nomeSuggerito) {
   const inizio = html.indexOf(INIZIO_PASSO2);
@@ -61,7 +61,13 @@ export function conPasso2(html, gettone, canale, nomeSuggerito) {
   const nascosti = `<input type="hidden" name="t" value="${gettone}">`
     + (canale ? `<input type="hidden" name="canale" value="${canale}">` : "");
   blocco = blocco.replace(NASCOSTI_PASSO2, nascosti);
-  if (nomeSuggerito) blocco = blocco.replace(CAMPO_CITTA_PASSO2, `${CAMPO_CITTA_PASSO2} value="${nomeSuggerito.replace(/"/g, "")}"`);
+  // Città del link di un'amica → provincia già scelta nel menu (D84 A), solo se la provincia è sicura.
+  const luogo = nomeSuggerito ? normalizzaCitta(nomeSuggerito) : null;
+  const sigla = luogo ? provinciaDaZona(luogo.zona, luogo.citta) : null;
+  if (sigla) {
+    blocco = blocco.replace('<option value="" selected disabled>', '<option value="" disabled>')
+      .replace(`<option value="${sigla}">`, `<option value="${sigla}" selected>`);
+  }
   return html.slice(0, inizio) + blocco + html.slice(fine + FINE_PASSO2.length);
 }
 
