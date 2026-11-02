@@ -4,7 +4,7 @@
 import { CANALI, canaleValido } from "./canale.js";
 import { tipoRichiesta } from "./automatiche.js";
 
-const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie" };
+const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie", "/da/meta": "da-meta", "/da/meta/": "da-meta" };
 
 // Sorgenti utm ammesse: i canali dei link /da più google, pinterest e reddit (Growth, 1/11); tutto il resto diventa "altro".
 const SORGENTI = new Set([...CANALI, "google", "pinterest", "reddit"]);
@@ -80,7 +80,9 @@ export async function segui(request, env, ctx) {
     const conto = (async () => {
       try {
         await env.DB.prepare(SCHEMA).run();
-        await env.DB.prepare(PIU_UNO).bind("grazie-ig", giorno, "", "").run();
+        // /segui?da=meta = pulsante della pagina /da/meta (D92 A): riga «segui_ig»; ogni altro clic resta «grazie-ig».
+        const riga = new URL(request.url).searchParams.get("da") === "meta" ? "segui_ig" : "grazie-ig";
+        await env.DB.prepare(PIU_UNO).bind(riga, giorno, "", "").run();
       } catch (errore) {
         console.error("visite: clic Instagram non contato", errore && errore.name);
       }
@@ -90,7 +92,7 @@ export async function segui(request, env, ctx) {
   }
   return new Response(null, { status: 302, headers: { location: PROFILO_INSTAGRAM, "cache-control": "no-store, max-age=0", "x-robots-tag": "noindex" } });
 }
-const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona" };
+const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona", "da-meta": "da-meta-persona" };
 
 // VISITE DELLE GUIDE E DELLE PAGINE CITTÀ (esperimento E10 di Growth, 2/11): le pagine /guide/* e /incontri-al-buio/*
 // hanno la stessa immagine 1×1 con ?pg=<percorso>. Conta solo un percorso di questo elenco chiuso (un test controlla che
@@ -142,12 +144,13 @@ export async function pixel(request, env, ctx) {
   });
 }
 
-const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona", "grazie-ig": "grazie_ig" };
-const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, per_pagina: {} });
+const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona", "grazie-ig": "grazie_ig",
+  "da-meta": "da_meta", "da-meta-persona": "da_meta_persona", segui_ig: "segui_ig" };
+const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, per_pagina: {} });
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(

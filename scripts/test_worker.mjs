@@ -343,8 +343,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     }
     const anteprimaDa = { DB: contatoriFintiVisite(), ASSETS };
     const rd = await worker.fetch(new Request("https://presente.example/da/meta", { headers: { "user-agent": "facebookexternalhit/1.1" } }), anteprimaDa);
-    verifica(rd.status === 302 && anteprimaDa.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_canale")).length === 0,
-      "/da/meta aperto dall'anteprima di Meta: rimanda ma non conta la visita");
+    verifica(rd.status === 200 && anteprimaDa.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_canale")).length === 0,
+      "/da/meta aperto dall'anteprima di Meta: mostra la pagina ma non conta la visita");
   }
   {
     // /grazie con ?da=<canale>: conta per giorno e sorgente; il modulo con canale porta lì.
@@ -938,7 +938,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const dl = new URL(da.headers.get("location"));
     verifica(dl.searchParams.get("v") === "voce" && dl.searchParams.get("utm_source") === "pinterest" && dl.searchParams.get("utm_campaign") === "pinx" && !dl.searchParams.has("utm_content"),
       "/da/<canale>: ?v= (solo elenco) e utm ripuliti passano alla home");
-    const daBrutto = new URL((await worker.fetch(new Request("https://presente.example/da/meta?v=%3Cscript%3E"), { DB: { prepare: () => ({ bind() { return this; }, async run() { return {}; } }) } })).headers.get("location"));
+    const daBrutto = new URL((await worker.fetch(new Request("https://presente.example/da/tiktok?v=%3Cscript%3E"), { DB: { prepare: () => ({ bind() { return this; }, async run() { return {}; } }) } })).headers.get("location"));
     verifica(!daBrutto.searchParams.has("v"), "/da/<canale>: ?v= fuori elenco non passa");
     const e = etichetteUtm(new URLSearchParams("utm_source=pinterest&utm_campaign=pin"), { CAMPAGNE_UTM: "lista_traffico,pin" });
     verifica(e.sorgente === "pinterest" && e.campagna === "pin" && etichetteUtm(new URLSearchParams("utm_source=reddit"), {}).sorgente === "reddit", "utm: pinterest e reddit sono sorgenti ammesse");
@@ -960,6 +960,29 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
       && clic.length === 1 && clic[0][0] === "grazie-ig", "D82 A: /segui conta un clic per persona (non i robot) e rimanda a Instagram");
     const g = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
     verifica(g.includes('href="/segui"') && g.includes("Segui @presente_app") && g.includes("Le città e i primi posti li annunciamo prima su Instagram"), "D82 A: pulsante e frase sulla pagina grazie");
+    // D92 A: /da/meta è la pagina di chi si è appena iscritto dal modulo Meta v1 («Vai al sito»).
+    const righe = [];
+    const dbMeta = { prepare: (sql) => ({ bind(...v) { righe.push([sql, v]); return this; }, async run() { return {}; } }) };
+    const dm = await worker.fetch(new Request("https://presente.example/da/meta", { headers: persona }), { DB: dbMeta }, { waitUntil() {} });
+    const dmHtml = await dm.text();
+    verifica(dm.status === 200 && dmHtml.includes("Sei in lista!") && dmHtml.includes("Le città e i primi posti li annunciamo prima su Instagram")
+      && dmHtml.includes('href="/segui?da=meta"') && dmHtml.includes("Segui @presente_app")
+      && dmHtml.includes("Non ti sei ancora iscritto?") && dmHtml.includes('href="/?da=meta#iscriviti"') && !/<form/.test(dmHtml) && !/<script/i.test(dmHtml),
+      "D92 A: /da/meta mostra «Sei in lista!», la frase D82, il pulsante Instagram e il link per iscriversi (niente modulo né script)");
+    verifica((dm.headers.get("content-security-policy") || "").includes("script-src 'none'") && dm.headers.get("x-robots-tag") === "noindex",
+      "D92 A: /da/meta con intestazioni di sicurezza e noindex");
+    const tabelle = righe.filter(([sql]) => sql.startsWith("INSERT")).map(([sql, v]) => sql.includes("visite_pagina") ? "pagina:" + v[0] : "canale:" + v[0]);
+    verifica(tabelle.includes("pagina:da-meta") && tabelle.includes("canale:meta"), "D92 A: /da/meta conta la visita in visite_pagina («da-meta») e nel canale meta");
+    const clicMeta = [];
+    const dbClicMeta = { prepare: () => ({ bind(...v) { clicMeta.push(v); return this; }, async run() { return {}; } }) };
+    await worker.fetch(new Request("https://presente.example/segui?da=meta", { headers: persona }), { DB: dbClicMeta });
+    verifica(clicMeta.length === 1 && clicMeta[0][0] === "segui_ig", "D92 A: il pulsante di /da/meta conta il clic come «segui_ig»");
+    const pxMeta = [];
+    const dbPx = { prepare: () => ({ bind(...v) { pxMeta.push(v); return this; }, async run() { return {}; } }) };
+    await worker.fetch(new Request("https://presente.example/p.gif?pg=da-meta", { headers: { ...persona, "sec-fetch-dest": "image", "sec-fetch-mode": "no-cors" } }), { DB: dbPx });
+    verifica(pxMeta.length === 1 && pxMeta[0][0] === "da-meta-persona", "D92 A: l'immagine 1×1 di /da/meta conta «da-meta-persona»");
+    const altri = await worker.fetch(new Request("https://presente.example/da/instagram", { headers: persona }), { DB: dbMeta });
+    verifica(altri.status === 302, "D92 A: gli altri canali /da/<canale> rimandano ancora alla home");
     verifica(home.indexOf("<!--posti-->") < home.indexOf("<form") && home.indexOf("<!--posti-nota-->") > home.indexOf('type="submit"'), "home: posti sopra il modulo, nota del CFO sotto il pulsante");
   }
 }
