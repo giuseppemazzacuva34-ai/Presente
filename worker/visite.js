@@ -91,6 +91,21 @@ export async function segui(request, env, ctx) {
   return new Response(null, { status: 302, headers: { location: PROFILO_INSTAGRAM, "cache-control": "no-store, max-age=0", "x-robots-tag": "noindex" } });
 }
 const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona" };
+
+// VISITE DELLE GUIDE E DELLE PAGINE CITTÀ (esperimento E10 di Growth, 2/11): le pagine /guide/* e /incontri-al-buio/*
+// hanno la stessa immagine 1×1 con ?pg=<percorso>. Conta solo un percorso di questo elenco chiuso (un test controlla che
+// ogni pagina del sito ci sia), solo persone vere come home_persona, senza sorgente né campagna: riga «pagina:<percorso>».
+const CITTA_PAGINE = ["bari", "bergamo", "bologna", "brescia", "cagliari", "catania", "firenze", "genova", "milano", "napoli",
+  "padova", "palermo", "roma", "torino", "venezia", "verona"];
+export const PAGINE_CONTATE = new Set([
+  "/guide", "/guide/perche-le-app-di-incontri-deludono", "/guide/primo-appuntamento-al-buio",
+  "/incontri-al-buio", ...CITTA_PAGINE.map((c) => `/incontri-al-buio/${c}`),
+]);
+const PREFISSO_PAGINA = "pagina:";
+function rigaDelPixel(pg) {
+  if (Object.prototype.hasOwnProperty.call(PIXEL_PAGINE, pg)) return PIXEL_PAGINE[pg];
+  return PAGINE_CONTATE.has(pg) ? PREFISSO_PAGINA + pg : "";
+}
 // GIF trasparente di 1×1 pixel (42 byte).
 const GIF = Uint8Array.from(atob("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"), (c) => c.charCodeAt(0));
 
@@ -107,9 +122,9 @@ export function etichettePixel(request, env) {
 }
 
 export async function pixel(request, env, ctx) {
-  const pagina = PIXEL_PAGINE[new URL(request.url).searchParams.get("pg")];
+  const pagina = rigaDelPixel(String(new URL(request.url).searchParams.get("pg") || ""));
   if (pagina && env.DB && tipoRichiesta(request) === "persona") {
-    const { sorgente, campagna } = etichettePixel(request, env);
+    const { sorgente, campagna } = pagina.startsWith(PREFISSO_PAGINA) ? { sorgente: "", campagna: "" } : etichettePixel(request, env);
     const giorno = new Date().toISOString().slice(0, 10);
     const conto = (async () => {
       try {
@@ -128,11 +143,11 @@ export async function pixel(request, env, ctx) {
 }
 
 const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona", "grazie-ig": "grazie_ig" };
-const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0 });
+const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, per_pagina: {} });
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(
@@ -144,6 +159,15 @@ export async function perVisite(env) {
         vuoto.automatiche += n;
         continue;
       }
+      if (String(r.pagina).startsWith(PREFISSO_PAGINA)) {
+        // E10: totale per percorso e, per giorno, { percorso: n } dentro per_giorno[giorno].per_pagina.
+        const percorso = r.pagina.slice(PREFISSO_PAGINA.length);
+        if (!PAGINE_CONTATE.has(percorso)) continue;
+        vuoto.per_pagina[percorso] = (vuoto.per_pagina[percorso] || 0) + n;
+        const g = (vuoto.per_giorno[r.giorno] ||= nuovaRiga());
+        g.per_pagina[percorso] = (g.per_pagina[percorso] || 0) + n;
+        continue;
+      }
       const voce = CHIAVI_CONTEGGIO[r.pagina];
       if (!voce) continue;
       vuoto[voce] += n;
@@ -152,6 +176,7 @@ export async function perVisite(env) {
       if (r.sorgente || r.campagna) {
         const chiave = `${r.sorgente || "-"}/${r.campagna || "-"}`;
         const u = (vuoto.per_utm[chiave] ||= nuovaRiga());
+        delete u.per_pagina;
         u[voce] += n;
       }
     }
@@ -159,4 +184,15 @@ export async function perVisite(env) {
     // La tabella nasce con la prima visita.
   }
   return vuoto;
+}
+
+// E10, punto 2: accanto a home_persona di ogni giorno, gli invii del modulo del sito (nuove + già in lista: persone che
+// hanno premuto il pulsante con dati validi) e le iscrizioni nuove. Così la conversione si legge da sola. Solo numeri.
+export function conInvii(visite, esiti) {
+  for (const [giorno, e] of Object.entries(esiti || {})) {
+    const g = (visite.per_giorno[giorno] ||= nuovaRiga());
+    g.iscrizioni_nuove = e.nuova || 0;
+    g.invii_modulo = (e.nuova || 0) + (e.gia_in_lista || 0);
+  }
+  return visite;
 }
