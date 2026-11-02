@@ -204,7 +204,9 @@ async function gestisciNotifica(request, env, ctx, f) {
   } catch {
     return testoSemplice("ok", 200);
   }
-  const importAcceso = env.IMPORT_META === "si" && env.META_PAGE_TOKEN && env.DB;
+  // Contenimento d'emergenza (procedura «Se succede qualcosa»): con ISCRIZIONI_APERTE = "no" non entra nessuno,
+  // neanche dal modulo Meta. Revisione CISO del 2/11.
+  const importAcceso = env.IMPORT_META === "si" && env.ISCRIZIONI_APERTE === "si" && env.META_PAGE_TOKEN && env.DB;
   const contatti = importAcceso ? contattiModulo(dati, env) : [];
   if (contatti.length) {
     const lavoro = (async () => {
