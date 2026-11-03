@@ -600,8 +600,13 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(pc.milano === 4 && pc.pisa === 2 && pc["altra-citta-italia"] === 1, "perCitta: totali per zona e per città scritta");
   // Dal 1/11 (D79 A) il campo città sta nel passo 2, su /grazie.
   const passo2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
-  verifica(/<input id="zona" name="zona" type="text" required list="citta-italiane"/.test(passo2) && (passo2.match(/<option value=/g) || []).length >= 100 && !/<select[^>]*name="zona"/.test(passo2),
-    "passo 2: campo città scritto con circa 100 suggerimenti, senza menu a tendina");
+  // Dal 2/11 (D84 A): menu con tutte le 107 province in ordine alfabetico più «Vivo all'estero», obbligatorio.
+  const menu = (passo2.match(/<select id="zona" name="zona" required[\s\S]*?<\/select>/) || [""])[0];
+  const sigle = [...menu.matchAll(/<option value="([A-Z]{2})"/g)].map((m) => m[1]);
+  const nomiMenu = [...menu.matchAll(/<option value="[A-Z]{2}"[^>]*>([^<]+)</g)].map((m) => m[1]).slice(0, -1);
+  verifica(sigle.length === 108 && new Set(sigle).size === 108 && sigle.at(-1) === "EE" && menu.includes('<option value="" selected disabled>')
+    && nomiMenu.every((n, i) => i === 0 || nomiMenu[i - 1].localeCompare(n, "it") <= 0) && !passo2.includes("<datalist"),
+    "passo 2: menu obbligatorio con 107 province in ordine alfabetico più «Vivo all'estero»");
 }
 
 // 17. Home con i numeri (D64, punti 2 e 4): «restano N posti» solo con MOSTRA_POSTI = "si",
@@ -872,9 +877,26 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(r.status === 303 && loc.pathname === "/grazie" && loc.searchParams.get("citta") === "pisa" && loc.searchParams.get("c") === "K7MQ2P"
       && loc.searchParams.get("da") === "instagram" && !loc.searchParams.has("t"), "passo 2: torna a /grazie con città e codice per «mancano N» e il link personale");
     verifica(/WHERE gettone = \? AND gettone_scade > \? AND zona = 'non-indicata'/.test(up.sql) && /gettone = NULL/.test(up.sql)
-      && up.valori[7] === await impronta("0123456789abcdef0123456789abcdef"), "passo 2: aggiorna solo la riga con l'impronta del gettone, non scaduto e «non-indicata», poi lo cancella");
-    verifica(up.valori[0] === "altra-citta-italia" && up.valori[1] === "pisa" && up.valori[2] === "donna" && up.valori[6] === "uomini" && up.valori[5],
-      "passo 2: città e risposte facoltative salvate, «chi cerchi» con la data del consenso");
+      && up.valori[9] === await impronta("0123456789abcdef0123456789abcdef"), "passo 2: aggiorna solo la riga con l'impronta del gettone, non scaduto e «non-indicata», poi lo cancella");
+    verifica(up.valori[0] === "altra-citta-italia" && up.valori[1] === "pisa" && up.valori[2] === "PI" && up.valori[3] === "Toscana"
+      && up.valori[4] === "donna" && up.valori[8] === "uomini" && up.valori[7],
+      "passo 2 (pagina vecchia con la città): città, provincia ricavata e risposte facoltative salvate, «chi cerchi» con la data del consenso");
+    const dbP = dbI();
+    const rp = await completa(passo2({ zona: "RM" }), env(dbP));
+    const upP = dbP.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
+    verifica(rp.status === 303 && upP.valori.slice(0, 4).join("|") === "roma||RM|Lazio" && new URL(rp.headers.get("location")).searchParams.get("citta") === "roma",
+      "passo 2 con il menu (D84 A): sigla RM → zona roma, provincia RM, regione Lazio");
+    const dbL = dbI();
+    await completa(passo2({ zona: "LE" }), env(dbL));
+    const upL = dbL.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
+    const dbE = dbI();
+    await completa(passo2({ zona: "EE" }), env(dbE));
+    const upE = dbE.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
+    verifica(upL.valori.slice(0, 4).join("|") === "altra-citta-italia|lecce|LE|Puglia" && upE.valori.slice(0, 4).join("|") === "estero||EE|",
+      "passo 2: provincia fuori dalle 14 città → «altra città» col nome; «Vivo all'estero» → estero senza regione");
+    const dbV = dbI();
+    await completa(passo2({ zona: "Padova" }), env(dbV));
+    verifica(dbV.query.find((q) => q.sql.startsWith("UPDATE iscrizioni")).valori[2] === null, "pagina vecchia con Venezia/Padova: provincia non indovinata");
     verifica(db.query.some((q) => q.sql.startsWith("INSERT INTO esiti_iscrizione") && q.valori[1] === "passo2_completato"), "passo 2: completamento contato negli esiti");
     verifica(!db.query.some((q) => q.sql.includes("SET invito")), "passo 2 senza «Chi ti ha invitato?»: nessun aggiornamento dell'invito");
   }
@@ -889,7 +911,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const senzaC = dbI();
     await completa(passo2({ cerchi: "uomini" }), env(senzaC));
     const up = senzaC.query.find((q) => q.sql.startsWith("UPDATE iscrizioni"));
-    verifica(up.valori[4] === null && up.valori[6] === null, "passo 2: «chi cerchi» senza casella a parte viene scartato");
+    verifica(up.valori[6] === null && up.valori[8] === null, "passo 2: «chi cerchi» senza casella a parte viene scartato");
     const scad = dbI({ completa: [] });
     const rs = await completa(passo2(), env(scad));
     verifica(rs.status === 410 && scad.query.some((q) => q.valori[1] === "passo2_scaduto"), "passo 2 con gettone scaduto o già usato: 410, nessun dato cambiato");
@@ -914,14 +936,15 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const t = "0123456789abcdef0123456789abcdef";
     const con = conPasso2(g, t, "meta", "Reggio Emilia");
     verifica(con.includes(`<input type="hidden" name="t" value="${t}">`) && con.includes('<input type="hidden" name="canale" value="meta">')
-      && con.includes('<input id="zona" name="zona" value="Reggio Emilia"') && con.includes('action="/completa"'), "/grazie?t=: passo 2 con gettone, canale e città suggerita");
+      && con.includes('<option value="RE" selected>') && con.includes('<option value="" disabled>') && con.includes('action="/completa"'), "/grazie?t=: passo 2 con gettone, canale e provincia della città suggerita già scelta");
+    verifica(!conPasso2(g, t, "", "Padova").includes(" selected>Padova"), "/grazie?t=: città suggerita di Venezia/Padova, nessuna provincia indovinata");
     const senza = conPasso2(g, "<script>", "", "");
     verifica(!senza.includes("/completa") && !senza.includes("<script>") && !senza.includes("Ultimo passo"), "/grazie senza gettone valido: niente passo 2");
     const ASSETS = { fetch: async () => new Response(g, { headers: { "content-type": "text/html; charset=utf-8" } }) };
     svuotaMemoria();
     const DBg = { prepare: (sql) => ({ bind() { return this; }, async first() { return 40; }, async all() { return { results: [{ zona: "milano", citta: null, n: 6 }] }; } }) };
     const pagina2 = await (await grazieConCitta(new Request(`https://presente.example/grazie?t=${t}&citta=milano&c=K7MQ2P`), { ASSETS, DB: DBg })).text();
-    verifica(pagina2.includes('name="zona" value="Milano"') && !pagina2.includes('class="mancano"') && pagina2.includes("/da/amico?invito=K7MQ2P"),
+    verifica(pagina2.includes('<option value="MI" selected>') && !pagina2.includes('class="mancano"') && pagina2.includes("/da/amico?invito=K7MQ2P"),
       "/grazie?t=&citta=: città solo come suggerimento (niente «mancano N» prima del passo 2), link personale già pronto");
     svuotaMemoria();
   }

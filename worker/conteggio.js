@@ -11,6 +11,7 @@
 //   «chi cerchi» si mostra solo da 10 risposte in su, prima vale "meno di 10".
 // visite.per_pagina e visite.per_giorno[g].per_pagina (E10, 2/11): visite vere di /guide/* e /incontri-al-buio/*;
 //   visite.per_giorno[g].invii_modulo e iscrizioni_nuove accanto a home_persona.
+// per_regione, per_provincia (dal 2/11, D84 A): iscritti per regione e per sigla di provincia («EE» = estero), solo totali.
 // per_codice: iscritti per codice invito dei creator, solo per i codici elencati in CODICI_INVITO (mai email, mai nomi liberi).
 // per_codice_validi (D88 A, 2/11): per ogni codice delle presentatrici gli iscritti validi con i filtri anti-iscrizioni finte
 //   (worker/codici.js): validi, confermati_7_giorni, esclusi, sospeso (picco oltre 15 in un'ora), data dell'ultimo valido.
@@ -22,6 +23,7 @@ import { perVisite, conInvii } from "./visite.js";
 import { perEsiti, perRisposte } from "./iscrizione.js";
 import { perCitta, ZONE } from "./citta.js";
 import { perCodiceValidi } from "./codici.js";
+import { perProvincia } from "./province.js";
 
 export async function conteggio(env) {
   const intestazioni = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -40,7 +42,8 @@ export async function conteggio(env) {
     const visite = conInvii(await perVisite(env), esiti_iscrizione);
     const per_risposta = await perRisposte(env);
     const inviti_personali = await invitiPersonali(env);
-    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_risposta, per_sorgente, con_invito: conInvito, per_codice, per_codice_validi, inviti_personali, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
+    const { per_regione, per_provincia } = await perProvincia(env);
+    return new Response(JSON.stringify({ totale, per_zona, per_citta, per_regione, per_provincia, per_risposta, per_sorgente, con_invito: conInvito, per_codice, per_codice_validi, inviti_personali, per_canale, visite, esiti_iscrizione, aggiornato: new Date().toISOString() }), { headers: intestazioni });
   } catch {
     // La tabella nasce con la prima iscrizione.
     const per_canale = await perCanale(env);
