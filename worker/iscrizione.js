@@ -10,7 +10,7 @@ import { daSigla, provinciaDaZona, regioneDi } from "./province.js";
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
 // e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
 export { ZONE };
-export const VERSIONE_INFORMATIVA = "1.4.1-2026-11-03";
+export const VERSIONE_INFORMATIVA = "1.5-2026-11-03";
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
@@ -46,12 +46,14 @@ const AGGIUNGI_COLONNE = [
   // Provincia (D84 A, dal passo 2 con il menu delle province): sigla (es. «RM», «EE» = estero) e regione ricavata dalla tabella fissa.
   "ALTER TABLE iscrizioni ADD COLUMN provincia TEXT",
   "ALTER TABLE iscrizioni ADD COLUMN regione TEXT",
+  // Aggiornamenti al massimo ogni 2 settimane (informativa 1.5, D97 A): casella separata e non spuntata, data e ora a parte.
+  "ALTER TABLE iscrizioni ADD COLUMN consenso_aggiornamenti_il TEXT",
 ];
 // L'indice impedisce due codici uguali: in caso di collisione il Worker ne genera un altro (al massimo 5 tentativi).
 const INDICE_CODICE = "CREATE UNIQUE INDEX IF NOT EXISTS iscrizioni_codice ON iscrizioni(codice)";
 const INDICE_GETTONE = "CREATE INDEX IF NOT EXISTS iscrizioni_gettone ON iscrizioni(gettone)";
 const TENTATIVI_CODICE = 5;
-const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il, codice, gettone, gettone_scade) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+const INSERISCI = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, citta, presento, cerchi, fascia, consenso_cerchi_il, codice, gettone, gettone_scade, consenso_aggiornamenti_il) VALUES (?, ?, ?, ?, ?, 'landing', ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
 
 // MODULO IN DUE PASSI (D79 A, punto 3, dal 1/11). Passo 1 (home): solo email e caselle; la zona resta «non-indicata»
 // (esclusa da contatori e classifiche) e il Worker crea un gettone casuale monouso che scade in 24 ore: NON è il codice
@@ -260,7 +262,7 @@ async function gestisci(request, env) {
   const luogo = duePassi ? { zona: ZONA_NON_INDICATA, citta: null } : normalizzaCitta(zonaScritta.slice(0, 80));
   const invito = testoInvito(modulo.get("invito"));
   const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
-    // D80 A (informativa 1.3): una sola casella, «Ho almeno 18 anni e voglio entrare…», vale come conferma dei 18 anni e consenso.
+    // D80 A, testo breve dal 3/11 (D103 A, 1.5): una sola casella, «Ho almeno 18 anni e accetto l'informativa privacy.», vale come conferma dei 18 anni e consenso.
     // Le pagine vecchie in cache mandano ancora «maggiorenne» a parte: se c'è, deve essere «si».
     && modulo.get("consenso") === "si" && [null, "si"].includes(modulo.get("maggiorenne"));
   if (!valido) {
@@ -287,6 +289,7 @@ async function gestisci(request, env) {
     }
     const adesso = new Date().toISOString();
     const { presento, cerchi, fascia } = risposteFacoltative(modulo);
+    const aggiornamenti = modulo.get("aggiornamenti") === "si";
     const creator = codiciConfigurati(env);
     const improntaGettone = gettone ? await impronta(gettone) : null;
     const scade = gettone ? new Date(Date.now() + DURATA_GETTONE).toISOString() : null;
@@ -294,7 +297,7 @@ async function gestisci(request, env) {
     for (let tentativo = 1; ; tentativo++) {
       do codice = generaCodice(); while (creator.has(codice)); // mai uguale a un codice dei creator
       const valori = [email, luogo.zona, invito || null, adesso, VERSIONE_INFORMATIVA, luogo.citta,
-        presento, cerchi, fascia, cerchi ? adesso : null, codice, improntaGettone, scade];
+        presento, cerchi, fascia, cerchi ? adesso : null, codice, improntaGettone, scade, aggiornamenti ? adesso : null];
       try {
         esito = await env.DB.prepare(INSERISCI).bind(...valori).run();
         break;

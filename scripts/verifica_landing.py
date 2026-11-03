@@ -24,9 +24,10 @@ PAGINE = ["index.html", "grazie.html", "privacy.html", "incontri-al-buio.html"]
 PAGINE += sorted(str(p.relative_to(CARTELLA)) for p in CARTELLA.rglob("*.html")
                  if p.relative_to(CARTELLA).parts[0] != "app" and str(p.relative_to(CARTELLA)) not in PAGINE)
 CAMPI_AMMESSI = {"campo-trappola", "email", "zona", "invito", "maggiorenne", "consenso", "canale",
-                 "presento", "cerchi", "consenso-cerchi", "fascia"}
+                 "presento", "cerchi", "consenso-cerchi", "fascia", "aggiornamenti"}
 # Domande facoltative (D33 A, testi approvati con D65 A): mai obbligatorie; la casella per «chi cerchi» mai spuntata in partenza.
-FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
+# «aggiornamenti» (informativa 1.5, D97 A): consenso separato, mai obbligatorio né spuntato in partenza.
+FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia", "aggiornamenti"}
 # «canale» non è nell'HTML: lo aggiunge il Worker (link /da/<canale>, D26), solo nascosto e con un valore dell'elenco.
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
 CAMPI_OBBLIGATORI = {"email", "consenso"}  # D80 A: una sola casella per 18 anni e consenso

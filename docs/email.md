@@ -53,6 +53,14 @@ SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link 
 Controllo prima di caricare: `SELECT COUNT(*) FROM iscrizioni WHERE codice IS NULL;` deve dare 0.
 Il risultato va solo in Brevo: mai in plancia, nei log, in chat o nel repository. La stessa query è in `worker/codici_mancanti.js` (`QUERY_LINK_PERSONALI`).
 
+## Aggiornamenti ogni 2 settimane (informativa 1.5, D97 A)
+
+Solo a chi ha spuntato la casella separata del sito (colonna `consenso_aggiornamenti_il` non vuota, dal 3/11). Chi si è iscritto prima o dal modulo Meta non la riceve. Query di sola lettura:
+
+```sql
+SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link FROM iscrizioni WHERE consenso_aggiornamenti_il IS NOT NULL AND codice IS NOT NULL ORDER BY id;
+```
+
 ## Regole
 
 - L'email esce solo dopo la prova su un indirizzo interno e il via di Giuseppe.
