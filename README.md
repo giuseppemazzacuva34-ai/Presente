@@ -1,10 +1,10 @@
 # Presente
 
-App di incontri per vedersi davvero, sul modello di «L'amore è cieco»: niente foto visibili né swipe; stanze di 7 giorni con chiamate solo voce, diario privato, decisione reciproca con le chiavi, incontro dal vivo con caparra anti-buca (7 € in crediti a chi aspetta, 3 € a Presente), locali consigliati, check-in «Sono qui» e segnale per riconoscersi. Lancio pubblico previsto a Milano sabato 9 gennaio 2027.
+App di incontri per vedersi davvero, per conoscersi al buio: niente swipe e foto nascoste finché la scelta non è reciproca; stanze di 7 giorni con chiamate solo voce, diario privato, decisione reciproca con le chiavi, incontro dal vivo con caparra anti-buca (7 € in crediti a chi aspetta, 3 € a Presente), locali consigliati, check-in «Sono qui» e segnale per riconoscersi. In arrivo città per città.
 
 ## Stato
 
-Fase 0 · Fondamenta (26 ottobre – 1 novembre 2026): landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe; beta il 6 dicembre 2026. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md). Stanze della settimana (#3, calcoli in `api/stanze.js`): [`docs/stanze.md`](docs/stanze.md).
+Fase 2 in corso. Landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md). Stanze della settimana (#3, calcoli in `api/stanze.js`): [`docs/stanze.md`](docs/stanze.md).
 
 ## Automatismi attivi
 
