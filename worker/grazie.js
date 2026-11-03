@@ -29,7 +29,7 @@ export function htmlMancano(nome, iscritti) {
 }
 
 // «Porta un'amica» (spec referral parte 2, D69 A): con ?c=<codice personale> il blocco fra <!--invito--> e <!--/invito-->
-// diventa il link personale, già dentro i messaggi WhatsApp e Telegram. Il codice deve avere la forma giusta
+// diventa il link personale, già dentro il messaggio WhatsApp (dal 3/11, D102 A, un solo pulsante). Il codice deve avere la forma giusta
 // (6 caratteri dell'alfabeto): qualunque altro valore lascia la pagina com'è. Nessuna promessa di premi (DPR 430/2001).
 export const INIZIO_INVITO = "<!--invito-->";
 export const FINE_INVITO = "<!--/invito-->";
@@ -40,11 +40,9 @@ export function htmlInvito(link, nome) {
     + `Prima ci si parla a voce, poi si decide se vedersi. ${nome || "La nostra città"} apre quando arriva a ${SOGLIA_STANZA} iscritti: `
     + `entra in lista (è gratis) da qui 👉 ${link}`;
   const whatsapp = "https://wa.me/?text=" + encodeURIComponent(testo);
-  const telegram = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&amp;text=" + encodeURIComponent(testo.replace(/ da qui 👉 .*$/, ""));
   return `<p>Si parte con la Stanza Italia. Le stanze della tua città aprono a ${SOGLIA_STANZA} iscritti: chi si iscrive con il tuo link fa salire ${dove}. Pensa a un'amica stanca delle solite app, o a un amico.</p>
         <p class="link-personale">Il tuo link personale: <strong>${link.replace(/&/g, "&amp;")}</strong></p>
-        <p><a class="bottone" href="${whatsapp}" rel="noopener">Mandalo a un'amica su WhatsApp</a></p>
-        <p><a class="bottone bottone-chiaro" href="${telegram}" rel="noopener">Invia su Telegram</a></p>
+        <p><a class="bottone" href="${whatsapp}" rel="noopener">Invita un'amica su WhatsApp</a></p>
         <p class="nota">Il codice nel link è casuale e non dice nulla di te: serve solo a contare quante persone arrivano con il tuo invito.</p>
 `;
 }

@@ -331,3 +331,14 @@ h2.in-lista { font-size: clamp(2.6rem, 11vw, 4.2rem); letter-spacing: -0.01em; m
 /* Pulsante «Segui @presente_app» della pagina grazie (D82 A) */
 .segui-ig { margin: 1.5rem 0 2rem; }
 .segui-ig p { margin: 0 0 .75rem; }
+
+/* D102 A (3/11): prima schermata con un solo pulsante. In testata un link di testo, sotto il titolo il motto in corsivo,
+   vicino al pulsante la soglia dei 36 e tre rassicurazioni brevi (testo scuro sul fondo chiaro del modulo: 7,2:1). */
+.link-testata { color: var(--avorio); font-weight: 600; text-underline-offset: 0.2em; padding: 0.6rem 0.2rem; min-height: 44px; display: inline-flex; align-items: center; }
+.link-testata:hover { color: var(--rosso); }
+.sottotitolo { font-size: 1.5rem; line-height: 1.25; margin: -0.4rem 0 0.8rem; color: var(--avorio); }
+.soglia { margin: 0.8rem 0 0.4rem; font-size: 0.95rem; font-weight: 600; text-align: center; color: var(--nero); }
+.rassicurazioni { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; color: #5b5751; }
+.rassicurazioni li { padding: 0.15rem 0 0.15rem 1.1rem; position: relative; }
+.rassicurazioni li::before { content: "●"; color: var(--rosso); font-size: 0.55rem; position: absolute; left: 0.2rem; top: 0.45rem; }
+.regalo p { margin: 1.5rem 0 0; }
