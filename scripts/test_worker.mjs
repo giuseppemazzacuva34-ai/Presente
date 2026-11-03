@@ -623,7 +623,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   svuotaMemoria();
   const n = await numeriPubblici({ DB: DBn(101, righe) }, 1000);
   const spento = conNumeri(home, n, { MOSTRA_POSTI: "no" });
-  verifica(!spento.includes("posti</p>") && !spento.includes("class=\"posti\""), "posti: con MOSTRA_POSTI diverso da «si» la frase non compare");
+  verifica(!spento.includes("9 crediti") && spento.includes("<strong>101</strong> persone già in lista."), "posti: con MOSTRA_POSTI diverso da «si» la frase dei crediti non compare (resta «N persone già in lista», D102 A)");
   const acceso = conNumeri(home, n, { MOSTRA_POSTI: "si" });
   verifica(acceso.includes("I primi 150 iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. Restano <strong>49</strong> posti.")
     && acceso.includes("Crediti non convertibili in denaro."), "posti: testo del CFO con N = 150 − iscritti (101 → 49) e nota");
@@ -636,7 +636,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     "contatore: solo le 14 città con stanza e 10+ iscritti (D76 A: Pisa scritta a mano non compare), senza «estero» e «altre città»");
   svuotaMemoria();
   const pieno = conNumeri(home, await numeriPubblici({ DB: DBn(150, []) }, 1000), { MOSTRA_POSTI: "si" });
-  verifica(pieno === home, "posti finiti e nessuna città a 10: pagina identica");
+  verifica(!pieno.includes("9 crediti") && !pieno.includes('class="contatore-citta"') && pieno.includes("<strong>150</strong> persone già in lista."), "posti finiti e nessuna città a 10: niente crediti né contatore, solo «N persone già in lista»");
   svuotaMemoria();
   let letture = 0;
   const DBc = { prepare: () => ({ first: async () => { letture++; return 3; }, all: async () => ({ results: [] }) }) };
@@ -688,7 +688,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   verifica(["presente-30-domande-primo-appuntamento.pdf", "presente-30-carte.pdf"].every((f) => grazieHtml.includes(`href="/media/${f}"`)
     && readFileSync(new URL("../landing/media/" + f, import.meta.url)).subarray(0, 5).toString() === "%PDF-"),
     "/grazie: pulsante delle 30 carte e PDF presente");
-  verifica((grazieHtml.match(/presenteincontri\.app%2Fda%2Famico/g) || []).length === 2, "/grazie: WhatsApp e Telegram condividono il link /da/amico");
+  verifica((grazieHtml.match(/presenteincontri\.app%2Fda%2Famico/g) || []).length === 1 && !grazieHtml.includes("t.me/"), "/grazie: un solo invito WhatsApp con il link /da/amico (D102 A)");
   const r = await worker.fetch(new Request("https://presente.example/da/amico", { headers: { "user-agent": TELEFONO } }), { DB: databaseFinto() }, { waitUntil() {} });
   verifica(r.status === 302 && r.headers.get("location") === "https://presente.example/?da=amico", "/da/amico: rimanda alla home con il canale «amico»");
   svuotaMemoria();
@@ -723,9 +723,9 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const g2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
-  verifica(g2.includes("So che può far capire il mio orientamento sessuale.") && /<input id="consenso-cerchi" name="consenso-cerchi" type="checkbox" value="si">/.test(g2)
+  verifica(!g2.includes("consenso-cerchi") && !g2.includes('name="cerchi"')
     && home.includes("Ho almeno 18 anni e voglio entrare nella lista d'attesa di Presente: usate i miei dati solo per avvisarmi quando apre e per conteggi totali")
-    && !home.includes('name="maggiorenne"'), "testi D80 A: casella unica in home, casella a parte non spuntata nel passo 2");
+    && !home.includes('name="maggiorenne"'), "testi D80 A: casella unica in home; dal 3/11 (D102 A) il passo 2 chiede solo la provincia");
 }
 
 // 20. «Porta un'amica» (spec referral parte 2, D69 A): codice personale casuale, link personale su /grazie,
@@ -957,11 +957,11 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const AH = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
     const apri = async (q) => (await (await worker.fetch(new Request("https://presente.example/" + q), { ASSETS: AH })).text());
     const titolo = (h) => h.slice(h.indexOf('<h1 id="titolo">'), h.indexOf("</h1>") + 5);
-    verifica(titolo(await apri("")) === '<h1 id="titolo">Prima la voce. <em>Poi il resto.</em></h1>', "titolo neutro senza parametro");
+    verifica(titolo(await apri("")) === '<h1 id="titolo">Le app di incontri ti hanno stancata? <em>Qui ci si sceglie a voce.</em></h1>', "titolo neutro senza parametro (D102 A)");
     verifica(titolo(await apri("?v=voce")).includes(TITOLI.voce[0]) && titolo(await apri("?utm_content=BUCA")).includes(TITOLI.buca[0])
       && titolo(await apri("?v=donne&utm_source=meta")).includes(TITOLI.donne[0]), "?v= o utm_content scelgono il titolo dall'elenco fisso");
     const strano = await apri("?v=%3Cscript%3Ealert(1)%3C%2Fscript%3E&utm_content=ciao");
-    verifica(titolo(strano).includes("Prima la voce.") && !strano.includes("<script>alert") && sceltaTitolo(new URLSearchParams("v=constructor")) === "",
+    verifica(titolo(strano).includes("Qui ci si sceglie a voce.") && !strano.includes("<script>alert") && sceltaTitolo(new URLSearchParams("v=constructor")) === "",
       "valori fuori elenco: titolo neutro, nessun testo dell'indirizzo nella pagina");
     const rv = await apri("?v=foto");
     verifica(rv.includes(`<p class="attacco">${TITOLI.foto[1]}</p>`) && (await apri("")).includes("<p class=\"attacco\">L'app di incontri al buio: vi parlate a voce per una settimana, le foto solo se vi scegliete.</p>"),
@@ -991,7 +991,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(sg.status === 302 && sg.headers.get("location") === "https://www.instagram.com/presente_app/" && robot.status === 302
       && clic.length === 1 && clic[0][0] === "grazie-ig", "D82 A: /segui conta un clic per persona (non i robot) e rimanda a Instagram");
     const g = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
-    verifica(g.includes('href="/segui"') && g.includes("Segui @presente_app") && g.includes("Le città e i primi posti li annunciamo prima su Instagram"), "D82 A: pulsante e frase sulla pagina grazie");
+    verifica(!g.includes('href="/segui"') && !g.includes("instagram.com"), "D102 A: sulla pagina grazie niente Instagram (resta /segui per /da/meta)");
     // D92 A: /da/meta è la pagina di chi si è appena iscritto dal modulo Meta v1 («Vai al sito»).
     const righe = [];
     const dbMeta = { prepare: (sql) => ({ bind(...v) { righe.push([sql, v]); return this; }, async run() { return {}; } }) };
@@ -1021,8 +1021,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     verifica(!/gratis per tutti/.test(readFileSync(new URL("../worker/numeri.js", import.meta.url), "utf8")) && !/niente foto/i.test(home),
       "2/11: «gratis» solo per la lista d'attesa, nessun «niente foto» nella home");
     const pulsanti = home.match(/>Iscriviti gratis alla lista d'attesa</g) || [];
-    verifica(pulsanti.length === 3 && !home.includes("Voglio entrare") && !home.includes('id="invito"'),
-      "2/11: stesso testo del pulsante in testata, nel modulo e in fondo; «Chi ti ha invitato?» non è più nella home");
+    verifica(pulsanti.length === 2 && home.includes('<a class="link-testata" href="#iscriviti">Iscriviti</a>') && !home.includes("Voglio entrare") && !home.includes('id="invito"'),
+      "stesso testo del pulsante nel modulo e in fondo, in testata un link di testo (D102 A); «Chi ti ha invitato?» non è più nella home");
     verifica(etichetteUtm(new URLSearchParams("utm_source=threads&utm_medium=bio"), {}).sorgente === "threads", "2/11: threads è una sorgente ammessa");
     const css = readFileSync(new URL("../landing/stile.css", import.meta.url), "utf8");
     const pxInizio = [];

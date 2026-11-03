@@ -16,7 +16,7 @@ const HTML = `<!doctype html>
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0e0d10">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261103a">
+  <link rel="stylesheet" href="/stile.css?v=20261103b">
 </head>
 <body>
   <div class="pagina">

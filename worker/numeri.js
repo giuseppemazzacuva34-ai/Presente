@@ -37,13 +37,21 @@ export async function numeriPubblici(env, adesso = Date.now(), { fresco = false 
 // Dal 1/11 (D79 A, prova sociale) davanti c'è «N persone già in lista.», con N = iscritti totali (stesso numero di sempre).
 export const NOTA_POSTI = `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è in regalo per tutti. Crediti non convertibili in denaro.</p>`;
 
-export function htmlPosti(numeri, env, { conNota = true } = {}) {
+// D102 A (3/11): sopra il modulo resta solo «N persone già in lista.» (prova sociale, anche con MOSTRA_POSTI spento);
+// la frase dei 9 crediti con i posti rimasti e la nota del CFO vanno nella domanda frequente «Quanto costa?».
+export function htmlPersone(numeri) {
+  if (!numeri || !(numeri.totale > 0)) return "";
+  const persone = numeri.totale === 1 ? "<strong>1</strong> persona già in lista." : `<strong>${numeri.totale}</strong> persone già in lista.`;
+  return `<p class="posti">${persone}</p>`;
+}
+
+export function htmlPosti(numeri, env, { conNota = true, conPersone = true } = {}) {
   if (env.MOSTRA_POSTI !== "si" || !numeri) return "";
   const restano = POSTI_REGALO - numeri.totale;
   if (restano <= 0) return "";
   const coda = restano === 1 ? "Resta <strong>1</strong> posto." : `Restano <strong>${restano}</strong> posti.`;
   const persone = numeri.totale === 1 ? "<strong>1</strong> persona già in lista." : `<strong>${numeri.totale}</strong> persone già in lista.`;
-  return `<p class="posti">${numeri.totale > 0 ? persone + " " : ""}I primi ${POSTI_REGALO} iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. ${coda}</p>`
+  return `<p class="posti">${conPersone && numeri.totale > 0 ? persone + " " : ""}I primi ${POSTI_REGALO} iscritti hanno 9 crediti in regalo, una stanza in più, al primo acquisto. ${coda}</p>`
     + (conNota ? NOTA_POSTI : "");
 }
 
@@ -91,10 +99,17 @@ export function htmlClassifica(numeri) {
 // Inserisce i numeri nei segnaposto; se non c'è nulla da mostrare l'HTML resta identico.
 export function conNumeri(html, numeri, env) {
   const notaSeparata = html.includes(SEGNAPOSTO_POSTI_NOTA);
-  const posti = htmlPosti(numeri, env, { conNota: !notaSeparata });
   const contatore = htmlContatore(numeri);
-  if (posti && html.includes(SEGNAPOSTO_POSTI)) html = html.replace(SEGNAPOSTO_POSTI, posti);
-  if (posti && notaSeparata) html = html.replace(SEGNAPOSTO_POSTI_NOTA, NOTA_POSTI);
+  if (notaSeparata) {
+    // Home dal 3/11 (D102 A): in alto le persone, i crediti nella domanda «Quanto costa?».
+    const persone = htmlPersone(numeri);
+    if (persone && html.includes(SEGNAPOSTO_POSTI)) html = html.replace(SEGNAPOSTO_POSTI, persone);
+    const posti = htmlPosti(numeri, env, { conNota: true, conPersone: false });
+    if (posti) html = html.replace(SEGNAPOSTO_POSTI_NOTA, posti);
+  } else {
+    const posti = htmlPosti(numeri, env);
+    if (posti && html.includes(SEGNAPOSTO_POSTI)) html = html.replace(SEGNAPOSTO_POSTI, posti);
+  }
   if (contatore && html.includes(SEGNAPOSTO_CONTATORE)) html = html.replace(SEGNAPOSTO_CONTATORE, contatore);
   return html;
 }

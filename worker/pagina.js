@@ -8,7 +8,7 @@ export function pagina(titolo, testo, stato = 200) {
   <meta name="robots" content="noindex">
   <title>${titolo} · Presente</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/stile.css?v=20261103a">
+  <link rel="stylesheet" href="/stile.css?v=20261103b">
 </head>
 <body>
   <div class="pagina">
