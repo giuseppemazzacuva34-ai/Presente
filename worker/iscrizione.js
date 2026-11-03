@@ -10,7 +10,7 @@ import { daSigla, provinciaDaZona, regioneDi } from "./province.js";
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
 // e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
 export { ZONE };
-export const VERSIONE_INFORMATIVA = "1.4-2026-11-03";
+export const VERSIONE_INFORMATIVA = "1.4.1-2026-11-03";
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
