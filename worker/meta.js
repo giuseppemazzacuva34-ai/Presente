@@ -20,6 +20,7 @@
 // di prova. Nessun servizio in mezzo: Meta → Cloudflare → D1. Nei log e in /conteggio solo numeri.
 // Interruttore: IMPORT_META in wrangler.jsonc ("no" = Meta può avvisare ma non si legge e non si salva nulla).
 
+import { assegnaCodiciMancanti } from "./codici_mancanti.js";
 import { contatto, trovaColonne } from "./contatti_meta.js";
 import { codiciConfigurati } from "./invito.js";
 import { contaEsito, mancaColonna, aggiungiColonne } from "./iscrizione.js";
@@ -224,6 +225,8 @@ async function gestisciNotifica(request, env, ctx, f) {
         totali[esito] = (totali[esito] || 0) + 1;
         await contaEsito(env, esito);
       }
+      // Codice invito personale anche a chi arriva dal modulo Meta (D98 A).
+      if (totali.meta_nuova) await assegnaCodiciMancanti(env);
       // Nel log solo numeri: mai email, id o risposte.
       console.log(`meta: contatti del modulo ${contatti.length}, ${Object.entries(totali).map(([k, n]) => `${k} ${n}`).join(", ")}`);
     })();
