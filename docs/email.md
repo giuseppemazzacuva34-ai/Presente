@@ -14,9 +14,25 @@ skill_usate: presente-contesto-marketing, signup, cro · tecnica: signup › un 
 ## Cosa deve fare Giuseppe (circa 15 minuti, 0 €)
 
 1. Crea l'account gratuito su brevo.com con l'email di Presente e accetta l'accordo sul trattamento dei dati (DPA).
-2. In Brevo › Senders, Domains & Dedicated IPs › Domains: aggiunge `presenteincontri.app`. Brevo mostra i record da inserire: di solito un TXT `brevo-code:…` sul dominio, due CNAME `brevo1._domainkey` e `brevo2._domainkey` (DKIM) e un TXT `_dmarc` (`v=DMARC1; p=none; rua=mailto:…`). Se Giuseppe ci manda una foto della schermata, il CTO gli scrive esattamente cosa copiare in Cloudflare › DNS (tutti i record con nuvola grigia, «solo DNS»).
+2. In Brevo › Senders, Domains & Dedicated IPs › Domains: aggiunge `presenteincontri.app`. **I record DNS li crea il Coordinatore con Composio** (connettori Cloudflare e Brevo, aggiornamento del 3/11): Giuseppe non tocca Cloudflare. Elenco qui sotto.
 3. In Brevo › SMTP & API › API Keys: crea una chiave e la incolla come secret del Worker (Cloudflare › Workers › presente › Impostazioni › Variabili e segreti › Aggiungi › Segreto) con nome `BREVO_CHIAVE`. La chiave non va mai in chat né nel repository.
 4. Disattiva in Brevo il tracciamento di aperture e clic.
+
+## Record DNS per Brevo (Cloudflare › DNS di presenteincontri.app)
+
+I valori tra parentesi quadre li dà Brevo quando si aggiunge il dominio. Tutti «solo DNS» (nuvola grigia), TTL automatico.
+
+| # | Tipo | Nome | Valore | Note |
+|---|---|---|---|---|
+| 1 | TXT | `@` | `brevo-code:[codice di Brevo]` | verifica del dominio |
+| 2 | CNAME | `brevo1._domainkey` | `b1.[valore di Brevo].dkim.brevo.com` | DKIM |
+| 3 | CNAME | `brevo2._domainkey` | `b2.[valore di Brevo].dkim.brevo.com` | DKIM |
+| 4 | TXT | `@` | `v=spf1 include:spf.brevo.com ~all` | SPF: se esiste già un record `v=spf1`, **non crearne un secondo**: aggiungi `include:spf.brevo.com` prima di `~all` |
+| 5 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` | se esiste già un `_dmarc`, aggiungi solo l'indirizzo `rua` |
+
+Dopo l'inserimento: in Brevo «Authenticate» (la propagazione può richiedere fino a qualche ora). Mittente consigliato: `ciao@presenteincontri.app`; per ricevere le risposte serve l'inoltro email di Cloudflare (Email Routing, gratuito) verso la casella di Presente.
+
+Fonti: guida di Brevo «Authenticate your domain with Brevo (Brevo code, DKIM, DMARC)» e guida alwaysdata su Brevo, lette il 3/11/2026.
 
 ## Cosa fa il CTO (1-2 giorni dopo l'account)
 
