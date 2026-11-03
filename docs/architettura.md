@@ -1,4 +1,4 @@
-# Architettura della Fase 2 (beta del 6 dicembre 2026)
+# Architettura della Fase 2 (beta)
 
 Versione 1.2 · 29 ottobre 2026 (v1: 28 ottobre) · autore: CTO («sviluppatore»).
 Fonti: tab «Struttura dell'app» del business plan, specifiche del CPO nelle issue #2, #3, #4 (v1 del 27 ottobre) e decisioni D14–D20, D23 A, D24 A, D30 B, D31 B, D32 A, D35 A.
