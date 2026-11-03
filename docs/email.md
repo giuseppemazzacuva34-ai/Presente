@@ -38,9 +38,20 @@ Fonti: guida di Brevo «Authenticate your domain with Brevo (Brevo code, DKIM, D
 | Passo | Dove | Stato |
 |---|---|---|
 | Informativa 1.4.1 con Brevo al punto 8 | `landing/privacy.html` | PR #123 |
-| Link personale «porta un'amica» anche per i 52 del modulo Meta (codice invito per chi non ce l'ha) | `worker/codici.js`, migrazione D1 | da fare |
+| Link personale «porta un'amica» anche per i 52 del modulo Meta (codice invito per chi non ce l'ha) | `worker/codici_mancanti.js`, cron ogni ora al minuto 23 | fatto (PR del 3/11) |
 | Link per cancellarsi e invio | Brevo (campagna del Coordinatore) | non serve codice nostro |
 | Informativa 1.5 con la seconda casella non spuntata per gli aggiornamenti ogni 2 settimane (D97 A) | landing + `worker/iscrizione.js` | dopo l'invio |
+
+## Link personali per l'email (query di sola lettura per il Coordinatore)
+
+Da lanciare sul database D1 `presente-lista` **dopo** il primo giro del cron (minuto 23 dell'ora dopo l'unione):
+
+```sql
+SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link FROM iscrizioni WHERE codice IS NOT NULL ORDER BY id;
+```
+
+Controllo prima di caricare: `SELECT COUNT(*) FROM iscrizioni WHERE codice IS NULL;` deve dare 0.
+Il risultato va solo in Brevo: mai in plancia, nei log, in chat o nel repository. La stessa query è in `worker/codici_mancanti.js` (`QUERY_LINK_PERSONALI`).
 
 ## Regole
 
