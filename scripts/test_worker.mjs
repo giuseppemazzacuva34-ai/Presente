@@ -724,7 +724,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const g2 = readFileSync(new URL("../landing/grazie.html", import.meta.url), "utf8");
   verifica(!g2.includes("consenso-cerchi") && !g2.includes('name="cerchi"')
-    && home.includes("Ho almeno 18 anni e voglio entrare nella lista d'attesa di Presente: usate i miei dati solo per avvisarmi quando apre e per conteggi totali")
+    && home.includes("Ho almeno 18 anni e accetto l'<a href=\"/privacy\">informativa privacy</a>.")
     && !home.includes('name="maggiorenne"'), "testi D80 A: casella unica in home; dal 3/11 (D102 A) il passo 2 chiede solo la provincia");
 }
 
@@ -1041,6 +1041,32 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     const inv = await (await worker.fetch(new Request("https://presente.example/?invito=nevada"), { ASSETS: { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) } })).text();
     verifica(inv.includes('<input type="hidden" name="invito" value="NEVADA">'), "2/11: il codice di ?invito= resta automatico (campo nascosto nella home)");
   }
+}
+
+// 1.5 (D97 A, D103 A, 3/11): casella breve obbligatoria e casella aggiornamenti separata, NON spuntata, con data a parte.
+{
+  const salva = async (campi) => {
+    const env = aperte({ DB: databaseFinto({ nuove: true }) });
+    const r = await iscrizione(modulo(campi, { origin: "https://presente.example" }), env);
+    return { r, ins: env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni")) };
+  };
+  const senza = await salva({});
+  verifica(senza.r.status === 303 && /consenso_aggiornamenti_il/.test(senza.ins.sql) && senza.ins.valori[13] === null && senza.ins.valori[4] === "1.5-2026-11-03",
+    "1.5: senza la casella aggiornamenti nessun consenso salvato; versione 1.5");
+  const con = await salva({ aggiornamenti: "si" });
+  verifica(/^\d{4}-\d{2}-\d{2}T/.test(con.ins.valori[13]), "1.5: con la casella aggiornamenti salvate data e ora del consenso a parte");
+  const strano = await salva({ aggiornamenti: "on" });
+  verifica(strano.ins.valori[13] === null, "1.5: solo il valore «si» vale come consenso agli aggiornamenti");
+  const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
+  verifica(home.includes(`<label for="consenso">Ho almeno 18 anni e accetto l'<a href="/privacy">informativa privacy</a>.</label>`)
+    && /<input id="aggiornamenti" name="aggiornamenti" type="checkbox" value="si">/.test(home)
+    && home.includes("Sì, mandatemi aggiornamenti su Presente, al massimo ogni 2 settimane. Posso dire basta quando voglio."),
+    "1.5: casella breve obbligatoria e casella aggiornamenti facoltativa non spuntata nella home");
+  const privacy = readFileSync(new URL("../landing/privacy.html", import.meta.url), "utf8");
+  verifica(privacy.includes("versione 1.5 · 3 novembre 2026") && !/DA VERIFICARE/i.test(privacy)
+    && privacy.includes("Un codice temporaneo per completare il secondo passo sul sito")
+    && privacy.includes("Cosa cambia nella versione 1.4.1 rispetto alla 1.4 (3 novembre 2026): il servizio"),
+    "1.5: informativa pubblicata con la data, senza l'avviso interno, con la riga della 1.4.1 datata");
 }
 
 if (errori) {
