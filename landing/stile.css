@@ -5,7 +5,7 @@
    SEO v3: prima i .woff2 ridotti ai caratteri latini (circa 92 KB invece di 129 KB); i .woff restano come riserva. */
 @font-face { font-family: "Instrument Serif"; src: url("/fonts/InstrumentSerif-Regular.woff2") format("woff2"), url("/fonts/InstrumentSerif-Regular.woff") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Instrument Serif"; src: url("/fonts/InstrumentSerif-Italic.woff2") format("woff2"), url("/fonts/InstrumentSerif-Italic.woff") format("woff"); font-weight: 400; font-style: italic; font-display: swap; }
-@font-face { font-family: "Instrument Sans"; src: url("/fonts/InstrumentSans.woff2") format("woff2"), url("/fonts/InstrumentSans.woff") format("woff"); font-weight: 400 700; font-stretch: 75% 100%; font-style: normal; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("/fonts/InstrumentSans.woff2") format("woff2"), url("/fonts/InstrumentSans.woff") format("woff"); font-weight: 400 700; font-style: normal; font-display: swap; }
 
 :root {
   --nero: #0e0d10;
@@ -66,6 +66,8 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
 
 .attacco { font-size: 1.2rem; max-width: 34rem; }
 .nota { color: var(--grigio); font-size: 0.95rem; }
+/* Dentro il modulo (fondo chiaro) la nota è più scura: 7,2:1 invece di 2,5:1 (controllo del 3/11). */
+.modulo .nota { color: #5b5751; }
 
 /* Modulo */
 .modulo {
@@ -81,13 +83,13 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
   border: 1.5px solid var(--nero); border-radius: 3px; padding: 0.75rem 0.8rem; min-height: 3rem;
 }
 .spunta { display: flex; gap: 0.7rem; align-items: flex-start; margin: 0 0 0.9rem; font-size: 0.95rem; }
-.spunta input { width: 1.35rem; height: 1.35rem; margin: 0.12rem 0 0; flex: none; accent-color: var(--rosso); }
+.spunta input { width: 1.5rem; height: 1.5rem; margin: 0.12rem 0 0; flex: none; accent-color: var(--rosso); }
 .bottone {
   display: block; width: 100%; margin-top: 1.25rem; min-height: 3.25rem;
   font: inherit; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.02em;
-  color: #fff; background: var(--rosso); border: 0; border-radius: 3px; cursor: pointer;
+  color: var(--nero); background: var(--rosso); border: 0; border-radius: 3px; cursor: pointer;
 }
-.bottone:hover { background: #c9351f; }
+.bottone:hover { background: #f05a43; }
 .nascosto { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 /* Come funzionerà */
@@ -125,14 +127,14 @@ em, .battuta { font-family: var(--serif); font-style: italic; }
 .invita { margin: 2.5rem 0; padding: 1.5rem; border: 1px solid var(--linea); border-radius: 0.5rem; }
 .invita h2 { margin-top: 0; }
 .campo .facoltativo { color: var(--grigio); font-weight: 400; }
-a.bottone { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--avorio); text-align: center; padding: 0.6rem 1rem; }
+a.bottone { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--nero); text-align: center; padding: 0.6rem 1rem; }
 
 /* Landing nazionale (27 ottobre): bottone in testata, punti chiave, domande frequenti */
 .bottone-piccolo {
-  font-size: 0.9rem; font-weight: 600; text-decoration: none; color: #fff; background: var(--rosso);
+  font-size: 0.9rem; font-weight: 600; text-decoration: none; color: var(--nero); background: var(--rosso);
   padding: 0.55rem 0.9rem; border-radius: 3px; white-space: nowrap;
 }
-.bottone-piccolo:hover { color: #fff; background: #c9351f; }
+.bottone-piccolo:hover { color: var(--nero); background: #f05a43; }
 @media (max-width: 520px) {
   .bottone-piccolo { white-space: normal; text-align: center; max-width: 12rem; font-size: 0.82rem; line-height: 1.25; padding: 0.45rem 0.7rem; }
 }
@@ -152,8 +154,7 @@ a.bottone { display: flex; align-items: center; justify-content: center; text-de
 .faq details[open] summary::after { content: "–"; }
 .faq p { margin: 0.6rem 0 0; color: var(--avorio); opacity: 0.88; }
 .chiusura { margin-top: 2.5rem; }
-.chiusura .bottone { color: #fff; }
-.bottone-chiaro { background: transparent; border: 1.5px solid var(--avorio); }
+.bottone-chiaro { background: transparent; border: 1.5px solid var(--avorio); color: var(--avorio); }
 .bottone-chiaro:hover { background: var(--avorio); color: var(--nero) !important; }
 
 /* Video di apertura: dal 29/10 non parte da solo (preload none): si scarica solo se si preme play */
@@ -182,7 +183,7 @@ body.nuova { position: relative; overflow-x: hidden; }
 .eroe h1 { font-size: clamp(2.8rem, 12vw, 5rem); }
 .eroe .attacco strong { font-weight: 600; color: #fff; }
 .azioni { margin: 1.5rem 0 0.5rem; }
-.bottone-eroe { color: #fff !important; max-width: 22rem; }
+.bottone-eroe { max-width: 22rem; }
 .eroe .video-apertura { margin: 0; }
 
 .titolo-centrato { text-align: center; }
@@ -322,6 +323,8 @@ body.nuova { position: relative; overflow-x: hidden; }
 .modulo-eroe .rassicura-piccola { font-size: 0.74rem; line-height: 1.35; }
 .passo2 { margin: 0 0 2.5rem; }
 .passo2-titolo { margin: 0.2rem 0 0.4rem; }
+/* «Sei in lista» resta grande anche quando scende a h2 sotto il passo 2. */
+h2.in-lista { font-size: clamp(2.6rem, 11vw, 4.2rem); letter-spacing: -0.01em; margin-top: 2.5rem; }
 .passo2 .modulo { margin-top: 1rem; }
 .passo2 .facoltative { margin-top: 0.6rem; }
 

@@ -65,6 +65,13 @@ export function conPasso2(html, gettone, canale, nomeSuggerito) {
   const nascosti = `<input type="hidden" name="t" value="${gettone}">`
     + (canale ? `<input type="hidden" name="canale" value="${canale}">` : "");
   blocco = blocco.replace(NASCOSTI_PASSO2, nascosti);
+  // Con il passo 2 da fare il titolo principale della pagina è la provincia (h1); «Sei in lista» scende a h2 (controllo del 3/11).
+  blocco = blocco.replace(/<h2 id="passo2-titolo"([^>]*)>([\s\S]*?)<\/h2>/, '<h1 id="passo2-titolo"$1>$2</h1>');
+  const dopo = html.slice(fine + FINE_PASSO2.length).replace(/<h1 class="in-lista">([\s\S]*?)<\/h1>/, '<h2 class="in-lista">$1</h2>');
+  return html.slice(0, inizio) + conProvincia(blocco, nomeSuggerito) + dopo;
+}
+
+function conProvincia(blocco, nomeSuggerito) {
   // Città del link di un'amica → provincia già scelta nel menu (D84 A), solo se la provincia è sicura.
   const luogo = nomeSuggerito ? normalizzaCitta(nomeSuggerito) : null;
   const sigla = luogo ? provinciaDaZona(luogo.zona, luogo.citta) : null;
@@ -72,7 +79,7 @@ export function conPasso2(html, gettone, canale, nomeSuggerito) {
     blocco = blocco.replace('<option value="" selected disabled>', '<option value="" disabled>')
       .replace(`<option value="${sigla}">`, `<option value="${sigla}" selected>`);
   }
-  return html.slice(0, inizio) + blocco + html.slice(fine + FINE_PASSO2.length);
+  return blocco;
 }
 
 export async function grazieConCitta(request, env) {

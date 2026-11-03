@@ -23,7 +23,15 @@ export default {
     else await lavoro;
   },
   async fetch(request, env, ctx) {
-    const { pathname } = new URL(request.url);
+    const { pathname, hostname } = new URL(request.url);
+    // Un solo indirizzo (controllo del 3/11): www porta a presenteincontri.app con 301. Solo GET e HEAD, così un modulo
+    // inviato da una pagina www vecchia non perde i dati. I file statici su www li copre la regola di reindirizzamento
+    // di Cloudflare (README, «Un solo indirizzo»); qui passano le pagine servite dal Worker.
+    if (hostname === "www.presenteincontri.app" && (request.method === "GET" || request.method === "HEAD")) {
+      const u = new URL(request.url);
+      u.hostname = "presenteincontri.app";
+      return new Response(null, { status: 301, headers: { location: u.toString() } });
+    }
     // Contatore delle visite a "/" e "/grazie" (D43): solo totali, in sottofondo per non rallentare la pagina.
     const conteggioVisita = contaVisitaPagina(request, env);
     if (conteggioVisita) {

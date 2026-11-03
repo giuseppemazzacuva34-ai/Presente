@@ -15,6 +15,8 @@
     "run_worker_first": ["/", "/grazie", "/grazie.html", "/iscrizione", "/completa", "/conteggio", "/da", "/da/*", "/app", "/app/*", "/meta/webhook", "/p.gif", "/segui"]
   },
   // Dominio comprato il 27 ottobre 2026 su Cloudflare: il sito risponde anche su presenteincontri.app (e www).
+  // Spento l'indirizzo *.workers.dev (controllo del 3/11): il sito risponde solo sul dominio.
+  "workers_dev": false,
   "routes": [
     { "pattern": "presenteincontri.app", "custom_domain": true },
     { "pattern": "www.presenteincontri.app", "custom_domain": true }
