@@ -6,6 +6,7 @@ import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
+import { assegnaCodiciMancanti } from "./codici_mancanti.js";
 import { grazieConCitta } from "./grazie.js";
 import { daCanale, contaVisita } from "./canale.js";
 import { paginaDaMeta, PERCORSO_DA_META } from "./dameta.js";
@@ -15,6 +16,12 @@ import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
 
 export default {
+  // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
+  async scheduled(evento, env, ctx) {
+    const lavoro = assegnaCodiciMancanti(env);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);
+    else await lavoro;
+  },
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
     // Contatore delle visite a "/" e "/grazie" (D43): solo totali, in sottofondo per non rallentare la pagina.
