@@ -32,6 +32,14 @@ HOST = "presenteincontri.app"
 SITO = f"https://{HOST}/"
 CHIAVE = re.compile(r"^[0-9a-f]{32}$")
 VIETATI = ("/grazie", "/privacy", "/app")
+
+
+def vietato(indirizzo):
+    """True per /grazie, /privacy, /app e le loro sottopagine (non per /app-incontri-sicura)."""
+    percorso = indirizzo[len(SITO) - 1:]
+    return any(percorso == v or percorso.startswith(v + "/") or percorso.startswith(v + ".") for v in VIETATI)
+
+
 VOCE = re.compile(r"<url><loc>([^<]+)</loc><lastmod>(\d{4}-\d{2}-\d{2})</lastmod></url>")
 
 
@@ -86,7 +94,7 @@ def controlla():
         errori.append("sitemap.xml: ogni <url> deve stare su una riga con <loc> e <lastmod>")
     for indirizzo, lastmod in elenco:
         file = file_pagina(indirizzo)
-        if any(indirizzo[len(SITO) - 1:].startswith(v) for v in VIETATI):
+        if vietato(indirizzo):
             errori.append(f"{indirizzo}: non va nella sitemap")
         elif not file.is_file():
             errori.append(f"{indirizzo}: manca il file {file.relative_to(RADICE)}")
@@ -118,7 +126,7 @@ def da_avvisare(prima, dopo):
     else:
         prima_d = dict(voci(vecchia))
         scelti = [i for i, d in attuali if prima_d.get(i) != d]
-    return k, [i for i in scelti if i.startswith(SITO) and not any(i[len(SITO) - 1:].startswith(v) for v in VIETATI)]
+    return k, [i for i in scelti if i.startswith(SITO) and not vietato(i)]
 
 
 def online(url, atteso, tentativi=20, pausa=15):

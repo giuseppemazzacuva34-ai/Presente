@@ -35,7 +35,10 @@ begin
   if not exists (select 1 from public.profili p where p.id = new.utente_id and p.data_nascita is not null) then
     raise exception 'Nessuna stanza senza data di nascita.' using errcode = 'check_violation';
   end if;
-  select * into stanza from public.stanze s where s.id = new.stanza_id;
+  -- Suggerimento del CISO (2/11): due inserimenti insieme non devono superare 12 né «una stanza alla volta».
+  -- Si blocca la riga della stanza e, per la stessa persona, un lucchetto che dura fino alla fine della transazione.
+  select * into stanza from public.stanze s where s.id = new.stanza_id for update;
+  perform pg_advisory_xact_lock(hashtextextended(new.utente_id::text, 0));
   if (select count(*) from public.membri_stanza m where m.stanza_id = new.stanza_id) >= 12 then
     raise exception 'La stanza è piena (12 persone).' using errcode = 'check_violation';
   end if;
@@ -60,6 +63,7 @@ create policy "stanze: solo quelle di cui fai parte" on public.stanze for select
   using (exists (select 1 from public.membri_stanza m where m.stanza_id = stanze.id and m.utente_id = auth.uid()));
 
 -- Compagni della stanza aperta adesso: solo nome, età (anni compiuti) e città. Chi chiede deve essere nella stanza.
+-- utente_id resta: serve al telefono per chiamare la persona scelta (#4) e non rivela nulla del profilo.
 create function public.compagni_di_stanza()
   returns table (utente_id uuid, nome text, eta integer, citta text)
   language sql stable security definer set search_path = '' as $$

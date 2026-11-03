@@ -7,9 +7,14 @@ import { numeriPubblici, htmlClassifica, SEGNAPOSTO_CLASSIFICA, cittaConStanza }
 import { CODICE_PERSONALE, linkPersonale } from "./invito.js";
 import { GETTONE } from "./iscrizione.js";
 import { canaleValido } from "./canale.js";
+import { provinciaDaZona } from "./province.js";
 
 export const SOGLIA_STANZA = 36;
 export const SEGNAPOSTO_MANCANO = "<!--mancano-->";
+
+// Esito «già in lista» (2/11, CRO): con ?gia=1 la riga sotto il titolo diventa questa. Nessun codice personale.
+export const RIGA_GRAZIE = '<p class="attacco">Grazie. Ti scriviamo quando si accende la tua città.</p>';
+export const RIGA_GIA_IN_LISTA = '<p class="attacco">Eri già in lista: ti scriviamo quando apre la tua città.</p>';
 
 // D76 A (1/11): per le città scritte a mano (fuori dalle 14 con stanza prevista) nessun numero e nessun nome.
 export const FRASE_CITTA_LIBERA = `<p class="mancano">La tua città apre a ${SOGLIA_STANZA} iscritti: invita un'amica o un amico.</p>`;
@@ -46,11 +51,10 @@ export function htmlInvito(link, nome) {
 
 // Passo 2 del modulo (D79 A): il blocco fra <!--passo2--> e <!--/passo2--> di grazie.html resta SOLO con un gettone
 // della forma giusta (?t=, 32 caratteri esadecimali); il Worker ci scrive il gettone e il canale nei campi nascosti
-// e il suggerimento della città (link di un'amica). Senza gettone il blocco sparisce. Se il gettone è scaduto lo dice /completa.
+// e preseleziona la provincia della città suggerita (link di un'amica). Senza gettone il blocco sparisce. Se il gettone è scaduto lo dice /completa.
 export const INIZIO_PASSO2 = "<!--passo2-->";
 export const FINE_PASSO2 = "<!--/passo2-->";
 const NASCOSTI_PASSO2 = "<!--nascosti-passo2-->";
-const CAMPO_CITTA_PASSO2 = '<input id="zona" name="zona"';
 
 export function conPasso2(html, gettone, canale, nomeSuggerito) {
   const inizio = html.indexOf(INIZIO_PASSO2);
@@ -61,7 +65,13 @@ export function conPasso2(html, gettone, canale, nomeSuggerito) {
   const nascosti = `<input type="hidden" name="t" value="${gettone}">`
     + (canale ? `<input type="hidden" name="canale" value="${canale}">` : "");
   blocco = blocco.replace(NASCOSTI_PASSO2, nascosti);
-  if (nomeSuggerito) blocco = blocco.replace(CAMPO_CITTA_PASSO2, `${CAMPO_CITTA_PASSO2} value="${nomeSuggerito.replace(/"/g, "")}"`);
+  // Città del link di un'amica → provincia già scelta nel menu (D84 A), solo se la provincia è sicura.
+  const luogo = nomeSuggerito ? normalizzaCitta(nomeSuggerito) : null;
+  const sigla = luogo ? provinciaDaZona(luogo.zona, luogo.citta) : null;
+  if (sigla) {
+    blocco = blocco.replace('<option value="" selected disabled>', '<option value="" disabled>')
+      .replace(`<option value="${sigla}">`, `<option value="${sigla}" selected>`);
+  }
   return html.slice(0, inizio) + blocco + html.slice(fine + FINE_PASSO2.length);
 }
 
@@ -85,6 +95,7 @@ export async function grazieConCitta(request, env) {
     nome = "";
     chiave = "";
   }
+  if (parametri.get("gia") === "1") html = html.replace(RIGA_GRAZIE, RIGA_GIA_IN_LISTA);
   const serveClassifica = html.includes(SEGNAPOSTO_CLASSIFICA);
   if (!nome && !personale && !serveClassifica && html === originale) return new Response(html, risposta);
   // Numeri freschi quando c'è la città (conta anche chi si è appena iscritto); altrimenti bastano quelli in memoria.

@@ -6,8 +6,8 @@ import { tipoRichiesta } from "./automatiche.js";
 
 const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie", "/da/meta": "da-meta", "/da/meta/": "da-meta" };
 
-// Sorgenti utm ammesse: i canali dei link /da più google, pinterest e reddit (Growth, 1/11); tutto il resto diventa "altro".
-const SORGENTI = new Set([...CANALI, "google", "pinterest", "reddit"]);
+// Sorgenti utm ammesse: i canali dei link /da più google, pinterest e reddit (Growth, 1/11) e threads (2/11); tutto il resto diventa "altro".
+const SORGENTI = new Set([...CANALI, "google", "pinterest", "reddit", "threads"]);
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS visite_pagina (
   pagina TEXT NOT NULL,
@@ -92,7 +92,9 @@ export async function segui(request, env, ctx) {
   }
   return new Response(null, { status: 302, headers: { location: PROFILO_INSTAGRAM, "cache-control": "no-store, max-age=0", "x-robots-tag": "noindex" } });
 }
-const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona", "da-meta": "da-meta-persona" };
+// «inizio» (2/11): chi tocca il primo campo del modulo della home (regola .modulo-eroe:focus-within in stile.css).
+// L'immagine la chiede il foglio di stile, quindi il Referer è stile.css: la riga resta senza sorgente né campagna.
+const PIXEL_PAGINE = { home: "home-persona", grazie: "grazie-persona", "da-meta": "da-meta-persona", inizio: "inizio" };
 
 // VISITE DELLE GUIDE E DELLE PAGINE CITTÀ (esperimento E10 di Growth, 2/11): le pagine /guide/* e /incontri-al-buio/*
 // hanno la stessa immagine 1×1 con ?pg=<percorso>. Conta solo un percorso di questo elenco chiuso (un test controlla che
@@ -102,6 +104,8 @@ const CITTA_PAGINE = ["bari", "bergamo", "bologna", "brescia", "cagliari", "cata
 export const PAGINE_CONTATE = new Set([
   "/guide", "/guide/perche-le-app-di-incontri-deludono", "/guide/primo-appuntamento-al-buio",
   "/incontri-al-buio", ...CITTA_PAGINE.map((c) => `/incontri-al-buio/${c}`),
+  // SEO v3 (2/11): pagine utili indicizzabili.
+  "/app-incontri-sicura", "/primo-appuntamento", "/ghosting",
 ]);
 const PREFISSO_PAGINA = "pagina:";
 function rigaDelPixel(pg) {
@@ -145,12 +149,12 @@ export async function pixel(request, env, ctx) {
 }
 
 const CHIAVI_CONTEGGIO = { home: "home", grazie: "grazie", precaricate: "precaricate", "home-persona": "home_persona", "grazie-persona": "grazie_persona", "grazie-ig": "grazie_ig",
-  "da-meta": "da_meta", "da-meta-persona": "da_meta_persona", segui_ig: "segui_ig" };
-const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, per_pagina: {} });
+  "da-meta": "da_meta", "da-meta-persona": "da_meta_persona", segui_ig: "segui_ig", inizio: "inizio" };
+const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, inizio: 0, per_pagina: {} });
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, inizio: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(

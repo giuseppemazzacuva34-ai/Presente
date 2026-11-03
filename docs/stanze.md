@@ -1,6 +1,6 @@
 # Stanze della settimana (issue #3) · calcolo
 
-Versione 0.1 · 2 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
+Versione 0.2 · 2 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
 
 ## In parole semplici
 
@@ -32,6 +32,24 @@ lavoro del lunedì con il ruolo di servizio. Il database rifiuta da solo chi non
 CISO), la tredicesima persona e chi è già in un'altra stanza nella stessa settimana. Dei compagni si vedono solo nome,
 età e città, con la funzione `compagni_di_stanza()`; mai data di nascita, filtri, questionario, affinità o foto.
 Provato in `supabase/test/regole_per_riga.sql`.
+
+## Terzo passo: dalle righe del database alle stanze (`api/settimana.js`)
+
+Sempre solo calcoli, provati in `test/settimana.test.mjs` con profili inventati. Riceve le righe già lette e
+restituisce cosa scrivere in `stanze` e `membri_stanza`, più chi resta fuori e perché:
+
+- entra solo chi ha **confermato entro domenica 23:59** (ora di Roma) e ha il **profilo completo** (passo 11):
+  data di nascita (maggiorenne il giorno di apertura), nome, città, «mi presento come», filtri con il consenso su «cerco»,
+  questionario completo;
+- vale la versione del questionario **in vigore all'apertura**: una modifica della settimana conta dal lunedì dopo;
+- le città si confrontano senza maiuscole, accenti e spazi («Forlì» = «forli»);
+- mai insieme chi si è **bloccato** o chi è stato nella **stessa stanza nelle ultime 4 settimane**;
+- crediti: `gratis` alla prima stanza, poi 9 crediti, solo per chi entra davvero in una stanza;
+- motivi di attesa: `non_iscritto`, `profilo_incompleto`, `senza_data_nascita`, `filtri_incompleti`,
+  `questionario_incompleto`, `citta_non_aperta` (con «mancano N»), `pochi_compatibili`.
+
+Prossimo passo: tabella delle conferme d'ingresso e lavoro programmato che legge Supabase, chiama `preparaSettimana`
+e scrive le stanze nelle tabelle del secondo passo.
 
 ## Punti aperti
 

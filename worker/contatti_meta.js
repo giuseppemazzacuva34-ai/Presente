@@ -3,6 +3,7 @@
 // così le due strade salvano le stesse cose, nello stesso modo.
 import { EMAIL, VERSIONE_INFORMATIVA, RISPOSTE } from "./iscrizione.js";
 import { pulisciCodice, CODICE_PERSONALE } from "./invito.js";
+import { siglaDaTesto, daSigla } from "./province.js";
 
 export const SORGENTE = "meta_modulo";
 
@@ -68,6 +69,13 @@ export function contatto(r, colonne, { maggiorenneNelModulo = false, adesso = ne
   if (presento) iscrizione.presento = presento;
   const codice = colonne.codice ? codiceDa(r[colonne.codice], codiciAmmessi) : null;
   if (codice) iscrizione.invito = codice;
+  // Modulo con la provincia (D84 A): la provincia decide anche zona e città, come nel passo 2 del sito.
+  const sigla = colonne.provincia ? siglaDaTesto(r[colonne.provincia]) : null;
+  if (sigla) {
+    const p = daSigla(sigla);
+    Object.assign(iscrizione, { zona: p.zona, provincia: p.provincia, regione: p.regione });
+    if (p.citta) iscrizione.citta = p.citta;
+  }
   return { iscrizione };
 }
 
@@ -75,6 +83,7 @@ export function trovaColonne(intestazioni) {
   return {
     email: intestazioni.find((h) => semplice(h) === "email") || colonna(intestazioni, ["email", "e mail"]),
     citta: colonna(intestazioni, ["citta", "city", "zona"]),
+    provincia: colonna(intestazioni, ["provincia", "province"]),
     eta: colonna(intestazioni, ["18", "maggiorenn", "maggiore eta"]),
     presento: colonna(intestazioni, ["presento", "presenti", "genere", "gender"]),
     codice: colonna(intestazioni, ["codice", "invito", "code"]),

@@ -22,7 +22,7 @@
 
 import { contatto, trovaColonne } from "./contatti_meta.js";
 import { codiciConfigurati } from "./invito.js";
-import { contaEsito } from "./iscrizione.js";
+import { contaEsito, mancaColonna, aggiungiColonne } from "./iscrizione.js";
 
 export const PERCORSO_META = "/meta/webhook";
 
@@ -127,7 +127,7 @@ export function righeDaContatto(dati) {
   return riga;
 }
 
-const INSERISCI_META = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, presento) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
+const INSERISCI_META = "INSERT INTO iscrizioni (email, zona, invito, consenso_il, versione_informativa, sorgente, presento, citta, provincia, regione) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING";
 
 // Legge un contatto da Meta e lo salva. Restituisce l'esito: meta_nuova, meta_gia_in_lista, meta_scartata, meta_errore.
 export async function importaContatto(id, env, f = fetch) {
@@ -148,9 +148,17 @@ export async function importaContatto(id, env, f = fetch) {
   const esito = contatto(riga, colonne, { maggiorenneNelModulo: env.META_MAGGIORENNE_NEL_MODULO === "si", codiciAmmessi: codiciConfigurati(env) });
   if (esito.scarto) return "meta_scartata";
   const i = esito.iscrizione;
+  const valori = [i.email, i.zona, i.invito || null, i.consenso_il, i.versione_informativa, i.sorgente, i.presento || null,
+    i.citta || null, i.provincia || null, i.regione || null];
   try {
-    const r = await env.DB.prepare(INSERISCI_META)
-      .bind(i.email, i.zona, i.invito || null, i.consenso_il, i.versione_informativa, i.sorgente, i.presento || null).run();
+    let r;
+    try {
+      r = await env.DB.prepare(INSERISCI_META).bind(...valori).run();
+    } catch (errore) {
+      if (!mancaColonna(errore)) throw errore;
+      await aggiungiColonne(env); // colonne provincia e regione non ancora create
+      r = await env.DB.prepare(INSERISCI_META).bind(...valori).run();
+    }
     return r && r.meta && r.meta.changes > 0 ? "meta_nuova" : "meta_gia_in_lista";
   } catch (errore) {
     console.error("meta: contatto non salvato", errore && errore.name);
@@ -204,7 +212,9 @@ async function gestisciNotifica(request, env, ctx, f) {
   } catch {
     return testoSemplice("ok", 200);
   }
-  const importAcceso = env.IMPORT_META === "si" && env.META_PAGE_TOKEN && env.DB;
+  // Contenimento d'emergenza (procedura «Se succede qualcosa»): con ISCRIZIONI_APERTE = "no" non entra nessuno,
+  // neanche dal modulo Meta. Revisione CISO del 2/11.
+  const importAcceso = env.IMPORT_META === "si" && env.ISCRIZIONI_APERTE === "si" && env.META_PAGE_TOKEN && env.DB;
   const contatti = importAcceso ? contattiModulo(dati, env) : [];
   if (contatti.length) {
     const lavoro = (async () => {

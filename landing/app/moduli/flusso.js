@@ -283,7 +283,7 @@ function emailVera() {
 const SCHERMATE = {
   benvenuto() {
     return schermata("Ci si conosce prima con la voce.",
-      "Niente foto da scorrere, niente swipe. Una stanza di 12 persone compatibili, chiamate solo voce da 15 minuti, e domenica sera le porte si aprono solo dove la chiave è reciproca.",
+      "Le tue foto le vede solo chi scegli tu, e niente swipe. Una stanza di 12 persone compatibili, chiamate solo voce da 15 minuti, e domenica sera le porte si aprono solo dove la chiave è reciproca.",
       [h("p", { classe: "nota" }, h("a", { href: "/privacy" }, "Informativa privacy"), " · Regole della community (in arrivo)")],
       [avanti("Entra", true, () => vai(1))]);
   },

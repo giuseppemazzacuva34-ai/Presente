@@ -35,7 +35,7 @@ export async function numeriPubblici(env, adesso = Date.now(), { fresco = false 
 
 // Frase dei posti: testo esatto del CFO (31/10), regalo deciso con D42. Si accende con MOSTRA_POSTI = "si".
 // Dal 1/11 (D79 A, prova sociale) davanti c'è «N persone già in lista.», con N = iscritti totali (stesso numero di sempre).
-export const NOTA_POSTI = `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è gratis per tutti. Crediti non convertibili in denaro.</p>`;
+export const NOTA_POSTI = `<p class="posti-nota">Il regalo si aggiunge al primo acquisto di crediti entro 30 giorni dall'apertura. La prima stanza è in regalo per tutti. Crediti non convertibili in denaro.</p>`;
 
 export function htmlPosti(numeri, env, { conNota = true } = {}) {
   if (env.MOSTRA_POSTI !== "si" || !numeri) return "";

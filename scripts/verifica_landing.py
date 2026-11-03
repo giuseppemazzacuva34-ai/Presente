@@ -4,7 +4,7 @@
 Verifica che:
 - ogni pagina HTML sia ben formata, in italiano e adatta al telefono;
 - il modulo della home (passo 1, D79 A) raccolga solo email, invito facoltativo e la casella unica «18 anni e consenso» (D80 A)
-  (più il campo trappola anti-spam); il passo 2 su grazie.html solo città e le tre domande facoltative D33
+  (più il campo trappola anti-spam); il passo 2 su grazie.html solo la provincia (menu, D84 A) e le tre domande facoltative D33
   con la casella a parte per «chi cerchi»;
 - nessuna risorsa venga caricata da siti esterni (privacy e velocità);
 - tutti i link interni portino a un file esistente;
@@ -31,7 +31,7 @@ FACOLTATIVI = {"invito", "presento", "cerchi", "consenso-cerchi", "fascia"}
 CANALI = {"instagram", "tiktok", "facebook", "whatsapp", "meta", "creator", "amico"}
 CAMPI_OBBLIGATORI = {"email", "consenso"}  # D80 A: una sola casella per 18 anni e consenso
 # Passo 2 (D79 A): grazie.html, modulo verso /completa. Il gettone «t» e il canale li aggiunge il Worker, nascosti.
-CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia"}
+CAMPI_PASSO2 = {"zona", "presento", "cerchi", "consenso-cerchi", "fascia", "invito"}  # invito: dal 2/11 nel passo 2 (CRO)
 PESO_MASSIMO = 60 * 1024  # byte, HTML + CSS della pagina principale
 VUOTI = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr",
          "path", "rect", "circle"}
@@ -175,7 +175,7 @@ for nome in PAGINE:
         if set(p.campi) - CAMPI_PASSO2:
             errori.append(f"grazie.html: il passo 2 raccoglie dati non previsti: {sorted(set(p.campi) - CAMPI_PASSO2)}")
         if "zona" not in p.campi or "required" not in p.campi["zona"]:
-            errori.append("grazie.html: nel passo 2 la città deve essere obbligatoria")
+            errori.append("grazie.html: nel passo 2 la provincia deve essere obbligatoria")
         for campo in FACOLTATIVI & set(p.campi):
             if "required" in p.campi[campo] or "checked" in p.campi[campo]:
                 errori.append(f"grazie.html: il campo facoltativo {campo} non può essere obbligatorio né già spuntato")

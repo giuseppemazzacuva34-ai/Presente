@@ -5,11 +5,12 @@ import { pagina } from "./pagina.js";
 import { canaleValido, contaIscrizione } from "./canale.js";
 import { ZONE, normalizzaCitta } from "./citta.js";
 import { generaCodice, codiciConfigurati } from "./invito.js";
+import { daSigla, provinciaDaZona, regioneDi } from "./province.js";
 
 // Il campo si chiama ancora "zona" ma dal 26 ottobre contiene la città; dal 31/10 (D64) è scritta a mano
 // e il Worker la riporta a una zona (worker/citta.js). Per le «altre città italiane» la città semplificata va in «citta».
 export { ZONE };
-export const VERSIONE_INFORMATIVA = "1.3-2026-11-01";
+export const VERSIONE_INFORMATIVA = "1.4-2026-11-03";
 export const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS iscrizioni (
@@ -42,6 +43,9 @@ const AGGIUNGI_COLONNE = [
   // Gettone del passo 2 (D79 A, dal 1/11): impronta SHA-256 di un valore casuale monouso, scade in 24 ore.
   "ALTER TABLE iscrizioni ADD COLUMN gettone TEXT",
   "ALTER TABLE iscrizioni ADD COLUMN gettone_scade TEXT",
+  // Provincia (D84 A, dal passo 2 con il menu delle province): sigla (es. «RM», «EE» = estero) e regione ricavata dalla tabella fissa.
+  "ALTER TABLE iscrizioni ADD COLUMN provincia TEXT",
+  "ALTER TABLE iscrizioni ADD COLUMN regione TEXT",
 ];
 // L'indice impedisce due codici uguali: in caso di collisione il Worker ne genera un altro (al massimo 5 tentativi).
 const INDICE_CODICE = "CREATE UNIQUE INDEX IF NOT EXISTS iscrizioni_codice ON iscrizioni(codice)";
@@ -71,12 +75,12 @@ function codiceDoppio(errore) {
   return /UNIQUE constraint failed: iscrizioni\.codice/i.test(String(errore && errore.message));
 }
 
-function mancaColonna(errore) {
+export function mancaColonna(errore) {
   return /no column named|has no column|no such column/i.test(String(errore && errore.message));
 }
 
 // Aggiunge le colonne che mancano nel database vero; quelle già presenti danno «duplicate column» e si saltano.
-async function aggiungiColonne(env) {
+export async function aggiungiColonne(env) {
   for (const sql of AGGIUNGI_COLONNE) {
     try {
       await env.DB.prepare(sql).run();
@@ -210,9 +214,22 @@ export async function perRisposte(env) {
   return risultato;
 }
 
+function testoInvito(valore) {
+  return String(valore || "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+const INVITO_PASSO2 = "UPDATE iscrizioni SET invito = ? WHERE codice = ? AND invito IS NULL";
+
+// Esito «già in lista» (2/11, CRO): /grazie?gia=1 mostra «Eri già in lista…», senza codice personale né passo 2.
+export const GIA_IN_LISTA = "gia";
+
 export async function iscrizione(request, env) {
   const risposta = await gestisci(request, env);
   await contaEsito(env, risposta.esito);
+  if (risposta.esito === "gia_in_lista") {
+    const dove = new URL(risposta.risposta.headers.get("location") || "/grazie", request.url);
+    dove.searchParams.set(GIA_IN_LISTA, "1");
+    return Response.redirect(dove.toString(), 303);
+  }
   return risposta.risposta;
 }
 
@@ -241,7 +258,7 @@ async function gestisci(request, env) {
   // Passo 1 del modulo nuovo: nessuna città → «non-indicata» e gettone per il passo 2.
   const duePassi = zonaScritta === "";
   const luogo = duePassi ? { zona: ZONA_NON_INDICATA, citta: null } : normalizzaCitta(zonaScritta.slice(0, 80));
-  const invito = String(modulo.get("invito") || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const invito = testoInvito(modulo.get("invito"));
   const valido = email.length <= 254 && EMAIL.test(email) && luogo !== null
     // D80 A (informativa 1.3): una sola casella, «Ho almeno 18 anni e voglio entrare…», vale come conferma dei 18 anni e consenso.
     // Le pagine vecchie in cache mandano ancora «maggiorenne» a parte: se c'è, deve essere «si».
@@ -308,10 +325,21 @@ async function gestisci(request, env) {
   return r(nuova ? "nuova" : "gia_in_lista", grazie(request, canale, luogo.citta || luogo.zona, codice));
 }
 
-// POST /completa (passo 2): città obbligatoria, domande facoltative come nel modulo vecchio.
+// Valore del passo 2: dal 2/11 (D84 A) la sigla della provincia dal menu; le pagine vecchie in cache mandano ancora la città
+// scritta, e allora la provincia si ricava solo quando è sicura (venezia-padova e brescia-bergamo restano senza).
+export function luogoPasso2(valore) {
+  const p = daSigla(valore);
+  if (p) return p;
+  const l = normalizzaCitta(String(valore || "").slice(0, 80));
+  if (!l) return null;
+  const provincia = provinciaDaZona(l.zona, l.citta);
+  return { ...l, provincia, regione: provincia ? regioneDi(provincia) : null };
+}
+
+// POST /completa (passo 2): provincia obbligatoria, domande facoltative come nel modulo vecchio.
 // Aggiorna SOLO la riga con l'impronta di quel gettone, non scaduto e con zona «non-indicata»; poi il gettone sparisce.
 // Le risposte facoltative già date non vengono sovrascritte (COALESCE). Stessi controlli di /iscrizione.
-const COMPLETA = `UPDATE iscrizioni SET zona = ?, citta = ?,
+const COMPLETA = `UPDATE iscrizioni SET zona = ?, citta = ?, provincia = ?, regione = ?,
   presento = COALESCE(presento, ?), fascia = COALESCE(fascia, ?),
   consenso_cerchi_il = CASE WHEN cerchi IS NULL AND ? IS NOT NULL THEN ? ELSE consenso_cerchi_il END,
   cerchi = COALESCE(cerchi, ?), gettone = NULL, gettone_scade = NULL
@@ -339,17 +367,25 @@ async function gestisciCompleta(request, env) {
     return r("modulo_rotto", pagina("Qualcosa non torna.", "Il modulo non è arrivato completo. Riprova.", 400));
   }
   const gettone = String(modulo.get("t") || "");
-  const luogo = normalizzaCitta(String(modulo.get("zona") || "").slice(0, 80));
+  const luogo = luogoPasso2(modulo.get("zona"));
   if (!GETTONE.test(gettone) || !luogo) {
-    return r("passo2_dati_mancanti", pagina("Manca qualcosa.", "Scrivi la tua città e riprova.", 400));
+    return r("passo2_dati_mancanti", pagina("Manca qualcosa.", "Scegli la tua provincia e riprova.", 400));
   }
   const canale = canaleValido(modulo.get("canale"));
   const { presento, cerchi, fascia } = risposteFacoltative(modulo);
   const adesso = new Date().toISOString();
   let codice = null;
   try {
-    const esito = await env.DB.prepare(COMPLETA).bind(luogo.zona, luogo.citta, presento, fascia, cerchi, cerchi ? adesso : null,
-      cerchi, await impronta(gettone), adesso).all();
+    const valori = [luogo.zona, luogo.citta, luogo.provincia, luogo.regione, presento, fascia, cerchi, cerchi ? adesso : null,
+      cerchi, await impronta(gettone), adesso];
+    let esito;
+    try {
+      esito = await env.DB.prepare(COMPLETA).bind(...valori).all();
+    } catch (errore) {
+      if (!mancaColonna(errore)) throw errore;
+      await aggiungiColonne(env); // colonne provincia e regione al primo passo 2 dopo il rilascio
+      esito = await env.DB.prepare(COMPLETA).bind(...valori).all();
+    }
     const riga = (esito && esito.results || [])[0];
     if (!riga) {
       return r("passo2_scaduto", pagina("Sei già in lista.", "Questo link non vale più (scade dopo 24 ore e si usa una volta sola). La tua iscrizione è salvata: ti scriviamo quando apre Presente.", 410));
@@ -358,6 +394,15 @@ async function gestisciCompleta(request, env) {
   } catch (errore) {
     console.error("completa: errore del database", errore && errore.name);
     return r("errore_database", pagina("Qualcosa non è andato.", "Non siamo riusciti a salvare la città. Riprova tra qualche minuto.", 500));
+  }
+  // «Chi ti ha invitato?» (dal 2/11 nel passo 2): si salva solo se la riga non ha già un invito (es. il codice di un link personale).
+  const invito = testoInvito(modulo.get("invito"));
+  if (invito && codice) {
+    try {
+      await env.DB.prepare(INVITO_PASSO2).bind(invito, codice).run();
+    } catch (errore) {
+      console.error("completa: invito non salvato", errore && errore.name);
+    }
   }
   return r("passo2_completato", grazie(request, canale, luogo.citta || luogo.zona, codice));
 }
