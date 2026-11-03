@@ -135,3 +135,33 @@ test("suggerimenti: il sì reciproco fa salire, 3 chiamate escludono, il diario 
   const suoNo = altri.map((a) => (a.id === "b" ? { ...a, richiamerei: { suo: false } } : a));
   assert.ok(suggerimenti(suoNo, "2026-11-10").includes("b"), "il no dell'altro non si indovina");
 });
+
+// Risposta del CPO del 3/11: ognuno vede, chiama, dà la chiave e riceve suggerimenti solo per chi è reciprocamente compatibile.
+test("nella stanza vedi solo le persone per te (CPO 3/11)", async () => {
+  const { perTe } = await import("../api/stanze.js");
+  const base = { paese: "IT", citta: "milano", eta_min: 25, eta_max: 45, raggio: "italia" };
+  const anna = { ...base, id: "anna", eta: 30, presento: "donna", cerco: "uomini" };
+  const bice = { ...base, id: "bice", eta: 31, presento: "donna", cerco: "uomini" };
+  const carlo = { ...base, id: "carlo", eta: 33, presento: "uomo", cerco: "donne" };
+  const dario = { ...base, id: "dario", eta: 35, presento: "uomo", cerco: "donne", eta_min: 32 }; // Anna e Bice fuori dalla sua età
+  const stanza = [anna, bice, carlo, dario];
+  assert.deepEqual(perTe(anna, stanza), ["carlo"], "Anna non vede Bice (due donne che cercano uomini) né Dario (lei fuori dai suoi filtri)");
+  assert.deepEqual(perTe(bice, stanza), ["carlo"]);
+  assert.deepEqual(perTe(carlo, stanza), ["anna", "bice"], "Carlo non vede Dario");
+  assert.deepEqual(perTe(dario, stanza), [], "Dario non vede nessuno: compatibilità sempre nei due versi");
+  assert.deepEqual(perTe(anna, stanza, new Set([coppia("anna", "carlo")])), [], "chi è escluso (bloccato) sparisce");
+});
+
+test("nelle stanze composte ognuno ha almeno 4 persone per sé e vede solo quelle", async () => {
+  const { perTe } = await import("../api/stanze.js");
+  const persone = profiliDiProva(100, 11);
+  const perId = new Map(persone.map((p) => [p.id, p]));
+  for (const ids of componi(persone).stanze) {
+    const stanza = ids.map((id) => perId.get(id));
+    for (const io of stanza) {
+      const visti = perTe(io, stanza);
+      assert.ok(visti.length >= STANZA.compatibiliMinimi, `${io.id} vede almeno 4 persone`);
+      for (const id of visti) assert.ok(compatibili(io, perId.get(id)), `${io.id} vede solo compatibili`);
+    }
+  }
+});
