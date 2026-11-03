@@ -39,3 +39,15 @@ test("/conteggio: totali per regione e per provincia, sigle sconosciute ignorate
   const rotto = { prepare: () => ({ all: async () => { throw new Error("no such column: provincia"); } }) };
   assert.deepEqual(await perProvincia({ DB: rotto }), { per_regione: {}, per_provincia: {} });
 });
+
+// #2 v1.3: la tabella del database (migrazione della provincia) ha gli stessi valori del sito.
+test("database: la tabella province coincide con worker/province.js", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { PROVINCE: elenco } = await import("../worker/province.js");
+  const sql = readFileSync(new URL("../supabase/migrations/20261103120000_provincia.sql", import.meta.url), "utf8");
+  const righe = [...sql.matchAll(/\('([A-Z]{2})', '((?:[^']|'')+)', (?:'((?:[^']|'')+)'|null)\)/g)]
+    .map((m) => [m[1], m[2].replace(/''/g, "'"), m[3] ? m[3].replace(/''/g, "'") : null]);
+  assert.deepEqual(righe.filter((r) => r[0] !== "EE"), elenco);
+  assert.deepEqual(righe.find((r) => r[0] === "EE"), ["EE", "Vivo all'estero", null]);
+  assert.equal(righe.length, 108);
+});
