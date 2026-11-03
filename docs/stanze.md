@@ -24,6 +24,15 @@ Il lavoro del lunedì che legge Supabase e scrive le stanze arriva nei prossimi 
 
 Con 100 profili di prova si formano 6–7 stanze e 23–31 persone restano in attesa (gruppi piccoli e filtri stretti).
 
+## Tabelle (secondo passo, 2 novembre sera)
+
+Migrazione `supabase/migrations/20261102220000_stanze.sql`: tabelle `stanze` (Stanza Italia o città, nome facoltativo,
+apertura e chiusura) e `membri_stanza` (chi c'è, prima stanza gratis sì/no). Il telefono legge soltanto: le scrive il
+lavoro del lunedì con il ruolo di servizio. Il database rifiuta da solo chi non ha la data di nascita (requisito 2 del
+CISO), la tredicesima persona e chi è già in un'altra stanza nella stessa settimana. Dei compagni si vedono solo nome,
+età e città, con la funzione `compagni_di_stanza()`; mai data di nascita, filtri, questionario, affinità o foto.
+Provato in `supabase/test/regole_per_riga.sql`.
+
 ## Terzo passo: dalle righe del database alle stanze (`api/settimana.js`)
 
 Sempre solo calcoli, provati in `test/settimana.test.mjs` con profili inventati. Riceve le righe già lette e
@@ -40,7 +49,7 @@ restituisce cosa scrivere in `stanze` e `membri_stanza`, più chi resta fuori e 
   `questionario_incompleto`, `citta_non_aperta` (con «mancano N»), `pochi_compatibili`.
 
 Prossimo passo: tabella delle conferme d'ingresso e lavoro programmato che legge Supabase, chiama `preparaSettimana`
-e scrive le stanze (dopo l'unione delle tabelle, PR #116).
+e scrive le stanze nelle tabelle del secondo passo.
 
 ## Punti aperti
 

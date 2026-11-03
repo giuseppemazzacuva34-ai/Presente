@@ -183,3 +183,43 @@ update public.profili set regole_accettate_il = null where id = 'bbbbbbbb-bbbb-4
 select pg_temp.ok((select regole_accettate_il from public.profili where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') is not null,
   'regole: una volta accettate la data non si cancella');
 rollback;
+
+-- Issue #3 (2/11): stanze. Il telefono non crea stanze; ognuno vede solo la sua; dei compagni solo nome, età e città.
+begin;
+insert into auth.users (id, email) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a@example.com') on conflict do nothing;
+insert into public.profili (id, nome, data_nascita, citta) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Niccolò', '1995-03-02', 'Milano') on conflict do nothing;
+insert into auth.users (id, email) values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'c@example.com'),
+  ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'd@example.com');
+insert into public.profili (id, nome, data_nascita, citta) values
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Bea', '1993-06-10', 'Roma'),
+  ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'Carlo', '1990-01-15', 'Torino');
+insert into public.profili (id, nome) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'Dora');
+insert into public.stanze (id, tipo, apre_il, chiude_il) values
+  ('11111111-1111-4111-8111-111111111111', 'italia', now() - interval '1 day', now() + interval '5 days'),
+  ('22222222-2222-4222-8222-222222222222', 'italia', now() - interval '1 day', now() + interval '5 days');
+insert into public.membri_stanza (stanza_id, utente_id, gratis) values
+  ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true),
+  ('11111111-1111-4111-8111-111111111111', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', true),
+  ('22222222-2222-4222-8222-222222222222', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', true);
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.membri_stanza (stanza_id, utente_id) values ('22222222-2222-4222-8222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd')$$),
+  'stanze: nessuno entra senza data di nascita (requisito 2 del CISO)');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.membri_stanza (stanza_id, utente_id) values ('22222222-2222-4222-8222-222222222222', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')$$),
+  'stanze: una sola stanza alla volta');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.stanze (tipo, apre_il, chiude_il) values ('citta', now(), now() + interval '6 days')$$),
+  'stanze: una stanza di città ha sempre la città');
+select pg_temp.come('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+select pg_temp.ok((select count(*) from public.stanze) = 1 and (select count(*) from public.membri_stanza) = 1,
+  'stanze: A vede solo la sua stanza e la sua riga');
+select pg_temp.ok((select count(*) from public.compagni_di_stanza()) = 1
+  and (select nome from public.compagni_di_stanza()) = 'Bea' and (select citta from public.compagni_di_stanza()) = 'Roma'
+  and (select eta from public.compagni_di_stanza()) between 30 and 40,
+  'stanze: A vede di Bea solo nome, età e città; Carlo (altra stanza) no');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.stanze (tipo, apre_il, chiude_il) values ('italia', now(), now() + interval '6 days')$$),
+  'stanze: il telefono non crea stanze');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.membri_stanza (stanza_id, utente_id) values ('22222222-2222-4222-8222-222222222222', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')$$),
+  'stanze: il telefono non si mette in una stanza da solo');
+select pg_temp.ok(pg_temp.rifiutato($$delete from public.membri_stanza$$), 'stanze: il telefono non toglie nessuno');
+select pg_temp.come('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+select pg_temp.ok((select count(*) from public.compagni_di_stanza()) = 0 and (select count(*) from public.stanze) = 0,
+  'stanze: chi non è in una stanza non vede nessuno');
+rollback;
