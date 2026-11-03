@@ -77,6 +77,10 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 | `api/` (dalla #4) | Worker `presente-api`; riceve come secret Cloudflare `SUPABASE_SERVICE_ROLE_KEY`, `REALTIME_APP_ID`, `REALTIME_APP_SECRET` |
 - Test automatico in «Verifica»: con due account di prova, l'account B non riesce a leggere foto, questionario, filtri e diario dell'account A (criterio di accettazione della #2).
 
+## Provincia al passo 5 (#2 v1.3, D84 A)
+
+Primo passo fatto il 3/11: regole nel database (`supabase/migrations/20261103120000_provincia.sql`). Prossimi passi: menu «Dove vivi?» nell'app con gli stessi valori di `opzioniMenu()`, precompilazione lato server (il Worker cerca l'email confermata nella lista D1 e restituisce solo la sigla, entro 2 secondi, altrimenti campo vuoto), «Solo la mia provincia» nel raggio e cambio da «Il mio profilo».
+
 ## Accesso con email (#2, pronto dal 29/10 ma spento)
 
 1. L'utente scrive l'email; l'app chiama Supabase Auth (`/auth/v1/otp`) con la sola chiave anon. Supabase crea l'account se non c'è e manda **un'email con link e codice di 6 cifre**.

@@ -81,7 +81,7 @@ commit;
 begin;
 select pg_temp.come('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 select pg_temp.ok(pg_temp.rifiutato($$update public.profili set data_nascita = '1990-01-01'$$), 'la data di nascita non si modifica');
-update public.profili set citta = 'Roma', passo = 7, domande_voce = '{4,0,7}';
+update public.profili set provincia = 'RM', passo = 7, domande_voce = '{4,0,7}';
 select pg_temp.ok((select domande_voce from public.profili) = '{4,0,7}', 'A salva le 3 domande a voce scelte');
 select pg_temp.ok(pg_temp.rifiutato($$update public.profili set domande_voce = '{1,2,3,4}'$$), 'più di 3 domande a voce: rifiutate');
 select pg_temp.ok(pg_temp.rifiutato($$update public.profili set domande_voce = '{1,8}'$$), 'domanda a voce inesistente: rifiutata');
@@ -222,4 +222,33 @@ select pg_temp.ok(pg_temp.rifiutato($$delete from public.membri_stanza$$), 'stan
 select pg_temp.come('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
 select pg_temp.ok((select count(*) from public.compagni_di_stanza()) = 0 and (select count(*) from public.stanze) = 0,
   'stanze: chi non è in una stanza non vede nessuno');
+rollback;
+
+-- Provincia (#2 v1.3, D84 A): obbligatoria per andare oltre il passo 5, regione dal server, un cambio ogni 7 giorni.
+begin;
+insert into auth.users (id, email) values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'e@example.com');
+select pg_temp.come('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+insert into public.profili (id, nome, data_nascita, passo) values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'Elsa', '1992-04-04', 5);
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set passo = 6$$), 'provincia: senza provincia non si passa al passo 6');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set provincia = 'XX'$$), 'provincia: sigla fuori tabella rifiutata');
+update public.profili set provincia = 'MB', regione = 'Sicilia', provincia_origine = 'lista', passo = 6;
+select pg_temp.ok((select regione from public.profili) = 'Lombardia' and (select citta from public.profili) = 'Monza e Brianza'
+  and (select provincia_origine from public.profili) = 'lista' and (select provincia_in_vigore_dal from public.profili) <= now(),
+  'provincia: la regione la scrive il server (Lombardia, non quella mandata), la prima scelta vale subito');
+update public.profili set regione = 'Sicilia', provincia_cambiata_il = now() - interval '30 days';
+select pg_temp.ok((select regione from public.profili) = 'Lombardia' and (select provincia_cambiata_il from public.profili) > now() - interval '1 minute',
+  'provincia: il telefono non cambia regione né data del cambio');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set provincia = 'RM'$$), 'provincia: secondo cambio entro 7 giorni rifiutato');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set provincia = null$$), 'provincia: non si può togliere');
+reset role;
+-- Si simula che siano passati 8 giorni (solo nel test, con il controllo spento per un attimo).
+alter table public.profili disable trigger profili_controlla_provincia;
+update public.profili set provincia_cambiata_il = now() - interval '8 days' where id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+alter table public.profili enable trigger profili_controlla_provincia;
+select pg_temp.come('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+update public.profili set provincia = 'EE';
+select pg_temp.ok((select provincia_precedente from public.profili) = 'MB' and (select provincia_in_vigore_dal from public.profili) > now()
+  and (select citta from public.profili) is null and (select regione from public.profili) is null,
+  'provincia: dopo 7 giorni si cambia, vale dal lunedì dopo; la stanza in corso usa la precedente');
+select pg_temp.ok(pg_temp.rifiutato($$select * from public.province$$), 'provincia: la tabella delle province non si legge dal telefono');
 rollback;
