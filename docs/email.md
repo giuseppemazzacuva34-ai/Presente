@@ -9,14 +9,13 @@ skill_usate: presente-contesto-marketing, signup, cro · tecnica: signup › un 
 - 0 €, fino a 300 email al giorno: i 56 iscritti di oggi ci stanno in un giorno, e anche 500 si mandano in 2 giorni.
 - Brevo SAS, Parigi (Francia), server nell'UE. Ragione sociale presa dalle condizioni d'uso di Brevo (versione 1° ottobre 2025, letta il 3/11/2026).
 - Alternative valutate dal CFO: MailerLite Free (limite 250 iscritti), Cloudflare Email Sending (richiede Workers a pagamento). Scartate.
-- Usiamo Brevo **solo come canale di invio** (API «transactional email»): la lista resta in D1. A Brevo passiamo, per ogni email, solo l'indirizzo e il testo. Niente importazione di contatti, niente tracciamento di aperture e clic (si spengono nelle impostazioni).
+- **Come è andata davvero (3/11, Coordinatore):** account Brevo Free collegato a Composio; dominio `presenteincontri.app` autenticato (brevo-code, DKIM brevo1/brevo2, DMARC `p=none`), mittente «Presente <ciao@presenteincontri.app>», risposte a reply-to della casella di Presente. L'invio lo fa il Coordinatore con una campagna Brevo e il link per cancellarsi di Brevo: **nessuna chiave Brevo nel Worker**, nessun endpoint di invio nel nostro codice.
+- Quindi per questa email gli indirizzi e i link personali vengono caricati come contatti in Brevo (D98 A). Restano in D1 la lista vera e i codici; a Brevo vanno solo email e link personale, niente provincia, risposte o altri campi. Tracciamento di aperture e clic: da spegnere nelle impostazioni di Brevo.
 
-## Cosa deve fare Giuseppe (circa 15 minuti, 0 €)
+## Cosa resta a Giuseppe
 
-1. Crea l'account gratuito su brevo.com con l'email di Presente e accetta l'accordo sul trattamento dei dati (DPA).
-2. In Brevo › Senders, Domains & Dedicated IPs › Domains: aggiunge `presenteincontri.app`. **I record DNS li crea il Coordinatore con Composio** (connettori Cloudflare e Brevo, aggiornamento del 3/11): Giuseppe non tocca Cloudflare. Elenco qui sotto.
-3. In Brevo › SMTP & API › API Keys: crea una chiave e la incolla come secret del Worker (Cloudflare › Workers › presente › Impostazioni › Variabili e segreti › Aggiungi › Segreto) con nome `BREVO_CHIAVE`. La chiave non va mai in chat né nel repository.
-4. Disattiva in Brevo il tracciamento di aperture e clic.
+- Accettare l'accordo sul trattamento dei dati (DPA) di Brevo, se il Coordinatore non l'ha già fatto con il suo account.
+- Dare il via all'invio dopo la prova su un indirizzo interno.
 
 ## Record DNS per Brevo (Cloudflare › DNS di presenteincontri.app)
 
@@ -38,11 +37,9 @@ Fonti: guida di Brevo «Authenticate your domain with Brevo (Brevo code, DKIM, D
 
 | Passo | Dove | Stato |
 |---|---|---|
-| Informativa 1.4.1 con Brevo al punto 8 | `landing/privacy.html` | PR del 3/11 |
+| Informativa 1.4.1 con Brevo al punto 8 | `landing/privacy.html` | PR #123 |
 | Link personale «porta un'amica» anche per i 52 del modulo Meta (codice invito per chi non ce l'ha) | `worker/codici.js`, migrazione D1 | da fare |
-| Link per cancellarsi in un clic (gettone per iscritto, pagina di conferma, intestazioni `List-Unsubscribe` e `List-Unsubscribe-Post`) | nuovo `worker/email.js` | da fare |
-| Invio: endpoint protetto (solo con secret `INVIO_CHIAVE`) che manda a gruppi di 50 con pausa, prima solo all'indirizzo di prova, poi a tutti | `worker/email.js` | da fare |
-| Registro: tabella `invii` (iscritto, campagna, quando, esito); in plancia solo i conteggi (inviate, errori, cancellati) | D1 | da fare |
+| Link per cancellarsi e invio | Brevo (campagna del Coordinatore) | non serve codice nostro |
 | Informativa 1.5 con la seconda casella non spuntata per gli aggiornamenti ogni 2 settimane (D97 A) | landing + `worker/iscrizione.js` | dopo l'invio |
 
 ## Regole
