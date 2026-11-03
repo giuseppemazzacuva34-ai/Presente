@@ -14,7 +14,7 @@ export const FUSO = "Europe/Rome";
 
 // ── Filtri reciproci rigidi: A con B solo se B rientra nei filtri di A E A in quelli di B. Mai eccezioni. ──
 // «cerco» confronta «mi presento come»: donne → donna, uomini → uomo; chi si presenta non binario o si descrive
-// rientra solo in «tutti» (scelta del CTO, da confermare dal CPO).
+// rientra solo in «tutti» (confermato dal CPO il 3/11).
 const CERCO = { donne: new Set(["donna"]), uomini: new Set(["uomo"]) };
 function rientra(chi, altro) {
   if (!chi.cerco || !altro.presento) return false;
@@ -38,11 +38,18 @@ export { coppia };
 // - sono compatibili (filtri reciproci rispettati: possono chiamarsi), oppure
 // - nessuna delle due cerca il genere dell'altra (es. due donne che cercano uomini: non sono una «coppia» possibile).
 // Mai nella stessa stanza chi è escluso (bloccati, già insieme nelle ultime 4 settimane), né chi interessa a uno dei due
-// per genere ma è fuori dai suoi filtri di età o raggio. Lettura del CTO, da confermare dal CPO.
+// per genere ma è fuori dai suoi filtri di età o raggio. Confermato dal CPO il 3/11.
 const generePossibile = (chi, altro) => chi.cerco === "tutti" || Boolean(CERCO[chi.cerco]?.has(altro.presento));
 export function ammessiInsieme(a, b, esclusi = new Set()) {
   if (a.id === b.id || esclusi.has(coppia(a.id, b.id))) return false;
   return compatibili(a, b, esclusi) || (!generePossibile(a, b) && !generePossibile(b, a));
+}
+
+// Chi vedi nella tua stanza (risposta del CPO del 3/11): solo le persone reciprocamente compatibili. Solo loro compaiono
+// nella schermata, si possono chiamare, ricevere la chiave ed entrare nei suggerimenti; il contatore «Nella tua stanza:
+// N persone per te» è perTe(...).length. Lo stesso controllo lo fa il database in compagni_di_stanza() (anche via API).
+export function perTe(io, stanza, esclusi = new Set()) {
+  return stanza.filter((altro) => compatibili(io, altro, esclusi)).map((altro) => altro.id);
 }
 
 // ── Stanza Italia o stanza della città (D19 e spec v1.1). ──

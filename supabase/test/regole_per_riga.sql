@@ -194,6 +194,13 @@ insert into public.profili (id, nome, data_nascita, citta) values
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Bea', '1993-06-10', 'Roma'),
   ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'Carlo', '1990-01-15', 'Torino');
 insert into public.profili (id, nome) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'Dora');
+-- Da 3/11 si vedono solo i compatibili: A (uomo, cerca donne 25-40) e Bea (donna, cerca uomini) lo sono, raggio Italia.
+update public.profili set mi_presento_come = 'uomo' where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+update public.profili set mi_presento_come = 'donna' where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'donne', now(), '1.5', 25, 40, 'italia'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'uomini', now(), '1.5', 25, 45, 'italia')
+  on conflict (utente_id) do update set cerco = excluded.cerco, eta_min = excluded.eta_min, eta_max = excluded.eta_max, raggio = excluded.raggio;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('11111111-1111-4111-8111-111111111111', 'italia', now() - interval '1 day', now() + interval '5 days'),
   ('22222222-2222-4222-8222-222222222222', 'italia', now() - interval '1 day', now() + interval '5 days');
@@ -222,6 +229,44 @@ select pg_temp.ok(pg_temp.rifiutato($$delete from public.membri_stanza$$), 'stan
 select pg_temp.come('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
 select pg_temp.ok((select count(*) from public.compagni_di_stanza()) = 0 and (select count(*) from public.stanze) = 0,
   'stanze: chi non è in una stanza non vede nessuno');
+rollback;
+
+-- Issue #3, risposta del CPO del 3/11: nella stanza vedi solo chi è reciprocamente compatibile, anche chiamando l'API.
+begin;
+insert into auth.users (id, email) values
+  ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', 'anna@example.com'), ('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', 'bice@example.com'),
+  ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', 'carlo@example.com'), ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', 'dario@example.com');
+insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come) values
+  ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', 'Anna', '1995-05-05', 'MI', 'donna'),
+  ('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', 'Bice', '1994-04-04', 'MI', 'donna'),
+  ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', 'Carlo', '1992-02-02', 'RM', 'uomo'),
+  ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', 'Dario', '1990-01-01', 'RM', 'uomo');
+insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
+  ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', 'uomini', now(), '1.5', 25, 45, 'italia'),
+  ('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', 'uomini', now(), '1.5', 25, 45, 'italia'),
+  ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', 'donne', now(), '1.5', 25, 45, 'italia'),
+  ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', 'donne', now(), '1.5', 33, 45, 'italia'); -- Anna e Bice fuori dalla sua età
+insert into public.stanze (id, tipo, apre_il, chiude_il) values
+  ('33333333-3333-4333-8333-333333333333', 'italia', now() - interval '1 day', now() + interval '5 days');
+insert into public.membri_stanza (stanza_id, utente_id) select '33333333-3333-4333-8333-333333333333', id from public.profili
+  where id in ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', '0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', '0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d');
+select pg_temp.come('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a');
+select pg_temp.ok((select array_agg(nome order by nome) from public.compagni_di_stanza()) = array['Carlo'],
+  'per te: Anna vede solo Carlo (non Bice, che cerca anche lei uomini; non Dario, per cui lei è fuori età)');
+select pg_temp.ok(pg_temp.rifiutato($$select public.compatibili_tra('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b')$$)
+  and pg_temp.rifiutato($$select public.rientra_nei_filtri('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b')$$),
+  'per te: le funzioni del controllo non si chiamano dal telefono (non rivelano i filtri degli altri)');
+select pg_temp.come('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b');
+select pg_temp.ok((select array_agg(nome order by nome) from public.compagni_di_stanza()) = array['Carlo'], 'per te: Bice non vede Anna');
+select pg_temp.come('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c');
+select pg_temp.ok((select array_agg(nome order by nome) from public.compagni_di_stanza()) = array['Anna', 'Bice'], 'per te: Carlo vede Anna e Bice, non Dario');
+select pg_temp.come('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d');
+select pg_temp.ok((select count(*) from public.compagni_di_stanza()) = 0, 'per te: Dario non vede nessuno (compatibilità nei due versi)');
+reset role;
+update public.filtri set raggio = 'citta' where utente_id = '0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b';
+select pg_temp.come('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c');
+select pg_temp.ok((select array_agg(nome order by nome) from public.compagni_di_stanza()) = array['Anna'],
+  'per te: se Bice vuole solo la sua provincia (Milano), Carlo di Roma non la vede più');
 rollback;
 
 -- Provincia (#2 v1.3, D84 A): obbligatoria per andare oltre il passo 5, regione dal server, un cambio ogni 7 giorni.

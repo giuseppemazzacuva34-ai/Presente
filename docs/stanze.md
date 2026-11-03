@@ -51,8 +51,20 @@ restituisce cosa scrivere in `stanze` e `membri_stanza`, più chi resta fuori e 
 Prossimo passo: tabella delle conferme d'ingresso e lavoro programmato che legge Supabase, chiama `preparaSettimana`
 e scrive le stanze nelle tabelle del secondo passo.
 
+## Solo le persone per te (risposta del CPO del 3 novembre)
+
+Nella stessa stanza possono stare due persone che non si cercano (per esempio due donne che cercano uomini), ma
+**nessuna delle due vede l'altra**: ognuno vede, chiama, dà la chiave e riceve suggerimenti solo per chi è
+reciprocamente compatibile (genere, età, raggio nei due versi; «città» = provincia). Il controllo è in due posti:
+
+- `perTe(io, stanza)` in `api/stanze.js` (calcoli del server, provati con 100 profili inventati: ognuno vede almeno 4 persone);
+- `compagni_di_stanza()` nel database (migrazione `20261103220000_solo_compatibili.sql`): anche chiamando l'API
+  direttamente, le altre persone non escono. Le funzioni interne del controllo non si chiamano dal telefono.
+
+Il contatore «Nella tua stanza: N persone per te» è il numero di righe di `compagni_di_stanza()`.
+
 ## Punti aperti
 
-- «non binario» e «mi descrivo» rientrano solo in chi cerca «tutti»: da confermare dal CPO.
+- «non binario» e «mi descrivo» rientrano solo in chi cerca «tutti»: confermato dal CPO il 3/11.
 - Con 1.000 profili il calcolo dura circa 6 secondi: oltre i limiti di CPU del piano gratuito dei Worker. Quando serve,
   il lavoro del lunedì gira come GitHub Action programmata o funzione di Supabase (scelta del CTO, costo zero).
