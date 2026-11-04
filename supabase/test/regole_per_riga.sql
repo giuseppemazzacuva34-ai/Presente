@@ -299,6 +299,46 @@ select pg_temp.ok((select provincia_precedente from public.profili) = 'MB' and (
   'provincia: dopo 7 giorni si cambia, vale dal lunedì dopo; la stanza in corso usa la precedente');
 select pg_temp.ok(pg_temp.rifiutato($$select * from public.province$$), 'provincia: la tabella delle province non si legge dal telefono');
 rollback;
+
+-- Issue #3: conferma d'ingresso alla stanza («Entra nella stanza»), entro domenica 23:59 di Roma.
+begin;
+insert into auth.users (id, email) values
+  ('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1', 'c1@example.com'), ('c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2', 'c2@example.com');
+select pg_temp.come('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1');
+insert into public.conferme_stanza (utente_id, apre_il, confermata_il) values
+  ('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1', '2020-01-06 09:00+01', '2020-01-01');
+select pg_temp.ok((select apre_il from public.conferme_stanza) = public.prossima_apertura(now() + interval '9 hours')
+  and (select confermata_il from public.conferme_stanza) > now() - interval '1 minute',
+  'conferme: settimana e ora le scrive il server (prossimo lunedì ancora aperto alle conferme)');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.conferme_stanza (utente_id) values ('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1')$$),
+  'conferme: una sola conferma a settimana');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.conferme_stanza (utente_id) values ('c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2')$$),
+  'conferme: non si conferma per un altro');
+select pg_temp.ok(pg_temp.rifiutato($$update public.conferme_stanza set confermata_il = now()$$), 'conferme: il telefono non le modifica');
+select pg_temp.come('c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2');
+select pg_temp.ok((select count(*) from public.conferme_stanza) = 0, 'conferme: nessuno vede le conferme degli altri');
+delete from public.conferme_stanza;
+reset role;
+select pg_temp.ok((select count(*) from public.conferme_stanza) = 1, 'conferme: nessuno cancella le conferme degli altri');
+select pg_temp.come('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1');
+delete from public.conferme_stanza;
+select pg_temp.ok((select count(*) from public.conferme_stanza) = 0, 'conferme: prima della scadenza ci si può ripensare');
+reset role;
+-- Una conferma della settimana in corso (scadenza passata): solo nel test, con il controllo spento per un attimo.
+alter table public.conferme_stanza disable trigger conferme_stanza_dal_server;
+insert into public.conferme_stanza (utente_id, apre_il) values ('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1', now() - interval '1 hour');
+alter table public.conferme_stanza enable trigger conferme_stanza_dal_server;
+select pg_temp.come('c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1');
+delete from public.conferme_stanza;
+select pg_temp.ok((select count(*) from public.conferme_stanza) = 1, 'conferme: dopo domenica 23:59 non si ritira più');
+reset role;
+select pg_temp.ok(pg_temp.rifiutato($$set local role anon; select * from public.conferme_stanza$$), 'conferme: senza login niente');
+set local timezone = 'Europe/Rome';
+select pg_temp.ok(public.prossima_apertura(timestamptz '2026-11-08 23:59' + interval '9 hours') = '2026-11-09 09:00'
+  and public.prossima_apertura(timestamptz '2026-11-09 00:01' + interval '9 hours') = '2026-11-16 09:00'
+  and public.prossima_apertura(timestamptz '2027-03-28 23:59' + interval '9 hours') = '2027-03-29 09:00'
+  and public.prossima_apertura(timestamptz '2026-10-25 23:59' + interval '9 hours') = '2026-10-26 09:00',
+  'conferme: domenica 23:59 vale per il lunedì dopo, un minuto dopo per quello successivo (anche col cambio d''ora)');
 -- Origine «lista»: solo dal server (futura precompilazione), con l'impostazione locale alla transazione.
 begin;
 insert into auth.users (id, email) values ('efefefef-efef-4efe-8efe-efefefefefef', 'f@example.com');
