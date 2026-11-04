@@ -60,7 +60,7 @@ Migrazione `20261104221000_conferme_stanza.sql`, tabella `conferme_stanza` (una 
 - qui non si scala nessun credito: li conta il lavoro del lunedì solo se la stanza si forma.
 
 Prossimo passo: pulsante «Entra nella stanza» nella web app e lavoro programmato del lunedì che legge le conferme,
-chiama `preparaSettimana` e scrive le stanze (serve la chiave di servizio di Supabase come segreto: la salva Giuseppe).
+chiama `preparaSettimana` e scrive le stanze: gira come GitHub Action programmata con i segreti Supabase già salvati, costo zero.
 
 ## Solo le persone per te (risposta del CPO del 3 novembre)
 
