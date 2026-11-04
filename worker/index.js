@@ -6,6 +6,7 @@ import { conteggio } from "./conteggio.js";
 import { pagina } from "./pagina.js";
 import { conSicurezza } from "./intestazioni.js";
 import { homeConInvito } from "./invito.js";
+import { pulisciGettoniScaduti } from "./gettoni.js";
 import { assegnaCodiciMancanti } from "./codici_mancanti.js";
 import { grazieConCitta } from "./grazie.js";
 import { daCanale, contaVisita } from "./canale.js";
@@ -18,7 +19,7 @@ import { metaWebhook, PERCORSO_META } from "./meta.js";
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
   async scheduled(evento, env, ctx) {
-    const lavoro = assegnaCodiciMancanti(env);
+    const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env)]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);
     else await lavoro;
   },

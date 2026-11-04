@@ -278,8 +278,10 @@ select pg_temp.ok(pg_temp.rifiutato($$update public.profili set passo = 6$$), 'p
 select pg_temp.ok(pg_temp.rifiutato($$update public.profili set provincia = 'XX'$$), 'provincia: sigla fuori tabella rifiutata');
 update public.profili set provincia = 'MB', regione = 'Sicilia', provincia_origine = 'lista', passo = 6;
 select pg_temp.ok((select regione from public.profili) = 'Lombardia' and (select citta from public.profili) = 'Monza e Brianza'
-  and (select provincia_origine from public.profili) = 'lista' and (select provincia_in_vigore_dal from public.profili) <= now(),
+  and (select provincia_in_vigore_dal from public.profili) <= now(),
   'provincia: la regione la scrive il server (Lombardia, non quella mandata), la prima scelta vale subito');
+select pg_temp.ok((select provincia_origine from public.profili) = 'scelta',
+  'provincia: l''origine la scrive il server (il telefono manda «lista» ma resta «scelta», CISO 3/11)');
 update public.profili set regione = 'Sicilia', provincia_cambiata_il = now() - interval '30 days';
 select pg_temp.ok((select regione from public.profili) = 'Lombardia' and (select provincia_cambiata_il from public.profili) > now() - interval '1 minute',
   'provincia: il telefono non cambia regione né data del cambio');
@@ -296,4 +298,12 @@ select pg_temp.ok((select provincia_precedente from public.profili) = 'MB' and (
   and (select citta from public.profili) is null and (select regione from public.profili) is null,
   'provincia: dopo 7 giorni si cambia, vale dal lunedì dopo; la stanza in corso usa la precedente');
 select pg_temp.ok(pg_temp.rifiutato($$select * from public.province$$), 'provincia: la tabella delle province non si legge dal telefono');
+rollback;
+-- Origine «lista»: solo dal server (futura precompilazione), con l'impostazione locale alla transazione.
+begin;
+insert into auth.users (id, email) values ('efefefef-efef-4efe-8efe-efefefefefef', 'f@example.com');
+select set_config('presente.origine', 'lista', true);
+insert into public.profili (id, nome, data_nascita, passo, provincia) values ('efefefef-efef-4efe-8efe-efefefefefef', 'Fede', '1990-01-01', 5, 'RM');
+select pg_temp.ok((select provincia_origine from public.profili where id = 'efefefef-efef-4efe-8efe-efefefefefef') = 'lista',
+  'provincia: la precompilazione dal server scrive «lista»');
 rollback;
