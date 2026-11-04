@@ -11,10 +11,6 @@ const SENZA_CODICE = "SELECT id FROM iscrizioni WHERE codice IS NULL LIMIT 500";
 const DAI_CODICE = "UPDATE iscrizioni SET codice = ? WHERE id = ? AND codice IS NULL";
 const TENTATIVI = 5;
 
-// Query di SOLA LETTURA per il Coordinatore (email di D98 A): solo email e link personale, nient'altro.
-// Si lancia sul database presente-lista; il risultato non va in plancia, nei log o nel repository.
-export const QUERY_LINK_PERSONALI = "SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link FROM iscrizioni WHERE codice IS NOT NULL ORDER BY id";
-
 const collisione = (e) => /UNIQUE constraint failed: iscrizioni\.codice/i.test(String(e && e.message));
 
 // Restituisce quanti codici ha assegnato. Mai eccezioni verso chi la chiama.

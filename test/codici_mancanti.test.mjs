@@ -1,7 +1,7 @@
 // Codice invito personale per OGNI iscritto (D98 A): chi è arrivato dal modulo Meta non l'aveva. Solo dati inventati.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assegnaCodiciMancanti, QUERY_LINK_PERSONALI } from "../worker/codici_mancanti.js";
+import { assegnaCodiciMancanti } from "../worker/codici_mancanti.js";
 import { CODICE_PERSONALE } from "../worker/invito.js";
 
 // D1 finto: righe in memoria, indice unico sul codice come quello vero.
@@ -64,11 +64,9 @@ test("senza database o con errore non lancia eccezioni", async () => {
   assert.equal(await assegnaCodiciMancanti({ DB: rotto }), 0);
 });
 
-test("query per il Coordinatore: sola lettura, solo email e link", () => {
-  assert.match(QUERY_LINK_PERSONALI, /^SELECT /);
-  assert.doesNotMatch(QUERY_LINK_PERSONALI, /\b(UPDATE|DELETE|INSERT|DROP|ALTER)\b/i);
-  assert.match(QUERY_LINK_PERSONALI, /https:\/\/presenteincontri\.app\/da\/amico\?invito=/);
-  assert.doesNotMatch(QUERY_LINK_PERSONALI, /provincia|presento|cerchi|fascia|invito AS|gettone/);
+test("nessuna query con le email nel codice del Worker (CISO 3/11, D107)", async () => {
+  const modulo = await import("../worker/codici_mancanti.js");
+  assert.equal(modulo.QUERY_LINK_PERSONALI, undefined);
 });
 
 test("il Worker ha il lavoro programmato e il cron in wrangler.jsonc", async () => {
