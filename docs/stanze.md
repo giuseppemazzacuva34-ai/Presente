@@ -1,6 +1,6 @@
 # Stanze della settimana (issue #3) · calcolo
 
-Versione 0.2 · 2 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
+Versione 0.3 · 4 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
 
 ## In parole semplici
 
@@ -48,8 +48,19 @@ restituisce cosa scrivere in `stanze` e `membri_stanza`, più chi resta fuori e 
 - motivi di attesa: `non_iscritto`, `profilo_incompleto`, `senza_data_nascita`, `filtri_incompleti`,
   `questionario_incompleto`, `citta_non_aperta` (con «mancano N»), `pochi_compatibili`.
 
-Prossimo passo: tabella delle conferme d'ingresso e lavoro programmato che legge Supabase, chiama `preparaSettimana`
-e scrive le stanze nelle tabelle del secondo passo.
+Il passo successivo (conferme) è qui sotto.
+
+## Quarto passo: conferma d'ingresso («Entra nella stanza», 4 novembre)
+
+Migrazione `20261104221000_conferme_stanza.sql`, tabella `conferme_stanza` (una riga per persona e settimana):
+
+- il telefono scrive solo «voglio entrare»: **settimana e ora le mette il server** (il lunedì successivo ancora aperto);
+- si conferma **entro domenica 23:59 di Roma**; dopo quell'ora la conferma vale per il lunedì dopo (anche col cambio d'ora);
+- prima della scadenza ci si può ripensare (la conferma si cancella), dopo no; nessuno vede o tocca le conferme degli altri;
+- qui non si scala nessun credito: li conta il lavoro del lunedì solo se la stanza si forma.
+
+Prossimo passo: pulsante «Entra nella stanza» nella web app e lavoro programmato del lunedì che legge le conferme,
+chiama `preparaSettimana` e scrive le stanze (serve la chiave di servizio di Supabase come segreto: la salva Giuseppe).
 
 ## Solo le persone per te (risposta del CPO del 3 novembre)
 
