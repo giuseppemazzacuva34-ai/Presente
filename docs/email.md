@@ -39,6 +39,7 @@ Fonti: guida di Brevo «Authenticate your domain with Brevo (Brevo code, DKIM, D
 |---|---|---|
 | Informativa 1.4.1 con Brevo al punto 8 | `landing/privacy.html` | PR #123 |
 | Link personale «porta un'amica» anche per i 52 del modulo Meta (codice invito per chi non ce l'ha) | `worker/codici_mancanti.js`, cron ogni ora al minuto 23 | fatto (PR del 3/11) |
+| Informativa 1.5.1: Anthropic anche per preparare gli invii (D107 C); va online **prima** della query dei link personali | `landing/privacy.html`, `worker/iscrizione.js` | PR del 4/11, la unisce Giuseppe |
 | Link per cancellarsi e invio | Brevo (campagna del Coordinatore) | non serve codice nostro |
 | Informativa 1.5 con la seconda casella non spuntata per gli aggiornamenti ogni 2 settimane (D97 A) | landing + `worker/iscrizione.js` | dopo l'invio |
 
@@ -53,7 +54,7 @@ SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link 
 Controllo prima di caricare: `SELECT COUNT(*) FROM iscrizioni WHERE codice IS NULL;` deve dare 0.
 Il risultato va solo in Brevo: mai in plancia, nei log, in chat o nel repository. La query è solo qui, non nel codice del Worker (richiesta CISO del 3/11).
 
-Chi la lancia (D107 C, decisa da Giuseppe il 4/11): un agente con il connettore Cloudflare, **solo dopo** che è online l'informativa con la riga nuova al punto 8 (Anthropic anche per preparare le email della lista). È l'unica eccezione alla regola «nessun dato personale dal database agli agenti»: vale solo per questa query e per quella degli aggiornamenti qui sotto, solo per caricarle in Brevo. Nella plancia, nei report e nei log vanno solo i conteggi.
+Chi la lancia (D107 C, decisa da Giuseppe il 4/11): un agente con il connettore Cloudflare, **solo dopo** che è online l'informativa 1.5.1 con la riga nuova al punto 8 (Anthropic anche per preparare le email della lista). È l'unica eccezione alla regola «nessun dato personale dal database agli agenti»: vale solo per questa query e per quella degli aggiornamenti qui sotto, solo per caricarle in Brevo. Nella plancia, nei report e nei log vanno solo i conteggi.
 
 ## Aggiornamenti ogni 2 settimane (informativa 1.5, D97 A)
 
