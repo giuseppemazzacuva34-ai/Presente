@@ -80,6 +80,8 @@ async def main():
         await ctx.route(SUPA + "/**", supabase)
         await ctx.route("**/app/config.json", lambda route: route.fulfill(status=200, body=json.dumps(CONFIG), content_type="application/json"))
         await ctx.route("**/app/api/elimina-account", elimina)
+        # Provincia dalla lista d'attesa (#2 v1.3): qui l'email non è in lista (la prova completa è prova_provincia_lista.py).
+        await ctx.route("**/app/api/provincia-lista", lambda route: route.fulfill(status=200, body='{"sigla":null}', content_type="application/json"))
         errori = []
         pg = await ctx.new_page()
         pg.on("console", lambda m: errori.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)

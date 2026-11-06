@@ -347,3 +347,27 @@ insert into public.profili (id, nome, data_nascita, passo, provincia) values ('e
 select pg_temp.ok((select provincia_origine from public.profili where id = 'efefefef-efef-4efe-8efe-efefefefefef') = 'lista',
   'provincia: la precompilazione dal server scrive «lista»');
 rollback;
+
+-- Conferma della provincia della lista (#2 v1.3): solo il server (service_role) scrive «lista», solo la prima volta.
+begin;
+insert into auth.users (id, email) values ('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1', 'g@example.com');
+insert into public.profili (id, nome, data_nascita, passo) values ('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1', 'Gaia', '1991-02-02', 5);
+select pg_temp.come('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1');
+select pg_temp.ok(pg_temp.rifiutato($$select public.conferma_provincia_lista('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1', 'RM')$$),
+  'lista: il telefono non può chiamare la conferma dal server');
+reset role;
+set local role service_role;
+select pg_temp.ok(public.conferma_provincia_lista('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1', 'RM'), 'lista: il server conferma la prima provincia');
+reset role;
+select pg_temp.ok((select provincia_origine from public.profili where id = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1') = 'lista'
+  and (select regione from public.profili where id = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1') = 'Lazio',
+  'lista: origine «lista» e regione dalla tabella');
+select pg_temp.come('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1');
+update public.profili set nome = 'Gaia', provincia = 'RM', mi_presento_come = 'donna', passo = 6;
+select pg_temp.ok((select provincia_origine from public.profili) = 'lista', 'lista: il salvataggio del passo 5 dal telefono non la cambia');
+reset role;
+set local role service_role;
+select pg_temp.ok(not public.conferma_provincia_lista('f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1', 'MI'), 'lista: con una provincia già salvata non scrive nulla');
+reset role;
+select pg_temp.ok((select provincia from public.profili where id = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1') = 'RM', 'lista: la provincia resta Roma');
+rollback;

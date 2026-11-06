@@ -1,4 +1,5 @@
 import { eliminaAccount, PERCORSO_ELIMINA } from "./elimina.js";
+import { provinciaLista, PERCORSO_PROVINCIA_LISTA } from "./provincia_lista.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -40,6 +41,7 @@ export function eApp(pathname) {
 export async function app(request, env) {
   const url = new URL(request.url);
   if (url.pathname === PERCORSO_ELIMINA) return conIntestazioniApp(await eliminaAccount(request, env), url.pathname);
+  if (url.pathname === PERCORSO_PROVINCIA_LISTA) return conIntestazioniApp(await provinciaLista(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }

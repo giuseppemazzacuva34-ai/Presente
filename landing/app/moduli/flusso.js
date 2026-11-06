@@ -68,6 +68,9 @@ let registrazioneInCorso = null;
 let accesso = null;
 // Salvataggio su Supabase (salvataggio.js). null = anteprima: niente lascia il telefono.
 let archivio = null;
+// Provincia dalla lista d'attesa (lista.js): solo con l'accesso vero; una sola richiesta per sessione.
+let lista = null;
+let listaChiesta = false;
 const salvataggio = { inCorso: false, errore: "" };
 let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
@@ -82,6 +85,7 @@ export function avvia(elemento, opzioni = {}) {
   radice = elemento;
   accesso = opzioni.accesso || null;
   archivio = (accesso && opzioni.archivio) || null;
+  lista = (archivio && opzioni.lista) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -101,6 +105,7 @@ async function riprendi() {
   stato.passo = statoDaSalvato(stato, salvato);
   stato.provinciaSalvata = stato.provincia;
   passoMassimo = stato.passo;
+  precompilaDallaLista(); // in anticipo: al passo 5 la provincia della lista è già pronta
   const q = stato.questionario;
   const mancante = DOMANDE.find((d) => erroreRisposta(d.n, q.risposte[d.n]) !== null);
   q.domanda = mancante ? mancante.n : DOMANDE.length;
@@ -145,7 +150,9 @@ async function salvaEVai(passo, ...operazioni) {
     return;
   }
   passoMassimo = raggiunto;
-  if (stato.provincia) stato.provinciaSalvata = stato.provincia;
+  // La provincia sul server è quella del «Continua» di «Chi sei» (gli altri passi salvano solo il loro pezzo):
+  // così una provincia solo precompilata dalla lista non risulta già salvata.
+  if (passo === PASSI.findIndex((p) => p.id === "cerchi") && stato.provincia) stato.provinciaSalvata = stato.provincia;
   vai(passo);
 }
 
@@ -168,6 +175,27 @@ function vai(passo) {
   window.scrollTo(0, 0);
   const titolo = radice.querySelector("h1");
   if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: true }); }
+}
+
+// Spec v1.3: se la lista d'attesa ha la provincia (stessa email del login) il campo arriva già scelto, da confermare.
+// Solo se il campo è ancora vuoto e la persona non ha iniziato a scrivere; se il Worker tarda (2 s) si resta col campo vuoto.
+function precompilaDallaLista() {
+  if (!lista || listaChiesta || stato.provincia || stato.provinciaSalvata) return;
+  listaChiesta = true;
+  lista.leggi().then((sigla) => {
+    if (!sigla || stato.provincia || stato.provinciaTesto.trim()) return;
+    stato.provincia = sigla; stato.provinciaTesto = nomeMenu(sigla); stato.provinciaLista = sigla;
+    if (PASSI[stato.passo] && PASSI[stato.passo].id === "chi") disegna();
+  });
+}
+
+// Al «Continua» del passo 5: provincia della lista confermata senza cambi → la salva il server con origine «lista».
+// Non blocca mai: se non riesce, il salvataggio normale scrive la provincia con origine «scelta».
+async function confermaDallaLista() {
+  if (lista && !stato.provinciaSalvata && stato.provinciaLista && stato.provincia === stato.provinciaLista) {
+    await lista.conferma(stato.provincia);
+  }
+  return { ok: true };
 }
 
 function disegna() {
@@ -384,6 +412,7 @@ const SCHERMATE = {
       onchange: (e) => { const sigla = cercaProvincia(e.target.value); if (sigla) { stato.provinciaTesto = nomeMenu(sigla); e.target.value = stato.provinciaTesto; } } });
     const elenco = h("datalist", { id: "elenco-province" }, MENU_PROVINCE.map(([, nome]) => h("option", { value: nome })));
     aggiornaRighe();
+    precompilaDallaLista();
     return schermata("Chi sei", "Gli altri vedranno solo nome, età e provincia.",
       [h("label", { for: "nome" }, "Nome (solo il nome di battesimo)"),
         h("input", { id: "nome", autocomplete: "given-name", autocapitalize: "words", maxlength: "20", value: stato.nome,
@@ -398,7 +427,7 @@ const SCHERMATE = {
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
           oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
-      [indietro(), avanti("Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()), () => salvaEVai(5, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
+      [indietro(), avanti("Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()), () => salvaEVai(5, confermaDallaLista, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
   },
 
   cerchi() {
