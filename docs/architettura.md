@@ -79,7 +79,7 @@ Struttura del progetto per la Fase 2 (pronta dal 29/10, si riempie dal 2/11):
 
 ## Provincia al passo 5 (#2 v1.3, D84 A)
 
-Primo passo fatto il 3/11: regole nel database (`supabase/migrations/20261103120000_provincia.sql`). Prossimi passi: menu «Dove vivi?» nell'app con gli stessi valori di `opzioniMenu()`, precompilazione lato server (il Worker cerca l'email confermata nella lista D1 e restituisce solo la sigla, entro 2 secondi, altrimenti campo vuoto), «Solo la mia provincia» nel raggio e cambio da «Il mio profilo».
+Primo passo fatto il 3/11: regole nel database (`supabase/migrations/20261103120000_provincia.sql`). Secondo passo fatto il 6/11: menu «Dove vivi?» nell'app (`landing/app/moduli/province.js`, stessi valori di `opzioniMenu()`), si salva solo la sigla e `provincia_origine`; città e regione le scrive il database; i messaggi fissi del database («Puoi cambiarla di nuovo dal GG/MM.») arrivano all'app così come sono, ogni altro errore resta generico; profilo senza provincia → al rientro si torna a «Chi sei». Prossimi passi: precompilazione lato server (il Worker cerca l'email confermata nella lista D1 e restituisce solo la sigla, entro 2 secondi, altrimenti campo vuoto), «Solo la mia provincia» nel raggio e cambio da «Il mio profilo».
 
 ## Accesso con email (#2, pronto dal 29/10 ma spento)
 

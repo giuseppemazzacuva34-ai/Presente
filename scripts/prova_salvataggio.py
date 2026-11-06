@@ -114,12 +114,12 @@ async def main():
         await pg.select_option("#giorno", "9"); await pg.select_option("#mese", "5"); await pg.select_option("#anno", "1994"); await clic("Continua")
         await pg.check("#accetto"); await clic("Continua")
         await pg.fill("#nome", "Giulia"); await pg.locator("#nome").blur()
-        await pg.select_option("#citta", "altra"); await pg.fill("#citta-altra", "Lecce"); await clic("Donna"); await clic("Continua")
+        await pg.fill("#provincia", "Lecce"); await clic("Donna"); await clic("Continua")
         await clic("Uomini"); await pg.check("#consenso-cerco"); await clic("Una storia seria"); await clic("Forse"); await clic("Indifferente"); await clic("Continua")
         await clic("● Registra"); await pg.wait_for_timeout(6000); await ferma()
         await pg.wait_for_selector(".registratore audio"); await clic("Continua")
         await titolo("Tre risposte a voce")
-        assert db["profili"]["passo"] == 7 and db["profili"]["data_nascita"] == "1994-05-09" and db["profili"]["citta"] == "Lecce", db["profili"]
+        assert db["profili"]["passo"] == 7 and db["profili"]["data_nascita"] == "1994-05-09" and db["profili"]["provincia"] == "LE" and "citta" not in db["profili"] and "regione" not in db["profili"], db["profili"]
         assert db["filtri"]["cerco"] == "uomini" and db["filtri"]["consenso_versione_informativa"], db["filtri"]
         assert list(db["voci"]) == ["presentazione"] and db["voci"]["presentazione"][1].startswith("audio/"), db["voci"].keys()
         await foto("dopo-voce")

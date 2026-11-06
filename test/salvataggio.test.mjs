@@ -84,7 +84,7 @@ test("senza accesso nessuna chiamata; errori tradotti senza dettagli del server"
 
 test("rientro: legge profilo, filtri, ultimo questionario e nomi dei file", async () => {
   const s = finto((c) => {
-    if (c.percorso === "/rest/v1/profili") return [200, [{ nome: "Giulia", passo: 7, data_nascita: "1994-05-09", regole_accettate_il: "x", citta: "Lecce", paese: "IT", mi_presento_come: "donna", domande_voce: [4, 0] }]];
+    if (c.percorso === "/rest/v1/profili") return [200, [{ nome: "Giulia", passo: 7, data_nascita: "1994-05-09", regole_accettate_il: "x", provincia: "LE", citta: "Lecce", paese: "IT", mi_presento_come: "donna", domande_voce: [4, 0] }]];
     if (c.percorso === "/rest/v1/filtri") return [200, [{ cerco: "uomini", eta_min: 30, eta_max: 45, raggio: "italia", cosa_cerco: "storia_seria", figli: "forse", fumo: "no" }]];
     if (c.percorso === "/rest/v1/questionario") return [200, [{ risposte: { 1: [0, 1] }, importanza: {} }]];
     if (c.percorso === "/storage/v1/object/list/voci") return [200, [{ name: "presentazione", id: "x" }]];
@@ -95,11 +95,11 @@ test("rientro: legge profilo, filtri, ultimo questionario e nomi dei file", asyn
   assert.equal(letto.ok, true);
   assert.deepEqual(letto.voci, ["presentazione"]);
   assert.equal(s.chiamate.find((c) => c.percorso.endsWith("/list/voci")).corpo.prefix, ID);
-  const st = { citta: "", cittaAltra: "", estero: false, domandeVoce: [], questionario: { risposte: {}, importanza: {} }, etaMin: 25, etaMax: 40, raggio: "citta" };
-  const passo = statoDaSalvato(st, letto, ["Milano", "Roma"]);
+  const st = { provincia: "", domandeVoce: [], questionario: { risposte: {}, importanza: {} }, etaMin: 25, etaMax: 40, raggio: "citta" };
+  const passo = statoDaSalvato(st, letto);
   assert.equal(passo, 7);
-  assert.equal(st.citta, "altra");
-  assert.equal(st.cittaAltra, "Lecce");
+  assert.equal(st.provincia, "LE");
+  assert.equal(st.provinciaTesto, "Lecce");
   assert.equal(st.dataNascita, "1994-05-09");
   assert.deepEqual([st.giorno, st.mese, st.anno], ["9", "5", "1994"]);
   assert.equal(st.consensoCerco, true);
@@ -108,10 +108,10 @@ test("rientro: legge profilo, filtri, ultimo questionario e nomi dei file", asyn
 });
 
 test("dallo stato dell'app ai campi del database", () => {
-  const base = { nome: " Giulia ", citta: "altra", cittaAltra: " Lecce ", estero: false, miPresento: "donna", miDescrivo: "x" };
-  assert.deepEqual(profiloDaStato(base), { nome: "Giulia", citta: "Lecce", paese: "IT", mi_presento_come: "donna", mi_descrivo: null });
-  assert.deepEqual(profiloDaStato({ ...base, estero: true, citta: "estero" }).paese, PAESE_ESTERO);
-  assert.equal(profiloDaStato({ ...base, estero: true, citta: "estero" }).citta, null);
+  const base = { nome: " Giulia ", provincia: "LE", provinciaLista: "", miPresento: "donna", miDescrivo: "x" };
+  assert.deepEqual(profiloDaStato(base), { nome: "Giulia", provincia: "LE", provincia_origine: "scelta", paese: "IT", mi_presento_come: "donna", mi_descrivo: null });
+  assert.deepEqual(profiloDaStato({ ...base, provincia: "EE" }).paese, PAESE_ESTERO);
+  assert.equal("citta" in profiloDaStato(base), false);
   // «cerco» parte solo con il consenso spuntato.
   const filtri = { cerco: "tutti", consensoCerco: false, etaMin: 20, etaMax: 30, raggio: "citta", cosaCerco: "", figli: "no", fumo: "si" };
   assert.equal(filtriDaStato(filtri).cerco, null);

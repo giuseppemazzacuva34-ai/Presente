@@ -12,6 +12,7 @@ import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registrator
 import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
 import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
+import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile } from "./province.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -31,16 +32,14 @@ function h(tag, attributi = {}, ...figli) {
   return el;
 }
 
-const CITTA = ["Milano", "Roma", "Napoli", "Torino", "Bologna", "Firenze", "Palermo", "Bari", "Genova", "Venezia",
-  "Verona", "Catania", "Padova", "Brescia", "Bergamo", "Parma", "Modena", "Cagliari", "Trieste", "Pescara"];
-
 // Stato dell'iscrizione, solo in memoria.
 const stato = {
   passo: 0,
   email: "",
   dataNascita: "", giorno: "", mese: "", anno: "", minorenne: false,
   regole: false,
-  nome: "", citta: "", cittaAltra: "", estero: false, miPresento: "", miDescrivo: "",
+  // Provincia (spec v1.3): sigla scelta, testo nel campo, sigla arrivata dalla lista d'attesa (solo la sigla, dal server).
+  nome: "", provincia: "", provinciaTesto: "", provinciaLista: "", provinciaSalvata: "", miPresento: "", miDescrivo: "",
   cerco: "", consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
   voce: null,                 // { url, secondi }
   domandeVoce: [],            // indici scelti in DOMANDE_VOCE
@@ -99,7 +98,8 @@ async function riprendi() {
     disegna();
     return;
   }
-  stato.passo = statoDaSalvato(stato, salvato, CITTA);
+  stato.passo = statoDaSalvato(stato, salvato);
+  stato.provinciaSalvata = stato.provincia;
   passoMassimo = stato.passo;
   const q = stato.questionario;
   const mancante = DOMANDE.find((d) => erroreRisposta(d.n, q.risposte[d.n]) !== null);
@@ -135,12 +135,17 @@ async function salvaEVai(passo, ...operazioni) {
   }
   salvataggio.inCorso = false;
   if (!esito.ok) {
-    salvataggio.errore = MESSAGGI_SALVATAGGIO[esito.motivo] || MESSAGGI_SALVATAGGIO.salvataggio;
+    salvataggio.errore = esito.motivo === "regola" ? esito.messaggio : (MESSAGGI_SALVATAGGIO[esito.motivo] || MESSAGGI_SALVATAGGIO.salvataggio);
+    // Cambio della provincia rifiutato (entro 7 giorni): il campo torna com'era.
+    if (esito.motivo === "regola" && stato.provinciaSalvata) {
+      stato.provincia = stato.provinciaSalvata; stato.provinciaTesto = nomeMenu(stato.provinciaSalvata);
+    }
     if (esito.motivo === "accesso") { await accesso.esci(); stato.passo = 1; }
     disegna();
     return;
   }
   passoMassimo = raggiunto;
+  if (stato.provincia) stato.provinciaSalvata = stato.provincia;
   vai(passo);
 }
 
@@ -360,30 +365,40 @@ const SCHERMATE = {
 
   chi() {
     const nomeOk = () => /^[\p{L}][\p{L}' -]{1,19}$/u.test(stato.nome.trim());
-    const cittaOk = () => stato.estero || (stato.citta && (stato.citta !== "altra" || stato.cittaAltra.trim().length >= 2));
+    const provinciaOk = () => Boolean(stato.provincia);
     const presentoOk = () => stato.miPresento && (stato.miPresento !== "mi_descrivo" || stato.miDescrivo.trim().length >= 2);
     const avvisoNome = h("p", { classe: "errore", role: "alert", hidden: !stato.nome || nomeOk() }, "Da 2 a 20 lettere, senza numeri.");
-    const selezione = h("select", { id: "citta", onchange: (e) => {
-      stato.estero = e.target.value === "estero"; stato.citta = e.target.value; disegna(); } },
-      h("option", { value: "" }, "Scegli la tua città"),
-      CITTA.map((c) => h("option", { value: c, selected: stato.citta === c }, c)),
-      h("option", { value: "altra", selected: stato.citta === "altra" }, "Un'altra città italiana"),
-      h("option", { value: "estero", selected: stato.citta === "estero" }, "Vivo all'estero"));
-    return schermata("Chi sei", "Gli altri vedranno solo nome, età e città.",
+    // Righe sotto il campo provincia: si aggiornano mentre si scrive, senza ridisegnare (il cursore resta dov'è).
+    const nessuna = h("p", { classe: "errore", role: "alert", hidden: true }, "Nessuna provincia con questo nome. Prova con il capoluogo.");
+    const dallaLista = h("p", { classe: "nota", id: "provincia-lista" }, "Dalla lista d'attesa. È giusta? Puoi cambiarla.");
+    const estero = h("p", { classe: "nota" }, "Entrerai nelle stanze con chi ha scelto anche l'estero.");
+    const aggiornaRighe = () => {
+      nessuna.hidden = Boolean(stato.provincia) || stato.provinciaTesto.trim().length < 2 || suggerimenti(stato.provinciaTesto).length > 0;
+      dallaLista.hidden = !(stato.provinciaLista && stato.provincia === stato.provinciaLista);
+      estero.hidden = stato.provincia !== ESTERO;
+    };
+    // Menu con ricerca mentre si scrive: campo di testo con l'elenco delle 107 province + «Vivo all'estero».
+    const campoProvincia = h("input", { id: "provincia", list: "elenco-province", autocomplete: "off", autocapitalize: "words",
+      placeholder: "Scegli la tua provincia", value: stato.provinciaTesto, "aria-describedby": "provincia-aiuto provincia-lista",
+      oninput: (e) => { stato.provinciaTesto = e.target.value; stato.provincia = cercaProvincia(e.target.value) || ""; aggiornaRighe(); ricontrolla(); },
+      onchange: (e) => { const sigla = cercaProvincia(e.target.value); if (sigla) { stato.provinciaTesto = nomeMenu(sigla); e.target.value = stato.provinciaTesto; } } });
+    const elenco = h("datalist", { id: "elenco-province" }, MENU_PROVINCE.map(([, nome]) => h("option", { value: nome })));
+    aggiornaRighe();
+    return schermata("Chi sei", "Gli altri vedranno solo nome, età e provincia.",
       [h("label", { for: "nome" }, "Nome (solo il nome di battesimo)"),
         h("input", { id: "nome", autocomplete: "given-name", autocapitalize: "words", maxlength: "20", value: stato.nome,
           oninput: (e) => { stato.nome = e.target.value; if (nomeOk()) avvisoNome.hidden = true; ricontrolla(); },
           onblur: () => { avvisoNome.hidden = !stato.nome || nomeOk(); } }),
         avvisoNome,
-        h("label", { for: "citta" }, "Città"), selezione,
-        stato.citta === "altra" ? h("input", { id: "citta-altra", "aria-label": "Nome della città", placeholder: "Scrivi la città", value: stato.cittaAltra,
-          oninput: (e) => { stato.cittaAltra = e.target.value; ricontrolla(); } }) : null,
+        h("label", { for: "provincia" }, "Dove vivi?"),
+        h("p", { classe: "nota", id: "provincia-aiuto" }, "Ci serve la provincia per metterti in stanza con persone della tua zona. Non mostriamo mai il tuo indirizzo."),
+        campoProvincia, elenco, nessuna, dallaLista, estero,
         h("p", { classe: "etichetta" }, "Mi presento come"),
         scelte("presento", [["donna", "Donna"], ["uomo", "Uomo"], ["non_binario", "Non binario"], ["mi_descrivo", "Preferisco descrivermi"]],
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
           oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
-      [indietro(), avanti("Continua", () => Boolean(nomeOk() && cittaOk() && presentoOk()), () => salvaEVai(5, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
+      [indietro(), avanti("Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()), () => salvaEVai(5, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
   },
 
   cerchi() {
@@ -405,7 +420,7 @@ const SCHERMATE = {
           h("label", { for: "eta-max" }, "a"), numero("eta-max", stato.etaMax, (v) => { stato.etaMax = v; })),
         avvisoEta,
         h("p", { classe: "etichetta" }, "Dove"),
-        scelte("raggio", [["citta", "Solo la mia città"], ["italia", "Anche altre città italiane"], ["estero", "Anche dall'estero, nella mia lingua"]],
+        scelte("raggio", [["citta", "Solo la mia provincia"], ["italia", "Anche altre città italiane"], ["estero", "Anche dall'estero, nella mia lingua"]],
           stato.raggio, (v) => { stato.raggio = v; disegna(); }),
         h("p", { classe: "etichetta" }, "Cosa cerco"),
         scelte("cosa", [["storia_seria", "Una storia seria"], ["senza_fretta", "Conoscersi senza fretta"]], stato.cosaCerco, (v) => { stato.cosaCerco = v; disegna(); }),
@@ -496,13 +511,13 @@ const SCHERMATE = {
   },
 
   fatto() {
-    const citta = stato.estero ? "all'estero" : (stato.citta === "altra" ? stato.cittaAltra : stato.citta);
+    const zona = nomeVisibile(stato.provincia);
     return schermata("Il tuo profilo è pronto.",
       "La prossima stanza apre lunedì alle 9:00.",
       [h("div", { classe: "riepilogo" },
-          h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${citta}`),
+          h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zona}`),
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
-          h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, città, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
+          h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],

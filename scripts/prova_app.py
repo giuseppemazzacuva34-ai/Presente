@@ -31,7 +31,10 @@ async def main():
         await pg.select_option("#mese", "5"); await foto("data"); await clic("Continua")
         await pg.check("#accetto"); await foto("regole"); await clic("Continua")
         await pg.fill("#nome", "Giulia"); await pg.locator("#nome").blur()
-        await pg.select_option("#citta", "Milano"); await clic("Donna"); await foto("chi-sei"); await clic("Continua")
+        await pg.fill("#provincia", "Mil"); assert await pg.locator('#elenco-province option[value="Milano"]').count() == 1
+        await pg.fill("#provincia", "Sanremo"); assert await pg.get_by_text("Nessuna provincia con questo nome").is_visible(), "ricerca senza risultati non segnalata"
+        assert await pg.get_by_role("button", name="Continua").is_disabled(), "senza provincia si va avanti"
+        await pg.fill("#provincia", "milano"); await clic("Donna"); await foto("chi-sei"); await clic("Continua")
         await clic("Uomini"); await pg.check("#consenso-cerco"); await clic("Una storia seria"); await clic("Forse"); await clic("Indifferente")
         await foto("chi-cerchi"); await clic("Continua")
         await clic("● Registra"); await pg.wait_for_timeout(2500); await foto("voce-registra"); await pg.wait_for_timeout(4000); await ferma()
