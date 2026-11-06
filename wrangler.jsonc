@@ -43,6 +43,11 @@
       "name": "LIMITE_ELIMINA",
       "namespace_id": "47012",
       "simple": { "limit": 3, "period": 60 }
+    },
+    {
+      "name": "LIMITE_PROVINCIA",
+      "namespace_id": "47013",
+      "simple": { "limit": 10, "period": 60 }
     }
   ],
   // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.

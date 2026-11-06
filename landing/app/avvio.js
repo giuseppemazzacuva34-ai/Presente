@@ -4,6 +4,7 @@
 import { avvia } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
+import { creaLista } from "/app/moduli/lista.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -34,7 +35,9 @@ async function preparaAccesso() {
     // Salvataggio passo per passo su Supabase, con il token dell'utente (regole per riga).
     const archivio = creaSalvataggio({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
       token: () => accesso.token(), utenteId: () => accesso.utenteId(), fetch: window.fetch.bind(window) });
-    return { accesso, archivio, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Provincia dalla lista d'attesa (#2 v1.3): il Worker restituisce solo la sigla, entro 2 secondi.
+    const lista = creaLista({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
