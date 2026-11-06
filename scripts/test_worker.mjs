@@ -1051,8 +1051,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     return { r, ins: env.DB.query.find((q) => q.sql.startsWith("INSERT INTO iscrizioni")) };
   };
   const senza = await salva({});
-  verifica(senza.r.status === 303 && /consenso_aggiornamenti_il/.test(senza.ins.sql) && senza.ins.valori[13] === null && senza.ins.valori[4] === "1.5-2026-11-03",
-    "1.5: senza la casella aggiornamenti nessun consenso salvato; versione 1.5");
+  verifica(senza.r.status === 303 && /consenso_aggiornamenti_il/.test(senza.ins.sql) && senza.ins.valori[13] === null && senza.ins.valori[4] === "1.5.1-2026-11-04",
+    "1.5: senza la casella aggiornamenti nessun consenso salvato; versione 1.5.1 (D107 C)");
   const con = await salva({ aggiornamenti: "si" });
   verifica(/^\d{4}-\d{2}-\d{2}T/.test(con.ins.valori[13]), "1.5: con la casella aggiornamenti salvate data e ora del consenso a parte");
   const strano = await salva({ aggiornamenti: "on" });
@@ -1063,10 +1063,13 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     && home.includes("Sì, mandatemi aggiornamenti su Presente, al massimo ogni 2 settimane. Posso dire basta quando voglio."),
     "1.5: casella breve obbligatoria e casella aggiornamenti facoltativa non spuntata nella home");
   const privacy = readFileSync(new URL("../landing/privacy.html", import.meta.url), "utf8");
-  verifica(privacy.includes("versione 1.5 · 3 novembre 2026") && !/DA VERIFICARE/i.test(privacy)
+  verifica(privacy.includes("versione 1.5.1 · 4 novembre 2026") && !/DA VERIFICARE/i.test(privacy)
+    && privacy.includes("anche per preparare gli invii delle email della lista d'attesa: legge dalla lista il tuo indirizzo email e il tuo codice invito personale")
+    && privacy.includes("Cosa cambia rispetto alla versione 1.5 (3 novembre 2026)")
+    && privacy.includes("impronta non reversibile") && !privacy.includes("impronta cifrata")
     && privacy.includes("Un codice temporaneo per completare il secondo passo sul sito")
     && privacy.includes("Cosa cambia nella versione 1.4.1 rispetto alla 1.4 (3 novembre 2026): il servizio"),
-    "1.5: informativa pubblicata con la data, senza l'avviso interno, con la riga della 1.4.1 datata");
+    "1.5.1: informativa pubblicata con la data, Anthropic per le email al punto 8, senza l'avviso interno, righe precedenti datate");
 }
 
 if (errori) {
