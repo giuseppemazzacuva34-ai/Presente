@@ -12,7 +12,7 @@ import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registrator
 import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
 import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
-import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile } from "./province.js";
+import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile, testoCambio, lunediCambio } from "./province.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -74,6 +74,8 @@ let listaChiesta = false;
 const salvataggio = { inCorso: false, errore: "" };
 let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
+// «Cambia provincia» da «Il mio profilo»: dopo «Chi sei» si torna al profilo invece di rifare tutti i passi.
+const cambio = { daProfilo: false, avviso: "" };
 
 const MESSAGGI_SALVATAGGIO = {
   accesso: "La sessione è scaduta: rientra con la tua email.",
@@ -152,7 +154,12 @@ async function salvaEVai(passo, ...operazioni) {
   passoMassimo = raggiunto;
   // La provincia sul server è quella del «Continua» di «Chi sei» (gli altri passi salvano solo il loro pezzo):
   // così una provincia solo precompilata dalla lista non risulta già salvata.
-  if (passo === PASSI.findIndex((p) => p.id === "cerchi") && stato.provincia) stato.provinciaSalvata = stato.provincia;
+  if (PASSI[stato.passo].id === "chi" && stato.provincia) {
+    if (stato.provinciaSalvata && stato.provincia !== stato.provinciaSalvata) {
+      cambio.avviso = `Provincia cambiata: ${nomeVisibile(stato.provincia)}. Vale dalla stanza di lunedì ${lunediCambio()}.`;
+    }
+    stato.provinciaSalvata = stato.provincia;
+  }
   vai(passo);
 }
 
@@ -169,6 +176,8 @@ function caricaSeServe(cartella, nome, voce) {
 
 function vai(passo) {
   if (registrazioneInCorso) { registrazioneInCorso.ferma(); registrazioneInCorso = null; }
+  if (PASSI[passo] && PASSI[passo].id === "fatto") cambio.daProfilo = false;
+  else if (!PASSI[passo] || PASSI[passo].id !== "chi") cambio.avviso = "";
   salvataggio.errore = "";
   stato.passo = Math.max(0, Math.min(PASSI.length - 1, passo));
   disegna();
@@ -205,7 +214,7 @@ function disegna() {
     archivio ? null : h("div", { classe: "anteprima", role: "note" }, accesso
       ? "Prova: l'accesso con email è vero, il resto del profilo non viene ancora salvato. Voce e foto restano su questo telefono."
       : "Anteprima: niente viene inviato né salvato. Voce e foto restano su questo telefono finché non chiudi la pagina."),
-    stato.passo > 0 && stato.passo < PASSI.length - 1 ? barra() : null,
+    stato.passo > 0 && stato.passo < PASSI.length - 1 && !cambio.daProfilo ? barra() : null,
     contenuto,
   ];
   radice.replaceChildren(...parti.filter(Boolean));
@@ -249,6 +258,12 @@ function ricontrolla() {
 }
 function indietro() {
   return h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(stato.passo - 1) }, "Indietro");
+}
+// Da «Cambia provincia»: si torna al profilo senza salvare e la provincia torna quella salvata.
+function tornaAlProfilo() {
+  return h("button", { classe: "bottone-secondario", type: "button", onclick: () => {
+    stato.provincia = stato.provinciaSalvata; stato.provinciaTesto = nomeMenu(stato.provinciaSalvata); vai(PASSI.length - 1);
+  } }, "Annulla");
 }
 function errore(testo) {
   return testo ? h("p", { classe: "errore", role: "alert" }, testo) : null;
@@ -400,10 +415,13 @@ const SCHERMATE = {
     const nessuna = h("p", { classe: "errore", role: "alert", hidden: true }, "Nessuna provincia con questo nome. Prova con il capoluogo.");
     const dallaLista = h("p", { classe: "nota", id: "provincia-lista" }, "Dalla lista d'attesa. È giusta? Puoi cambiarla.");
     const estero = h("p", { classe: "nota" }, "Entrerai nelle stanze con chi ha scelto anche l'estero.");
+    // Profilo già salvato e provincia diversa: quando vale il cambio (spec v1.3, «Cambio dopo»).
+    const quando = h("p", { classe: "nota", id: "provincia-cambio" }, testoCambio());
     const aggiornaRighe = () => {
       nessuna.hidden = Boolean(stato.provincia) || stato.provinciaTesto.trim().length < 2 || suggerimenti(stato.provinciaTesto).length > 0;
       dallaLista.hidden = !(stato.provinciaLista && stato.provincia === stato.provinciaLista);
       estero.hidden = stato.provincia !== ESTERO;
+      quando.hidden = !(stato.provinciaSalvata && stato.provincia && stato.provincia !== stato.provinciaSalvata);
     };
     // Menu con ricerca mentre si scrive: campo di testo con l'elenco delle 107 province + «Vivo all'estero».
     const campoProvincia = h("input", { id: "provincia", list: "elenco-province", autocomplete: "off", autocapitalize: "words",
@@ -421,13 +439,15 @@ const SCHERMATE = {
         avvisoNome,
         h("label", { for: "provincia" }, "Dove vivi?"),
         h("p", { classe: "nota", id: "provincia-aiuto" }, "Ci serve la provincia per metterti in stanza con persone della tua zona. Non mostriamo mai il tuo indirizzo."),
-        campoProvincia, elenco, nessuna, dallaLista, estero,
+        campoProvincia, elenco, nessuna, dallaLista, estero, quando,
         h("p", { classe: "etichetta" }, "Mi presento come"),
         scelte("presento", [["donna", "Donna"], ["uomo", "Uomo"], ["non_binario", "Non binario"], ["mi_descrivo", "Preferisco descrivermi"]],
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
           oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
-      [indietro(), avanti("Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()), () => salvaEVai(5, confermaDallaLista, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
+      [cambio.daProfilo ? tornaAlProfilo() : indietro(),
+        avanti(cambio.daProfilo ? "Salva" : "Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()),
+          () => salvaEVai(cambio.daProfilo ? PASSI.length - 1 : 5, confermaDallaLista, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
   },
 
   cerchi() {
@@ -545,8 +565,10 @@ const SCHERMATE = {
       "La prossima stanza apre lunedì alle 9:00.",
       [h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zona}`),
+          archivio ? h("button", { classe: "link", type: "button", onclick: () => { cambio.daProfilo = true; cambio.avviso = ""; vai(4); } }, "Cambia provincia") : null,
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
+        cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],
