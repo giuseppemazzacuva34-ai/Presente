@@ -10,6 +10,7 @@
 // Questo modulo non tocca la pagina: riceve fetch e token dall'esterno, così si prova con node --test.
 
 import { VERSIONE } from "./domande.js";
+import { ESTERO, nomeMenu } from "./province.js";
 
 // Versione dell'informativa privacy dell'app accettata con il consenso a «cerco». Va aggiornata insieme al testo
 // dell'informativa (T08): il database la salva accanto al consenso.
@@ -19,6 +20,9 @@ export const VERSIONE_INFORMATIVA_APP = "app-1.0";
 export const FILE_VOCE = "presentazione";
 export const fileRisposta = (i) => `risposta-${i + 1}`; // i = 0, 1, 2 (ordine di scelta delle domande)
 export const fileFoto = (i) => `foto-${i + 1}`; // i = 0, 1, 2
+
+// Messaggi del database che l'app mostra così come sono.
+const REGOLE_LEGGIBILI = [/^Puoi cambiarla di nuovo dal \d{2}\/\d{2}\.$/, /^Prima scegli la tua provincia\.$/, /^La provincia non si può togliere\.$/];
 
 // Paese per chi vive all'estero e non ha ancora indicato quale (codice ISO riservato «ZZ» = sconosciuto).
 export const PAESE_ESTERO = "ZZ";
@@ -44,7 +48,14 @@ export function creaSalvataggio({ supabaseUrl, supabaseAnonKey, token, utenteId,
       return { ok: false, motivo: "rete" };
     }
     if (r.status === 401) return { ok: false, motivo: "accesso" };
-    if (!r.ok) return { ok: false, motivo: "salvataggio" };
+    if (!r.ok) {
+      // Regole del database che la persona deve leggere com'erano scritte (migrazione 20261103120000_provincia.sql).
+      // Solo questi testi fissi passano: qualunque altro errore del server resta un generico «non siamo riusciti».
+      let messaggio = "";
+      try { messaggio = String((await r.json())?.message || ""); } catch { /* corpo non leggibile */ }
+      if (REGOLE_LEGGIBILI.some((re) => re.test(messaggio))) return { ok: false, motivo: "regola", messaggio };
+      return { ok: false, motivo: "salvataggio" };
+    }
     return { ok: true, risposta: r };
   }
   async function json(r) {
@@ -62,9 +73,10 @@ export function creaSalvataggio({ supabaseUrl, supabaseAnonKey, token, utenteId,
   }
 
   return {
-    // Passi 3–5 e punto in cui riprendere. campi: { data_nascita, regole_accettate_il, nome, citta, paese, mi_presento_come, mi_descrivo, domande_voce, passo }
+    // Passi 3–5 e punto in cui riprendere. La città e la regione non si mandano più: le scrive il server dalla provincia.
+    // campi: { data_nascita, regole_accettate_il, nome, provincia, provincia_origine, paese, mi_presento_come, mi_descrivo, domande_voce, passo }
     salvaProfilo(campi) {
-      return upsert("profili", "id", pulisci(campi, ["data_nascita", "regole_accettate_il", "nome", "citta", "paese", "mi_presento_come", "mi_descrivo", "domande_voce", "passo"]));
+      return upsert("profili", "id", pulisci(campi, ["data_nascita", "regole_accettate_il", "nome", "provincia", "provincia_origine", "paese", "mi_presento_come", "mi_descrivo", "domande_voce", "passo"]));
     },
 
     // Passo 6. La data del consenso la mette il server; qui si manda solo la versione dell'informativa.
@@ -138,11 +150,13 @@ function pulisci(campi, ammessi) {
 
 // Dallo stato dell'app ai campi del database (e ritorno). Funzioni pure, provate in test/salvataggio.test.mjs.
 export function profiloDaStato(s) {
-  const citta = s.estero ? null : (s.citta === "altra" ? s.cittaAltra.trim() : s.citta) || null;
+  const provincia = s.provincia || null;
   return {
     nome: s.nome.trim() || null,
-    citta,
-    paese: s.estero ? PAESE_ESTERO : "IT",
+    provincia,
+    // «lista» = la provincia della lista d'attesa confermata senza cambi (spec v1.3); il server la usa solo se cambia.
+    provincia_origine: provincia && provincia === s.provinciaLista ? "lista" : "scelta",
+    paese: provincia === ESTERO ? PAESE_ESTERO : "IT",
     mi_presento_come: s.miPresento || null,
     mi_descrivo: s.miPresento === "mi_descrivo" ? s.miDescrivo.trim().slice(0, 40) || null : null,
   };
@@ -157,7 +171,7 @@ export function filtriDaStato(s) {
 }
 
 // Applica allo stato dell'app ciò che è stato letto da Supabase. Restituisce il passo da cui ripartire.
-export function statoDaSalvato(s, salvato, citta = []) {
+export function statoDaSalvato(s, salvato) {
   const p = salvato.profilo;
   if (p) {
     if (p.data_nascita) {
@@ -166,11 +180,8 @@ export function statoDaSalvato(s, salvato, citta = []) {
     }
     s.regole = Boolean(p.regole_accettate_il);
     s.nome = p.nome || "";
-    if (p.paese && p.paese !== "IT") { s.estero = true; s.citta = "estero"; }
-    else if (p.citta) {
-      if (citta.includes(p.citta)) s.citta = p.citta;
-      else { s.citta = "altra"; s.cittaAltra = p.citta; }
-    }
+    s.provincia = nomeMenu(p.provincia) ? p.provincia : "";
+    s.provinciaTesto = nomeMenu(s.provincia);
     s.miPresento = p.mi_presento_come || "";
     s.miDescrivo = p.mi_descrivo || "";
     if (Array.isArray(p.domande_voce)) s.domandeVoce = p.domande_voce.filter((i) => Number.isInteger(i)).slice(0, 3);
@@ -188,5 +199,8 @@ export function statoDaSalvato(s, salvato, citta = []) {
     s.questionario.importanza = { ...(q.importanza || {}) };
   }
   const passo = p && Number.isInteger(p.passo) ? Math.min(10, Math.max(2, p.passo)) : 2;
+  // Profili di prima della v1.3 (solo prove interne, paese «ZZ» o città scritta): al rientro si chiede la provincia
+  // prima di tutto il resto, cioè si torna al passo 5 «Chi sei» (indice 4).
+  if (!s.provincia && passo > 4) return 4;
   return passo;
 }
