@@ -1063,7 +1063,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     && home.includes("Sì, mandatemi aggiornamenti su Presente, al massimo ogni 2 settimane. Posso dire basta quando voglio."),
     "1.5: casella breve obbligatoria e casella aggiornamenti facoltativa non spuntata nella home");
   const privacy = readFileSync(new URL("../landing/privacy.html", import.meta.url), "utf8");
-  verifica(privacy.includes("versione 1.5.1 · 4 novembre 2026") && !/DA VERIFICARE/i.test(privacy)
+  verifica(privacy.includes("versione 1.5.1 · 6 novembre 2026") && !/DA VERIFICARE/i.test(privacy)
     && privacy.includes("anche per preparare gli invii delle email della lista d'attesa: legge dalla lista il tuo indirizzo email e il tuo codice invito personale")
     && privacy.includes("Cosa cambia rispetto alla versione 1.5 (3 novembre 2026)")
     && privacy.includes("impronta non reversibile") && !privacy.includes("impronta cifrata")
