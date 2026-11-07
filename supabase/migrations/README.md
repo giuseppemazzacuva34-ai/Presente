@@ -17,3 +17,4 @@ Supabase (`supabase/test/supabase_finto.sql`), applica tutte le migrazioni e lan
 | `20261030231000_domande_voce.sql` | #2 | `profili.domande_voce`: le 3 domande a voce scelte (solo numeri da 0 a 7, senza doppioni) |
 | `20261031000000_regole_dal_server.sql` | #2 | la data di accettazione delle regole la scrive il server e non si cambia più (revisione CISO) |
 | `20261102220000_stanze.sql` | #3 | `stanze` e `membri_stanza`: le crea solo il lavoro del lunedì; ognuno vede solo la sua stanza; nessuno entra senza data di nascita (requisito 2 del CISO), massimo 12 a stanza, una stanza alla volta; `compagni_di_stanza()` dà dei compagni solo nome, età e città |
+| `20261107220000_aree.sql` | #3 | aree vaste (D121 A): `aree` e `province.area` (ogni provincia in una sola area, uguale a `api/aree.js`); «Solo la mia zona» confronta le aree; `conteggi_aree()` solo numeri, solo per il server |

@@ -371,3 +371,52 @@ select pg_temp.ok(not public.conferma_provincia_lista('f1f1f1f1-f1f1-4f1f-8f1f-f
 reset role;
 select pg_temp.ok((select provincia from public.profili where id = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1') = 'RM', 'lista: la provincia resta Roma');
 rollback;
+
+-- Aree vaste (#3 v1.2, D121 A): tabella «aree», «Solo la mia zona» nel database, conteggi solo numeri per la plancia.
+begin;
+select pg_temp.ok((select count(*) from public.province where sigla <> 'EE') = 107
+  and (select count(*) from public.province where sigla <> 'EE' and area is null) = 0
+  and (select area from public.province where sigla = 'EE') is null,
+  'aree: ognuna delle 107 province ha esattamente un''area, l''estero nessuna');
+select pg_temp.ok(public.area_di('MB') = 'milano' and public.area_di('LT') = 'roma' and public.area_di('NO') = 'no'
+  and public.area_di('EE') is null and public.area_di(null) is null,
+  'aree: Monza con Milano, Latina con Roma, Novara da sola, estero senza area');
+select pg_temp.ok((select nome from public.aree where codice = 'no') = 'Novara'
+  and (select nome from public.aree where codice = 'milano') = 'Milano e dintorni', 'aree: nomi visibili');
+insert into auth.users (id, email) values
+  ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', 'z1@example.com'), ('1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', 'z2@example.com'),
+  ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', 'z3@example.com'), ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', 'z4@example.com');
+insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come, passo) values
+  ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', 'Ada', '1993-03-03', 'MI', 'donna', 11),
+  ('1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', 'Bruno', '1991-01-01', 'MB', 'uomo', 11),
+  ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', 'Ciro', '1991-01-01', 'NO', 'uomo', 11),
+  ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', 'Duilio', '1991-01-01', 'RM', 'uomo', 5);
+insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
+  ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', 'uomini', now(), '1.5', 25, 45, 'citta'),
+  ('1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', 'donne', now(), '1.5', 25, 45, 'italia'),
+  ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', 'donne', now(), '1.5', 25, 45, 'italia'),
+  ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', 'donne', now(), '1.5', 25, 45, 'italia');
+insert into public.stanze (id, tipo, apre_il, chiude_il) values
+  ('44444444-4444-4444-8444-444444444444', 'italia', now() - interval '1 day', now() + interval '5 days');
+insert into public.membri_stanza (stanza_id, utente_id) select '44444444-4444-4444-8444-444444444444', id from public.profili
+  where id in ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', '1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', '1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', '1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d');
+select pg_temp.come('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a');
+select pg_temp.ok((select array_agg(nome order by nome) from public.compagni_di_stanza()) = array['Bruno'],
+  'zona: con «Solo la mia zona» Ada di Milano vede Bruno di Monza (stessa area), non Ciro di Novara né Duilio di Roma');
+select pg_temp.ok((select citta from public.compagni_di_stanza()) = 'Monza e Brianza', 'zona: gli altri vedono la provincia, non l''area');
+select pg_temp.ok(pg_temp.rifiutato($$update public.aree set nome = 'X' where codice = 'milano'$$)
+  and pg_temp.rifiutato($$select count(*) from public.aree$$), 'aree: il telefono non legge né cambia la mappa');
+select pg_temp.ok(pg_temp.rifiutato($$update public.province set area = 'roma' where sigla = 'MB'$$)
+  and pg_temp.rifiutato($$select public.area_di('MB')$$), 'aree: il telefono non sposta una provincia e non chiama area_di');
+select pg_temp.ok(pg_temp.rifiutato($$select * from public.conteggi_aree()$$), 'conteggi: il telefono non li legge');
+reset role;
+set local role service_role;
+select pg_temp.ok((select totale from public.conteggi_aree() where codice = 'milano') = 2
+  and (select donne from public.conteggi_aree() where codice = 'milano') = 1
+  and (select totale from public.conteggi_aree() where codice = 'no') = 1
+  and not exists (select 1 from public.conteggi_aree() where codice = 'roma' and totale > 0),
+  'conteggi: solo profili completi per area (Milano 2 di cui 1 donna, Novara 1, Roma 0: Duilio è al passo 5)');
+select pg_temp.ok((select array_agg(column_name::text order by column_name) from information_schema.columns
+  where table_schema = 'public' and table_name = 'aree') = array['codice', 'nome'], 'aree: la tabella ha solo codice e nome');
+reset role;
+rollback;
