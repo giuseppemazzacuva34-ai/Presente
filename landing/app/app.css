@@ -68,6 +68,7 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 
 .riepilogo { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .riepilogo audio { width: 100%; }
+.contatore-zona { color: var(--avorio); border-left: 3px solid var(--rosso); padding: 0.4rem 0 0.4rem 0.8rem; margin: 0 0 1rem; line-height: 1.45; }
 
 /* Pulsante che sembra un link (es. «mandala di nuovo» nell'accesso con email). */
 .link {

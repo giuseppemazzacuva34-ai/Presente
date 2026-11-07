@@ -72,6 +72,9 @@ let archivio = null;
 // Provincia dalla lista d'attesa (lista.js): solo con l'accesso vero; una sola richiesta per sessione.
 let lista = null;
 let listaChiesta = false;
+// Contatore della zona nella home (zona.js): solo con l'accesso vero; una richiesta per sessione, il testo resta.
+let zona = null;
+const contatore = { chiesto: false, testo: null };
 const salvataggio = { inCorso: false, errore: "" };
 let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
@@ -89,6 +92,7 @@ export function avvia(elemento, opzioni = {}) {
   accesso = opzioni.accesso || null;
   archivio = (accesso && opzioni.archivio) || null;
   lista = (archivio && opzioni.lista) || null;
+  zona = (archivio && opzioni.zona) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -206,6 +210,17 @@ async function confermaDallaLista() {
     await lista.conferma(stato.provincia);
   }
   return { ok: true };
+}
+
+// Spec #3 v1.2: nella home, se l'area non è ancora accesa, «Milano e dintorni: mancano 7 persone…». Il testo lo prepara
+// il server; se tarda o non c'è, la home resta com'è.
+function chiediContatore() {
+  if (!zona || contatore.chiesto) return;
+  contatore.chiesto = true;
+  zona.leggi().then((testo) => {
+    contatore.testo = testo;
+    if (testo && PASSI[stato.passo] && PASSI[stato.passo].id === "fatto") disegna();
+  });
 }
 
 function disegna() {
@@ -562,11 +577,13 @@ const SCHERMATE = {
   },
 
   fatto() {
-    const zona = nomeVisibile(stato.provincia);
+    chiediContatore();
+    const zonaVisibile = nomeVisibile(stato.provincia);
     return schermata("Il tuo profilo è pronto.",
       "La prossima stanza apre lunedì alle 9:00.",
-      [h("div", { classe: "riepilogo" },
-          h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zona}`),
+      [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" }, contatore.testo) : null,
+        h("div", { classe: "riepilogo" },
+          h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
           testoZona(stato.provincia) ? h("p", { classe: "nota", id: "la-tua-zona" }, testoZona(stato.provincia)) : null,
           archivio ? h("button", { classe: "link", type: "button", onclick: () => { cambio.daProfilo = true; cambio.avviso = ""; vai(4); } }, "Cambia provincia") : null,

@@ -126,6 +126,14 @@ Il telefono la usa solo per scrivere: l'area per le stanze la ricava sempre il s
   nella mia lingua» (il valore salvato resta `citta`, `italia`, `estero`).
 - Prove: `test/zona_app.test.mjs` e nel browser `scripts/prova_app.py`.
 
-Prossimo passo: contatore «mancano N persone» nella home dell'app (numeri di `conteggi_aree()` letti dal Worker,
-solo totale e donne) e lavoro del lunedì che scrive le stanze.
+**Contatore nella home (7/11 notte).** `GET /app/api/zona` (`worker/zona.js`): il Worker riconosce la persona dal token,
+legge la provincia **in vigore** del suo profilo (un cambio vale dal lunedì dopo), ricava l'area e prende i numeri da
+`conteggi_aree()` (solo chiave del server). Al telefono arriva solo `{ zona, accesa, testo }` della propria zona:
+«Milano e dintorni: mancano 7 persone per aprire le stanze della tua zona. Intanto entri nella Stanza Italia.» oppure
+«…ci siete quasi. Servono ancora 4 donne…». Mai numeri di altre aree, nomi o email; parametri della richiesta ignorati.
+Estero o provincia mancante: niente zona. Numeri non disponibili: solo il nome, mai un numero inventato. Area accesa:
+nessun contatore. La home (`landing/app/moduli/zona.js`) aspetta al massimo 2 secondi e non blocca mai. Spento finché
+`ACCESSO_APP` non vale «si»; limite di frequenza `LIMITE_PROVINCIA` (chiave a parte). Prove: `test/contatore_zona.test.mjs`.
+
+Prossimo passo: lavoro del lunedì che legge le conferme e `conteggi_aree()` e scrive le stanze.
 
