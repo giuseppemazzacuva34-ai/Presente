@@ -116,3 +116,16 @@ web app; scelta del raggio «Solo la mia zona · <area>».
 - «non binario» e «mi descrivo» rientrano solo in chi cerca «tutti»: confermato dal CPO il 3/11.
 - Con 1.000 profili il calcolo dura circa 6 secondi: oltre i limiti di CPU del piano gratuito dei Worker. Quando serve,
   il lavoro del lunedì gira come GitHub Action programmata o funzione di Supabase (scelta del CTO, costo zero).
+
+**Nella web app (7/11 sera).** La mappa ora sta in un solo file, `landing/app/moduli/aree.js`: la usa il telefono per
+scrivere i testi e il server (`api/aree.js` la importa) per i calcoli, così non possono mai dire due zone diverse.
+Il telefono la usa solo per scrivere: l'area per le stanze la ricava sempre il server dalla provincia.
+- In «Il mio profilo», sotto nome, età e provincia: «La tua zona: Milano e dintorni (Milano, Monza e Brianza, …)»;
+  niente per chi vive all'estero. Gli altri della stanza continuano a vedere solo la provincia.
+- Nel passo «Chi cerchi» il raggio è «Solo la mia zona · Milano e dintorni» / «Anche altre città» / «Anche dall'estero,
+  nella mia lingua» (il valore salvato resta `citta`, `italia`, `estero`).
+- Prove: `test/zona_app.test.mjs` e nel browser `scripts/prova_app.py`.
+
+Prossimo passo: contatore «mancano N persone» nella home dell'app (numeri di `conteggi_aree()` letti dal Worker,
+solo totale e donne) e lavoro del lunedì che scrive le stanze.
+
