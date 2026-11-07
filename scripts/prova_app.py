@@ -36,6 +36,8 @@ async def main():
         assert await pg.get_by_role("button", name="Continua").is_disabled(), "senza provincia si va avanti"
         await pg.fill("#provincia", "milano"); await clic("Donna"); await foto("chi-sei"); await clic("Continua")
         await clic("Uomini"); await pg.check("#consenso-cerco"); await clic("Una storia seria"); await clic("Forse"); await clic("Indifferente")
+        # Spec #3 v1.2: il raggio parla della zona (area vasta), non della provincia.
+        assert await pg.get_by_role("radio", name="Solo la mia zona · Milano e dintorni").is_visible(), "raggio senza la zona"
         await foto("chi-cerchi"); await clic("Continua")
         await clic("● Registra"); await pg.wait_for_timeout(2500); await foto("voce-registra"); await pg.wait_for_timeout(4000); await ferma()
         await pg.wait_for_selector(".registratore audio"); await foto("voce-fatta"); await clic("Continua")
@@ -59,6 +61,7 @@ async def main():
             await pg.set_input_files(f"#foto-{i}", FOTO); await pg.wait_for_timeout(500)
         await foto("foto"); await clic("Continua")
         await foto("fatto")
+        assert await pg.locator("#la-tua-zona").inner_text() == "La tua zona: Milano e dintorni (Milano, Monza e Brianza, Lodi, Pavia, Como, Varese, Lecco)", "manca «La tua zona»"
         print("titolo finale:", await pg.locator("h1").inner_text())
         print("console:", errori or "pulita")
         if errori: sys.exit(1)

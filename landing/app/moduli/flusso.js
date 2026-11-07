@@ -13,6 +13,7 @@ import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
 import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
 import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile, testoCambio, lunediCambio } from "./province.js";
+import { testoZona, etichettaRaggio } from "./aree.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -469,7 +470,8 @@ const SCHERMATE = {
           h("label", { for: "eta-max" }, "a"), numero("eta-max", stato.etaMax, (v) => { stato.etaMax = v; })),
         avvisoEta,
         h("p", { classe: "etichetta" }, "Dove"),
-        scelte("raggio", [["citta", "Solo la mia provincia"], ["italia", "Anche altre città italiane"], ["estero", "Anche dall'estero, nella mia lingua"]],
+        // Spec #3 v1.2 (D121 A): «Solo la mia zona» = persone della stessa area vasta; il valore salvato resta «citta».
+        scelte("raggio", [["citta", etichettaRaggio(stato.provincia)], ["italia", "Anche altre città"], ["estero", "Anche dall'estero, nella mia lingua"]],
           stato.raggio, (v) => { stato.raggio = v; disegna(); }),
         h("p", { classe: "etichetta" }, "Cosa cerco"),
         scelte("cosa", [["storia_seria", "Una storia seria"], ["senza_fretta", "Conoscersi senza fretta"]], stato.cosaCerco, (v) => { stato.cosaCerco = v; disegna(); }),
@@ -565,6 +567,8 @@ const SCHERMATE = {
       "La prossima stanza apre lunedì alle 9:00.",
       [h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zona}`),
+          // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
+          testoZona(stato.provincia) ? h("p", { classe: "nota", id: "la-tua-zona" }, testoZona(stato.provincia)) : null,
           archivio ? h("button", { classe: "link", type: "button", onclick: () => { cambio.daProfilo = true; cambio.avviso = ""; vai(4); } }, "Cambia provincia") : null,
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
