@@ -4,7 +4,7 @@ App di incontri per vedersi davvero, per conoscersi al buio: niente swipe e foto
 
 ## Stato
 
-Fase 2 in corso. Landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md). Stanze della settimana (#3, calcoli in `api/stanze.js`): [`docs/stanze.md`](docs/stanze.md).
+Fase 2 in corso. Landing page della lista d'attesa nella cartella `landing/`, online con iscrizioni aperte dal 26 ottobre. La Fase 2 (sviluppo della web app) è partita il 29 ottobre per decisione di Giuseppe. Supabase (Francoforte) e Cloudflare Realtime sono collegati dal 29 ottobre: chiavi solo nei segreti GitHub, controllabili con il workflow manuale «Verifica segreti». Come sarà costruita (componenti, dati, flusso delle chiamate, scelte aperte): [`docs/architettura.md`](docs/architettura.md). Stanze della settimana (#3, calcoli in `api/stanze.js`, aree vaste D121 A in `api/aree.js`): [`docs/stanze.md`](docs/stanze.md).
 
 ## Automatismi attivi
 

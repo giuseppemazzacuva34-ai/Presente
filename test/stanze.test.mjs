@@ -84,10 +84,13 @@ test("Stanza Italia: «solo la mia città» non ci entra mai senza toccare «Sì
   const g = gruppi(persone, new Set());
   assert.ok(g.italia.every((p) => p.raggio !== "citta"));
   assert.ok(g.attesa_citta.every((p) => p.raggio === "citta"));
-  const tanti = Array.from({ length: 36 }, (_, i) => ({ id: `m${i}`, paese: "IT", citta: "milano", raggio: "citta" }));
+  // Area vasta (spec v1.2, D121 A): si accende con 36 profili completi e almeno il 40% di donne.
+  const tanti = Array.from({ length: 36 }, (_, i) => ({ id: `m${i}`, paese: "IT", zona: "milano", presento: i < 15 ? "donna" : "uomo", raggio: "citta" }));
   assert.deepEqual([...cittaAperte(tanti)], ["milano"]);
   assert.equal(gruppi(tanti)["citta:milano"].length, 36);
-  assert.equal(cittaAperte(tanti.slice(1)).size, 0);
+  assert.equal(cittaAperte(tanti.slice(1)).size, 0, "35 profili: non si accende");
+  const pocheDonne = tanti.map((p, i) => (i === 0 ? { ...p, presento: "uomo" } : p));
+  assert.equal(cittaAperte(pocheDonne).size, 0, "36 profili con 14 donne (38,9%): non si accende");
   assert.equal(mancanoPerCitta(29), 7);
   assert.equal(mancanoPerCitta(40), 0);
 });
@@ -164,4 +167,25 @@ test("nelle stanze composte ognuno ha almeno 4 persone per sé e vede solo quell
       for (const id of visti) assert.ok(compatibili(io, perId.get(id)), `${io.id} vede solo compatibili`);
     }
   }
+});
+
+test("«Solo la mia zona»: mai insieme persone di aree diverse (100 profili inventati su 3 aree)", () => {
+  const r = casuale(21);
+  const aree = ["milano", "roma", "napoli"];
+  const persone = profiliDiProva(100, 21).map((p) => ({ ...p, paese: "IT", zona: aree[Math.floor(r() * 3)], raggio: "citta" }));
+  for (const a of persone) for (const b of persone)
+    if (a.zona !== b.zona) assert.equal(compatibili(a, b), false);
+  // Con le tre aree accese, ogni stanza ha persone di una sola area.
+  const g = gruppi(persone, new Set(aree));
+  assert.equal(g.attesa_citta.length, 0);
+  for (const chiave of Object.keys(g).filter((k) => k.startsWith("citta:"))) {
+    for (const stanza of componi(g[chiave]).stanze) {
+      const zone = new Set(stanza.map((id) => persone.find((p) => p.id === id).zona));
+      assert.equal(zone.size, 1, `${chiave}: stanza con aree diverse`);
+    }
+  }
+  // Senza zona (dati di prima) vale ancora la città.
+  const x = { id: "x", eta: 30, presento: "donna", paese: "IT", citta: "lecce", cerco: "uomini", eta_min: 25, eta_max: 40, raggio: "citta" };
+  const y = { id: "y", eta: 31, presento: "uomo", paese: "IT", citta: "lecce", cerco: "donne", eta_min: 25, eta_max: 40, raggio: "citta" };
+  assert.equal(compatibili(x, y), true);
 });

@@ -4,8 +4,9 @@
 // perché. Nessuna lettura o scrittura qui: le fa il lavoro programmato (passo successivo), così tutto si prova con dati
 // inventati. Il diario non entra mai: nessuna funzione di questo file lo riceve.
 
-import { STANZA, FUSO, coppia, componi, gruppi, cittaAperte, mancanoPerCitta, settimanaStanza, oraDiRoma, costoStanza, affinitaDaQuestionari }
+import { STANZA, FUSO, coppia, componi, gruppi, contaPerZona, zoneAccese, settimanaStanza, oraDiRoma, costoStanza, affinitaDaQuestionari }
   from "./stanze.js";
+import { areaDi, mancano } from "./aree.js";
 import { questionarioCompleto } from "./questionario.js";
 
 // Passo finale dell'iscrizione nella web app (profilo completo).
@@ -46,11 +47,16 @@ export function persona({ profilo, filtri, questionario }, apertura, stanzePrece
   if (!profilo.data_nascita) return { motivo: "senza_data_nascita" }; // requisito 2 del CISO
   const eta = etaAl(profilo.data_nascita, apertura);
   if (eta === null || eta < 18) return { motivo: "senza_data_nascita" };
-  if (!profilo.nome || !profilo.citta || !profilo.mi_presento_come) return { motivo: "profilo_incompleto" };
+  // Dall'estero (provincia «EE») la città è vuota per costruzione: basta la provincia.
+  if (!profilo.nome || !(profilo.citta || profilo.provincia) || !profilo.mi_presento_come) return { motivo: "profilo_incompleto" };
   if (!filtri?.cerco || !filtri.consenso_cerco_il || !filtri.raggio) return { motivo: "filtri_incompleti" };
   if (!questionarioCompleto(questionario)) return { motivo: "questionario_incompleto" };
+  // Zona = area vasta ricavata qui dalla provincia (D121 A): eventuali campi «zona» o «area» nella riga non contano.
+  // Senza provincia (righe di prima) la zona è la città; dall'estero nessuna zona.
+  const citta = chiaveCitta(profilo.citta);
+  const zona = profilo.provincia ? areaDi(profilo.provincia)?.codice ?? null : citta;
   return {
-    id: profilo.id, eta, presento: profilo.mi_presento_come, citta: chiaveCitta(profilo.citta), paese: profilo.paese || "IT",
+    id: profilo.id, eta, presento: profilo.mi_presento_come, zona, citta, paese: profilo.paese || "IT",
     cerco: filtri.cerco, eta_min: filtri.eta_min ?? 18, eta_max: filtri.eta_max ?? 99, raggio: filtri.raggio, stanzePrecedenti,
   };
 }
@@ -83,9 +89,10 @@ export function coppieEscluse({ blocchi = [], storico = [] }, apertura) {
 // Il lavoro del lunedì in un'unica funzione.
 // righe: [{ profilo, filtri, questionario: [righe della tabella] }] di chi ha confermato l'ingresso.
 // iscrizioni: Map id → istante della conferma. stanzePrecedenti: Map id → quante stanze ha già fatto (per i crediti).
-// Città aperte: si contano TUTTI i profili completi (anche chi questa settimana non entra), come il contatore «mancano N».
+// Aree accese: si contano TUTTI i profili completi (anche chi questa settimana non entra), come il contatore «mancano N».
+// completiPerZona: { codiceArea: { totale, donne } } dal database (solo numeri); senza, si contano le persone di questa settimana.
 export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePrecedenti = new Map(), blocchi = [], storico = [],
-  completiPerCitta = null, adesso = new Date() }) {
+  completiPerZona = null, adesso = new Date() }) {
   const { apre, chiude } = settimanaStanza(adesso);
   const scadenza = scadenzaIscrizione(apre);
   const attesa = [];
@@ -103,10 +110,8 @@ export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePreceden
     questionari.set(id, q);
   }
 
-  const completi = completiPerCitta && Object.fromEntries(Object.entries(completiPerCitta).map(([c, n]) => [chiaveCitta(c), n]));
-  const aperte = completi
-    ? new Set(Object.entries(completi).filter(([, n]) => n >= STANZA.cittaApreA).map(([c]) => c))
-    : cittaAperte(persone);
+  const conto = completiPerZona || contaPerZona(persone);
+  const aperte = zoneAccese(conto);
   const esclusi = coppieEscluse({ blocchi, storico }, apre);
   const affinitaDi = affinitaDaQuestionari(questionari);
   const perId = new Map(persone.map((p) => [p.id, p]));
@@ -114,10 +119,8 @@ export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePreceden
 
   for (const [chiave, gruppo] of Object.entries(gruppi(persone, aperte))) {
     if (chiave === "attesa_citta") {
-      for (const p of gruppo) {
-        const n = completi ? completi[p.citta] ?? 0 : persone.filter((x) => x.citta === p.citta && x.paese === "IT").length;
-        attesa.push({ utente_id: p.id, motivo: "citta_non_aperta", mancano: mancanoPerCitta(n) });
-      }
+      // mancano: { persone, donne } per il testo della home (testoContatore in api/aree.js).
+      for (const p of gruppo) attesa.push({ utente_id: p.id, motivo: "citta_non_aperta", zona: p.zona, mancano: mancano(conto[p.zona]) });
       continue;
     }
     const { stanze: composte, inAttesa } = componi(gruppo, { esclusi, affinitaDi });
