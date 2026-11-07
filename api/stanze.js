@@ -3,11 +3,14 @@
 // solo calcoli su dati già letti, così si prova tutto con profili inventati.
 //
 // Persona (come la passa il lavoro del lunedì, dopo aver letto profili e filtri):
-//   { id, eta, presento: "donna" | "uomo" | "non_binario" | "mi_descrivo", citta: "milano", paese: "IT",
+//   { id, eta, presento: "donna" | "uomo" | "non_binario" | "mi_descrivo", zona: "milano", citta: "milano", paese: "IT",
 //     cerco: "donne" | "uomini" | "tutti", eta_min, eta_max, raggio: "citta" | "italia" | "estero", stanzePrecedenti: 0 }
+// zona = codice dell'area vasta (api/aree.js, D121 A), ricavato dal server dalla provincia. Senza zona (dati di prima
+// della provincia) vale la città. Raggio «citta» = «Solo la mia zona».
 // Il diario NON entra mai qui: nessuna funzione di questo file lo riceve (D51 A, «il diario non entra mai nei calcoli»).
 
 import { affinita as affinitaQuestionario } from "./questionario.js";
+import { accesa } from "./aree.js";
 
 export const STANZA = Object.freeze({ massimo: 12, minimo: 6, compatibiliMinimi: 4, cittaApreA: 36, settimaneSenzaRipetere: 4, costoCrediti: 9 });
 export const FUSO = "Europe/Rome";
@@ -20,10 +23,12 @@ function rientra(chi, altro) {
   if (!chi.cerco || !altro.presento) return false;
   if (chi.cerco !== "tutti" && !CERCO[chi.cerco]?.has(altro.presento)) return false;
   if (!(altro.eta >= (chi.eta_min ?? 18) && altro.eta <= (chi.eta_max ?? 99))) return false;
-  if (chi.raggio === "citta") return altro.paese === chi.paese && altro.citta === chi.citta;
+  if (chi.raggio === "citta") return altro.paese === chi.paese && Boolean(zonaDi(chi)) && zonaDi(altro) === zonaDi(chi);
   if (chi.raggio === "italia") return altro.paese === "IT";
   return chi.raggio === "estero";
 }
+
+export const zonaDi = (p) => p.zona ?? p.citta ?? null;
 
 const coppia = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
@@ -52,14 +57,29 @@ export function perTe(io, stanza, esclusi = new Set()) {
   return stanza.filter((altro) => compatibili(io, altro, esclusi)).map((altro) => altro.id);
 }
 
-// ── Stanza Italia o stanza della città (D19 e spec v1.1). ──
-// Una città con almeno 36 profili completi apre stanze sue: ci vanno i suoi abitanti. Tutti gli altri con raggio
-// «italia» o «estero» vanno nella Stanza Italia. Chi ha «solo la mia città» e la città non è aperta resta in attesa
-// (riceve la domanda «Vuoi entrare intanto nella Stanza Italia?»): il raggio lo cambia solo l'utente toccando «Sì».
-export function cittaAperte(persone) {
+// ── Stanza Italia o stanza dell'area (D19, spec v1.1 e v1.2). ──
+// Un'area con almeno 36 profili completi e almeno il 40% di donne (api/aree.js) apre stanze sue: ci vanno i suoi abitanti.
+// Tutti gli altri con raggio «italia» o «estero» vanno nella Stanza Italia. Chi ha «solo la mia zona» e l'area non è
+// accesa resta in attesa (riceve la domanda «Vuoi entrare intanto nella Stanza Italia?»): il raggio lo cambia solo
+// l'utente toccando «Sì». Il nome «citta» resta nelle funzioni per non cambiare le righe già scritte nel database.
+export function contaPerZona(persone) {
   const conto = {};
-  for (const p of persone) if (p.paese === "IT" && p.citta) conto[p.citta] = (conto[p.citta] || 0) + 1;
-  return new Set(Object.keys(conto).filter((c) => conto[c] >= STANZA.cittaApreA));
+  for (const p of persone) {
+    const z = zonaDi(p);
+    if (p.paese !== "IT" || !z) continue;
+    const c = (conto[z] ||= { totale: 0, donne: 0 });
+    c.totale++;
+    if (p.presento === "donna") c.donne++;
+  }
+  return conto;
+}
+
+export function cittaAperte(persone) {
+  return zoneAccese(contaPerZona(persone));
+}
+
+export function zoneAccese(conto) {
+  return new Set(Object.keys(conto).filter((z) => accesa(conto[z])));
 }
 
 export function mancanoPerCitta(completiInCitta) {
@@ -69,7 +89,8 @@ export function mancanoPerCitta(completiInCitta) {
 export function gruppi(persone, aperte = cittaAperte(persone)) {
   const risultato = { italia: [], attesa_citta: [] };
   for (const p of persone) {
-    if (p.paese === "IT" && aperte.has(p.citta)) (risultato[`citta:${p.citta}`] ||= []).push(p);
+    const z = zonaDi(p);
+    if (p.paese === "IT" && z && aperte.has(z)) (risultato[`citta:${z}`] ||= []).push(p);
     else if (p.raggio === "citta") risultato.attesa_citta.push(p);
     else risultato.italia.push(p);
   }

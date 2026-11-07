@@ -135,10 +135,39 @@ test("città con 36 profili completi: stanze della città; «solo la mia città�
   const esito = preparaSettimana({ righe, iscrizioni: tuttiIscritti(righe), adesso: ADESSO });
   assert.ok(esito.stanze.length > 0 && esito.stanze.every((s) => s.tipo === "citta" && s.citta === "milano"));
   const bari = esito.attesa.find((a) => a.utente_id === "u200");
-  assert.deepEqual(bari, { utente_id: "u200", motivo: "citta_non_aperta", mancano: 35 });
-  // Con il conteggio dei profili completi fornito dal database (anche chi non entra questa settimana).
-  const conConteggio = preparaSettimana({ righe, iscrizioni: tuttiIscritti(righe), completiPerCitta: { Milano: 60, BARI: 30 }, adesso: ADESSO });
-  assert.equal(conConteggio.attesa.find((a) => a.utente_id === "u200").mancano, 6);
+  assert.deepEqual(bari, { utente_id: "u200", motivo: "citta_non_aperta", zona: "bari", mancano: { persone: 35, donne: 35 } });
+  // Con il conteggio dei profili completi fornito dal database (anche chi non entra questa settimana): totale e donne.
+  const conConteggio = preparaSettimana({ righe, iscrizioni: tuttiIscritti(righe),
+    completiPerZona: { milano: { totale: 60, donne: 30 }, bari: { totale: 30, donne: 15 } }, adesso: ADESSO });
+  assert.deepEqual(conConteggio.attesa.find((a) => a.utente_id === "u200").mancano, { persone: 6, donne: 6 });
+  // Area con 40 profili ma poche donne: non si accende, chi ha «solo la mia zona» resta in attesa con le donne che mancano.
+  const pocheDonne = preparaSettimana({ righe, iscrizioni: tuttiIscritti(righe),
+    completiPerZona: { milano: { totale: 60, donne: 20 }, bari: { totale: 30, donne: 15 } }, adesso: ADESSO });
+  assert.ok(pocheDonne.stanze.every((s) => s.tipo === "italia"), "Milano sotto il 40%: Stanza Italia");
+});
+
+test("area vasta: la zona la ricava il server dalla provincia (MI, MB, LO insieme); estero senza zona", () => {
+  const r = casuale(4);
+  const riga = rigaDiProva(7, r, { profilo: { provincia: "MB", citta: "Monza e Brianza" } });
+  const q = questionarioInVigore(riga.questionario, LUNEDI);
+  assert.equal(persona({ ...riga, questionario: q }, LUNEDI).zona, "milano");
+  // una zona scritta nella riga (es. da una richiesta) non conta: vale solo la provincia
+  const finta = persona({ ...riga, profilo: { ...riga.profilo, zona: "roma", area: "roma" }, questionario: q }, LUNEDI);
+  assert.equal(finta.zona, "milano");
+  const estero = persona({ ...riga, profilo: { ...riga.profilo, provincia: "EE", citta: null, paese: "FR" }, questionario: q }, LUNEDI);
+  assert.equal(estero.zona, null);
+
+  const sigle = ["MI", "MB", "LO"];
+  const righe = Array.from({ length: 60 }, (_, i) => {
+    const sigla = sigle[i % 3];
+    return rigaDiProva(i, r, { profilo: { provincia: sigla, citta: sigla, mi_presento_come: i % 2 ? "donna" : "uomo" },
+      filtri: { cerco: i % 2 ? "uomini" : "donne", raggio: "citta" } });
+  });
+  const esito = preparaSettimana({ righe, iscrizioni: tuttiIscritti(righe), adesso: ADESSO });
+  assert.ok(esito.stanze.length > 0);
+  assert.ok(esito.stanze.every((s) => s.tipo === "citta" && s.citta === "milano"), "un'unica area: Milano e dintorni");
+  const province = new Set(esito.stanze.flatMap((s) => s.membri.map((m) => righe.find((x) => x.profilo.id === m.utente_id).profilo.provincia)));
+  assert.ok(province.size > 1, "nella stessa stanza province diverse della stessa area");
 });
 
 test("chi non ha confermato entro domenica, o ha il profilo a metà, resta fuori con il motivo", () => {

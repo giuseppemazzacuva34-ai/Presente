@@ -74,6 +74,35 @@ reciprocamente compatibile (genere, età, raggio nei due versi; «città» = pro
 
 Il contatore «Nella tua stanza: N persone per te» è il numero di righe di `compagni_di_stanza()`.
 
+## Aree vaste (spec v1.2 del CPO, D121 A, 7 novembre)
+
+Una «città» per le stanze è un'**area vasta**: provincia + province vicine della stessa regione entro circa 60 km.
+Tutto in `api/aree.js` (solo calcoli, provati in `test/aree.test.mjs`):
+
+- **mappa fissa** delle 9 aree iniziali (plancia › `progetto/aree-vaste`); ogni provincia sta in una sola area, le
+  province non elencate sono un'area da sola con il loro nome; dall'estero nessuna area;
+- **l'area la ricava il server dalla provincia** (`persona()` in `api/settimana.js`): un campo «zona» o «area» arrivato
+  con la riga non conta;
+- **accensione**: almeno 36 profili completi **e** almeno il 40% di donne (calcolo in numeri interi: con 36 profili
+  14 donne non bastano, 15 sì); «non binario» e «mi descrivo» contano nei 36 ma non nel 40%;
+- **contatore** della home: `testoContatore(area, { totale, donne })` mostra il numero più alto tra persone mancanti e
+  donne mancanti, con i testi della spec; `testoZona(sigla)` scrive «La tua zona: Milano e dintorni (Milano, …)»;
+- **«Solo la mia zona»** (raggio `citta`): solo persone della stessa area (provato con 100 profili inventati su 3 aree);
+- `conteggiPerArea(profili)` dà solo numeri (totale, donne) per i contatori della plancia.
+
+Corretto anche un errore: chi vive all'estero (provincia «EE», città vuota) risultava «profilo incompleto» e non entrava
+mai nella Stanza Italia.
+
+**Distanze ricalcolate (7/11)** in linea d'aria tra i comuni capoluogo, con le coordinate dei comuni ISTAT 2018
+(elenco pubblico «Comuni-Italiani-2018», solo nomi e coordinate dei comuni, nessun dato di persone). Tutte le province
+della mappa stanno entro 60 km tranne **Arezzo (61 km da Firenze)**, al limite. Al limite fuori: Lucca 61 km da
+Firenze, Reggio Emilia 61 km da Bologna, Mantova 62 km da Brescia, Biella 62 km da Torino. **Sondrio** (Lombardia) è a
+55 km da Bergamo e non è nella mappa. Novara (44 km da Milano) e Matera (56 km da Bari) restano fuori perché di
+un'altra regione. Le scelte sono del CPO; cambi della mappa solo con una decisione di Giuseppe.
+
+Prossimo passo: tabella `aree` nel database, area ricavata dal server anche lì (regole per riga e
+`compagni_di_stanza()` con «Solo la mia zona»), conteggi per area per la plancia e testi nella web app.
+
 ## Punti aperti
 
 - «non binario» e «mi descrivo» rientrano solo in chi cerca «tutti»: confermato dal CPO il 3/11.
