@@ -100,8 +100,16 @@ Firenze, Reggio Emilia 61 km da Bologna, Mantova 62 km da Brescia, Biella 62 km 
 55 km da Bergamo e non è nella mappa. Novara (44 km da Milano) e Matera (56 km da Bari) restano fuori perché di
 un'altra regione. Le scelte sono del CPO; cambi della mappa solo con una decisione di Giuseppe.
 
-Prossimo passo: tabella `aree` nel database, area ricavata dal server anche lì (regole per riga e
-`compagni_di_stanza()` con «Solo la mia zona»), conteggi per area per la plancia e testi nella web app.
+**Nel database (7/11, migrazione `20261107220000_aree.sql`).** Tabella `aree` (codice, nome) e colonna
+`province.area`: ognuna delle 107 province ha esattamente un'area, l'estero nessuna (vincolo nel database). La mappa è
+la stessa di `api/aree.js`: `test/aree_database.test.mjs` ferma «Verifica» se le due non coincidono. Le tabelle della
+mappa le legge solo il server, come `province`. «Solo la mia zona» nel database (`rientra_nei_filtri`, quindi anche
+`compagni_di_stanza()`) confronta le aree delle province in vigore: Milano vede Monza, non Novara né Roma; agli altri
+si mostra sempre la provincia. `conteggi_aree()` dà per ogni area solo `totale` e `donne` dei profili completi
+(passo 11): la chiama solo il server (service_role), mai il telefono.
+
+Prossimo passo: il lavoro del lunedì usa `conteggi_aree()` per l'accensione; testi «La tua zona» e contatore nella
+web app; scelta del raggio «Solo la mia zona · <area>».
 
 ## Punti aperti
 
