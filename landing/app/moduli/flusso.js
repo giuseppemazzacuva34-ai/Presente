@@ -14,6 +14,7 @@ import { MESSAGGI } from "./accesso.js";
 import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
 import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile, testoCambio, lunediCambio } from "./province.js";
 import { testoZona, etichettaRaggio } from "./aree.js";
+import { testoConferma, chiediItalia, contatoreSoloZona } from "./stanza.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -75,6 +76,17 @@ let listaChiesta = false;
 // Contatore della zona nella home (zona.js): solo con l'accesso vero; una richiesta per sessione, il testo resta.
 let zona = null;
 const contatore = { chiesto: false, testo: null };
+// «Entra nella stanza» (stanza.js): conferma scritta dal database; una lettura per sessione.
+let stanza = null;
+const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
+// «Vuoi entrare intanto nella Stanza Italia?»: «Aspetto la mia zona» la nasconde per questa sessione.
+const italia = { aspetto: false, inCorso: false, errore: "", avviso: "" };
+const MESSAGGI_STANZA = {
+  accesso: "La sessione è scaduta: rientra con la tua email.",
+  rete: "Non riusciamo a collegarci. Controlla la connessione e riprova.",
+  salvataggio: "Non siamo riusciti a salvare. Riprova tra poco.",
+  scaduta: "Le conferme per questo lunedì sono chiuse: ci vediamo nella stanza.",
+};
 const salvataggio = { inCorso: false, errore: "" };
 let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
@@ -93,6 +105,7 @@ export function avvia(elemento, opzioni = {}) {
   archivio = (accesso && opzioni.archivio) || null;
   lista = (archivio && opzioni.lista) || null;
   zona = (archivio && opzioni.zona) || null;
+  stanza = (archivio && opzioni.stanza) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -221,6 +234,73 @@ function chiediContatore() {
     contatore.testo = testo;
     if (testo && PASSI[stato.passo] && PASSI[stato.passo].id === "fatto") disegna();
   });
+}
+
+// Spec #3 v1: la conferma già data si legge una volta; se tarda o non c'è, resta il pulsante.
+function chiediConferma() {
+  if (!stanza || ingresso.chiesto) return;
+  ingresso.chiesto = true;
+  stanza.leggi().then((r) => {
+    if (r.ok) ingresso.apreIl = r.apreIl;
+    ingresso.letto = true;
+    if (PASSI[stato.passo] && PASSI[stato.passo].id === "fatto") disegna();
+  });
+}
+
+async function entraNellaStanza() {
+  if (!stanza || ingresso.inCorso) return;
+  ingresso.inCorso = true; ingresso.errore = ""; ingresso.avviso = ""; disegna();
+  const r = await stanza.entra();
+  ingresso.inCorso = false;
+  if (r.ok && r.apreIl) ingresso.apreIl = r.apreIl;
+  else ingresso.errore = MESSAGGI_STANZA[r.motivo] || MESSAGGI_STANZA.salvataggio;
+  disegna();
+}
+
+async function ciRipenso() {
+  if (!stanza || ingresso.inCorso || !ingresso.apreIl) return;
+  ingresso.inCorso = true; ingresso.errore = ""; ingresso.avviso = ""; disegna();
+  const r = await stanza.ritira(ingresso.apreIl);
+  ingresso.inCorso = false;
+  if (r.ok) { ingresso.apreIl = null; ingresso.avviso = "Va bene: questa settimana non entri. Puoi cambiare idea fino a domenica alle 23:59."; }
+  else ingresso.errore = MESSAGGI_STANZA[r.motivo] || MESSAGGI_STANZA.salvataggio;
+  disegna();
+}
+
+// Spec #3 v1.1: il raggio passa ad «Anche altre città» solo se la persona tocca «Sì, allarga il raggio».
+async function allargaIlRaggio() {
+  if (!archivio || italia.inCorso) return;
+  italia.inCorso = true; italia.errore = ""; disegna();
+  const r = await archivio.salvaFiltri({ raggio: "italia" });
+  italia.inCorso = false;
+  if (r.ok) { stato.raggio = "italia"; italia.avviso = "Fatto: entri nella Stanza Italia. Puoi cambiare il raggio da «Modifica il profilo»."; }
+  else italia.errore = MESSAGGI_STANZA[r.motivo] || MESSAGGI_STANZA.salvataggio;
+  disegna();
+}
+
+function bloccoItalia() {
+  if (!archivio || !chiediItalia({ raggio: stato.raggio, contatore: contatore.testo, aspetto: italia.aspetto })) return null;
+  return h("div", { classe: "domanda-italia", role: "group", "aria-labelledby": "domanda-italia" },
+    h("p", { id: "domanda-italia" }, "Vuoi entrare intanto nella Stanza Italia?"),
+    h("div", { classe: "scelte-italia" },
+      h("button", { classe: "bottone-secondario", type: "button", disabled: italia.inCorso, onclick: allargaIlRaggio }, "Sì, allarga il raggio"),
+      h("button", { classe: "bottone-secondario", type: "button", disabled: italia.inCorso, onclick: () => { italia.aspetto = true; disegna(); } }, "Aspetto la mia zona")),
+    errore(italia.errore));
+}
+
+function bloccoStanza() {
+  if (!stanza) return null;
+  chiediConferma();
+  const conferma = ingresso.apreIl ? testoConferma(ingresso.apreIl) : null;
+  return h("div", { classe: "ingresso-stanza" },
+    conferma
+      ? [h("p", { role: "status", id: "conferma-stanza" }, conferma),
+        h("button", { classe: "link", type: "button", disabled: ingresso.inCorso, onclick: ciRipenso }, "Ci ripenso")]
+      : [h("button", { classe: "bottone", type: "button", disabled: ingresso.inCorso || !ingresso.letto, onclick: entraNellaStanza }, "Entra nella stanza"),
+        h("p", { classe: "nota" }, "La prima stanza è in regalo, poi 9 crediti a stanza. Si conferma entro domenica alle 23:59.")],
+    ingresso.inCorso ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
+    ingresso.avviso ? h("p", { classe: "nota", role: "status" }, ingresso.avviso) : null,
+    errore(ingresso.errore));
 }
 
 function disegna() {
@@ -581,7 +661,11 @@ const SCHERMATE = {
     const zonaVisibile = nomeVisibile(stato.provincia);
     return schermata("Il tuo profilo è pronto.",
       "La prossima stanza apre lunedì alle 9:00.",
-      [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" }, contatore.testo) : null,
+      [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
+          stato.raggio === "citta" ? contatoreSoloZona(contatore.testo) : contatore.testo) : null,
+        bloccoItalia(),
+        italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null,
+        bloccoStanza(),
         h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.

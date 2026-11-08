@@ -27,6 +27,7 @@ async def prova(b, nome, rifiuta):
         if p == "/auth/v1/otp": return await ok({})
         if p == "/auth/v1/verify": return await ok(TOKEN)
         if p == "/rest/v1/questionario": return await ok([])
+        if p == "/rest/v1/conferme_stanza" and r.method == "GET": return await ok([])
         m = re.match(r"^/rest/v1/(profili|filtri)$", p)
         if m:
             if r.method == "GET": return await ok([db[m.group(1)]])
@@ -41,6 +42,7 @@ async def prova(b, nome, rifiuta):
     await ctx.route(SUPA + "/**", supabase)
     await ctx.route("**/app/config.json", lambda route: route.fulfill(status=200, body=json.dumps(CONFIG), content_type="application/json"))
     await ctx.route("**/app/api/provincia-lista", lambda route: route.fulfill(status=200, body='{"sigla":null}', content_type="application/json"))
+    await ctx.route("**/app/api/zona", lambda route: route.fulfill(status=200, body='{"zona":null,"accesa":false,"testo":null}', content_type="application/json"))
     errori = []
     pg = await ctx.new_page()
     pg.on("console", lambda m: errori.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)
