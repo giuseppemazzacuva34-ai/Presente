@@ -113,6 +113,12 @@ Da fare in Supabase prima di accendere (pannello Authentication, lo fa Giuseppe 
 
 Connessione persa: 30 secondi per rientrare nella stessa sessione, il timer continua.
 
+**Passi di sviluppo della #4** (un ramo e una PR ciascuno):
+1. *Regole* (fatto, `api/chiamate.js` + `test/chiamate.test.mjs`): tutti i controlli del passo 2 in un solo punto, fine e timer decisi dal server (15:00 o chiusura della stanza), durata mai oltre la fine, riga del registro con solo chi / con / inizio / durata / esito, carte della conversazione (spec v1.2: pulsante da 0:10 all'ultimo minuto, 20 s tra due pescate, suggerimento a 0:30 una volta, nessuna ripetizione per la coppia nella settimana). Solo calcoli, nessun accesso a database o Realtime.
+2. *Database*: tabelle `chiamate` (solo quei 5 campi), `carte` (le 30 carte approvate con D58 A, `versione = v1`), `carte_viste` (cancellate alla chiusura della stanza), fascia di disponibilità e permesso D32 nel profilo; regole per riga.
+3. *Server*: apertura, risposta, chiusura e pescata come richieste del Worker, con la sessione Cloudflare Realtime solo audio.
+4. *Web app*: schermate «Chiama», squillo, chiamata, «Chiudi e segnala»; prova reale su iPhone (web app in Home) e Android.
+
 ### Audio e video sulla stessa base (D48 A, 29/10)
 
 Le chiamate dalla stanza sono **solo voce**; dopo la porta c'è lo **svelamento**: videochiamata di 10 secondi che parte sfocata. Entrambe usano la stessa sessione Cloudflare Realtime, quindi la #4 si costruisce già pronta per il video:
