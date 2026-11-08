@@ -420,3 +420,73 @@ select pg_temp.ok((select array_agg(column_name::text order by column_name) from
   where table_schema = 'public' and table_name = 'aree') = array['codice', 'nome'], 'aree: la tabella ha solo codice e nome');
 reset role;
 rollback;
+
+-- Lavoro del lunedì (#3): righe_settimana() legge solo chi ha confermato, scrivi_settimana() scrive tutto o niente.
+begin;
+insert into auth.users (id, email) values
+  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'l1@example.com'), ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', 'l2@example.com'),
+  ('2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', 'l3@example.com');
+insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come, passo) values
+  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'Elsa', '1990-02-02', 'MI', 'donna', 11),
+  ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', 'Fabio', '1989-02-02', 'RM', 'uomo', 11),
+  ('2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', 'Gino', '1988-02-02', 'TO', 'uomo', 11);
+-- Elsa ha un cambio di provincia che vale solo dopo questa apertura: per la stanza vale ancora quella di prima (Roma).
+-- (i campi li scrive solo il server: qui si salta il controllo per preparare il caso)
+set local session_replication_role = replica;
+update public.profili set provincia_precedente = 'RM', provincia_in_vigore_dal = now() + interval '30 days'
+  where id = '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a';
+set local session_replication_role = origin;
+insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
+  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'uomini', now(), '1.5', 25, 45, 'italia'),
+  ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', 'donne', now(), '1.5', 25, 45, 'italia'),
+  ('2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', 'donne', now(), '1.5', 25, 45, 'italia');
+insert into public.conferme_stanza (utente_id, apre_il) values
+  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', now()), ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', now());
+create temp table lunedi as select public.prossima_apertura(now() + interval '9 hours') as apre;
+grant select on lunedi to service_role, authenticated;
+select pg_temp.come('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a');
+select pg_temp.ok(pg_temp.rifiutato($$select public.righe_settimana((select apre from lunedi))$$)
+  and pg_temp.rifiutato($$select public.scrivi_settimana('{}'::jsonb)$$), 'lunedì: il telefono non legge le righe e non scrive stanze');
+reset role;
+set local role service_role;
+create temp table letto as select public.righe_settimana((select apre from lunedi)) as d;
+select pg_temp.ok(jsonb_array_length((select d -> 'righe' from letto)) = 2
+  and (select d -> 'iscrizioni' ? '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a' from letto)
+  and not (select d -> 'iscrizioni' ? '2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c' from letto),
+  'lunedì: si leggono solo le persone che hanno confermato (Elsa e Fabio, non Gino)');
+select pg_temp.ok((select r -> 'profilo' ->> 'provincia' from letto, jsonb_array_elements(d -> 'righe') r
+  where r -> 'profilo' ->> 'id' = '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a') = 'RM',
+  'lunedì: vale la provincia in vigore all''apertura, non quella cambiata in settimana');
+select pg_temp.ok((select d::text not like '%example.com%' and d::text not like '%mi_descrivo"%' from letto),
+  'lunedì: nelle righe lette nessuna email');
+select pg_temp.ok(pg_temp.rifiutato($$select public.scrivi_settimana(jsonb_build_object('apre_il', (select apre from lunedi) + interval '1 hour',
+  'chiude_il', (select apre from lunedi) + interval '6 days 12 hours', 'stanze', '[]'::jsonb))$$),
+  'lunedì: rifiuta un''apertura che non è lunedì alle 9 di Roma');
+select pg_temp.ok(pg_temp.rifiutato($$select public.scrivi_settimana(jsonb_build_object('apre_il', (select apre from lunedi),
+  'chiude_il', (select apre from lunedi) + interval '6 days 12 hours', 'stanze', jsonb_build_array(jsonb_build_object('tipo', 'italia',
+  'membri', jsonb_build_array(jsonb_build_object('utente_id', '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'gratis', true),
+                              jsonb_build_object('utente_id', '2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', 'gratis', true))))))$$),
+  'lunedì: rifiuta chi non ha confermato (Gino)');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.stanze where apre_il = (select apre from lunedi)),
+  'lunedì: dopo un rifiuto non resta nessuna stanza a metà');
+set local role service_role;
+create temp table scritto as select public.scrivi_settimana(jsonb_build_object('apre_il', (select apre from lunedi),
+  'chiude_il', (select apre from lunedi) + interval '6 days 12 hours', 'stanze', jsonb_build_array(jsonb_build_object('tipo', 'italia',
+  'membri', jsonb_build_array(jsonb_build_object('utente_id', '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'gratis', true),
+                              jsonb_build_object('utente_id', '2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', 'gratis', false)))))) as r;
+select pg_temp.ok((select (r ->> 'stanze')::int = 1 and (r ->> 'membri')::int = 2 from scritto), 'lunedì: scrive 1 stanza con 2 persone');
+select pg_temp.ok((select (r ->> 'gia_fatta')::boolean from (select public.scrivi_settimana(jsonb_build_object('apre_il', (select apre from lunedi),
+  'chiude_il', (select apre from lunedi) + interval '6 days 12 hours', 'stanze', '[]'::jsonb)) as r) x),
+  'lunedì: una seconda esecuzione nella stessa settimana non scrive nulla');
+reset role;
+select pg_temp.ok((select count(*) from public.stanze where apre_il = (select apre from lunedi)) = 1
+  and (select gratis from public.membri_stanza where utente_id = '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a')
+  and not (select gratis from public.membri_stanza where utente_id = '2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b'),
+  'lunedì: nel database 1 stanza, Elsa gratis e Fabio no');
+set local role service_role;
+select pg_temp.ok((select (d -> 'stanze_precedenti' ->> '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a')::int = 1
+  and jsonb_array_length(d -> 'storico') = 2 from (select public.righe_settimana((select apre from lunedi) + interval '7 days') as d) x),
+  'lunedì: la settimana dopo conta la stanza già fatta e la mette nello storico');
+reset role;
+rollback;

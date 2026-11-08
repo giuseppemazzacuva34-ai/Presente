@@ -1,6 +1,6 @@
 # Stanze della settimana (issue #3) · calcolo
 
-Versione 0.3 · 4 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
+Versione 0.4 · 8 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 del CPO.
 
 ## In parole semplici
 
@@ -135,5 +135,22 @@ Estero o provincia mancante: niente zona. Numeri non disponibili: solo il nome, 
 nessun contatore. La home (`landing/app/moduli/zona.js`) aspetta al massimo 2 secondi e non blocca mai. Spento finché
 `ACCESSO_APP` non vale «si»; limite di frequenza `LIMITE_PROVINCIA` (chiave a parte). Prove: `test/contatore_zona.test.mjs`.
 
-Prossimo passo: lavoro del lunedì che legge le conferme e `conteggi_aree()` e scrive le stanze.
+## Lavoro del lunedì (8/11)
+
+Ogni lunedì alle 9 di Roma la GitHub Action **«Stanze»** (`.github/workflows/stanze.yml`, costo zero) esegue
+`scripts/lavoro_lunedi.mjs`:
+
+1. `righe_settimana(apre)` (solo server): legge **solo chi ha confermato** per quel lunedì e solo i campi dei calcoli
+   (mai email, foto, voce, diario, «mi descrivo»), con la provincia **in vigore all'apertura**; più il numero di stanze
+   già fatte (per «prima stanza gratis») e le stanze delle ultime 4 settimane (per non rimettere insieme le stesse persone);
+2. `conteggi_aree()`: quali aree sono accese (36 profili completi e 40% donne);
+3. `preparaSettimana()` (già provata) forma le stanze;
+4. `scrivi_settimana()` (solo server) scrive **tutto o niente** in una sola transazione; rifiuta chi non ha confermato e
+   un'apertura che non è lunedì alle 9 di Roma; **se le stanze di quel lunedì ci sono già non scrive nulla**.
+
+La Action parte alle 7:05 e alle 8:05 UTC: una delle due cade sempre alle 9 di Roma (estate e inverno), l'altra si
+ferma da sola. A mano: Actions → «Stanze» → «prova» calcola la prossima apertura e scrive nel log **solo numeri**
+(stanze, persone, motivi di attesa). **Spento finché `ACCESSO_APP` non vale «si».** Mancano ancora: il blocco (#7, oggi
+nessuna coppia bloccata) e il conteggio dei crediti (contatore interno, dopo la #6). Prove: `test/lavoro_lunedi.test.mjs`
+e i controlli «lunedì:» in `supabase/test/regole_per_riga.sql`.
 

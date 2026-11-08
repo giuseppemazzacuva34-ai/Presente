@@ -1,0 +1,45 @@
+# Stanze (Fase 2, issue #3): ogni lunedì alle 9 di Roma forma le stanze della settimana (scripts/lavoro_lunedi.mjs).
+# - Parte alle 7:05 e alle 8:05 UTC: una delle due è sempre alle 9 di Roma (estate e inverno); l'altra si ferma da sola.
+# - A mano da Actions → «Stanze» → Run workflow: «prova» calcola e scrive nel log solo i numeri, senza toccare nulla.
+# - Spento finché ACCESSO_APP in wrangler.jsonc non vale «si». Una seconda esecuzione nella stessa settimana non scrive nulla.
+# I segreti si leggono solo qui e non vengono mai stampati; nel log solo numeri (mai id, nomi o province).
+name: Stanze
+
+on:
+  schedule:
+    - cron: "5 7 * * 1"
+    - cron: "5 8 * * 1"
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "prova = solo numeri, nessuna scrittura; automatico = scrive (solo lunedì 9:00–9:59 di Roma)"
+        required: true
+        default: prova
+        type: choice
+        options: [prova, automatico]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stanze
+  cancel-in-progress: false
+
+jobs:
+  lunedi:
+    name: Lavoro del lunedì
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Forma e scrive le stanze
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MODO: ${{ github.event_name == 'schedule' && 'automatico' || inputs.modo }}
+        run: node scripts/lavoro_lunedi.mjs
