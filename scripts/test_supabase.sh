@@ -17,5 +17,5 @@ for migrazione in "$radice"/supabase/migrations/*.sql; do
   echo "Migrazione: $(basename "$migrazione")"
   "${psql[@]}" -1 -f "$migrazione"
 done
-"${psql[@]}" -f "$radice/supabase/test/regole_per_riga.sql" 2>&1 >/dev/null | sed 's/^psql:[^ ]* NOTICE:  //'
+"${psql[@]}" -v carte_v1="$(cat "$radice/test/carte_v1.json")" -f "$radice/supabase/test/regole_per_riga.sql" 2>&1 >/dev/null | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "Regole per riga: tutti i controlli superati."

@@ -115,7 +115,7 @@ Connessione persa: 30 secondi per rientrare nella stessa sessione, il timer cont
 
 **Passi di sviluppo della #4** (un ramo e una PR ciascuno):
 1. *Regole* (fatto, `api/chiamate.js` + `test/chiamate.test.mjs`): tutti i controlli del passo 2 in un solo punto, fine e timer decisi dal server (15:00 o chiusura della stanza), durata mai oltre la fine, riga del registro con solo chi / con / inizio / durata / esito, carte della conversazione (spec v1.2: pulsante da 0:10 all'ultimo minuto, 20 s tra due pescate, suggerimento a 0:30 una volta, nessuna ripetizione per la coppia nella settimana). Solo calcoli, nessun accesso a database o Realtime.
-2. *Database*: tabelle `chiamate` (solo quei 5 campi), `carte` (le 30 carte approvate con D58 A, `versione = v1`), `carte_viste` (cancellate alla chiusura della stanza), fascia di disponibilità e permesso D32 nel profilo; regole per riga.
+2. *Database* (fatto, `supabase/migrations/20261109220000_chiamate.sql`): `chiamate` con solo chi / con / inizio / durata / esito, scritta solo dal server e letta da chi c'era; `carte` con le 30 carte approvate (D58 A, `versione = v1`, testi confrontati uno per uno con `test/carte_v1.json`); `carte_viste` (coppia + stanza, cancellate da `pulisci_carte_viste()` alla chiusura); nel profilo `fascia_da` / `fascia_a` (senza fascia = sempre disponibile) e `solo_con_permesso`; tabelle `permessi_chiamata` e `blocchi` (D32 A: definitivi, chi è bloccato non lo vede). Carte e carte viste le legge solo il server.
 3. *Server*: apertura, risposta, chiusura e pescata come richieste del Worker, con la sessione Cloudflare Realtime solo audio.
 4. *Web app*: schermate «Chiama», squillo, chiamata, «Chiudi e segnala»; prova reale su iPhone (web app in Home) e Android.
 

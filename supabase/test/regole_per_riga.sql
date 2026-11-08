@@ -8,7 +8,7 @@ begin
 end $$;
 create function pg_temp.ok(condizione boolean, descrizione text) returns void language plpgsql as $$
 begin
-  if not condizione then raise exception 'ERRORE %', descrizione; end if;
+  if condizione is not true then raise exception 'ERRORE %', descrizione; end if;
   raise notice 'OK   %', descrizione;
 end $$;
 -- Prova un comando che DEVE fallire; restituisce true se è fallito.
@@ -416,9 +416,10 @@ select pg_temp.ok((select totale from public.conteggi_aree() where codice = 'mil
   and (select totale from public.conteggi_aree() where codice = 'no') = 1
   and not exists (select 1 from public.conteggi_aree() where codice = 'roma' and totale > 0),
   'conteggi: solo profili completi per area (Milano 2 di cui 1 donna, Novara 1, Roma 0: Duilio è al passo 5)');
+reset role;
+-- (da proprietario: con il ruolo del telefono information_schema non mostra le colonne e il confronto darebbe vuoto)
 select pg_temp.ok((select array_agg(column_name::text order by column_name) from information_schema.columns
   where table_schema = 'public' and table_name = 'aree') = array['codice', 'nome'], 'aree: la tabella ha solo codice e nome');
-reset role;
 rollback;
 
 -- Lavoro del lunedì (#3): righe_settimana() legge solo chi ha confermato, scrivi_settimana() scrive tutto o niente.
@@ -489,4 +490,98 @@ select pg_temp.ok((select (d -> 'stanze_precedenti' ->> '2a2a2a2a-2a2a-4a2a-8a2a
   and jsonb_array_length(d -> 'storico') = 2 from (select public.righe_settimana((select apre from lunedi) + interval '7 days') as d) x),
   'lunedì: la settimana dopo conta la stanza già fatta e la mette nello storico');
 reset role;
+rollback;
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Chiamate (issue #4, passo 2): registro con solo 5 campi, carte v1, carte viste, fascia, permesso e blocchi (D32 A).
+begin;
+insert into auth.users (id, email) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'ida@example.com'),
+  ('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', 'leo@example.com'),
+  ('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', 'mia@example.com');
+insert into public.profili (id, nome, data_nascita, citta, mi_presento_come) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'Ida', '1990-01-01', 'Torino', 'donna'),
+  ('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', 'Leo', '1990-01-01', 'Torino', 'uomo'),
+  ('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', 'Mia', '1990-01-01', 'Torino', 'donna');
+
+-- Il registro delle chiamate ha SOLO chi, con, inizio, durata, esito (spec v1.1).
+select pg_temp.ok((select array_agg(column_name::text order by column_name::text) from information_schema.columns
+  where table_schema = 'public' and table_name = 'chiamate') is not distinct from array['chi', 'con', 'durata', 'esito', 'inizio'],
+  'chiamate: il registro contiene solo chi, con, inizio, durata, esito');
+
+-- Le 30 carte approvate (D58 A), testo per testo, versione v1 e attive.
+select pg_temp.ok((select count(*) from public.carte where versione = 'v1' and attiva) = 30, 'carte: 30 carte v1 attive');
+select pg_temp.ok(not exists (
+  select 1 from jsonb_array_elements_text(:'carte_v1'::jsonb) with ordinality as e(testo, n)
+  left join public.carte c on c.id = e.n and c.testo = e.testo where c.id is null), 'carte: testi identici alla bozza approvata');
+
+-- Una stanza aperta adesso con Ida, Leo e Mia (preparata qui; in produzione la scrive il lavoro del lunedì).
+insert into public.stanze (id, tipo, apre_il, chiude_il) values
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', 'italia', now() - interval '1 day', now() + interval '2 days');
+insert into public.membri_stanza (stanza_id, utente_id) values
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a'),
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b'),
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', '3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c');
+set local role service_role;
+insert into public.chiamate (chi, con, inizio, durata, esito) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', now() - interval '1 hour', 900, 'tempo_scaduto');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.chiamate (chi, con, inizio, durata, esito) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', now(), 901, 'chiusa')$$),
+  'chiamate: mai più di 15 minuti nel registro');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.chiamate (chi, con, inizio, durata, esito) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', now(), 60, 'registrata')$$)
+  and pg_temp.rifiutato($$insert into public.chiamate (chi, con, inizio) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', now())$$),
+  'chiamate: solo i 4 esiti previsti e mai con sé stessi');
+insert into public.carte_viste (stanza_id, a, b, carta_id) values
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', 7);
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.carte_viste (stanza_id, a, b, carta_id) values
+  ('3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 8)$$),
+  'carte viste: la coppia si scrive sempre in un solo ordine (a < b)');
+reset role;
+
+-- Il telefono: Ida vede la sua chiamata, Mia no; nessuno scrive il registro o legge carte e carte viste.
+select pg_temp.come('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a');
+select pg_temp.ok((select count(*) from public.chiamate) = 1, 'chiamate: chi ha chiamato vede la sua riga');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.chiamate (chi, con, inizio, durata, esito) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', now(), 60, 'chiusa')$$)
+  and pg_temp.rifiutato($$update public.chiamate set durata = 10$$),
+  'chiamate: il telefono non scrive il registro (solo il server)');
+select pg_temp.ok(pg_temp.rifiutato($$select * from public.carte$$) and pg_temp.rifiutato($$select * from public.carte_viste$$),
+  'carte: il telefono non legge il mazzo né le carte viste (le manda il server)');
+-- Fascia di disponibilità e «mi chiamano solo persone a cui do il permesso» nel profilo.
+update public.profili set fascia_da = '19:00', fascia_a = '23:00', solo_con_permesso = true where id = auth.uid();
+select pg_temp.ok((select fascia_da = '19:00' and solo_con_permesso from public.profili), 'profilo: Ida imposta fascia e permesso');
+select pg_temp.ok(pg_temp.rifiutato($$update public.profili set fascia_da = '25:00' where id = auth.uid()$$)
+  and pg_temp.rifiutato($$update public.profili set fascia_da = '19:00', fascia_a = null where id = auth.uid()$$),
+  'profilo: fascia con ore valide e sempre con inizio e fine');
+insert into public.permessi_chiamata (utente_id, permesso_a) values ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b');
+insert into public.blocchi (chi, bloccato) values ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c');
+select pg_temp.ok(pg_temp.rifiutato($$delete from public.blocchi$$) or (select count(*) from public.blocchi) = 1,
+  'blocchi: il blocco è definitivo (non si toglie)');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.permessi_chiamata (utente_id, permesso_a) values
+  ('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a')$$)
+  and pg_temp.rifiutato($$insert into public.blocchi (chi, bloccato) values
+  ('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a')$$),
+  'permessi e blocchi: ognuno li scrive solo per sé');
+reset role;
+
+select pg_temp.come('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c');
+select pg_temp.ok((select count(*) from public.chiamate) = 0, 'chiamate: Mia non vede le chiamate degli altri');
+select pg_temp.ok((select count(*) from public.blocchi) = 0 and (select count(*) from public.permessi_chiamata) = 0,
+  'blocchi e permessi: Mia non sa di essere stata bloccata e non vede i permessi di Ida');
+reset role;
+
+-- Chiusura della stanza: le carte viste si cancellano (spec v1.2). Solo il server può farlo.
+select pg_temp.come('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a');
+select pg_temp.ok(pg_temp.rifiutato($$select public.pulisci_carte_viste()$$), 'carte viste: il telefono non lancia la pulizia');
+reset role;
+set local role service_role;
+select pg_temp.ok(public.pulisci_carte_viste() = 0, 'carte viste: con la stanza ancora aperta non si cancella nulla');
+reset role;
+update public.stanze set chiude_il = now() - interval '1 minute' where id = '3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d';
+set local role service_role;
+select pg_temp.ok(public.pulisci_carte_viste() = 1, 'carte viste: alla chiusura della stanza si cancellano');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.carte_viste), 'carte viste: dopo la chiusura non resta nessuna riga');
 rollback;
