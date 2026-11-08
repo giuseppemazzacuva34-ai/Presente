@@ -22,6 +22,7 @@ async def prova(b, nome, risposta_lista, attesa=0):
         ok = lambda corpo, stato=200: route.fulfill(status=stato, body=json.dumps(corpo), content_type="application/json")
         if p == "/auth/v1/otp": return await ok({})
         if p == "/auth/v1/verify": return await ok(TOKEN)
+        if p == "/rest/v1/conferme_stanza" and r.method == "GET": return await ok([])
         m = re.match(r"^/rest/v1/(profili|filtri|questionario)$", p)
         if m:
             if r.method == "GET": return await ok([db[m.group(1)]] if db.get(m.group(1)) else [])

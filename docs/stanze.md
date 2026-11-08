@@ -135,6 +135,19 @@ Estero o provincia mancante: niente zona. Numeri non disponibili: solo il nome, 
 nessun contatore. La home (`landing/app/moduli/zona.js`) aspetta al massimo 2 secondi e non blocca mai. Spento finché
 `ACCESSO_APP` non vale «si»; limite di frequenza `LIMITE_PROVINCIA` (chiave a parte). Prove: `test/contatore_zona.test.mjs`.
 
+**«Entra nella stanza» e «Vuoi entrare intanto nella Stanza Italia?» (8/11).** Nella home (`landing/app/moduli/stanza.js`):
+- **Entra nella stanza**: il telefono manda alla tabella `conferme_stanza` un corpo vuoto; persona, lunedì e ora li scrive
+  il database (entro domenica 23:59 di Roma vale per il lunedì dopo). Poi la home mostra «Ci sei: entri nella stanza di
+  lunedì 16 novembre alle 9:00. Puoi ripensarci fino a domenica 15 novembre alle 23:59.» e «Ci ripenso» (cancella solo
+  prima della scadenza; dopo il database non cancella e l'app lo dice). Sotto il pulsante: «La prima stanza è in regalo,
+  poi 9 crediti a stanza». Nessun credito si scala qui (D18: li conta il lavoro del lunedì).
+- **Domanda Stanza Italia** (v1.1): solo a chi ha «Solo la mia zona» e la zona non è accesa (c'è il contatore). Per loro il
+  contatore non dice «Intanto entri nella Stanza Italia» (non è vero finché non toccano Sì). Pulsanti «Sì, allarga il
+  raggio» (salva solo `raggio = italia`, l'unico punto della home che cambia il raggio) e «Aspetto la mia zona» (nasconde
+  la domanda per la sessione, non salva nulla). Il testo del secondo pulsante segue il cambio «città → zona» della v1.2.
+- Spento finché `ACCESSO_APP` non vale «si». Prove: `test/stanza_app.test.mjs` e nel browser
+  `scripts/prova_entra_stanza.py` (Supabase finto, schermo da telefono, console pulita).
+
 ## Lavoro del lunedì (8/11)
 
 Ogni lunedì alle 9 di Roma la GitHub Action **«Stanze»** (`.github/workflows/stanze.yml`, costo zero) esegue

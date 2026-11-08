@@ -68,6 +68,12 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 
 .riepilogo { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .riepilogo audio { width: 100%; }
+.domanda-italia { margin: 0 0 1rem; }
+.domanda-italia p { margin: 0 0 0.6rem; color: var(--avorio); }
+.scelte-italia { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.scelte-italia .bottone-secondario { white-space: normal; flex: 1 1 10rem; }
+.ingresso-stanza { margin: 0 0 1.2rem; }
+.ingresso-stanza .bottone { width: 100%; margin-left: 0; }
 .contatore-zona { color: var(--avorio); border-left: 3px solid var(--rosso); padding: 0.4rem 0 0.4rem 0.8rem; margin: 0 0 1rem; line-height: 1.45; }
 
 /* Pulsante che sembra un link (es. «mandala di nuovo» nell'accesso con email). */

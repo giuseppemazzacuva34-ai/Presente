@@ -6,6 +6,7 @@ import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
 import { creaZona } from "/app/moduli/zona.js";
+import { creaStanza } from "/app/moduli/stanza.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -40,7 +41,10 @@ async function preparaAccesso() {
     const lista = creaLista({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Contatore della zona nella home (#3 v1.2): il Worker manda solo il testo «mancano N persone», entro 2 secondi.
     const zona = creaZona({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    return { accesso, archivio, lista, zona, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // «Entra nella stanza» (#3): la conferma la scrive il database (lunedì e ora dal server, regole per riga).
+    const stanza = creaStanza({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, zona, stanza, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

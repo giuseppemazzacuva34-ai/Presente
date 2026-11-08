@@ -33,6 +33,8 @@ async def supabase(route):
     if p == "/auth/v1/logout":
         return await route.fulfill(status=204, body="")
     assert r.headers.get("authorization") == f"Bearer {ACC}", ("token mancante", r.url)
+    if p == "/rest/v1/conferme_stanza" and r.method == "GET":
+        return await ok([])
     m = re.match(r"^/rest/v1/(profili|filtri)$", p)
     if m:
         tabella = m.group(1)
@@ -82,6 +84,7 @@ async def main():
         await ctx.route("**/app/api/elimina-account", elimina)
         # Provincia dalla lista d'attesa (#2 v1.3): qui l'email non è in lista (la prova completa è prova_provincia_lista.py).
         await ctx.route("**/app/api/provincia-lista", lambda route: route.fulfill(status=200, body='{"sigla":null}', content_type="application/json"))
+        await ctx.route("**/app/api/zona", lambda route: route.fulfill(status=200, body='{"zona":null,"accesa":false,"testo":null}', content_type="application/json"))
         errori = []
         pg = await ctx.new_page()
         pg.on("console", lambda m: errori.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)
