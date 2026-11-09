@@ -1,0 +1,76 @@
+# Salva media (9/11, richiesta del coordinatore per team-tiktok e studio-social): scarica un video o un'immagine
+# da un link pubblico e lo salva nel ramo «media-social», dove i contenuti social prendono il «file_pubblico_github».
+# Si avvia solo a mano (chi ha accesso in scrittura al repository, anche dagli strumenti GitHub degli agenti).
+# Nessun costo (repository pubblico), nessun segreto, scrive solo nel ramo media-social, mai su main.
+# Controlli in scripts/salva_media.mjs: link https pubblico, .mp4 .webm .jpg .png, massimo 95 MB, contenuto vero,
+# niente sovrascritture. Il link di origine non finisce nel log.
+name: Salva media
+
+on:
+  workflow_dispatch:
+    inputs:
+      link:
+        description: "Link pubblico https del file (es. download di Canva o Drive)"
+        required: true
+        type: string
+      nome_file:
+        description: "Nome nel ramo media-social, es. tiktok/vera-conto-v3.mp4"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: media-social
+  cancel-in-progress: false
+
+jobs:
+  salva:
+    name: Salva nel ramo media-social
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: codice
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: media-social
+          path: media
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Scarica e controlla il file
+        id: file
+        env:
+          LINK: ${{ inputs.link }}
+          NOME: ${{ inputs.nome_file }}
+        run: |
+          echo "::add-mask::$LINK"
+          node codice/scripts/salva_media.mjs "$LINK" "$NOME" media
+
+      - name: Salva nel ramo media-social
+        working-directory: media
+        env:
+          PERCORSO: ${{ steps.file.outputs.percorso }}
+          LINK_PUBBLICO: ${{ steps.file.outputs.link }}
+          CHI: ${{ github.actor }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$PERCORSO"
+          git commit -q -m "media: $PERCORSO (salvato da link, avviato da $CHI)"
+          git push -q origin HEAD:media-social
+          {
+            echo "### File salvato"
+            echo ""
+            echo "file_pubblico_github: $LINK_PUBBLICO"
+          } >> "$GITHUB_STEP_SUMMARY"
