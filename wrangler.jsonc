@@ -25,10 +25,18 @@
   "triggers": { "crons": ["23 * * * *"] },
   // Chiamate solo voce (#4, passo 3b-2a): un Durable Object per chiamata, archivio SQLite (incluso nel piano gratuito).
   // Conserva solo lo stato della chiamata in corso e si cancella da solo un minuto dopo la fine.
+  // Passo 3b-2b-1: un Durable Object «Centralino» per stanza (SQLite, piano gratuito): solo chi ha la linea occupata e
+  // da quale chiamata; si cancella un'ora dopo la chiusura della stanza.
   "durable_objects": {
-    "bindings": [{ "name": "CHIAMATA", "class_name": "Chiamata" }]
+    "bindings": [
+      { "name": "CHIAMATA", "class_name": "Chiamata" },
+      { "name": "CENTRALINO", "class_name": "Centralino" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Chiamata"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Chiamata"] },
+    { "tag": "v2", "new_sqlite_classes": ["Centralino"] }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
