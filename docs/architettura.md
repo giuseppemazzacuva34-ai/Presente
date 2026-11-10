@@ -131,6 +131,8 @@ Le chiamate dalla stanza sono **solo voce**; dopo la porta c'è lo **svelamento*
 - nessuna registrazione: Realtime inoltra e basta, e in `chiamate` si salvano solo inizio, durata e tipo (`voce` / `svelamento`).
 I dettagli (quanto sfocato all'inizio, se si schiarisce, cosa succede se uno si scollega) li fissa la specifica del CPO.
 
+Svelamento (#65, spec v1), passo 1 *Regole* (fatto, `api/svelamento.js` + `test/svelamento.test.mjs`): caparra di 10 crediti e «Ti mancano N crediti», avvio solo con le due caparre ed entro 48 ore dalla porta, «Preferisco le foto» di uno vale per entrambi, prima fascia comune da 30 minuti (max 3 a testa), timer di 10 s che parte all'arrivo del secondo video (sfocato che si schiarisce in 3 s), caduta prima dei 10 s → «Riprova» per 2 minuti, max 3 tentativi, sì/no segreto con lo stesso esito per «no» e silenzio, porta scaduta / blocco / «Chiudi e segnala» senza penale, riga di registro senza le singole risposte. Solo calcoli. Prossimi passi: tabelle (porte, caparre, fasce) con regole per riga, poi richieste del Worker sulla base Realtime della #4, poi schermate.
+
 ## Lavori programmati
 
 | Quando (ora di Roma) | Cosa |
