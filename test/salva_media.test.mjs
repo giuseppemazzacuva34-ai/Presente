@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { controllaNome, controllaLink, tipoDalContenuto, scarica, salva, MASSIMO } from "../scripts/salva_media.mjs";
+import { controllaNome, controllaLink, controllaDns, tipoDalContenuto, scarica, salva, MASSIMO } from "../scripts/salva_media.mjs";
 
 const MP4 = new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
 const WEBM = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3, 4]);
@@ -13,12 +13,16 @@ const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const HTML = new TextEncoder().encode("<!doctype html><html>accedi</html>");
 
-function finto(byte, { status = 200, url = "https://esempio.it/v.mp4", lunghezza } = {}) {
-  return async () => ({
+// Niente rete vera, nemmeno per il DNS: nei test «esempio.it» risolve sempre a un indirizzo pubblico inventato.
+const dnsPubblico = async () => [{ address: "93.184.216.34", family: 4 }];
+
+function finto(byte, { status = 200, url = "https://esempio.it/v.mp4", lunghezza, dns = dnsPubblico } = {}) {
+  const f = async () => ({
     ok: status >= 200 && status < 300, status, url,
     headers: new Headers(lunghezza ? { "content-length": String(lunghezza) } : {}),
     body: new ReadableStream({ start(c) { c.enqueue(byte); c.close(); } }),
   });
+  return { fetch: f, dns };
 }
 
 test("nomi validi: minuscole, cifre, trattini, una sottocartella al massimo", () => {
@@ -43,6 +47,34 @@ test("link: solo https pubblico, senza credenziali", () => {
   }
 });
 
+test("dns: un nome che risolve a un indirizzo pubblico va bene, uno privato o il metadati del cloud no", async () => {
+  await controllaDns("esempio.it", async () => [{ address: "93.184.216.34", family: 4 }]);
+  for (const indirizzi of [
+    [{ address: "169.254.169.254", family: 4 }], // metadati del cloud: esattamente il caso del CISO 10/11
+    [{ address: "10.0.0.5", family: 4 }],
+    [{ address: "93.184.216.34", family: 4 }, { address: "127.0.0.1", family: 4 }], // basta un indirizzo privato tra tanti
+    [{ address: "::1", family: 6 }],
+    [],
+  ]) {
+    await assert.rejects(controllaDns("finto.it", async () => indirizzi), /non pubblico|risolvibile/);
+  }
+  await assert.rejects(controllaDns("non-esiste.invalid", async () => { throw new Error("ENOTFOUND"); }), /risolvibile/);
+});
+
+test("scarica: rifiuta un dominio che sembra pubblico ma risolve a un indirizzo privato (DNS rebinding)", async () => {
+  const { fetch: f } = finto(MP4);
+  await assert.rejects(
+    scarica("https://esempio.it/v.mp4", { fetch: f, dns: async () => [{ address: "169.254.169.254", family: 4 }] }),
+    /non pubblico/,
+  );
+});
+
+test("scarica: controlla anche l'indirizzo del dominio dopo un reindirizzamento", async () => {
+  const dns = async (host) => (host === "esempio.it" ? [{ address: "93.184.216.34", family: 4 }] : [{ address: "127.0.0.1", family: 4 }]);
+  const { fetch: f } = finto(MP4, { url: "https://interno.evil.test/v.mp4" });
+  await assert.rejects(scarica("https://esempio.it/v.mp4", { fetch: f, dns }), /non pubblico/);
+});
+
 test("il contenuto deve essere davvero un video o un'immagine", () => {
   assert.equal(tipoDalContenuto(MP4), "mp4");
   assert.equal(tipoDalContenuto(WEBM), "webm");
@@ -52,17 +84,17 @@ test("il contenuto deve essere davvero un video o un'immagine", () => {
 });
 
 test("scarica: errore HTTP, file troppo grande o pagina html vengono rifiutati", async () => {
-  await assert.rejects(scarica("https://esempio.it/v.mp4", { fetch: finto(MP4, { status: 404 }) }), /404/);
-  await assert.rejects(scarica("https://esempio.it/v.mp4", { fetch: finto(MP4, { lunghezza: MASSIMO + 1 }) }), /grande/);
-  await assert.rejects(scarica("https://esempio.it/v.mp4", { fetch: finto(MP4), massimo: 4 }), /grande/);
-  await assert.rejects(scarica("https://esempio.it/v.mp4", { fetch: finto(MP4, { url: "http://esempio.it/v.mp4" }) }), /link/i);
-  const byte = await scarica("https://esempio.it/v.mp4", { fetch: finto(MP4) });
+  await assert.rejects(scarica("https://esempio.it/v.mp4", finto(MP4, { status: 404 })), /404/);
+  await assert.rejects(scarica("https://esempio.it/v.mp4", finto(MP4, { lunghezza: MASSIMO + 1 })), /grande/);
+  await assert.rejects(scarica("https://esempio.it/v.mp4", { ...finto(MP4), massimo: 4 }), /grande/);
+  await assert.rejects(scarica("https://esempio.it/v.mp4", finto(MP4, { url: "http://esempio.it/v.mp4" })), /link/i);
+  const byte = await scarica("https://esempio.it/v.mp4", finto(MP4));
   assert.deepEqual(byte, MP4);
 });
 
 test("salva: scrive il file nella cartella del ramo se il tipo corrisponde all'estensione", async () => {
   const cartella = mkdtempSync(join(tmpdir(), "media-"));
-  const esito = await salva("https://esempio.it/v.mp4", "reel/prova.mp4", cartella, { fetch: finto(MP4) });
+  const esito = await salva("https://esempio.it/v.mp4", "reel/prova.mp4", cartella, finto(MP4));
   assert.equal(esito.percorso, "reel/prova.mp4");
   assert.equal(esito.link, "https://raw.githubusercontent.com/giuseppemazzacuva34-ai/presente/media-social/reel/prova.mp4");
   assert.deepEqual(new Uint8Array(readFileSync(join(cartella, "reel/prova.mp4"))), MP4);
@@ -70,10 +102,10 @@ test("salva: scrive il file nella cartella del ramo se il tipo corrisponde all'e
 
 test("salva: rifiuta tipo diverso dall'estensione, pagine html e file già esistenti", async () => {
   const cartella = mkdtempSync(join(tmpdir(), "media-"));
-  await assert.rejects(salva("https://esempio.it/v", "a.png", cartella, { fetch: finto(MP4) }), /tipo/);
-  await assert.rejects(salva("https://esempio.it/v", "b.mp4", cartella, { fetch: finto(HTML) }), /tipo/);
+  await assert.rejects(salva("https://esempio.it/v", "a.png", cartella, finto(MP4)), /tipo/);
+  await assert.rejects(salva("https://esempio.it/v", "b.mp4", cartella, finto(HTML)), /tipo/);
   assert.equal(existsSync(join(cartella, "b.mp4")), false);
   writeFileSync(join(cartella, "c.mp4"), "vecchio");
-  await assert.rejects(salva("https://esempio.it/v", "c.mp4", cartella, { fetch: finto(MP4) }), /esiste/);
+  await assert.rejects(salva("https://esempio.it/v", "c.mp4", cartella, finto(MP4)), /esiste/);
   assert.equal(readFileSync(join(cartella, "c.mp4"), "utf8"), "vecchio");
 });
