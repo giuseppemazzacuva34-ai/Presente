@@ -3,3 +3,4 @@
 // e quindi non si caricano in Node: così i test di index.js restano senza Cloudflare.
 export { default } from "./index.js";
 export { Chiamata } from "./chiamata.js";
+export { Centralino } from "./centralino.js";
