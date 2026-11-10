@@ -2,7 +2,7 @@
 // Cloudflare Workers Builds pubblica a ogni modifica su main.
 {
   "name": "presente",
-  "main": "./worker/index.js",
+  "main": "./worker/principale.js",
   "compatibility_date": "2026-10-13",
   "assets": {
     "directory": "./landing",
@@ -23,6 +23,12 @@
   ],
   // Lavoro programmato ogni ora al minuto 23 (gratuito nel piano Free): codice invito a chi non ce l'ha (D98 A).
   "triggers": { "crons": ["23 * * * *"] },
+  // Chiamate solo voce (#4, passo 3b-2a): un Durable Object per chiamata, archivio SQLite (incluso nel piano gratuito).
+  // Conserva solo lo stato della chiamata in corso e si cancella da solo un minuto dopo la fine.
+  "durable_objects": {
+    "bindings": [{ "name": "CHIAMATA", "class_name": "Chiamata" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Chiamata"] }],
   "d1_databases": [
     {
       "binding": "DB",
