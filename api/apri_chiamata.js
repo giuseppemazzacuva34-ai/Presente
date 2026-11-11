@@ -149,3 +149,51 @@ export async function chiudiChiamata({ per, segnala, adesso }, d) {
   if (errore) return errore;
   return r.segnala ? { ok: true, vista: r.vista, segnala: true } : { ok: true, vista: r.vista };
 }
+
+// --- Passo 3b-2b-2c-2a: ricevere la voce dell'altra persona -------------------------------------------------------
+// «ascolta»: il server chiede a Realtime la traccia «voce» dell'altra persona sulla mia sessione e passa al telefono
+// l'offerta di Cloudflare; «conferma»: il telefono manda la sua risposta (solo voce). Le sessioni le sa solo il
+// Durable Object: il telefono non manda e non riceve mai id. d in più: riceviVoce(mia, altra), confermaRisposta(mia, r).
+const rispostaValida = (r) => !!r && typeof r === "object" && r.type === "answer" && soloAudio(r.sdp);
+
+export async function ascoltaChiamata({ per, adesso }, d) {
+  const l = await lineaDi(per, adesso, d);
+  if (!l.ok) return l;
+  const chiamata = d.chiamata(l.linea.chiamata);
+  const s = await chiamata.sessioni(per);
+  if (!s || !s.ok) return no(String((s && s.motivo) || "riprova"));
+  let ricevuta = null;
+  try {
+    const v = await d.riceviVoce(s.mia, s.altra);
+    if (!v.ok) return no(v.motivo);
+    ricevuta = v.mid;
+    const r = await chiamata.ascolto({ da: per, mid: v.mid, di: s.altra });
+    const errore = esitoDo(r);
+    if (errore) return await chiudiRicevuta(errore);
+    return { ok: true, descrizione: v.descrizione, vista: r.vista };
+  } catch (e) {
+    console.error("ascolta chiamata: errore", e && e.name);
+    return await chiudiRicevuta(no("riprova"));
+  }
+
+  async function chiudiRicevuta(risultato) {
+    if (ricevuta) {
+      try { await d.chiudiSessione(s.mia, [ricevuta]); } catch { /* a fine chiamata si chiude comunque tutta la sessione */ }
+    }
+    return risultato;
+  }
+}
+
+export async function confermaAscolto({ per, risposta, adesso }, d) {
+  if (!UUID.test(per || "")) return no("dati");
+  if (!rispostaValida(risposta)) return no("solo_voce");
+  const l = await lineaDi(per, adesso, d);
+  if (!l.ok) return l;
+  const chiamata = d.chiamata(l.linea.chiamata);
+  const s = await chiamata.sessioni(per);
+  if (!s || !s.ok) return no(String((s && s.motivo) || "riprova"));
+  const c = await d.confermaRisposta(s.mia, risposta);
+  if (!c || !c.ok) return no(String((c && c.motivo) || "riprova"));
+  const v = await chiamata.vista(per);
+  return { ok: true, vista: v && v.ok ? v.vista : null };
+}

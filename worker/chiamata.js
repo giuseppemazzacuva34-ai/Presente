@@ -27,6 +27,8 @@ export class Chiamata extends DurableObject {
   caduta(dati) { return this.gestore.caduta(dati); }
   rientro(dati) { return this.gestore.rientro(dati); }
   pesca(dati) { return this.gestore.pesca(dati); }
+  sessioni(per) { return this.gestore.sessioni(per); }
+  ascolto(dati) { return this.gestore.ascolto(dati); }
   vista(per, carte) { return this.gestore.vista(per, carte); }
 
   async alarm() {

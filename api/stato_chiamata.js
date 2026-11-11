@@ -78,6 +78,33 @@ export function rientro(c, { da, adesso, sessione, mid }) {
     daChiudere: vecchia ? [vecchia] : [] };
 }
 
+// --- Passo 3b-2b-2c-2a: ricevere la voce dell'altra persona -------------------------------------------------------
+// Ognuno, a chiamata in corso, «ascolta» la traccia «voce» dell'altra persona sulla PROPRIA sessione Realtime.
+// Le sessioni le usa solo il server (api/apri_chiamata.js): al telefono la vista dice solo «da_fare» / «fatto».
+const MID = /^[A-Za-z0-9_-]{1,32}$/;
+const altraDi = (c, per) => (per === c.chi ? c.con : c.chi);
+
+// Le due sessioni per ascoltare: la mia e quella dell'altra persona. Durante un rientro non c'è niente da ascoltare.
+export function sessioniPer(c, per) {
+  if (c.fase !== "in_corso") return no("non_in_corso");
+  if (!partecipa(c, per)) return no("non_tocca_a_te");
+  if (c.caduto !== null) return no("riconnessione");
+  const mia = c.sessioni[per]?.sessione, altra = c.sessioni[altraDi(c, per)]?.sessione;
+  return mia && altra ? { ok: true, mia, altra } : no("non_in_corso");
+}
+
+// Salva il mid della traccia ricevuta (di = sessione dell'altra persona da cui arriva). Se nel frattempo l'altra
+// persona è rientrata con una sessione nuova: «cambiata». Un ascolto precedente si chiude (chiudiTracce).
+export function ascolto(c, { da, mid, di }) {
+  const s = sessioniPer(c, da);
+  if (!s.ok) return s;
+  if (typeof mid !== "string" || !MID.test(mid)) return no("mid");
+  if (s.altra !== di) return no("cambiata");
+  const io = c.sessioni[da];
+  const vecchio = io.ascolto && io.ascolto.mid !== mid ? [{ sessione: s.mia, mids: [io.ascolto.mid] }] : [];
+  return { ok: true, stato: { ...c, sessioni: { ...c.sessioni, [da]: { ...io, ascolto: { mid, di } } } }, chiudiTracce: vecchio };
+}
+
 // Il prossimo istante in cui il server deve guardare la chiamata (allarme del Durable Object), null se è finita.
 export function prossimoAllarme(c) {
   if (c.fase === "squilla") return c.scadeSquillo;
@@ -132,5 +159,6 @@ export function vistaPer(c, per, adesso, carte = 0) {
     carte: pulsanteCarte({ secondi, durata: durata(c), carte, ultimaPescata: c.ultimaPescata }),
     suggerimento: mostraSuggerimento({ secondi, pescate: c.pescate }),
     carta: c.carta ? { id: c.carta.id, daMe: c.carta.da === per } : null,
+    ascolto: c.sessioni[per]?.ascolto && c.sessioni[per].ascolto.di === c.sessioni[altra]?.sessione ? "fatto" : "da_fare",
   };
 }

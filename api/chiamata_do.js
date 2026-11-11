@@ -14,7 +14,7 @@
 // - Al telefono va solo la «vista» (vistaPer): mai gli id delle sessioni Realtime.
 
 import {
-  nuovaChiamata, rispondi, rifiuta, chiudi, caduta, rientro, scadenze, prossimoAllarme, pesca, vistaPer,
+  nuovaChiamata, rispondi, rifiuta, chiudi, caduta, rientro, scadenze, prossimoAllarme, pesca, vistaPer, ascolto, sessioniPer,
 } from "./stato_chiamata.js";
 
 export const ATTESA_DOPO_FINE = 60_000;
@@ -58,6 +58,13 @@ export class GestoreChiamata {
   pesca({ da, carte, viste, casuale }) {
     return this.#passo((c, adesso) => pesca(c, { da, adesso, carte, viste, casuale }), da, carte?.length || 0);
   }
+
+  // Passo 3b-2b-2c-2a. Le due sessioni Realtime per ascoltare: solo per il Worker, mai per il telefono.
+  async sessioni(per) {
+    const stato = await this.storage.get("stato");
+    return stato ? sessioniPer(stato, per) : no("nessuna");
+  }
+  ascolto({ da, mid, di }) { return this.#passo((c) => ascolto(c, { da, mid, di }), da); }
 
   async vista(per, carte = 0) {
     const stato = await this.storage.get("stato");
@@ -107,9 +114,9 @@ export class GestoreChiamata {
     const attesa = (await this.storage.get("attesa")) || VUOTA;
     const mids = (sessione) => {
       const s = Object.values(prima.sessioni).find((x) => x.sessione === sessione);
-      return s && s.mid ? [s.mid] : [];
+      return s ? [s.mid, s.ascolto && s.ascolto.mid].filter(Boolean) : []; // la mia voce e quella che ricevo
     };
-    const nuove = (r.daChiudere || []).map((sessione) => ({ sessione, mids: mids(sessione) }));
+    const nuove = [...(r.daChiudere || []).map((sessione) => ({ sessione, mids: mids(sessione) })), ...(r.chiudiTracce || [])];
     const appenaFinita = r.stato.fase === "finita" && prima.fase !== "finita";
     const stato = appenaFinita ? { ...r.stato, finitaIl: adesso.getTime() } : r.stato;
     const linee = appenaFinita ? await this.storage.get("linee") : attesa.linee;
