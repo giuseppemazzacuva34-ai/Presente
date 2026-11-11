@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { lookup as lookupDns } from "node:dns/promises";
 
 export const MASSIMO = 95 * 1024 * 1024;
 const BASE = "https://raw.githubusercontent.com/giuseppemazzacuva34-ai/presente/media-social/";
@@ -22,16 +23,18 @@ export function controllaNome(nome) {
   return pulito;
 }
 
+function ipv4Privato(ottetti) {
+  const [a, b] = ottetti.map(Number);
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+}
+
 function indirizzoPrivato(host) {
   const h = host.replace(/^\[|\]$/g, "");
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
   if (h.includes(":")) return true; // IPv6 scritto a mano: non serve per i link di Canva, Drive o GitHub
   const n = h.split(".");
-  if (n.length === 4 && n.every((x) => /^\d{1,3}$/.test(x))) {
-    const [a, b] = n.map(Number);
-    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
-      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
-  }
+  if (n.length === 4 && n.every((x) => /^\d{1,3}$/.test(x))) return ipv4Privato(n);
   return false;
 }
 
@@ -44,6 +47,25 @@ export function controllaLink(link) {
   return url;
 }
 
+// Il nome del link (es. "esempio.it") può sembrare pubblico e poi risolvere a un indirizzo privato o al servizio
+// metadati del cloud (169.254.169.254): CISO 10/11, protezione dagli indirizzi "DNS rebinding". Si controllano
+// TUTTI gli indirizzi a cui risponde, non solo il primo; qualunque indirizzo IPv6 è trattato come privato,
+// come già fa controllaLink per un indirizzo scritto a mano.
+export async function controllaDns(hostname, cerca = lookupDns) {
+  let indirizzi;
+  try {
+    indirizzi = await cerca(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new Error("link non valido: indirizzo non risolvibile");
+  }
+  if (!indirizzi.length) throw new Error("link non valido: indirizzo non risolvibile");
+  for (const { address, family } of indirizzi) {
+    if (family !== 4 || ipv4Privato(String(address).split("."))) {
+      throw new Error("link non valido: indirizzo non pubblico");
+    }
+  }
+}
+
 export function tipoDalContenuto(b) {
   if (b.length >= 12 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) return "mp4";
   if (b.length >= 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return "webm";
@@ -52,11 +74,13 @@ export function tipoDalContenuto(b) {
   return null;
 }
 
-export async function scarica(link, { fetch: prendi = globalThis.fetch, massimo = MASSIMO } = {}) {
+export async function scarica(link, { fetch: prendi = globalThis.fetch, massimo = MASSIMO, dns = lookupDns } = {}) {
   const url = controllaLink(link);
+  await controllaDns(url.hostname, dns);
   const risposta = await prendi(url.href, { redirect: "follow", signal: AbortSignal.timeout(5 * 60 * 1000) });
   if (!risposta.ok) throw new Error(`il link risponde ${risposta.status}`);
-  controllaLink(risposta.url || url.href); // anche dopo i reindirizzamenti
+  const finale = controllaLink(risposta.url || url.href); // anche dopo i reindirizzamenti
+  if (finale.hostname !== url.hostname) await controllaDns(finale.hostname, dns);
   const dichiarata = Number(risposta.headers.get("content-length") || 0);
   if (dichiarata > massimo) throw new Error("file troppo grande (massimo 95 MB)");
   const pezzi = [];
