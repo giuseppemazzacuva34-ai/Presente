@@ -261,3 +261,60 @@ test("registraChiamata: configurazione mancante, risposta d'errore o rete giù �
   assert.equal(await registraChiamata(ENV, RIGA, async () => new Response("x", { status: 500 })), false);
   assert.equal(await registraChiamata(ENV, RIGA, async () => { throw new Error("rete"); }), false);
 });
+
+// Passo 3b-2b-2c-1: a chiamata finita il Durable Object libera le linee del Centralino della stanza
+// (senza aspettare i 17 minuti di sicurezza), anche quando la fine la decide l'allarme.
+function preparaConLinee({ liberaOk = true } = {}) {
+  const p = prepara();
+  const liberate = [];
+  p.g.liberaLinee = async (stanza, chiamata) => { liberate.push({ stanza, chiamata }); return { ok: liberaOk }; };
+  return { ...p, liberate };
+}
+const APRI_CON_LINEE = { ...APRI, stanza: "stanza-1", chiamata: "chiamata-1" };
+
+test("rifiuto: linee del centralino liberate subito", async () => {
+  const { g, liberate } = preparaConLinee();
+  await g.apri(APRI_CON_LINEE);
+  await g.rifiuta({ da: "b" });
+  assert.deepEqual(liberate, [{ stanza: "stanza-1", chiamata: "chiamata-1" }]);
+});
+
+test("squillo senza risposta: all'allarme linee liberate", async () => {
+  const { g, liberate, vai } = preparaConLinee();
+  await g.apri(APRI_CON_LINEE);
+  vai(31);
+  await g.allarme();
+  assert.deepEqual(liberate, [{ stanza: "stanza-1", chiamata: "chiamata-1" }]);
+});
+
+test("chiamata in corso: le linee restano occupate finché non finisce", async () => {
+  const { g, liberate, vai } = preparaConLinee();
+  await g.apri(APRI_CON_LINEE);
+  vai(5);
+  await g.rispondi({ da: "b", sessione: "sessioneB123", mid: "0" });
+  assert.deepEqual(liberate, []);
+  vai(200);
+  await g.chiudi({ da: "b", esito: "chiusa" });
+  assert.equal(liberate.length, 1);
+});
+
+test("centralino che non risponde: si riprova all'allarme come le altre cose da fare", async () => {
+  const { g, liberate, storage, vai } = preparaConLinee({ liberaOk: false });
+  await g.apri(APRI_CON_LINEE);
+  await g.rifiuta({ da: "b" });
+  assert.equal(liberate.length, 1);
+  assert.ok((await storage.get("attesa")).linee);
+  assert.equal(storage.allarme, T0.getTime() + RIPROVA_MS);
+  g.liberaLinee = async (stanza, chiamata) => { liberate.push({ stanza, chiamata }); return { ok: true }; };
+  vai(30);
+  await g.allarme();
+  assert.equal(liberate.length, 2);
+  assert.equal((await storage.get("attesa")).linee, undefined);
+});
+
+test("apertura senza stanza (vecchio formato): nessuna linea da liberare", async () => {
+  const { g, liberate } = preparaConLinee();
+  await g.apri(APRI);
+  await g.rifiuta({ da: "b" });
+  assert.deepEqual(liberate, []);
+});

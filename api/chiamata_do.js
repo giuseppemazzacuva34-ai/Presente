@@ -23,22 +23,27 @@ export const TENTATIVI = 5;
 
 const no = (motivo) => ({ ok: false, motivo });
 const VUOTA = Object.freeze({ chiusure: [], riga: null, tentativi: 0 });
-const vuota = (a) => !a || (!a.chiusure.length && !a.riga);
+const vuota = (a) => !a || (!a.chiusure.length && !a.riga && !a.linee);
+const testo = (x) => typeof x === "string" && x.length > 0 && x.length <= 128;
 const stessaRiga = (x, y) => !!x && !!y && x.chi === y.chi && x.inizio === y.inizio;
 
 export class GestoreChiamata {
-  constructor({ storage, adesso = () => new Date(), chiudiSessione, registra }) {
+  // liberaLinee(stanza, chiamata) → { ok }: libera le due linee nel Centralino della stanza (passo 3b-2b-2c).
+  constructor({ storage, adesso = () => new Date(), chiudiSessione, registra, liberaLinee = null }) {
     this.storage = storage;
     this.adesso = adesso;
     this.chiudiSessione = chiudiSessione;
     this.registra = registra;
+    this.liberaLinee = liberaLinee;
   }
 
-  async apri({ chi, con, chiusuraStanza, sessioneChi, midChi }) {
+  // stanza e chiamata (id) servono solo per liberare le linee del Centralino quando la chiamata finisce.
+  async apri({ chi, con, chiusuraStanza, sessioneChi, midChi, stanza, chiamata }) {
     if (await this.storage.get("stato")) return no("gia_aperta");
     const adesso = this.adesso();
     const stato = nuovaChiamata({ chi, con, adesso, chiusuraStanza: new Date(chiusuraStanza), sessioneChi, midChi });
-    await this.storage.put({ stato, attesa: VUOTA });
+    const linee = testo(stanza) && testo(chiamata) ? { stanza, chiamata } : null;
+    await this.storage.put({ stato, attesa: VUOTA, ...(linee ? { linee } : {}) });
     await this.#allarme(stato, VUOTA);
     return { ok: true, vista: vistaPer(stato, chi, adesso) };
   }
@@ -105,10 +110,13 @@ export class GestoreChiamata {
       return s && s.mid ? [s.mid] : [];
     };
     const nuove = (r.daChiudere || []).map((sessione) => ({ sessione, mids: mids(sessione) }));
-    const stato = r.stato.fase === "finita" && prima.fase !== "finita" ? { ...r.stato, finitaIl: adesso.getTime() } : r.stato;
+    const appenaFinita = r.stato.fase === "finita" && prima.fase !== "finita";
+    const stato = appenaFinita ? { ...r.stato, finitaIl: adesso.getTime() } : r.stato;
+    const linee = appenaFinita ? await this.storage.get("linee") : attesa.linee;
     await this.storage.put({
       stato,
-      attesa: { chiusure: [...attesa.chiusure, ...nuove], riga: r.riga || attesa.riga, tentativi: attesa.tentativi },
+      attesa: { chiusure: [...attesa.chiusure, ...nuove], riga: r.riga || attesa.riga, tentativi: attesa.tentativi,
+        ...(linee ? { linee } : {}) },
     });
   }
 
@@ -123,15 +131,26 @@ export class GestoreChiamata {
       if (r && r.ok) fatte.push(c.sessione);
     }
     const rigaScritta = attesa.riga ? await this.registra(attesa.riga) : false;
+    let lineeLibere = !this.liberaLinee; // senza Centralino collegato non c'è nulla da liberare
+    if (attesa.linee && this.liberaLinee) {
+      try {
+        const r = await this.liberaLinee(attesa.linee.stanza, attesa.linee.chiamata);
+        lineeLibere = !!(r && r.ok);
+      } catch (e) {
+        console.error("chiamata: centralino", e && e.name);
+      }
+    }
     const ora = (await this.storage.get("attesa")) || VUOTA;
     const resta = {
       chiusure: ora.chiusure.filter((c) => !fatte.includes(c.sessione)),
       riga: rigaScritta && stessaRiga(ora.riga, attesa.riga) ? null : ora.riga,
       tentativi: ora.tentativi + 1,
+      ...(ora.linee && !lineeLibere ? { linee: ora.linee } : {}),
     };
     if (vuota(resta)) return this.storage.put("attesa", VUOTA);
     if (resta.tentativi >= TENTATIVI) {
-      console.error("chiamata: lasciate perdere", resta.chiusure.length, "chiusure e", resta.riga ? 1 : 0, "righe");
+      // Le linee rimaste si liberano comunque da sole dopo DURATA_MASSIMA_LINEA (api/centralino.js).
+      console.error("chiamata: lasciate perdere", resta.chiusure.length, "chiusure,", resta.riga ? 1 : 0, "righe,", resta.linee ? 1 : 0, "linee");
       return this.storage.put("attesa", VUOTA);
     }
     return this.storage.put("attesa", resta);

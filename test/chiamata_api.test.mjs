@@ -33,12 +33,15 @@ function supabaseFinto({ utente = 200 } = {}) {
 }
 
 // Al posto di api/apri_chiamata.js: registra con che cosa è stata chiamata.
-function finte({ apri = { ok: true, descrizione: { type: "answer", sdp: "v=0" }, vista: { stato: "squilla" } }, stato = { ok: true, vista: null } } = {}) {
+function finte({ apri = { ok: true, descrizione: { type: "answer", sdp: "v=0" }, vista: { stato: "squilla" } }, stato = { ok: true, vista: null }, passo = {} } = {}) {
   const ricevute = [];
   return {
     ricevute,
     apriChiamata: async (dati) => { ricevute.push(["apri", dati]); return apri; },
     statoChiamata: async (dati) => { ricevute.push(["stato", dati]); return stato; },
+    rispondiChiamata: async (dati) => { ricevute.push(["rispondi", dati]); return passo.rispondi || { ok: true, descrizione: { type: "answer", sdp: "v=0" }, vista: { fase: "in_corso" } }; },
+    rifiutaChiamata: async (dati) => { ricevute.push(["rifiuta", dati]); return passo.rifiuta || { ok: true, vista: { fase: "finita" } }; },
+    chiudiChiamata: async (dati) => { ricevute.push(["chiudi", dati]); return passo.chiudi || { ok: true, vista: { fase: "finita" } }; },
   };
 }
 
@@ -153,4 +156,47 @@ test("il Worker manda /app/api/chiamata qui, con le intestazioni dell'app e senz
   assert.equal((await r.json()).motivo, "spento");
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.match(r.headers.get("content-security-policy") || "", /default-src 'self'/);
+});
+
+// Passo 3b-2b-2c-1: rispondi, rifiuta, chiudi.
+test("rispondi: POST con l'offerta, per la persona del token; al telefono solo descrizione e vista", async () => {
+  const { f } = supabaseFinto();
+  const d = finte();
+  const r = await chiamataApi(richiesta(PERCORSO_CHIAMATA + "/rispondi", { metodo: "POST", corpo: { offerta: OFFERTA, per: ALTRO } }), ENV, f, d);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, descrizione: { type: "answer", sdp: "v=0" }, vista: { fase: "in_corso" } });
+  assert.deepEqual(d.ricevute[0][0], "rispondi");
+  assert.equal(d.ricevute[0][1].per, ID);
+  assert.deepEqual(d.ricevute[0][1].offerta, OFFERTA);
+});
+
+test("rifiuta e chiudi: POST, persona del token; «segnala» solo se è true", async () => {
+  const { f } = supabaseFinto();
+  const d = finte({ passo: { chiudi: { ok: true, vista: { fase: "finita" }, segnala: true } } });
+  const r1 = await chiamataApi(richiesta(PERCORSO_CHIAMATA + "/rifiuta", { metodo: "POST", corpo: {} }), ENV, f, d);
+  assert.deepEqual(await r1.json(), { ok: true, vista: { fase: "finita" } });
+  const r2 = await chiamataApi(richiesta(PERCORSO_CHIAMATA + "/chiudi", { metodo: "POST", corpo: { segnala: true } }), ENV, f, d);
+  assert.deepEqual(await r2.json(), { ok: true, vista: { fase: "finita" }, segnala: true });
+  await chiamataApi(richiesta(PERCORSO_CHIAMATA + "/chiudi", { metodo: "POST", corpo: { segnala: "si" } }), ENV, f, d);
+  assert.deepEqual(d.ricevute.map(([n, x]) => [n, x.per, x.segnala]), [["rifiuta", ID, undefined], ["chiudi", ID, true], ["chiudi", ID, false]]);
+});
+
+test("rispondi/rifiuta/chiudi: no delle regole 200, «riprova» 503, «solo_voce» 400, metodo GET 405", async () => {
+  const { f } = supabaseFinto();
+  const casi = [
+    ["/rispondi", { rispondi: { ok: false, motivo: "squillo_finito" } }, 200],
+    ["/rispondi", { rispondi: { ok: false, motivo: "realtime" } }, 503],
+    ["/rispondi", { rispondi: { ok: false, motivo: "solo_voce" } }, 400],
+    ["/rifiuta", { rifiuta: { ok: false, motivo: "nessuna" } }, 200],
+    ["/chiudi", { chiudi: { ok: false, motivo: "gia_finita" } }, 200],
+  ];
+  for (const [p, passo, codice] of casi) {
+    const r = await chiamataApi(richiesta(PERCORSO_CHIAMATA + p, { metodo: "POST", corpo: { offerta: OFFERTA } }), ENV, f, finte({ passo }));
+    assert.equal(r.status, codice, p + " " + JSON.stringify(passo));
+  }
+  for (const p of ["/rispondi", "/rifiuta", "/chiudi"]) {
+    const d = finte();
+    assert.equal((await chiamataApi(richiesta(PERCORSO_CHIAMATA + p), ENV, f, d)).status, 405);
+    assert.equal(d.ricevute.length, 0);
+  }
 });

@@ -2,7 +2,7 @@
 // Tutto con finti centralino, finte sessioni Realtime e finto Durable Object: nessuna rete, solo dati inventati.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { apriChiamata, statoChiamata } from "../api/apri_chiamata.js";
+import { apriChiamata, statoChiamata, rispondiChiamata, rifiutaChiamata, chiudiChiamata } from "../api/apri_chiamata.js";
 import { oraDiRoma } from "../api/stanze.js";
 
 const A = "11111111-1111-4111-8111-111111111111";
@@ -15,8 +15,8 @@ const CHIUDE = oraDiRoma(2026, 11, 15, 21);
 const OFFERTA = { type: "offer", sdp: "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=mid:0\r\n" };
 const CON_VIDEO = { type: "offer", sdp: OFFERTA.sdp + "m=video 9 UDP/TLS/RTP/SAVPF 96\r\na=mid:1\r\n" };
 
-function finti({ linee = {}, dati = {}, sessione = { ok: true, sessione: "sessione-aaaa" }, pubblica, apri } = {}) {
-  const registro = { occupa: [], libera: [], chiuse: [], aperte: [], sessioni: 0 };
+function finti({ linee = {}, dati = {}, sessione = { ok: true, sessione: "sessione-aaaa" }, pubblica, apri, rispondi, chiudi } = {}) {
+  const registro = { occupa: [], libera: [], chiuse: [], aperte: [], risposte: [], rifiuti: [], chiusure: [], sessioni: 0 };
   const occupate = { ...linee };
   const d = {
     stanzaDi: async (chi) => (chi === C ? null : { id: STANZA, apre: APRE, chiude: CHIUDE }),
@@ -43,6 +43,10 @@ function finti({ linee = {}, dati = {}, sessione = { ok: true, sessione: "sessio
     chiamata: (id) => ({
       apri: async (x) => { registro.aperte.push({ id, ...x }); return apri ? apri(x) : { ok: true, vista: { fase: "squilla", io: "chiama", squillo: 30 } }; },
       vista: async (per) => ({ ok: true, vista: { fase: "squilla", io: per === A ? "chiama" : "riceve", squillo: 12 } }),
+      rispondi: async (x) => { registro.risposte.push({ id, ...x }); return rispondi ? rispondi(x) : { ok: true, vista: { fase: "in_corso", io: "riceve" } }; },
+      rifiuta: async (x) => { registro.rifiuti.push({ id, ...x }); return { ok: true, vista: { fase: "finita", io: "riceve" } }; },
+      chiudi: async (x) => { registro.chiusure.push({ id, ...x }); return chiudi ? chiudi(x)
+        : { ok: true, vista: { fase: "finita", io: x.da === A ? "chiama" : "riceve" }, ...(x.esito === "chiudi_e_segnala" ? { segnala: true } : {}) }; },
     }),
     nuovoId: () => "chiamata-1",
   };
@@ -56,7 +60,8 @@ test("apertura riuscita: linee occupate, una sessione, Durable Object aperto con
   assert.deepEqual(r.descrizione, { type: "answer", sdp: "risposta" });
   assert.equal(r.vista.fase, "squilla");
   assert.equal(registro.sessioni, 1);
-  assert.deepEqual(registro.aperte, [{ id: "chiamata-1", chi: A, con: B, chiusuraStanza: CHIUDE.getTime(), sessioneChi: "sessione-aaaa", midChi: "0" }]);
+  assert.deepEqual(registro.aperte, [{ id: "chiamata-1", chi: A, con: B, chiusuraStanza: CHIUDE.getTime(), sessioneChi: "sessione-aaaa", midChi: "0",
+    stanza: STANZA, chiamata: "chiamata-1" }]);
   assert.equal(occupate[B].chiamata, "chiamata-1");
   // Al telefono non arrivano mai l'id della chiamata né le sessioni Realtime.
   assert.equal(JSON.stringify(r).includes("chiamata-1"), false);
@@ -165,4 +170,68 @@ test("stato: fuori da una stanza o id non valido", async () => {
   const { d } = finti();
   assert.deepEqual(await statoChiamata({ per: C, adesso: ADESSO }, d), { ok: true, vista: null });
   assert.deepEqual(await statoChiamata({ per: "x", adesso: ADESSO }, d), { ok: false, motivo: "dati" });
+});
+
+// Passo 3b-2b-2c-1: rispondere, rifiutare, chiudere. Chi è lo dice il Worker (token); la chiamata la trova il centralino.
+const IN_ARRIVO = { [A]: { chiamata: "chiamata-1", ruolo: "chi", altra: B }, [B]: { chiamata: "chiamata-1", ruolo: "con", altra: A } };
+
+test("rispondi: sessione e voce di chi riceve, poi il Durable Object; al telefono solo risposta SDP e vista", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO, sessione: { ok: true, sessione: "sessione-bbbb" } });
+  const r = await rispondiChiamata({ per: B, offerta: OFFERTA, adesso: ADESSO }, d);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.descrizione, { type: "answer", sdp: "risposta" });
+  assert.equal(r.vista.fase, "in_corso");
+  assert.deepEqual(registro.risposte, [{ id: "chiamata-1", da: B, sessione: "sessione-bbbb", mid: "0" }]);
+  assert.equal(JSON.stringify(r).includes("sessione-bbbb"), false);
+  assert.equal(JSON.stringify(r).includes("chiamata-1"), false);
+});
+
+test("rispondi: offerta con video rifiutata prima di creare sessioni", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO });
+  assert.deepEqual(await rispondiChiamata({ per: B, offerta: CON_VIDEO, adesso: ADESSO }, d), { ok: false, motivo: "solo_voce" });
+  assert.equal(registro.sessioni, 0);
+});
+
+test("rispondi: chi ha chiamato non può «rispondere» alla propria chiamata; senza chiamata «nessuna»", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO });
+  assert.deepEqual(await rispondiChiamata({ per: A, offerta: OFFERTA, adesso: ADESSO }, d), { ok: false, motivo: "non_tocca_a_te" });
+  const vuoto = finti();
+  assert.deepEqual(await rispondiChiamata({ per: B, offerta: OFFERTA, adesso: ADESSO }, vuoto.d), { ok: false, motivo: "nessuna" });
+  assert.equal(registro.sessioni + vuoto.registro.sessioni, 0);
+});
+
+test("rispondi troppo tardi (o già risposto): la traccia appena pubblicata si chiude, motivo dal Durable Object", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO, sessione: { ok: true, sessione: "sessione-bbbb" },
+    rispondi: async () => ({ ok: false, motivo: "squillo_finito" }) });
+  assert.deepEqual(await rispondiChiamata({ per: B, offerta: OFFERTA, adesso: ADESSO }, d), { ok: false, motivo: "squillo_finito" });
+  assert.deepEqual(registro.chiuse, [{ s: "sessione-bbbb", mids: ["0"] }]);
+});
+
+test("rispondi: Realtime giù → «realtime», nessun passo sul Durable Object", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO, sessione: { ok: false, motivo: "realtime" } });
+  assert.deepEqual(await rispondiChiamata({ per: B, offerta: OFFERTA, adesso: ADESSO }, d), { ok: false, motivo: "realtime" });
+  assert.equal(registro.risposte.length, 0);
+});
+
+test("rifiuta: solo chi riceve, passa al Durable Object", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO });
+  const r = await rifiutaChiamata({ per: B, adesso: ADESSO }, d);
+  assert.deepEqual(r, { ok: true, vista: { fase: "finita", io: "riceve" } });
+  assert.deepEqual(registro.rifiuti, [{ id: "chiamata-1", da: B }]);
+  assert.deepEqual(await rifiutaChiamata({ per: A, adesso: ADESSO }, d), { ok: false, motivo: "non_tocca_a_te" });
+});
+
+test("chiudi e «Chiudi e segnala»: esito giusto al Durable Object, «segnala» torna al telefono", async () => {
+  const { d, registro } = finti({ linee: IN_ARRIVO });
+  assert.deepEqual(await chiudiChiamata({ per: A, segnala: false, adesso: ADESSO }, d), { ok: true, vista: { fase: "finita", io: "chiama" } });
+  const r = await chiudiChiamata({ per: B, segnala: true, adesso: ADESSO }, d);
+  assert.equal(r.segnala, true);
+  assert.deepEqual(registro.chiusure.map((x) => x.esito), ["chiusa", "chiudi_e_segnala"]);
+});
+
+test("chiudi: senza chiamata «nessuna», id non valido «dati»", async () => {
+  const { d } = finti();
+  assert.deepEqual(await chiudiChiamata({ per: A, segnala: false, adesso: ADESSO }, d), { ok: false, motivo: "nessuna" });
+  assert.deepEqual(await chiudiChiamata({ per: "x", segnala: false, adesso: ADESSO }, d), { ok: false, motivo: "dati" });
+  assert.deepEqual(await rifiutaChiamata({ per: C, adesso: ADESSO }, d), { ok: false, motivo: "nessuna" });
 });
