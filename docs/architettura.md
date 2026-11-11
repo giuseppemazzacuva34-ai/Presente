@@ -139,7 +139,11 @@ Avanzamento del 3b-2b: 3b-2b-2a (fatto, `api/apri_chiamata.js` + `api/dati_chiam
 - `POST /app/api/chiamata/conferma` `{ risposta }` → `{ ok, vista }`: la risposta del telefono, solo voce (controllata prima di arrivare a Realtime).
 - La vista ha `ascolto: "da_fare" | "fatto"`: dopo un rientro dell'altra persona (sessione nuova) torna «da_fare» e il telefono ascolta di nuovo; la traccia ricevuta vecchia si chiude. Durante una riconnessione: «riconnessione», niente da ascoltare.
 - A fine chiamata si chiudono anche le tracce ricevute, non solo la propria voce.
-Prossimo, 3b-2b-2c-2b: caduta/rientro e pescata della carta come richieste del Worker.
+3b-2b-2c-2b-1 (fatto, `api/apri_chiamata.js`, `worker/chiamata_api.js`, test in `test/rientro.test.mjs`): connessione persa e «Riconnetti».
+- `POST /app/api/chiamata/caduta` `{}` → `{ ok, vista }`: il telefono che ha perso la voce lo dice; il Durable Object fa partire i 30 secondi (il timer dei 15 minuti continua). Se nessuno rientra, l'allarme chiude la chiamata con esito «caduta».
+- `POST /app/api/chiamata/rientro` `{ offerta }` → `{ ok, descrizione, vista }`: al tocco su «Riconnetti» una nuova offerta solo voce va su una sessione Realtime nuova; la vecchia la chiude il Durable Object. Se la caduta non era arrivata (rete del tutto assente) il rientro la segna prima. Oltre i 30 secondi: «troppo_tardi» o «non_in_corso», e la traccia appena aperta si chiude.
+- L'altra persona vede `altraPersona: "riconnessione"` e, dopo il rientro, `ascolto: "da_fare"`: ascolta di nuovo con `/ascolta`.
+Prossimo, 3b-2b-2c-2b-2: pescata della carta (carte attive e carte viste della coppia dal database, solo server).
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 

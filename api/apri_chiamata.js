@@ -197,3 +197,50 @@ export async function confermaAscolto({ per, risposta, adesso }, d) {
   const v = await chiamata.vista(per);
   return { ok: true, vista: v && v.ok ? v.vista : null };
 }
+
+// --- Passo 3b-2b-2c-2b-1: connessione persa e «Riconnetti» --------------------------------------------------------
+// Spec v1.2: 30 secondi per rientrare, il timer continua; se non si rientra la chiamata finisce (lo decide l'allarme
+// del Durable Object). «caduta»: il telefono che ha perso la voce lo dice. «rientro»: al tocco su «Riconnetti» il
+// telefono manda una nuova offerta solo voce, pubblicata su una sessione nuova; la vecchia la chiude il Durable Object.
+// Se la caduta non era arrivata (rete del tutto assente) il rientro la segna prima: così vale sempre la stessa regola.
+export async function cadutaChiamata({ per, adesso }, d) {
+  const l = await lineaDi(per, adesso, d);
+  if (!l.ok) return l;
+  const r = await d.chiamata(l.linea.chiamata).caduta({ da: per });
+  return esitoDo(r) || { ok: true, vista: r.vista };
+}
+
+export async function rientroChiamata({ per, offerta, adesso }, d) {
+  if (!UUID.test(per || "")) return no("dati");
+  if (!offertaValida(offerta)) return no("solo_voce");
+  const l = await lineaDi(per, adesso, d);
+  if (!l.ok) return l;
+  const chiamata = d.chiamata(l.linea.chiamata);
+  const errore = esitoDo(await chiamata.caduta({ da: per }));
+  if (errore) return errore;
+
+  const mid = midAudio(offerta.sdp);
+  let sessione = null, pubblicata = false;
+  try {
+    const s = await d.nuovaSessione();
+    if (!s.ok) return no(s.motivo);
+    sessione = s.sessione;
+    const p = await d.pubblicaVoce(sessione, offerta);
+    if (!p.ok) return no(p.motivo);
+    pubblicata = true;
+    const r = await chiamata.rientro({ da: per, sessione, mid });
+    const no2 = esitoDo(r);
+    if (no2) return await chiudiTraccia(no2);
+    return { ok: true, descrizione: p.descrizione, vista: r.vista };
+  } catch (e) {
+    console.error("rientro chiamata: errore", e && e.name);
+    return await chiudiTraccia(no("riprova"));
+  }
+
+  async function chiudiTraccia(risultato) {
+    if (pubblicata) {
+      try { await d.chiudiSessione(sessione, [mid]); } catch { /* la traccia senza traffico la chiude comunque Realtime */ }
+    }
+    return risultato;
+  }
+}
