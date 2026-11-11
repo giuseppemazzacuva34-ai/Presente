@@ -15,6 +15,8 @@ export class Chiamata extends DurableObject {
       storage: ctx.storage,
       chiudiSessione: (sessione, mids) => chiudiVoce(this.env, sessione, mids),
       registra: (riga) => registraChiamata(this.env, riga),
+      // A chiamata finita libera subito le due linee nel Centralino della stanza (passo 3b-2b-2c-1).
+      liberaLinee: (stanza, chiamata) => this.env.CENTRALINO.get(this.env.CENTRALINO.idFromName(stanza)).libera({ chiamata }),
     });
   }
 

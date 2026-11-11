@@ -2,18 +2,22 @@
 //
 //   POST /app/api/chiamata/apri  { verso, offerta } → { ok: true, descrizione, vista } | { ok: false, motivo }
 //   GET  /app/api/chiamata       → { ok: true, vista }   (vista null se non c'è una chiamata)
+//   POST /app/api/chiamata/rispondi { offerta } → { ok: true, descrizione, vista }   (solo chi riceve)
+//   POST /app/api/chiamata/rifiuta  {}          → { ok: true, vista }                (solo chi riceve)
+//   POST /app/api/chiamata/chiudi   { segnala } → { ok: true, vista[, segnala] }     (tutti e due; segnala solo se true)
 //
 // Chi chiama lo dice SOLO il token di Supabase: un «chi» scritto nel corpo non conta. Le regole (stanza, blocchi,
 // 3 volte, 5 al giorno, fascia, solo voce) le applica api/apri_chiamata.js; qui solo accesso, forma della richiesta
 // e codici di risposta. Al telefono solo ok/motivo, la risposta SDP e la vista: mai l'id della chiamata o le sessioni.
 // Nei log solo nomi di errore, mai token, id, SDP o dati. Spento finché ACCESSO_APP non vale «si».
-// Prossimi passi (3b-2b-2c): rispondi, rifiuta, chiudi, caduta/rientro e pescata della carta.
-import { apriChiamata, statoChiamata } from "../api/apri_chiamata.js";
+// Prossimi passi (3b-2b-2c-2): ricevere la voce dell'altra persona, caduta/rientro e pescata della carta.
+import { apriChiamata, statoChiamata, rispondiChiamata, rifiutaChiamata, chiudiChiamata } from "../api/apri_chiamata.js";
 import { stanzaDi, datiPerChiamare } from "../api/dati_chiamata.js";
 import { nuovaSessione, pubblicaVoce, chiudiVoce } from "../api/realtime.js";
 
 export const PERCORSO_CHIAMATA = "/app/api/chiamata";
-const PERCORSO_APRI = PERCORSO_CHIAMATA + "/apri";
+// Tutte POST con corpo JSON; «/app/api/chiamata» da solo è la GET dello stato.
+const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi"]);
 const CORPO_MASSIMO = 32 * 1024; // un'offerta solo voce sta sotto i 20 mila caratteri (api/realtime.js)
 const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -55,14 +59,17 @@ function operazioniVere(env, f) {
   return {
     apriChiamata: (dati) => apriChiamata(dati, d),
     statoChiamata: (dati) => statoChiamata(dati, d),
+    rispondiChiamata: (dati) => rispondiChiamata(dati, d),
+    rifiutaChiamata: (dati) => rifiutaChiamata(dati, d),
+    chiudiChiamata: (dati) => chiudiChiamata(dati, d),
   };
 }
 
 export async function chiamataApi(request, env, f = fetch, operazioni = null) {
   const { pathname } = new URL(request.url);
-  const apri = pathname === PERCORSO_APRI;
-  if (!apri && pathname !== PERCORSO_CHIAMATA) return risposta(404, { ok: false, motivo: "non_trovato" });
-  const metodo = apri ? "POST" : "GET";
+  const passo = pathname.startsWith(PERCORSO_CHIAMATA + "/") ? pathname.slice(PERCORSO_CHIAMATA.length + 1) : null;
+  if (pathname !== PERCORSO_CHIAMATA && !PASSI.has(passo)) return risposta(404, { ok: false, motivo: "non_trovato" });
+  const metodo = passo ? "POST" : "GET";
   if (request.method !== metodo) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodo });
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
@@ -73,16 +80,25 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
   const adesso = new Date();
 
   try {
-    if (!apri) {
+    if (!passo) {
       const r = await op.statoChiamata({ per: chi.id, adesso });
       if (!r || !r.ok) return risposta(r && RICHIESTA_SBAGLIATA.has(r.motivo) ? 400 : 503, { ok: false, motivo: "riprova" });
       return risposta(200, { ok: true, vista: r.vista ?? null });
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
-    const { verso, offerta } = corpo.dati;
-    const r = await op.apriChiamata({ chi: chi.id, verso, offerta, adesso });
-    if (r && r.ok) return risposta(200, { ok: true, descrizione: r.descrizione, vista: r.vista });
+    const { verso, offerta, segnala } = corpo.dati;
+    const r = passo === "apri" ? await op.apriChiamata({ chi: chi.id, verso, offerta, adesso })
+      : passo === "rispondi" ? await op.rispondiChiamata({ per: chi.id, offerta, adesso })
+      : passo === "rifiuta" ? await op.rifiutaChiamata({ per: chi.id, adesso })
+      : await op.chiudiChiamata({ per: chi.id, segnala: segnala === true, adesso });
+    if (r && r.ok) {
+      const fine = { ok: true };
+      if (r.descrizione) fine.descrizione = r.descrizione;
+      fine.vista = r.vista ?? null;
+      if (r.segnala === true) fine.segnala = true;
+      return risposta(200, fine);
+    }
     const motivo = String((r && r.motivo) || "riprova");
     if (RICHIESTA_SBAGLIATA.has(motivo)) return risposta(400, { ok: false, motivo });
     if (RIPROVA.has(motivo)) return risposta(503, { ok: false, motivo: "riprova" });
