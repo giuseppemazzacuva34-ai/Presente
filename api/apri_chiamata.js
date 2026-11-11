@@ -79,8 +79,11 @@ export async function statoChiamata({ per, adesso }, d) {
   if (!stanza) return { ok: true, vista: null };
   const linea = await d.centralino(stanza.id).linea(per);
   if (!linea) return { ok: true, vista: null };
-  const r = await d.chiamata(linea.chiamata).vista(per);
-  return r && r.ok ? { ok: true, vista: r.vista } : { ok: true, vista: null };
+  // Carte attive (passo 3b-2b-2c-2b-2): ne serve il numero per il pulsante e il testo della carta aperta.
+  // Se non si leggono il pulsante sparisce per questo giro, la chiamata si vede lo stesso.
+  const carte = d.carte ? await d.carte() : null;
+  const r = await d.chiamata(linea.chiamata).vista(per, carte ? carte.length : 0);
+  return r && r.ok ? { ok: true, vista: conTesto(r.vista, carte) } : { ok: true, vista: null };
 }
 
 // --- Passo 3b-2b-2c-1: rispondere, rifiutare, chiudere -------------------------------------------------------------
@@ -93,7 +96,7 @@ async function lineaDi(per, adesso, d) {
   const stanza = await d.stanzaDi(per, adesso);
   if (!stanza) return no("nessuna");
   const linea = await d.centralino(stanza.id).linea(per);
-  return linea ? { ok: true, linea } : no("nessuna");
+  return linea ? { ok: true, linea, stanza } : no("nessuna");
 }
 
 const esitoDo = (r) => (r && r.ok ? null : no(String((r && r.motivo) || "riprova")));
@@ -243,4 +246,40 @@ export async function rientroChiamata({ per, offerta, adesso }, d) {
     }
     return risultato;
   }
+}
+
+// --- Passo 3b-2b-2c-2b-2: pescata della carta (spec v1.2) -----------------------------------------------------------
+// Un tocco su «Carte» → la stessa carta sui due telefoni (la vede anche l'altra persona al suo prossimo GET).
+// Le regole (da 0:10 a 14:00, 20 s tra due pescate, vale il primo tocco) le decide il Durable Object; il mazzo e le
+// carte già viste dalla coppia le legge qui il server. Al Durable Object vanno solo id di carta, mai i testi; al
+// telefono la vista con { id, testo, daMe }: niente nomi (il nome dell'altra persona l'app lo sa già), niente id
+// della chiamata. d in più: carte(), carteViste({ stanza, a, b }), segnaVista({ stanza, a, b, carta, ricomincia }),
+// casuale() → numero in [0, 1) (sul server crypto.getRandomValues).
+
+// Aggiunge il testo alla carta aperta; una carta non più attiva non si mostra.
+function conTesto(vista, carte) {
+  if (!vista || !vista.carta) return vista;
+  const c = (carte || []).find((x) => x.id === vista.carta.id);
+  return { ...vista, carta: c ? { id: c.id, testo: c.testo, daMe: vista.carta.daMe === true } : null };
+}
+
+export async function pescaCartaChiamata({ per, adesso }, d) {
+  const l = await lineaDi(per, adesso, d);
+  if (!l.ok) return l;
+  if (!UUID.test(l.linea.altra || "")) return no("riprova");
+  const [a, b] = [per, l.linea.altra].sort();
+  const coppia = { stanza: l.stanza.id, a, b };
+  const [carte, viste] = await Promise.all([d.carte(), d.carteViste(coppia)]);
+  if (!carte || !viste) return no("riprova");
+  if (!carte.length) return no("nessuna_carta");
+
+  const r = await d.chiamata(l.linea.chiamata).pesca({
+    da: per, carte: carte.map((c) => ({ id: c.id })), viste, numero: d.casuale(),
+  });
+  const errore = esitoDo(r);
+  if (errore) return errore;
+  // Se non si salva, la carta compare lo stesso: al più potrà ripetersi in questa settimana.
+  const segnata = await d.segnaVista({ ...coppia, carta: r.carta, ricomincia: r.ricomincia === true });
+  if (!segnata) console.error("pesca carta: carta vista non salvata");
+  return { ok: true, vista: conTesto(r.vista, carte) };
 }

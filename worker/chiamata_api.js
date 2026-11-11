@@ -9,22 +9,23 @@
 //   POST /app/api/chiamata/conferma { risposta } → { ok: true, vista }               (risposta del telefono, solo voce)
 //   POST /app/api/chiamata/caduta   {}          → { ok: true, vista }                (ho perso la voce: partono i 30 s)
 //   POST /app/api/chiamata/rientro  { offerta } → { ok: true, descrizione, vista }   («Riconnetti», solo voce)
+//   POST /app/api/chiamata/carta    {}          → { ok: true, vista }                (pescata: vista.carta { id, testo, daMe })
 //
 // Chi chiama lo dice SOLO il token di Supabase: un «chi» scritto nel corpo non conta. Le regole (stanza, blocchi,
 // 3 volte, 5 al giorno, fascia, solo voce) le applica api/apri_chiamata.js; qui solo accesso, forma della richiesta
 // e codici di risposta. Al telefono solo ok/motivo, la risposta SDP e la vista: mai l'id della chiamata o le sessioni.
 // Nei log solo nomi di errore, mai token, id, SDP o dati. Spento finché ACCESSO_APP non vale «si».
-// Prossimo passo (3b-2b-2c-2b-2): pescata della carta.
+// Prossimo passo (3c): le schermate della chiamata nella web app.
 import {
   apriChiamata, statoChiamata, rispondiChiamata, rifiutaChiamata, chiudiChiamata, ascoltaChiamata, confermaAscolto,
-  cadutaChiamata, rientroChiamata,
+  cadutaChiamata, rientroChiamata, pescaCartaChiamata,
 } from "../api/apri_chiamata.js";
-import { stanzaDi, datiPerChiamare } from "../api/dati_chiamata.js";
+import { stanzaDi, datiPerChiamare, carteAttiveDb, carteVisteDb, segnaCartaVista } from "../api/dati_chiamata.js";
 import { nuovaSessione, pubblicaVoce, chiudiVoce, riceviVoce, confermaRisposta } from "../api/realtime.js";
 
 export const PERCORSO_CHIAMATA = "/app/api/chiamata";
 // Tutte POST con corpo JSON; «/app/api/chiamata» da solo è la GET dello stato.
-const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro"]);
+const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro", "carta"]);
 const CORPO_MASSIMO = 32 * 1024; // un'offerta solo voce sta sotto i 20 mila caratteri (api/realtime.js)
 const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -60,6 +61,10 @@ export function dipendenze(env, f = fetch) {
     riceviVoce: (mia, altra) => riceviVoce(env, mia, altra, f),
     confermaRisposta: (mia, risposta) => confermaRisposta(env, mia, risposta, f),
     nuovoId: () => crypto.randomUUID(),
+    carte: () => carteAttiveDb(env, f),
+    carteViste: (coppia) => carteVisteDb(env, coppia, f),
+    segnaVista: (x) => segnaCartaVista(env, x, f),
+    casuale: () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32,
   };
 }
 
@@ -75,6 +80,7 @@ function operazioniVere(env, f) {
     confermaAscolto: (dati) => confermaAscolto(dati, d),
     cadutaChiamata: (dati) => cadutaChiamata(dati, d),
     rientroChiamata: (dati) => rientroChiamata(dati, d),
+    pescaCarta: (dati) => pescaCartaChiamata(dati, d),
   };
 }
 
@@ -106,6 +112,7 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
       : passo === "conferma" ? await op.confermaAscolto({ per: chi.id, risposta: rispostaSdp, adesso })
       : passo === "caduta" ? await op.cadutaChiamata({ per: chi.id, adesso })
       : passo === "rientro" ? await op.rientroChiamata({ per: chi.id, offerta, adesso })
+      : passo === "carta" ? await op.pescaCarta({ per: chi.id, adesso })
       : passo === "rispondi" ? await op.rispondiChiamata({ per: chi.id, offerta, adesso })
       : passo === "rifiuta" ? await op.rifiutaChiamata({ per: chi.id, adesso })
       : await op.chiudiChiamata({ per: chi.id, segnala: segnala === true, adesso });

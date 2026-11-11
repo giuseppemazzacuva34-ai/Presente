@@ -143,7 +143,13 @@ Avanzamento del 3b-2b: 3b-2b-2a (fatto, `api/apri_chiamata.js` + `api/dati_chiam
 - `POST /app/api/chiamata/caduta` `{}` → `{ ok, vista }`: il telefono che ha perso la voce lo dice; il Durable Object fa partire i 30 secondi (il timer dei 15 minuti continua). Se nessuno rientra, l'allarme chiude la chiamata con esito «caduta».
 - `POST /app/api/chiamata/rientro` `{ offerta }` → `{ ok, descrizione, vista }`: al tocco su «Riconnetti» una nuova offerta solo voce va su una sessione Realtime nuova; la vecchia la chiude il Durable Object. Se la caduta non era arrivata (rete del tutto assente) il rientro la segna prima. Oltre i 30 secondi: «troppo_tardi» o «non_in_corso», e la traccia appena aperta si chiude.
 - L'altra persona vede `altraPersona: "riconnessione"` e, dopo il rientro, `ascolto: "da_fare"`: ascolta di nuovo con `/ascolta`.
-Prossimo, 3b-2b-2c-2b-2: pescata della carta (carte attive e carte viste della coppia dal database, solo server).
+3b-2b-2c-2b-2 (fatto, `api/apri_chiamata.js`, `api/dati_chiamata.js`, `worker/chiamata_api.js`, test in `test/pesca_carta.test.mjs`): pescata della carta (spec v1.2).
+- `POST /app/api/chiamata/carta` `{}` → `{ ok, vista }` con `vista.carta = { id, testo, daMe }`. Il server legge le carte attive (`v1`) e le carte già viste dalla coppia (coppia sempre `a < b`), il Durable Object applica le regole (da 0:10 a 14:00, 20 s tra due pescate, vale il primo tocco) e sceglie con un numero casuale estratto dal Worker (`crypto.getRandomValues`). Al Durable Object vanno solo id di carta, mai i testi.
+- La carta pescata si segna in `carte_viste`; finito il mazzo si azzerano le viste di quella coppia (cancellazione sempre filtrata per stanza e coppia). Se il salvataggio non riesce la carta compare lo stesso.
+- `GET /app/api/chiamata`: la vista ora porta il pulsante Carte (quante carte attive: 0 = niente pulsante) e la carta aperta col testo, anche all'altra persona e al rientro dopo una caduta. «Pescata da <nome>»: il nome lo mette l'app (`daMe` vero → «da te»).
+- No delle regole al telefono: `nessuna_carta`, `fuori_tempo`, `troppo_presto` (200); database che non risponde: 503 «riprova».
+
+Prossimo, 3c: le schermate della chiamata nella web app (squillo, in chiamata con timer, Carte, Riconnetti, Chiudi e segnala).
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 

@@ -80,3 +80,61 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
     permessi: new Set(permessi.map((x) => x.permesso_a)),
   };
 }
+
+// --- Passo 3b-2b-2c-2b-2: carte della conversazione (spec v1.2) ------------------------------------------------------
+// Le carte (tabella di configurazione) e le carte già viste dalla coppia: solo server. La coppia è sempre a < b,
+// come nel vincolo del database. Nessun testo di conversazione, nessun audio: solo id di carta.
+const coppiaValida = ({ stanza, a, b }) => UUID.test(stanza || "") && UUID.test(a || "") && UUID.test(b || "") && a < b;
+const filtroCoppia = ({ stanza, a, b }) => `stanza_id=eq.${stanza}&a=eq.${a}&b=eq.${b}`;
+
+// Carte attive della versione in uso, [{ id, testo }] in ordine di id; null se il database non risponde.
+export async function carteAttiveDb(env, f = fetch) {
+  const s = server(env);
+  if (!s) return null;
+  const righe = await leggi(s, "carte?select=id,versione,testo,attiva&versione=eq.v1&attiva=eq.true&order=id", f);
+  if (!righe) return null;
+  return righe
+    .filter((c) => c.versione === "v1" && c.attiva === true && Number.isInteger(c.id) && c.id > 0 && typeof c.testo === "string")
+    .map(({ id, testo }) => ({ id, testo }))
+    .sort((x, y) => x.id - y.id);
+}
+
+// Id delle carte già viste dalla coppia nella stanza; null se il database non risponde o i dati sono sbagliati.
+export async function carteVisteDb(env, coppia, f = fetch) {
+  const s = server(env);
+  if (!s || !coppiaValida(coppia || {})) return null;
+  const righe = await leggi(s, `carte_viste?select=carta_id&${filtroCoppia(coppia)}`, f);
+  return righe ? righe.map((r) => r.carta_id).filter((id) => Number.isInteger(id)) : null;
+}
+
+// Una scrittura: true se Supabase risponde 2xx entro il tempo, false per qualunque problema.
+async function scrivi(s, metodo, percorso, corpo, f) {
+  let timer;
+  try {
+    const r = await Promise.race([
+      f(`${s.base}/rest/v1/${percorso}`, {
+        method: metodo,
+        headers: { ...s.headers, "content-type": "application/json", prefer: "return=minimal,resolution=ignore-duplicates" },
+        ...(corpo ? { body: JSON.stringify(corpo) } : {}),
+      }),
+      new Promise((_, no) => { timer = setTimeout(() => no(new Error("tempo scaduto")), ATTESA_MS); }),
+    ]);
+    if (!r.ok) console.error("dati chiamata: scrittura", r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("dati chiamata: errore", e && e.name);
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Segna la carta vista dalla coppia. ricomincia: il mazzo è finito, prima si azzerano le viste di QUESTA coppia
+// (cancellazione sempre filtrata per stanza e coppia, mai senza filtro).
+export async function segnaCartaVista(env, { stanza, a, b, carta, ricomincia }, f = fetch) {
+  const s = server(env);
+  const coppia = { stanza, a, b };
+  if (!s || !coppiaValida(coppia) || !Number.isInteger(carta) || carta <= 0) return false;
+  if (ricomincia === true && !(await scrivi(s, "DELETE", `carte_viste?${filtroCoppia(coppia)}`, null, f))) return false;
+  return scrivi(s, "POST", "carte_viste", { stanza_id: stanza, a, b, carta_id: carta }, f);
+}

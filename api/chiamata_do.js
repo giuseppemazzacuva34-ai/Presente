@@ -59,6 +59,13 @@ export class GestoreChiamata {
     return this.#passo((c, adesso) => pesca(c, { da, adesso, carte, viste, casuale }), da, carte?.length || 0);
   }
 
+  // Passo 3b-2b-2c-2b-2: la pescata chiesta dal Worker via RPC (niente funzioni né Set tra Worker e Durable Object):
+  // viste come lista di id, numero casuale già estratto dal Worker in [0, 1).
+  pescaRpc({ da, carte, viste, numero }) {
+    const n = Number.isFinite(numero) && numero >= 0 && numero < 1 ? numero : 0;
+    return this.pesca({ da, carte, viste: new Set(Array.isArray(viste) ? viste : []), casuale: () => n });
+  }
+
   // Passo 3b-2b-2c-2a. Le due sessioni Realtime per ascoltare: solo per il Worker, mai per il telefono.
   async sessioni(per) {
     const stato = await this.storage.get("stato");
