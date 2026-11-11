@@ -134,7 +134,12 @@ Avanzamento del 3b-2b: 3b-2b-2a (fatto, `api/apri_chiamata.js` + `api/dati_chiam
 - `POST /app/api/chiamata/chiudi` `{ segnala }` → `{ ok, vista[, segnala] }`: tutti e due («Annulla» durante lo squillo, «Chiudi», «Chiudi e segnala» solo con `segnala: true`).
 - La chiamata di una persona la trova sempre il Centralino della sua stanza: il telefono non manda mai un id di chiamata.
 - A chiamata finita (anche per squillo scaduto, 15:00 o rientro mancato, decisi dall'allarme) il Durable Object `Chiamata` libera subito le due linee nel Centralino, con gli stessi tentativi delle altre cose da fare; se non ci riesce le linee si liberano da sole dopo 17 minuti.
-Prossimo, 3b-2b-2c-2: ricevere la voce dell'altra persona (`riceviVoce` + `confermaRisposta`), caduta/rientro e pescata della carta.
+3b-2b-2c-2a (fatto, `api/stato_chiamata.js`, `api/chiamata_do.js`, `api/apri_chiamata.js`, `worker/chiamata_api.js`, test in `test/ascolta.test.mjs`): ricevere la voce dell'altra persona.
+- `POST /app/api/chiamata/ascolta` `{}` → `{ ok, descrizione, vista }`: a chiamata in corso il server chiede a Realtime la traccia «voce» dell'altra persona sulla propria sessione e passa al telefono l'offerta di Cloudflare. Le sessioni le sa solo il Durable Object (`sessioni(per)`, mai al telefono).
+- `POST /app/api/chiamata/conferma` `{ risposta }` → `{ ok, vista }`: la risposta del telefono, solo voce (controllata prima di arrivare a Realtime).
+- La vista ha `ascolto: "da_fare" | "fatto"`: dopo un rientro dell'altra persona (sessione nuova) torna «da_fare» e il telefono ascolta di nuovo; la traccia ricevuta vecchia si chiude. Durante una riconnessione: «riconnessione», niente da ascoltare.
+- A fine chiamata si chiudono anche le tracce ricevute, non solo la propria voce.
+Prossimo, 3b-2b-2c-2b: caduta/rientro e pescata della carta come richieste del Worker.
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 
