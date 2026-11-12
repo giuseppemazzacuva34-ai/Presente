@@ -149,7 +149,9 @@ Avanzamento del 3b-2b: 3b-2b-2a (fatto, `api/apri_chiamata.js` + `api/dati_chiam
 - `GET /app/api/chiamata`: la vista ora porta il pulsante Carte (quante carte attive: 0 = niente pulsante) e la carta aperta col testo, anche all'altra persona e al rientro dopo una caduta. «Pescata da <nome>»: il nome lo mette l'app (`daMe` vero → «da te»).
 - No delle regole al telefono: `nessuna_carta`, `fuori_tempo`, `troppo_presto` (200); database che non risponde: 503 «riprova».
 
-Prossimo, 3c: le schermate della chiamata nella web app (squillo, in chiamata con timer, Carte, Riconnetti, Chiudi e segnala).
+Passo 3c-1 (fatto): `landing/app/moduli/chiamata.js`, il modulo della web app che parla con `/app/api/chiamata` (il corpo non dice mai chi chiama: lo dice il token) e decide cosa mostrare dalla vista del server: squillo in uscita e in arrivo, timer 15:00, banner «Niente numeri, cognomi o social prima della porta» nei primi 10 secondi, pulsante Carte con il conto dell'attesa, suggerimento, «Ancora un minuto», carta aperta con «Pescata da…», riconnessione dell'altra persona. Nessun audio, nessun salvataggio locale (test in `test/chiamata_app.test.mjs`).
+
+Prossimo, 3c-2: la voce nel browser (microfono solo audio, WebRTC verso Cloudflare Realtime) e 3c-3: le schermate collegate alla scheda della persona nella stanza.
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 
