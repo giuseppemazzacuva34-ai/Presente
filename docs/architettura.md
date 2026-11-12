@@ -151,7 +151,9 @@ Avanzamento del 3b-2b: 3b-2b-2a (fatto, `api/apri_chiamata.js` + `api/dati_chiam
 
 Passo 3c-1 (fatto): `landing/app/moduli/chiamata.js`, il modulo della web app che parla con `/app/api/chiamata` (il corpo non dice mai chi chiama: lo dice il token) e decide cosa mostrare dalla vista del server: squillo in uscita e in arrivo, timer 15:00, banner «Niente numeri, cognomi o social prima della porta» nei primi 10 secondi, pulsante Carte con il conto dell'attesa, suggerimento, «Ancora un minuto», carta aperta con «Pescata da…», riconnessione dell'altra persona. Nessun audio, nessun salvataggio locale (test in `test/chiamata_app.test.mjs`).
 
-Prossimo, 3c-2: la voce nel browser (microfono solo audio, WebRTC verso Cloudflare Realtime) e 3c-3: le schermate collegate alla scheda della persona nella stanza.
+Passo 3c-2 (fatto): `landing/app/moduli/voce.js`. Chiede solo il microfono (`video: false`, eco e rumore ridotti dal browser), apre una sola connessione WebRTC con STUN di Cloudflare: prima pubblica la propria voce (sendonly), poi sulla stessa connessione riceve quella dell'altra persona (offerta di Cloudflare, risposta a `/conferma`). Ogni descrizione con video o canali dati è rifiutata prima di toccare la connessione. «failed»/«disconnected» avvisano una volta (l'app chiama `/caduta`); «Riconnetti» apre una connessione nuova con lo stesso microfono (`/rientro`). Chiudere spegne il microfono. Nessuna registrazione e nessun salvataggio: la voce va solo all'altoparlante. `collegaVoce` unisce la voce alle richieste di `chiamata.js`; se il server dice no il microfono si spegne. Test con browser finto in `test/voce_app.test.mjs`.
+
+Prossimo, 3c-3: le schermate collegate alla scheda della persona nella stanza.
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 
