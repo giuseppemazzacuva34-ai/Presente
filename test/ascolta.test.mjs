@@ -202,3 +202,10 @@ test("Worker: /ascolta e /conferma con l'utente del token; «no» delle regole 2
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { ok: false, motivo: "non_in_corso" });
 });
+
+test("conferma: la risposta descrive tutto il collegamento (mia voce + voce ricevuta): due sezioni audio vanno bene", async () => {
+  const { d, reg } = finti();
+  const due = { type: "answer", sdp: "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=mid:0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=mid:1\r\n" };
+  assert.deepEqual(await confermaAscolto({ per: A, risposta: due, adesso: T0 }, d), { ok: true, vista: { fase: "in_corso", ascolto: "fatto" } });
+  assert.deepEqual(reg.conferme, [["sessioneA123", due]]);
+});

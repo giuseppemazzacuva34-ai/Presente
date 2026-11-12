@@ -31,6 +31,16 @@ export function soloAudio(sdp) {
   return m.length === 1 && m[0] === "audio";
 }
 
+// Per ricevere la voce sulla STESSA sessione (una sessione = un PeerConnection, docs Cloudflare «Negotiation»): l'offerta
+// di Cloudflare e la risposta del telefono descrivono tutto il collegamento, cioè la mia voce che parte più quella
+// che arriva (e dopo un rientro dell'altra persona una sezione in più, chiusa). Da 1 a 4 sezioni, TUTTE audio.
+export const SEZIONI_MASSIME = 4;
+export function soloVoceSessione(sdp) {
+  if (typeof sdp !== "string" || !sdp || sdp.length > SDP_MASSIMO) return false;
+  const m = sezioni(sdp);
+  return m.length >= 1 && m.length <= SEZIONI_MASSIME && m.every((x) => x === "audio");
+}
+
 // mid della sezione audio (a=mid:…), null se manca o non è valido.
 export function midAudio(sdp) {
   if (typeof sdp !== "string") return null;
@@ -46,6 +56,7 @@ export function midAudio(sdp) {
 }
 
 const descrizioneValida = (d, tipo) => !!d && typeof d === "object" && d.type === tipo && soloAudio(d.sdp);
+const descrizioneSessione = (d, tipo) => !!d && typeof d === "object" && d.type === tipo && soloVoceSessione(d.sdp);
 
 function chiavi(env) {
   const app = String(env?.REALTIME_APP_ID || "").trim();
@@ -115,7 +126,7 @@ export async function riceviVoce(env, sessione, sessioneAltra, f = fetch) {
   const r = await chiedi(env, f, "POST", `/sessions/${sessione}/tracks/new`, {
     tracks: [{ location: "remote", sessionId: sessioneAltra, trackName: TRACCIA }],
   });
-  if (!r || traccieConErrore(r) || !descrizioneValida(r.sessionDescription, "offer")) return no("realtime");
+  if (!r || traccieConErrore(r) || !descrizioneSessione(r.sessionDescription, "offer")) return no("realtime");
   const mid = r.tracks[0] && r.tracks[0].mid;
   if (typeof mid !== "string" || !MID.test(mid)) return no("realtime");
   return { ok: true, descrizione: { type: "offer", sdp: r.sessionDescription.sdp }, mid };
@@ -125,7 +136,7 @@ export async function riceviVoce(env, sessione, sessioneAltra, f = fetch) {
 export async function confermaRisposta(env, sessione, risposta, f = fetch) {
   if (!chiavi(env)) return no("spento");
   if (typeof sessione !== "string" || !SESSIONE.test(sessione)) return no("sessione");
-  if (!descrizioneValida(risposta, "answer")) return no("solo_voce");
+  if (!descrizioneSessione(risposta, "answer")) return no("solo_voce");
   const r = await chiedi(env, f, "PUT", `/sessions/${sessione}/renegotiate`, {
     sessionDescription: { type: "answer", sdp: risposta.sdp },
   });
