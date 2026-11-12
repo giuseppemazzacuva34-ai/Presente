@@ -134,3 +134,14 @@ test("vista del telefono: timer, carte e suggerimento, mai le sessioni", () => {
   assert.equal(vistaPer(conCarta, "a", s(5 + 31)).suggerimento, false);
   assert.deepEqual(vistaPer(conCarta, "a", s(5 + 13)).carta, { id: 1, daMe: false });
 });
+
+test("vista: dice con chi è la chiamata (id della persona della stanza), mai le sessioni", () => {
+  const c = squilla();
+  assert.equal(vistaPer(c, "b", s(1)).altra, "a");
+  assert.equal(vistaPer(c, "a", s(1)).altra, "b");
+  const v = vistaPer(inCorso(), "a", s(20));
+  assert.equal(v.altra, "b");
+  assert.ok(!JSON.stringify(v).includes("sessione"));
+  const fine = chiudi(inCorso(), { da: "a", adesso: s(60), esito: "chiusa" }).stato;
+  assert.equal(vistaPer(fine, "b", s(61)).altra, "a");
+});
