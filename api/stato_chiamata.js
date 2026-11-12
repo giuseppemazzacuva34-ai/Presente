@@ -145,15 +145,16 @@ export function pesca(c, { da, adesso, carte, viste, casuale }) {
 export function vistaPer(c, per, adesso, carte = 0) {
   if (!partecipa(c, per)) return null;
   const io = per === c.chi ? "chiama" : "riceve";
+  // «altra»: l'id della persona della stanza con cui si parla, per mostrarne il nome (passo 3c-3). Mai le sessioni.
+  const altra = per === c.chi ? c.con : c.chi;
   if (c.fase === "squilla") {
-    return { fase: "squilla", io, squillo: Math.max(0, Math.ceil((c.scadeSquillo - ms(adesso)) / 1000)) };
+    return { fase: "squilla", io, altra, squillo: Math.max(0, Math.ceil((c.scadeSquillo - ms(adesso)) / 1000)) };
   }
-  if (c.fase === "finita") return { fase: "finita", io };
+  if (c.fase === "finita") return { fase: "finita", io, altra };
   const t = timer(new Date(c.inizio), new Date(c.fine), adesso);
   const secondi = secondiDa(c, adesso);
-  const altra = per === c.chi ? c.con : c.chi;
   return {
-    fase: "in_corso", io,
+    fase: "in_corso", io, altra,
     restanti: t.restanti, ultimoMinuto: t.ultimoMinuto,
     altraPersona: c.caduto === altra ? "riconnessione" : "collegata",
     carte: pulsanteCarte({ secondi, durata: durata(c), carte, ultimaPescata: c.ultimaPescata }),
