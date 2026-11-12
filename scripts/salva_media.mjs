@@ -47,10 +47,32 @@ export function controllaLink(link) {
   return url;
 }
 
+// IPv6 restituito dal DNS (12/11): Canva, Drive e GitHub rispondono anche in IPv6, quindi rifiutarlo sempre bloccava
+// ogni link vero. È pubblico solo un indirizzo unicast globale (2000::/3), tolti i blocchi che contengono un IPv4
+// (6to4 2002::/16, Teredo 2001:0::/32) e la documentazione (2001:db8::/32). Tutto il resto (::1, fe80::, fc00::/7,
+// ff00::, ::ffff:x.x.x.x, 64:ff9b::) resta privato.
+export function ipv6Pubblico(indirizzo) {
+  const testo = String(indirizzo).toLowerCase().split("%")[0];
+  if (testo.includes(".")) return false; // forma con IPv4 dentro (::ffff:1.2.3.4): mai accettata
+  const lati = testo.split("::");
+  if (lati.length > 2) return false;
+  const sinistra = lati[0] ? lati[0].split(":") : [];
+  const destra = lati.length === 2 && lati[1] ? lati[1].split(":") : [];
+  const mancanti = 8 - sinistra.length - destra.length;
+  if (lati.length === 1 ? mancanti !== 0 : mancanti < 1) return false;
+  const gruppi = [...sinistra, ...Array(lati.length === 2 ? mancanti : 0).fill("0"), ...destra];
+  if (!gruppi.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return false;
+  const [a, b] = gruppi.map((g) => parseInt(g, 16));
+  if ((a & 0xe000) !== 0x2000) return false; // fuori da 2000::/3
+  if (a === 0x2002) return false; // 6to4
+  if (a === 0x2001 && (b === 0 || b === 0x0db8)) return false; // Teredo, documentazione
+  return true;
+}
+
 // Il nome del link (es. "esempio.it") può sembrare pubblico e poi risolvere a un indirizzo privato o al servizio
 // metadati del cloud (169.254.169.254): CISO 10/11, protezione dagli indirizzi "DNS rebinding". Si controllano
-// TUTTI gli indirizzi a cui risponde, non solo il primo; qualunque indirizzo IPv6 è trattato come privato,
-// come già fa controllaLink per un indirizzo scritto a mano.
+// TUTTI gli indirizzi a cui risponde, non solo il primo. Un IPv6 scritto a mano nel link resta rifiutato
+// (controllaLink); un IPv6 dal DNS passa solo se è pubblico (ipv6Pubblico).
 export async function controllaDns(hostname, cerca = lookupDns) {
   let indirizzi;
   try {
@@ -60,7 +82,8 @@ export async function controllaDns(hostname, cerca = lookupDns) {
   }
   if (!indirizzi.length) throw new Error("link non valido: indirizzo non risolvibile");
   for (const { address, family } of indirizzi) {
-    if (family !== 4 || ipv4Privato(String(address).split("."))) {
+    const privato = family === 4 ? ipv4Privato(String(address).split(".")) : family === 6 ? !ipv6Pubblico(address) : true;
+    if (privato) {
       throw new Error("link non valido: indirizzo non pubblico");
     }
   }
