@@ -56,6 +56,33 @@ Il risultato va solo in Brevo: mai in plancia, nei log, in chat o nel repository
 
 Chi la lancia (D107 C, decisa da Giuseppe il 4/11): un agente con il connettore Cloudflare, **solo dopo** che è online l'informativa 1.5.1 con la riga nuova al punto 8 (Anthropic anche per preparare le email della lista). È l'unica eccezione alla regola «nessun dato personale dal database agli agenti»: vale solo per questa query e per quella degli aggiornamenti qui sotto, solo per caricarle in Brevo. Nella plancia, nei report e nei log vanno solo i conteggi.
 
+## Blocco «Porta un'amica» nella prima email (E15, dal 12/11)
+
+Esperimento E15 di growth, deciso da Giuseppe il 6/11 (brief › decisioni_giuseppe_06_11_analisi, punto 9: le iscritte ricevono il loro link personale; vantaggio solo di accesso, mai denaro o beni). Lo inserisce il Coordinatore nel modello Brevo della prima email, **sotto** il pulsante principale.
+
+skill_usate: presente-contesto-marketing, cro, signup, referrals · tecnica: cro › una sola CTA per email (il link personale è testo, non un secondo pulsante); referrals › link personale subito dopo l'iscrizione.
+
+- **Nessun dato nuovo**: a Brevo vanno già email e link personale (query qui sopra, colonna `link` → attributo contatto `LINK`). Informativa e dati raccolti invariati.
+- **Nessun testo nuovo**: solo frasi già online su `/da/meta` (titolo e prima riga) e su `/grazie` (link e nota).
+- **Una sola CTA**: il pulsante resta quello principale dell'email; qui il link è scritto per esteso.
+- Nessun premio, nessuna classifica, nessuna data. Pagine del sito invariate (brief 6/11 punto 4).
+
+Testo da incollare nel modello Brevo:
+
+```text
+Porta un'amica o un amico. La tua città si accende prima.
+
+Si parte con la Stanza Italia. Le stanze della tua città aprono quando arriva a 36 iscritti: ogni persona che porti la avvicina.
+
+Il tuo link personale: {{ contact.LINK }}
+
+Il codice nel link è casuale e non dice nulla di te: serve solo a contare quante persone arrivano con il tuo invito.
+```
+
+Se un contatto non ha `LINK` (non dovrebbe: il controllo `codice IS NULL` deve dare 0), Brevo mostra il campo vuoto: in quel caso non inviare e scrivere al CTO.
+
+Misura (growth, solo conteggi): `inviti_personali.iscritti_con_invito` di `/conteggio` e iscrizioni del canale «amico» per giorno, contro le email consegnate (totale Brevo). Ipotesi: almeno 1 iscrizione con invito ogni 50 email consegnate entro 7 giorni; sbagliata sotto 1 ogni 100.
+
 ## Aggiornamenti ogni 2 settimane (informativa 1.5, D97 A)
 
 Solo a chi ha spuntato la casella separata del sito (colonna `consenso_aggiornamenti_il` non vuota, dal 3/11). Chi si è iscritto prima o dal modulo Meta non la riceve. Query di sola lettura:
