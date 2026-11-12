@@ -61,6 +61,21 @@ test("dns: un nome che risolve a un indirizzo pubblico va bene, uno privato o il
   await assert.rejects(controllaDns("non-esiste.invalid", async () => { throw new Error("ENOTFOUND"); }), /risolvibile/);
 });
 
+test("dns: i siti veri rispondono anche in IPv6 pubblico (Canva, Drive, GitHub) e vanno accettati", async () => {
+  await controllaDns("export-download.canva.com", async () => [
+    { address: "104.16.103.112", family: 4 },
+    { address: "2606:4700::6810:6770", family: 6 },
+  ]);
+  await controllaDns("drive.usercontent.google.com", async () => [{ address: "2a00:1450:4002:410::2001", family: 6 }]);
+  for (const privato of [
+    "::1", "::", "fe80::1", "fc00::1", "fd12:3456::1", "ff02::1", // locale, link-local, privato, multicast
+    "::ffff:169.254.169.254", "::ffff:10.0.0.5", "64:ff9b::a9fe:a9fe", // IPv4 travestito da IPv6
+    "2002:a9fe:a9fe::1", "2001:0:4136:e378::1", "2001:db8::1", // 6to4, Teredo, documentazione
+  ]) {
+    await assert.rejects(controllaDns("finto.it", async () => [{ address: privato, family: 6 }]), /non pubblico/, privato);
+  }
+});
+
 test("scarica: rifiuta un dominio che sembra pubblico ma risolve a un indirizzo privato (DNS rebinding)", async () => {
   const { fetch: f } = finto(MP4);
   await assert.rejects(
