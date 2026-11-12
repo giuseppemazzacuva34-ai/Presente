@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  soloAudio, midAudio, nuovaSessione, pubblicaVoce, riceviVoce, confermaRisposta, chiudiVoce, TRACCIA,
+  soloAudio, soloVoceSessione, midAudio, nuovaSessione, pubblicaVoce, riceviVoce, confermaRisposta, chiudiVoce, TRACCIA,
 } from "../api/realtime.js";
 
 const APP = "0123456789abcdef0123456789abcdef";
@@ -159,4 +159,41 @@ test("Cloudflare che non risponde: si smette di aspettare", async () => {
   const inizio = Date.now();
   assert.deepEqual(await nuovaSessione({ ...ENV, REALTIME_ATTESA_MS: "50" }, lento), { ok: false, motivo: "realtime" });
   assert.ok(Date.now() - inizio < 1000);
+});
+
+// Correzione (3c): ricevere la voce sulla STESSA sessione (un PeerConnection per sessione, docs Cloudflare
+// «Negotiation»: una sessione = un PeerConnection) vuol dire che offerta di Cloudflare e risposta del telefono
+// descrivono tutto il collegamento: la mia voce che parte + quella che arriva = 2 sezioni audio (di più dopo un rientro).
+const DUE_AUDIO = AUDIO + ["m=audio 9 UDP/TLS/RTP/SAVPF 111", "a=mid:1", "a=recvonly", "a=rtpmap:111 opus/48000/2", ""].join("\r\n");
+const CINQUE_AUDIO = DUE_AUDIO + [2, 3, 4].map((i) => `m=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=mid:${i}\r\na=recvonly\r\n`).join("");
+
+test("soloVoceSessione: da 1 a 4 sezioni, tutte audio; mai video, canali dati o SDP strani", () => {
+  assert.equal(soloVoceSessione(AUDIO), true);
+  assert.equal(soloVoceSessione(DUE_AUDIO), true);
+  assert.equal(soloVoceSessione(CINQUE_AUDIO), false);
+  assert.equal(soloVoceSessione(CON_VIDEO), false);
+  assert.equal(soloVoceSessione(DUE_AUDIO + "m=video 9 UDP/TLS/RTP/SAVPF 96\r\na=mid:2\r\n"), false);
+  assert.equal(soloVoceSessione(CON_DATI), false);
+  assert.equal(soloVoceSessione("v=0\r\n"), false);
+  assert.equal(soloVoceSessione(""), false);
+  assert.equal(soloVoceSessione(null), false);
+  assert.equal(soloVoceSessione(DUE_AUDIO + "a=x:" + "y".repeat(40000)), false);
+  // L'offerta per pubblicare resta di UNA sola voce.
+  assert.equal(soloAudio(DUE_AUDIO), false);
+});
+
+test("riceviVoce: accetta l'offerta di Cloudflare con la mia voce e quella dell'altra persona", async () => {
+  const offerta = { type: "offer", sdp: DUE_AUDIO };
+  const { f } = finto([{ corpo: { requiresImmediateRenegotiation: true, sessionDescription: offerta,
+    tracks: [{ mid: "1", sessionId: ALTRA, trackName: "voce" }] } }]);
+  assert.deepEqual(await riceviVoce(ENV, SESSIONE, ALTRA, f), { ok: true, descrizione: offerta, mid: "1" });
+});
+
+test("confermaRisposta: accetta la risposta del telefono con due sezioni audio, mai con video", async () => {
+  const { f } = finto([{ corpo: {} }]);
+  assert.deepEqual(await confermaRisposta(ENV, SESSIONE, { type: "answer", sdp: DUE_AUDIO }, f), { ok: true });
+  const { f: f2, chiamate } = finto([]);
+  assert.deepEqual(await confermaRisposta(ENV, SESSIONE, { type: "answer", sdp: DUE_AUDIO + "m=video 9 UDP/TLS/RTP/SAVPF 96\r\na=mid:2\r\n" }, f2),
+    { ok: false, motivo: "solo_voce" });
+  assert.equal(chiamate.length, 0);
 });

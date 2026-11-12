@@ -10,7 +10,7 @@
 // Nulla di Cloudflare né di rete qui: tutto arriva da `d` (il Worker passa quelli veri, i test quelli finti).
 
 import { puoChiamare } from "./chiamate.js";
-import { soloAudio, midAudio } from "./realtime.js";
+import { soloAudio, soloVoceSessione, midAudio } from "./realtime.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const no = (motivo) => ({ ok: false, motivo });
@@ -157,7 +157,7 @@ export async function chiudiChiamata({ per, segnala, adesso }, d) {
 // «ascolta»: il server chiede a Realtime la traccia «voce» dell'altra persona sulla mia sessione e passa al telefono
 // l'offerta di Cloudflare; «conferma»: il telefono manda la sua risposta (solo voce). Le sessioni le sa solo il
 // Durable Object: il telefono non manda e non riceve mai id. d in più: riceviVoce(mia, altra), confermaRisposta(mia, r).
-const rispostaValida = (r) => !!r && typeof r === "object" && r.type === "answer" && soloAudio(r.sdp);
+const rispostaValida = (r) => !!r && typeof r === "object" && r.type === "answer" && soloVoceSessione(r.sdp);
 
 export async function ascoltaChiamata({ per, adesso }, d) {
   const l = await lineaDi(per, adesso, d);
