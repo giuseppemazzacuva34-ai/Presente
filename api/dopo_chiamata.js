@@ -49,3 +49,58 @@ export function leggiRisposta(corpo) {
   if (Number.isNaN(t.getTime())) return null;
   return { chi, inizio: t.toISOString(), risposta };
 }
+
+// --- Passo 3c-4b-1: le richieste /app/api/chiamata/dopo e /app/api/chiamata/richiameresti -------------------------
+// Il telefono non sa come è finita la chiamata (per tempo, chiusa dall'altra persona, caduta): appena la vede finire
+// chiede «dopo» e il server risponde leggendo il registro. Una chiamata che conta e non ha ancora la domanda la
+// propone richiameresti_da_riproporre() (che la segna: la domanda compare una volta sola, anche al rientro).
+// d: { riproponi(per) → { chi, con, inizio } | null, ultima(per) → riga del registro | null,
+//      salva({ per, chi, inizio, risposta }) → true | false }   (undefined = il database non risponde)
+
+export const APPENA_FINITA_MS = 2 * 60 * 1000;
+
+const istante = (x) => {
+  if (typeof x !== "string") return null;
+  const t = new Date(x);
+  return Number.isNaN(t.getTime()) ? null : t;
+};
+const altraDi = (riga, per) => {
+  if (!riga || !UUID.test(riga.chi || "") || !UUID.test(riga.con || "") || riga.chi === riga.con) return null;
+  if (riga.chi === per) return riga.con;
+  return riga.con === per ? riga.chi : null;
+};
+
+export async function dopoChiamata({ per, appena, adesso }, d) {
+  const proposta = await d.riproponi(per);
+  if (proposta === undefined) return { ok: false, motivo: "riprova" };
+  if (proposta) {
+    const altra = altraDi(proposta, per);
+    const inizio = istante(proposta.inizio);
+    if (!altra || !inizio) return { ok: true, dopo: null };
+    const s = schermataDopo({ esito: "chiusa", durata: CHIAMATA.minimoPerContare });
+    return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: { chi: proposta.chi, inizio: inizio.toISOString() } } };
+  }
+  if (appena !== true) return { ok: true, dopo: null };
+  const ultima = await d.ultima(per);
+  if (ultima === undefined) return { ok: false, motivo: "riprova" };
+  const altra = altraDi(ultima, per);
+  const inizio = istante(ultima && ultima.inizio);
+  if (!altra || !inizio || !durataValida(ultima.durata)) return { ok: true, dopo: null };
+  const finita = inizio.getTime() + ultima.durata * 1000;
+  if (adesso.getTime() - finita > APPENA_FINITA_MS) return { ok: true, dopo: null };
+  // «Chiudi e segnala» lo sa solo chi l'ha premuto (la sua app apre già il modulo #7): per l'altra persona vale come
+  // una chiamata chiusa o caduta, così non scopre di essere stata segnalata.
+  const esito = ultima.esito === "chiudi_e_segnala" ? (ultima.durata < CHIAMATA.minimoPerContare ? "chiusa" : "caduta") : ultima.esito;
+  const s = schermataDopo({ esito, durata: ultima.durata });
+  // Una chiamata che conta senza proposta ha già avuto la domanda (risposta o riproposta): non si chiede di nuovo.
+  if (s.tipo !== "breve") return { ok: true, dopo: null };
+  return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: null } };
+}
+
+export async function rispondiRichiameresti({ per, corpo }, d) {
+  const x = leggiRisposta(corpo);
+  if (!x) return { ok: false, motivo: "dati" };
+  const salvata = await d.salva({ per, ...x });
+  if (salvata === undefined) return { ok: false, motivo: "riprova" };
+  return { ok: true, salvata: salvata === true };
+}

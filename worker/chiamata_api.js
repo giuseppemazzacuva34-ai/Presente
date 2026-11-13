@@ -10,22 +10,26 @@
 //   POST /app/api/chiamata/caduta   {}          → { ok: true, vista }                (ho perso la voce: partono i 30 s)
 //   POST /app/api/chiamata/rientro  { offerta } → { ok: true, descrizione, vista }   («Riconnetti», solo voce)
 //   POST /app/api/chiamata/carta    {}          → { ok: true, vista }                (pescata: vista.carta { id, testo, daMe })
+//   POST /app/api/chiamata/dopo     { appena }  → { ok: true, dopo }                 (schermata dopo la chiamata, 3c-4b)
+//   POST /app/api/chiamata/richiameresti { chi, inizio, risposta } → { ok: true, salvata }  («La richiameresti?»)
 //
 // Chi chiama lo dice SOLO il token di Supabase: un «chi» scritto nel corpo non conta. Le regole (stanza, blocchi,
 // 3 volte, 5 al giorno, fascia, solo voce) le applica api/apri_chiamata.js; qui solo accesso, forma della richiesta
 // e codici di risposta. Al telefono solo ok/motivo, la risposta SDP e la vista: mai l'id della chiamata o le sessioni.
 // Nei log solo nomi di errore, mai token, id, SDP o dati. Spento finché ACCESSO_APP non vale «si».
-// Prossimo passo (3c): le schermate della chiamata nella web app.
+// Prossimo passo (3c-4b-2): le schermate dopo la chiamata nella web app.
 import {
   apriChiamata, statoChiamata, rispondiChiamata, rifiutaChiamata, chiudiChiamata, ascoltaChiamata, confermaAscolto,
   cadutaChiamata, rientroChiamata, pescaCartaChiamata,
 } from "../api/apri_chiamata.js";
 import { stanzaDi, datiPerChiamare, carteAttiveDb, carteVisteDb, segnaCartaVista } from "../api/dati_chiamata.js";
+import { dopoChiamata, rispondiRichiameresti } from "../api/dopo_chiamata.js";
+import { riproponiDb, ultimaChiamataDb, salvaRichiamerestiDb } from "../api/dati_chiamata.js";
 import { nuovaSessione, pubblicaVoce, chiudiVoce, riceviVoce, confermaRisposta } from "../api/realtime.js";
 
 export const PERCORSO_CHIAMATA = "/app/api/chiamata";
 // Tutte POST con corpo JSON; «/app/api/chiamata» da solo è la GET dello stato.
-const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro", "carta"]);
+const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro", "carta", "dopo", "richiameresti"]);
 const CORPO_MASSIMO = 32 * 1024; // un'offerta solo voce sta sotto i 20 mila caratteri (api/realtime.js)
 const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -81,6 +85,13 @@ function operazioniVere(env, f) {
     cadutaChiamata: (dati) => cadutaChiamata(dati, d),
     rientroChiamata: (dati) => rientroChiamata(dati, d),
     pescaCarta: (dati) => pescaCartaChiamata(dati, d),
+    dopoChiamata: (dati) => dopoChiamata(dati, {
+      riproponi: (per) => riproponiDb(env, per, f), ultima: (per) => ultimaChiamataDb(env, per, f),
+      salva: () => undefined,
+    }),
+    rispondiRichiameresti: (dati) => rispondiRichiameresti(dati, {
+      riproponi: () => undefined, ultima: () => undefined, salva: (x) => salvaRichiamerestiDb(env, x, f),
+    }),
   };
 }
 
@@ -106,6 +117,14 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
+    if (passo === "dopo" || passo === "richiameresti") {
+      const r = passo === "dopo"
+        ? await op.dopoChiamata({ per: chi.id, appena: corpo.dati.appena === true, adesso })
+        : await op.rispondiRichiameresti({ per: chi.id, corpo: corpo.dati });
+      if (r && r.ok) return risposta(200, passo === "dopo" ? { ok: true, dopo: r.dopo ?? null } : { ok: true, salvata: r.salvata === true });
+      const motivo = String((r && r.motivo) || "riprova");
+      return motivo === "dati" ? risposta(400, { ok: false, motivo }) : risposta(503, { ok: false, motivo: "riprova" });
+    }
     const { verso, offerta, segnala, risposta: rispostaSdp } = corpo.dati;
     const r = passo === "apri" ? await op.apriChiamata({ chi: chi.id, verso, offerta, adesso })
       : passo === "ascolta" ? await op.ascoltaChiamata({ per: chi.id, adesso })
