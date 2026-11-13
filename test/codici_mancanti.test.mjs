@@ -78,5 +78,5 @@ test("il Worker ha il lavoro programmato e il cron in wrangler.jsonc", async () 
   await Promise.all(attese);
   assert.match(db.righe[0].codice, CODICE_PERSONALE);
   const { readFileSync } = await import("node:fs");
-  assert.match(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"), /"crons":\s*\[\s*"23 \* \* \* \*"\s*\]/);
+  assert.match(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"), /"crons":\s*\[\s*"23 \* \* \* \*"/);
 });

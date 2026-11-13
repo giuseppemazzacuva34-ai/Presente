@@ -15,11 +15,13 @@ import { richiestaAutomatica } from "./automatiche.js";
 import { contaVisitaPagina, pixel, PERCORSO_PIXEL, segui, PERCORSO_SEGUI } from "./visite.js";
 import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
+import { apriPorteDellaSera } from "./sera_porte.js";
 
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
   async scheduled(evento, env, ctx) {
-    const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env)]);
+    // Sera delle porte (#5): anche domenica alle 21:00 di Roma (cron a parte in wrangler.jsonc); spenta senza ACCESSO_APP.
+    const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env), apriPorteDellaSera(env)]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);
     else await lavoro;
   },
