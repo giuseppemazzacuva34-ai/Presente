@@ -1,0 +1,84 @@
+name: Salva base64
+
+on:
+  workflow_dispatch:
+    inputs:
+      base64:
+        description: "Contenuto del file in base64 (senza prefisso data:)"
+        required: true
+        type: string
+      nome_file:
+        description: "Nome nel ramo media-social, es. canva-ghosting-1311-ig-slide1.jpg"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: media-social
+  cancel-in-progress: false
+
+jobs:
+  salva:
+    name: Salva nel ramo media-social (da base64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: media-social
+          path: media
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Decodifica e scrive il file
+        id: file
+        env:
+          B64: ${{ inputs.base64 }}
+          NOME: ${{ inputs.nome_file }}
+        working-directory: media
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const nome = process.env.NOME;
+            if (!nome || nome.includes("..") || path.isAbsolute(nome)) {
+              console.error("ERRORE: nome_file non valido");
+              process.exit(1);
+            }
+            if (fs.existsSync(nome)) {
+              console.error("ERRORE: il file esiste gia, niente sovrascritture");
+              process.exit(1);
+            }
+            const dir = path.dirname(nome);
+            if (dir && dir !== ".") fs.mkdirSync(dir, { recursive: true });
+            const buf = Buffer.from(process.env.B64, "base64");
+            if (buf.length === 0 || buf.length > 95 * 1024 * 1024) {
+              console.error("ERRORE: dimensione non valida");
+              process.exit(1);
+            }
+            fs.writeFileSync(nome, buf);
+            console.log("Scritto " + nome + " (" + buf.length + " byte)");
+          '
+
+      - name: Salva nel ramo media-social
+        working-directory: media
+        env:
+          NOME: ${{ inputs.nome_file }}
+          CHI: ${{ github.actor }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$NOME"
+          git commit -q -m "media: $NOME (da base64, avviato da $CHI)"
+          git push -q origin HEAD:media-social
+          {
+            echo "### File salvato"
+            echo ""
+            echo "file_pubblico_github: https://raw.githubusercontent.com/giuseppemazzacuva34-ai/Presente/media-social/$NOME"
+          } >> "$GITHUB_STEP_SUMMARY"
