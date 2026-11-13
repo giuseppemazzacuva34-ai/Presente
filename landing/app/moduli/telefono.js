@@ -7,7 +7,7 @@
 // - Mai due azioni insieme (un tocco doppio non apre due chiamate).
 // Le dipendenze si passano da fuori, così si prova con node --test senza pagina, rete o microfono.
 
-import { schermata, testoMotivo } from "./chiamata.js";
+import { schermata, schermataDopo, testoMotivo } from "./chiamata.js";
 import { schedaCompagno, nomeInChiamata } from "./compagni.js";
 
 const TESTI_EXTRA = Object.freeze({
@@ -28,6 +28,8 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     voceAttiva: false, muto: false, riconnetti: false,
     visibileDal: null, ascoltoInCorso: false, ultimoAscolto: 0,
     attesa: false, errore: "",
+    // Dopo la chiamata (3c-4b-2): risposta del server a /dopo, domanda già risposta, modulo di segnalazione da aprire.
+    dopo: null, dopoChiesto: false, rientroChiesto: false, risposto: false, segnala: null,
   };
 
   const avvisa = () => { try { cambiato(); } catch { /* lo schermo non deve fermare il telefono */ } };
@@ -44,11 +46,26 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     const v = vista && typeof vista === "object" ? vista : null;
     if (!v || !ATTIVE.has(v.fase)) spegniVoce();
     if (v && v.fase !== "finita") s.nascondiFinita = false;
+    if (v && ATTIVE.has(v.fase)) { s.dopo = null; s.dopoChiesto = false; s.risposto = false; s.segnala = null; }
+    if (v && v.fase === "finita" && !s.dopoChiesto && !s.segnala && !s.nascondiFinita) { s.dopoChiesto = true; chiediDopo(true); }
     if (v && v.fase === "in_corso") { if (s.visibileDal === null) s.visibileDal = adesso(); }
     else s.visibileDal = null;
     s.vista = v;
     if (v && ATTIVE.has(v.fase)) s.errore = "";
     ascoltaSeServe();
+  }
+
+  // Cosa mostrare dopo la chiamata lo dice il server (una richiesta per chiamata; al rientro una sola, per la domanda
+  // rimasta in sospeso). Se non risponde resta «Chiamata finita» con «Torna alla stanza».
+  function chiediDopo(appena) {
+    Promise.resolve().then(() => chiamata.dopo(appena)).then((r) => {
+      if (!r || !r.ok || !r.dopo || typeof r.dopo !== "object" || s.segnala) return;
+      if (s.vista && ATTIVE.has(s.vista.fase)) return;
+      s.dopo = r.dopo;
+      s.risposto = false;
+      s.nascondiFinita = false;
+      avvisa();
+    }, () => { /* niente schermata «dopo»: resta la fine semplice */ });
   }
 
   // Appena l'altra persona è in linea si riceve la sua voce (una volta; nuovo tentativo dopo 3 s se non va).
@@ -87,7 +104,13 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
 
   const inChiamata = () => !!s.vista && ATTIVE.has(s.vista.fase);
 
+  const rifAltra = () => s.vista || (s.dopo ? { altra: s.dopo.altra } : null);
+
   function schermo() {
+    if (s.segnala) return { tipo: "segnala", titolo: "Segnala un problema" };
+    if (s.dopo && !s.nascondiFinita && !inChiamata()) {
+      return schermataDopo(s.dopo, { nomeAltra: nomeInChiamata({ altra: s.dopo.altra }, s.persone), risposto: s.risposto });
+    }
     if (!s.vista || (s.vista.fase === "finita" && s.nascondiFinita)) return { tipo: "nessuna" };
     const secondiVisti = s.visibileDal === null ? undefined : (adesso() - s.visibileDal) / 1000;
     return schermata(s.vista, { nomeAltra: nomeInChiamata(s.vista, s.persone), secondiVisti });
@@ -113,7 +136,10 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     // Risposta della sentinella (GET /app/api/chiamata).
     aggiorna(r) {
       if (!r || typeof r !== "object") return;
-      if (r.ok === true) applica(r.vista);
+      if (r.ok === true) {
+        applica(r.vista);
+        if (!s.rientroChiesto) { s.rientroChiesto = true; if (!r.vista) chiediDopo(false); }
+      }
       else if (r.motivo === "spento" || r.motivo === "accesso") applica(null);
       else return; // un buco di rete non chiude una chiamata: si rilegge tra poco
       avvisa();
@@ -134,6 +160,8 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     chiudi(segnala = false) {
       if (!inChiamata()) return Promise.resolve();
       const altra = s.vista.altra;
+      // «Chiudi e segnala»: niente domanda né diario, si apre subito il modulo #7 con la persona collegata.
+      if (segnala === true) s.segnala = { contro: altra, origine: "chiudi_e_segnala", chiamataIl: null };
       return azione(async () => {
         const r = await linea.chiudi(segnala === true);
         s.voceAttiva = false; // linea.chiudi spegne già il microfono
@@ -170,8 +198,27 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
         return r;
       });
     },
-    // «Torna alla stanza» dalla schermata «Chiamata finita».
+    // «La richiameresti?»: sì, no o salta. Se il salvataggio non va resta la domanda con l'errore.
+    richiameresti(risposta) {
+      if (!s.dopo || s.dopo.tipo !== "richiameresti" || s.risposto || !s.dopo.chiamata) return Promise.resolve();
+      const quale = s.dopo.chiamata;
+      return azione(async () => {
+        const r = await chiamata.richiameresti(quale, risposta);
+        if (r && r.ok) s.risposto = true;
+        return r;
+      });
+    },
+    // «Segnala un problema» in fondo alla schermata dopo la chiamata: il modulo #7 con persona e chiamata collegate.
+    segnalaProblema() {
+      const altra = s.dopo ? s.dopo.altra : s.vista && s.vista.fase === "finita" ? s.vista.altra : null;
+      if (!altra) return;
+      s.segnala = { contro: altra, origine: "dopo_chiamata", chiamataIl: s.dopo && s.dopo.chiamata ? s.dopo.chiamata.inizio : null };
+      avvisa();
+    },
+    // «Torna alla stanza» dalla schermata «Chiamata finita», dal dopo chiamata o dal modulo di segnalazione.
     torna() {
+      s.dopo = null;
+      s.segnala = null;
       s.nascondiFinita = true;
       s.errore = "";
       avvisa();
@@ -186,7 +233,8 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
           persone: s.persone.map((p) => ({ id: p.id, ...schedaCompagno(p, { inChiamata: occupato }) })),
         },
         schermo: schermo(),
-        nome: s.vista ? nomeInChiamata(s.vista, s.persone) : "",
+        nome: rifAltra() ? nomeInChiamata(rifAltra(), s.persone) : "",
+        segnala: s.segnala ? { ...s.segnala } : null,
         errore: s.errore,
         attesa: s.attesa,
         muto: s.muto,

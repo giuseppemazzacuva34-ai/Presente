@@ -39,6 +39,8 @@ const TESTI = Object.freeze({
 const GENERICO = "Non è andata. Riprova tra poco";
 const MOTIVI = new Set([...Object.keys(TESTI), "riprova", "dati", "solo_voce"]);
 
+const RISPOSTE_DOPO = new Set(["si", "no", "salta"]);
+
 export const testoMotivo = (motivo) => (Object.hasOwn(TESTI, motivo) ? TESTI[motivo] : GENERICO);
 
 // «15:00», «14:05», «0:59».
@@ -77,6 +79,8 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
       if (typeof dati.descrizione === "string") fine.descrizione = dati.descrizione;
       fine.vista = dati.vista && typeof dati.vista === "object" ? dati.vista : null;
       if (dati.segnala === true) fine.segnala = true;
+      if (passo === "dopo") return { ok: true, dopo: dati.dopo && typeof dati.dopo === "object" ? dati.dopo : null };
+      if (passo === "richiameresti") return { ok: true, salvata: dati.salvata === true };
       return fine;
     } catch {
       return { ok: false, motivo: "riprova" };
@@ -99,6 +103,13 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
     caduta: () => richiesta("caduta", {}),
     rientro: (offerta) => richiesta("rientro", { offerta }),
     carta: () => richiesta("carta", {}),
+    // Dopo la chiamata (3c-4b-2): il server dice cosa mostrare; «appena» = la chiamata è appena finita su questo telefono.
+    dopo: (appena = false) => richiesta("dopo", { appena: appena === true }),
+    async richiameresti(chiamata, risposta) {
+      const c = chiamata && typeof chiamata === "object" ? chiamata : null;
+      if (!c || !UUID.test(c.chi || "") || typeof c.inizio !== "string" || !RISPOSTE_DOPO.has(risposta)) return { ok: false, motivo: "dati" };
+      return richiesta("richiameresti", { chi: c.chi, inizio: c.inizio, risposta });
+    },
   };
 }
 
@@ -137,5 +148,36 @@ export function schermata(vista, { nomeAltra = "", secondiVisti } = {}) {
       ? `${nome || "L'altra persona"} ha perso la connessione: ha 30 secondi per rientrare`
       : null,
     ascolta: vista.ascolto === "da_fare",
+  };
+}
+
+// Dopo la chiamata (spec v1.3 § 3, passo 3c-4b-2). dopo: la risposta del server (/app/api/chiamata/dopo).
+// «La richiameresti?» finché non si risponde; poi (o subito, sotto i 60 s e per la caduta lunga) la fine con
+// «Segnala un problema» e «Torna alla stanza». Il diario (#5 passo 2) si aggiungerà tra domanda e fine.
+export const TESTI_DOPO = Object.freeze({
+  domanda: "La richiameresti?",
+  finita: "Chiamata finita",
+  segnala: "Segnala un problema",
+  torna: "Torna alla stanza",
+});
+export const notaSegreta = (nome) =>
+  `Resta tra te e Presente. ${String(nome || "").trim() || "L'altra persona"} non lo saprà mai.`;
+
+export function schermataDopo(dopo, { nomeAltra = "", risposto = false } = {}) {
+  if (!dopo || typeof dopo !== "object") return { tipo: "nessuna" };
+  if (dopo.tipo === "richiameresti" && !risposto && dopo.chiamata) {
+    return {
+      tipo: "richiameresti",
+      titolo: TESTI_DOPO.domanda,
+      nota: notaSegreta(nomeAltra),
+      risposte: [["si", "Sì"], ["no", "No"], ["salta", "Salta"]],
+      pulsanti: ["segnala_problema"],
+    };
+  }
+  return {
+    tipo: "dopo_fine",
+    titolo: TESTI_DOPO.finita,
+    testo: typeof dopo.testo === "string" && dopo.testo ? dopo.testo : null,
+    pulsanti: ["segnala_problema", "torna"],
   };
 }
