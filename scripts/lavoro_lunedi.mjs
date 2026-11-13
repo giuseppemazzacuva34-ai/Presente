@@ -4,7 +4,8 @@
 // Spento finché ACCESSO_APP in wrangler.jsonc non vale «si». Il modo «prova» calcola e non scrive nulla.
 // Nel log solo numeri (stanze, persone, motivi di attesa): mai id, nomi, età o province.
 // I calcoli sono in api/settimana.js e api/stanze.js; la lettura e la scrittura nel database sono
-// righe_settimana() e scrivi_settimana() (migrazione 20261108220000_lavoro_lunedi.sql, solo service_role).
+// righe_settimana() e scrivi_settimana() (migrazione 20261108220000_lavoro_lunedi.sql, solo service_role);
+// la pulizia delle stanze chiuse è pulisci_stanze_chiuse() (migrazione 20261113220000_richiameresti.sql).
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { preparaSettimana } from "../api/settimana.js";
@@ -49,9 +50,12 @@ export async function eseguiLunedi({ rpc, adesso = new Date(), accessoApp, modo 
     apre_il: settimana.apre_il, chiude_il: settimana.chiude_il,
     stanze: settimana.stanze.map((s) => ({ tipo: s.tipo, citta: s.citta, membri: s.membri.map((m) => ({ utente_id: m.utente_id, gratis: m.gratis })) })),
   };
+  // Prima di scrivere le stanze nuove: via carte viste e risposte «La richiameresti?» delle stanze chiuse (spec #4).
+  const pulite = await rpc("pulisci_stanze_chiuse", {});
+  const pulizia = { carte_viste: Number(pulite?.carte_viste) || 0, richiameresti: Number(pulite?.richiameresti) || 0 };
   const scritto = await rpc("scrivi_settimana", { dati });
-  if (scritto?.gia_fatta) return { esito: "gia_fatta", ...riassunto };
-  return { esito: "scritto", ...riassunto, stanze: Number(scritto.stanze), membri: Number(scritto.membri) };
+  if (scritto?.gia_fatta) return { esito: "gia_fatta", ...riassunto, pulizia };
+  return { esito: "scritto", ...riassunto, stanze: Number(scritto.stanze), membri: Number(scritto.membri), pulizia };
 }
 
 export function accessoDaWrangler(testo) {

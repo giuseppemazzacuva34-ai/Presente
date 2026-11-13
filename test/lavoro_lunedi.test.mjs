@@ -35,6 +35,7 @@ function databaseFinto({ righe = 16, giaFatta = false } = {}) {
       stanze_precedenti: { [persone[1].profilo.id]: 2 },
       storico: [],
     };
+    if (nome === "pulisci_stanze_chiuse") return { carte_viste: 4, richiameresti: 3 };
     if (nome === "conteggi_aree") return [{ codice: "roma", nome: "Roma e dintorni", totale: 16, donne: 8 }];
     if (nome === "scrivi_settimana") return giaFatta ? { gia_fatta: true, stanze: 0, membri: 0 }
       : { gia_fatta: false, stanze: argomenti.dati.stanze.length, membri: argomenti.dati.stanze.reduce((s, x) => s + x.membri.length, 0) };
@@ -65,9 +66,10 @@ test("in automatico gira solo lunedì tra le 9:00 e le 9:59 di Roma (giusto anch
 test("lunedì alle 9:05: legge le righe dell'apertura, conta le aree dal database e scrive le stanze", async () => {
   const db = databaseFinto();
   const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_9_05, accessoApp: "si", modo: "automatico" });
-  assert.deepEqual(db.chiamate.map((c) => c.nome), ["righe_settimana", "conteggi_aree", "scrivi_settimana"]);
+  assert.deepEqual(db.chiamate.map((c) => c.nome), ["righe_settimana", "conteggi_aree", "pulisci_stanze_chiuse", "scrivi_settimana"]);
+  assert.deepEqual(esito.pulizia, { carte_viste: 4, richiameresti: 3 }); // solo numeri: carte viste e «La richiameresti?» delle stanze chiuse
   assert.equal(db.chiamate[0].argomenti.apre, LUNEDI.toISOString());
-  const dati = db.chiamate[2].argomenti.dati;
+  const dati = db.chiamate[3].argomenti.dati;
   assert.equal(dati.apre_il, LUNEDI.toISOString());
   assert.ok(dati.stanze.length >= 1);
   for (const s of dati.stanze) {
@@ -87,7 +89,7 @@ test("modo prova: calcola ma non scrive nulla", async () => {
   const db = databaseFinto();
   const esito = await eseguiLunedi({ rpc: db.rpc, adesso: new Date(LUNEDI.getTime() - 3 * 86400000), accessoApp: "si", modo: "prova" });
   assert.equal(esito.esito, "prova");
-  assert.ok(!db.chiamate.some((c) => c.nome === "scrivi_settimana"));
+  assert.ok(!db.chiamate.some((c) => c.nome === "scrivi_settimana" || c.nome === "pulisci_stanze_chiuse"));
   assert.ok(esito.stanze >= 1);
 });
 
