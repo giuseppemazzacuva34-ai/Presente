@@ -138,3 +138,55 @@ export async function segnaCartaVista(env, { stanza, a, b, carta, ricomincia }, 
   if (ricomincia === true && !(await scrivi(s, "DELETE", `carte_viste?${filtroCoppia(coppia)}`, null, f))) return false;
   return scrivi(s, "POST", "carte_viste", { stanza_id: stanza, a, b, carta_id: carta }, f);
 }
+
+// --- Passo 3c-4b-1: dopo la chiamata (spec v1.3 § 3) -----------------------------------------------------------------
+// Funzioni del server (migrazione 20261113220000_richiameresti.sql), solo con la chiave del server. Risultato:
+// il dato, null se non c'è, undefined se il database non risponde (l'app riprova).
+async function funzione(s, nome, corpo, f) {
+  let timer;
+  try {
+    const r = await Promise.race([
+      f(`${s.base}/rest/v1/rpc/${nome}`, { method: "POST", headers: { ...s.headers, "content-type": "application/json" }, body: JSON.stringify(corpo) }),
+      new Promise((_, no) => { timer = setTimeout(() => no(new Error("tempo scaduto")), ATTESA_MS); }),
+    ]);
+    if (!r.ok) {
+      console.error("dati chiamata: funzione", r.status);
+      return undefined;
+    }
+    return await r.json();
+  } catch (e) {
+    console.error("dati chiamata: errore", e && e.name);
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// La chiamata che conta ancora senza «La richiameresti?» (al massimo una), già segnata come proposta dal server.
+export async function riproponiDb(env, per, f = fetch) {
+  const s = server(env);
+  if (!s || !UUID.test(per || "")) return undefined;
+  const righe = await funzione(s, "richiameresti_da_riproporre", { p_utente: per }, f);
+  if (!Array.isArray(righe)) return undefined;
+  const r = righe[0];
+  return r ? { chi: r.chi, con: r.con, inizio: r.inizio } : null;
+}
+
+// L'ultima chiamata finita (con durata ed esito) della persona: solo le colonne del registro che servono.
+export async function ultimaChiamataDb(env, per, f = fetch) {
+  const s = server(env);
+  if (!s || !UUID.test(per || "")) return undefined;
+  const righe = await leggi(s, `chiamate?select=chi,con,inizio,durata,esito&or=(chi.eq.${per},con.eq.${per})`
+    + "&durata=not.is.null&order=inizio.desc&limit=1", f);
+  if (!righe) return undefined;
+  const r = righe[0];
+  return r ? { chi: r.chi, con: r.con, inizio: r.inizio, durata: r.durata, esito: r.esito } : null;
+}
+
+// Salva sì / no / salta: true salvata, false niente da salvare (risposta già data, chiamata che non conta, stanza chiusa).
+export async function salvaRichiamerestiDb(env, { per, chi, inizio, risposta }, f = fetch) {
+  const s = server(env);
+  if (!s || !UUID.test(per || "") || !UUID.test(chi || "") || !["si", "no", "salta"].includes(risposta) || typeof inizio !== "string") return undefined;
+  const r = await funzione(s, "salva_richiameresti", { p_utente: per, p_chi: chi, p_inizio: inizio, p_risposta: risposta }, f);
+  return typeof r === "boolean" ? r : undefined;
+}
