@@ -2,6 +2,7 @@ import { eliminaAccount, PERCORSO_ELIMINA } from "./elimina.js";
 import { provinciaLista, PERCORSO_PROVINCIA_LISTA } from "./provincia_lista.js";
 import { contatoreZona, PERCORSO_ZONA } from "./zona.js";
 import { chiamataApi, PERCORSO_CHIAMATA } from "./chiamata_api.js";
+import { segnalaApi, PERCORSO_SEGNALA } from "./segnala_api.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -48,6 +49,7 @@ export async function app(request, env) {
   if (url.pathname === PERCORSO_CHIAMATA || url.pathname.startsWith(PERCORSO_CHIAMATA + "/")) {
     return conIntestazioniApp(await chiamataApi(request, env), url.pathname);
   }
+  if (url.pathname === PERCORSO_SEGNALA) return conIntestazioniApp(await segnalaApi(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }
