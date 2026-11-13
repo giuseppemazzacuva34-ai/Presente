@@ -398,6 +398,23 @@ function schermoChiamata(m) {
         bottone("Chiudi", () => t.chiudi(false)),
         bottone("Chiudi e segnala", () => t.chiudi(true), { classe: "bottone-pericolo" })),
     ];
+  } else if (sc.tipo === "richiameresti") {
+    // Spec v1.3 § 3: Sì / No / Salta, nota segreta sotto, «Segnala un problema» in fondo. Nessuna risposta obbligata.
+    parti = [h("h1", { id: "domanda-dopo" }, sc.titolo),
+      h("div", { classe: "azioni-chiamata", role: "group", "aria-labelledby": "domanda-dopo" },
+        sc.risposte.map(([valore, testo]) => bottone(testo, () => t.richiameresti(valore), { classe: valore === "salta" ? "link" : "bottone-secondario" }))),
+      h("p", { classe: "nota" }, sc.nota),
+      bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
+  } else if (sc.tipo === "dopo_fine") {
+    parti = [h("h1", {}, sc.titolo),
+      sc.testo ? h("p", { classe: "sottotitolo" }, sc.testo) : null,
+      h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" })),
+      bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
+  } else if (sc.tipo === "segnala") {
+    // Il modulo #7 lo aggiunge la linea «sviluppatore-b» leggendo m.segnala { contro, origine, chiamataIl }.
+    parti = [h("h1", {}, sc.titolo),
+      h("p", { classe: "sottotitolo" }, "Il modulo per segnalare arriva con il prossimo aggiornamento dell'app."),
+      h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
   } else {
     parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];

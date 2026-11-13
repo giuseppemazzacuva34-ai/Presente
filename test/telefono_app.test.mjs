@@ -192,7 +192,7 @@ test("Chiudi e Chiudi e segnala; a fine chiamata il microfono si spegne", async 
   a.t.aggiorna({ ok: true, vista: IN_CORSO() });
   await a.t.chiudi(true);
   assert.ok(a.fatti.includes("chiudi:true"));
-  assert.equal(a.t.modello().schermo.tipo, "finita");
+  assert.equal(a.t.modello().schermo.tipo, "segnala"); // spec v1.3 § 3: si apre subito il modulo #7
   a.t.torna();
   assert.equal(a.t.modello().schermo.tipo, "nessuna");
   // la sentinella rilegge ancora «finita» per un minuto: resta nascosta
