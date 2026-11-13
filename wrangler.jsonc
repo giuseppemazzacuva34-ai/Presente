@@ -22,7 +22,8 @@
     { "pattern": "www.presenteincontri.app", "custom_domain": true }
   ],
   // Lavoro programmato ogni ora al minuto 23 (gratuito nel piano Free): codice invito a chi non ce l'ha (D98 A).
-  "triggers": { "crons": ["23 * * * *"] },
+  // Domenica alle 19:00 e 20:00 UTC (= 21:00 di Roma d'estate o d'inverno): sera delle porte (#5, worker/sera_porte.js).
+  "triggers": { "crons": ["23 * * * *", "0 19,20 * * SUN"] },
   // Chiamate solo voce (#4, passo 3b-2a): un Durable Object per chiamata, archivio SQLite (incluso nel piano gratuito).
   // Conserva solo lo stato della chiamata in corso e si cancella da solo un minuto dopo la fine.
   // Passo 3b-2b-1: un Durable Object «Centralino» per stanza (SQLite, piano gratuito): solo chi ha la linea occupata e
