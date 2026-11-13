@@ -572,6 +572,56 @@ select pg_temp.ok((select count(*) from public.blocchi) = 0 and (select count(*)
   'blocchi e permessi: Mia non sa di essere stata bloccata e non vede i permessi di Ida');
 reset role;
 
+-- «La richiameresti?» (spec #4 v1.3 § 3, passo 3c-4a): la scrive e la legge solo il server, una risposta per chiamata.
+set local role service_role;
+insert into public.chiamate (chi, con, inizio, durata, esito) values
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', now() - interval '3 hours', 30, 'chiusa'),
+  ('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', now() - interval '2 hours', 600, 'caduta');
+reset role;
+select pg_temp.come('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b');
+select pg_temp.ok(pg_temp.rifiutato($$select * from public.richiameresti$$)
+  and pg_temp.rifiutato($$insert into public.richiameresti (utente_id, chiamata_chi, chiamata_inizio, stanza_id, risposta)
+    values (auth.uid(), '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', now(), '3d3d3d3d-3d3d-4d3d-8d3d-3d3d3d3d3d3d', 'si')$$),
+  'richiameresti: il telefono non legge e non scrive le risposte (solo il server)');
+select pg_temp.ok(pg_temp.rifiutato($$select public.salva_richiameresti(auth.uid(), '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', now(), 'si')$$)
+  and pg_temp.rifiutato($$select * from public.richiameresti_da_riproporre(auth.uid())$$)
+  and pg_temp.rifiutato($$select public.pulisci_stanze_chiuse()$$),
+  'richiameresti: il telefono non lancia le funzioni del server');
+reset role;
+set local role service_role;
+select pg_temp.ok(public.salva_richiameresti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  (select inizio from public.chiamate where durata = 900), 'si'), 'richiameresti: Leo risponde «sì» sulla chiamata di 15 minuti');
+select pg_temp.ok(not public.salva_richiameresti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  (select inizio from public.chiamate where durata = 900), 'no')
+  and (select risposta from public.richiameresti where utente_id = '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b') = 'si',
+  'richiameresti: una sola risposta per chiamata, la seconda non cambia nulla');
+select pg_temp.ok(not public.salva_richiameresti('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  (select inizio from public.chiamate where durata = 900), 'si'), 'richiameresti: Mia non risponde su una chiamata in cui non c''era');
+select pg_temp.ok(not public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  (select inizio from public.chiamate where durata = 30), 'si')
+  and not public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b',
+  (select inizio from public.chiamate where durata = 600), 'si'),
+  'richiameresti: niente domanda dopo una chiamata sotto i 60 secondi o caduta senza rientro');
+select pg_temp.ok(pg_temp.rifiutato($$select public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', (select inizio from public.chiamate where durata = 900), 'forse')$$),
+  'richiameresti: solo sì, no o salta');
+-- App chiusa durante la schermata: al rientro la domanda torna una volta sola su quella chiamata.
+select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a')
+  where chi = '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a' and con = '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b') = 1,
+  'richiameresti: Ida non ha risposto, al rientro la domanda torna sulla chiamata di 15 minuti');
+select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a')) = 0,
+  'richiameresti: ricompare una volta sola');
+select pg_temp.ok(public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
+  (select inizio from public.chiamate where durata = 900), 'salta'), 'richiameresti: dopo la riproposta Ida può ancora rispondere');
+select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b')) = 0
+  and (select count(*) from public.richiameresti_da_riproporre('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c')) = 0,
+  'richiameresti: niente da riproporre a chi ha già risposto o non ha chiamato');
+select pg_temp.ok((select array_agg(column_name::text order by column_name::text) from information_schema.columns
+  where table_schema = 'public' and table_name = 'richiameresti') is not distinct from
+  array['aggiornata_il', 'chiamata_chi', 'chiamata_inizio', 'riproposta', 'risposta', 'stanza_id', 'utente_id'],
+  'richiameresti: nessun testo libero, nessun nome');
+reset role;
+
 -- Chiusura della stanza: le carte viste si cancellano (spec v1.2). Solo il server può farlo.
 select pg_temp.come('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a');
 select pg_temp.ok(pg_temp.rifiutato($$select public.pulisci_carte_viste()$$), 'carte viste: il telefono non lancia la pulizia');
@@ -584,4 +634,8 @@ set local role service_role;
 select pg_temp.ok(public.pulisci_carte_viste() = 1, 'carte viste: alla chiusura della stanza si cancellano');
 reset role;
 select pg_temp.ok(not exists (select 1 from public.carte_viste), 'carte viste: dopo la chiusura non resta nessuna riga');
+set local role service_role;
+select pg_temp.ok((public.pulisci_stanze_chiuse() ->> 'richiameresti')::int = 2, 'richiameresti: alla chiusura della stanza si cancellano');
+reset role;
+select pg_temp.ok(not exists (select 1 from public.richiameresti), 'richiameresti: dopo la chiusura non resta nessuna riga');
 rollback;
