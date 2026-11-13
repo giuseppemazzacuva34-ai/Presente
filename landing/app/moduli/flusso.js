@@ -81,6 +81,12 @@ let stanza = null;
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
 // «Vuoi entrare intanto nella Stanza Italia?»: «Aspetto la mia zona» la nasconde per questa sessione.
 const italia = { aspetto: false, inCorso: false, errore: "", avviso: "" };
+// Chiamate (telefono.js + sentinella.js, issue #4 passo 3c-3b-2): «La tua stanza» nella home e schermo della chiamata.
+// Solo con l'accesso vero; la sentinella parte la prima volta che si arriva alla home.
+let telefono = null;
+let sentinella = null;
+let sentinellaAvviata = false;
+let ultimaFirma = "";
 const MESSAGGI_STANZA = {
   accesso: "La sessione è scaduta: rientra con la tua email.",
   rete: "Non riusciamo a collegarci. Controlla la connessione e riprova.",
@@ -106,6 +112,8 @@ export function avvia(elemento, opzioni = {}) {
   lista = (archivio && opzioni.lista) || null;
   zona = (archivio && opzioni.zona) || null;
   stanza = (archivio && opzioni.stanza) || null;
+  telefono = (archivio && opzioni.telefono) || null;
+  sentinella = (telefono && opzioni.sentinella) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -303,7 +311,106 @@ function bloccoStanza() {
     errore(ingresso.errore));
 }
 
+// Il telefono avvisa a ogni cambio. Si ridisegna solo se cambia la struttura (firma); timer e conti si aggiornano
+// sul posto, così il fuoco della tastiera e del lettore di schermo non salta ogni secondo. Fuori dalla home, senza
+// chiamata, la pagina non si tocca (si potrebbe star scrivendo).
+export function telefonoCambiato() {
+  if (!telefono || !radice) return;
+  const firma = telefono.firma();
+  const m = telefono.modello();
+  if (firma === ultimaFirma) { aggiornaSulPosto(m); return; }
+  const prima = ultimaFirma;
+  ultimaFirma = firma;
+  const senzaChiamata = (f) => !f || JSON.parse(f).schermo.tipo === "nessuna";
+  if (PASSI[stato.passo].id !== "fatto" && senzaChiamata(prima) && m.schermo.tipo === "nessuna") return;
+  disegna();
+}
+
+function aggiornaSulPosto(m) {
+  const sc = m.schermo;
+  const metti = (id, testo) => { const el = radice.querySelector(`#${id}`); if (el && testo && el.textContent !== testo) el.textContent = testo; };
+  metti("chiamata-timer", sc.timer);
+  if (sc.tipo === "squillo_in_uscita") metti("chiamata-testo", sc.testo);
+  if (sc.carte) metti("chiamata-carte", sc.carte.etichetta);
+}
+
+function avviaSentinella() {
+  if (!sentinella || sentinellaAvviata) return;
+  sentinellaAvviata = true;
+  sentinella.avvia();
+}
+
+// «La tua stanza» nella home: le persone della stanza con la scheda e «Chiama».
+function bloccoTuaStanza() {
+  if (!telefono) return null;
+  telefono.caricaPersone();
+  avviaSentinella();
+  const m = telefono.modello();
+  const st = m.stanza;
+  let contenuto;
+  if (st.stato === "pronta") {
+    contenuto = h("ul", { classe: "compagni" }, st.persone.map((p) => h("li", { classe: "compagno" },
+      h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
+      h("button", { classe: "bottone-secondario", type: "button", "aria-label": `Chiama ${p.titolo}`, disabled: !p.chiama || m.attesa,
+        onclick: () => telefono.chiama(p.id) }, "Chiama"))));
+  } else if (st.stato === "vuota") {
+    contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
+  } else if (st.stato === "errore") {
+    contenuto = [errore(st.errore), h("button", { classe: "link", type: "button", onclick: () => telefono.caricaPersone() }, "Riprova")];
+  } else {
+    contenuto = h("p", { classe: "nota", role: "status" }, "Un attimo…");
+  }
+  return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
+    h("h2", { id: "tua-stanza-titolo" }, "La tua stanza"),
+    contenuto,
+    st.stato === "pronta" ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
+    m.attesa ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
+    errore(m.errore));
+}
+
+// Schermo della chiamata (spec #4 v1 punti 3-5): prende tutta la pagina finché la chiamata non è chiusa.
+function schermoChiamata(m) {
+  const sc = m.schermo;
+  const t = telefono;
+  const bottone = (testo, onclick, { classe = "bottone-secondario", disabled = false, ...altri } = {}) =>
+    h("button", { classe, type: "button", disabled: disabled || m.attesa, onclick, ...altri }, testo);
+  let parti;
+  if (sc.tipo === "squillo_in_arrivo") {
+    parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo" }, sc.testo),
+      h("div", { classe: "azioni-chiamata" }, bottone("Rifiuta", () => t.rifiuta()), bottone("Rispondi", () => t.rispondi(), { classe: "bottone" }))];
+  } else if (sc.tipo === "squillo_in_uscita") {
+    parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo", id: "chiamata-testo" }, sc.testo),
+      h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false)))];
+  } else if (sc.tipo === "in_corso") {
+    parti = [
+      sc.banner ? h("p", { classe: "banner-chiamata", role: "note" }, sc.banner) : null,
+      h("h1", {}, m.nome || "In chiamata"),
+      h("p", { classe: "timer timer-chiamata", id: "chiamata-timer", role: "timer", "aria-label": "Tempo che resta" }, sc.timer),
+      sc.avviso ? h("p", { classe: "avviso-chiamata", role: "alert" }, sc.avviso) : null,
+      sc.riconnessione ? h("p", { classe: "nota", role: "status" }, sc.riconnessione) : null,
+      m.riconnetti ? [h("p", { classe: "errore", role: "alert" }, "Hai perso la connessione: hai 30 secondi per rientrare"),
+        bottone("Riconnetti", () => t.riconnetti(), { classe: "bottone" })] : null,
+      sc.carta ? h("figure", { classe: "carta-chiamata" }, h("blockquote", {}, sc.carta.testo), h("figcaption", { classe: "nota" }, sc.carta.da)) : null,
+      sc.suggerimento && !sc.carta ? h("p", { classe: "nota" }, sc.suggerimento) : null,
+      h("div", { classe: "azioni-chiamata" },
+        bottone(m.muto ? "Microfono spento" : "Microfono acceso", () => t.microfono(), { "aria-pressed": m.muto ? "true" : "false", disabled: m.riconnetti }),
+        sc.carte ? bottone(sc.carte.etichetta, () => t.carta(), { id: "chiamata-carte", disabled: !sc.carte.attiva }) : null,
+        bottone("Chiudi", () => t.chiudi(false)),
+        bottone("Chiudi e segnala", () => t.chiudi(true), { classe: "bottone-pericolo" })),
+    ];
+  } else {
+    parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
+      h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
+  }
+  return h("section", { classe: "schermata chiamata", "aria-label": "Chiamata" }, parti, errore(m.errore));
+}
+
 function disegna() {
+  if (telefono) {
+    ultimaFirma = telefono.firma();
+    const m = telefono.modello();
+    if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
+  }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
   const parti = [
@@ -666,6 +773,7 @@ const SCHERMATE = {
         bloccoItalia(),
         italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null,
         bloccoStanza(),
+        bloccoTuaStanza(),
         h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
