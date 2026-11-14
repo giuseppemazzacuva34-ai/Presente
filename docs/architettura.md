@@ -167,6 +167,10 @@ Passo 3c-5a (fatto, spec #4 v1.3 § 1–2): fascia di disponibilità e testi del
 
 Passo 3c-5b-1 (fatto, PR #187): «Il mio profilo › Quando posso ricevere chiamate». `landing/app/moduli/disponibilita.js` (selettori «Dalle» 00:00–23:30 e «Alle» 00:30–24:00 a passo di 30 minuti, default 9:00–23:00, stesso controllo di `api/chiamate.js` provato su tutte le coppie, «Salvato. Da adesso ti chiamano dalle … alle …», pausa = giorno di Roma); `salvaDisponibilita()` in `salvataggio.js` fa PATCH solo sulla propria riga e solo `fascia_da`, `fascia_a`, `pausa_il` (regole per riga, vincolo `fascia_v13` e trigger della pausa nel database). Schermata in `flusso.js` con etichette visibili e interruttore `role=switch`.
 
+Sospensioni e chiamate (fatto, PR #192, #7 spec v1.1): `datiPerChiamare()` legge anche le sospensioni attive dei due (`sospensioni`, solo colonna `persona`, solo server); `puoChiamare()` risponde `non_in_stanza` se uno dei due è sospeso: chi è sospeso non chiama e non riceve, e l'altra persona non scopre la sospensione.
+
+Passo «diario» del dopo chiamata (fatto, PR #193 e #194, #5 spec v1.1 passo 2): la risposta `/dopo` ha `diario = { con, chiamataIl, durata }` con l'inizio **esatto** del database (la tabella `diario` lo confronta con `chiamate.inizio`) e la durata vera, letta da `riproponiDb()`; null per chiamate brevi o se la durata non si legge. In `telefono.js` il passo arriva dopo «La richiameresti?»: «Il tuo diario su <nome>», area di testo (max 1000), «Lo leggi solo tu. Non lo usiamo per niente.», Salva / Salta. La nota va dritta su Supabase dal telefono col proprio token (`diario.js`): il server non vede mai il testo.
+
 Prossimo, 3c-5b-2: i testi sul pulsante «Chiama» della scheda prima del tocco (il server li aggiunge a ogni persona della stanza), poi le schede in sola lettura dopo le 21:00 della domenica fino a lunedì 9:00 (spec #5 passo 9). Le notifiche push dello squillo (spec v1.1) vengono dopo, con D24.
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
