@@ -47,6 +47,12 @@ select pg_temp.ok(not exists (select 1 from public.porta_aperta('7a7a7a7a-0000-4
 select pg_temp.ok(not exists (select 1 from public.porte_di('7a7a7a7a-0000-4000-8000-00000000007a'))
   and not exists (select 1 from public.porte_di('7d7d7d7d-0000-4000-8000-00000000007d')),
   'porte_di: la porta con chi è sospeso non compare, per nessuno dei due');
+select pg_temp.ok(public.dai_chiave('7b7b7b7b-0000-4000-8000-00000000007b', '7d7d7d7d-0000-4000-8000-00000000007d', null)
+  = 'non_nella_stanza', 'dai_chiave verso chi è sospeso: «non è più nella stanza» (spec #5, casi limite)');
+select pg_temp.ok(public.dai_chiave('7d7d7d7d-0000-4000-8000-00000000007d', '7b7b7b7b-0000-4000-8000-00000000007b', null)
+  = 'non_nella_stanza', 'dai_chiave da chi è sospeso: «non è più nella stanza»');
+select pg_temp.ok(not exists (select 1 from public.chiavi where '7d7d7d7d-0000-4000-8000-00000000007d' in (da, a)),
+  'nessuna chiave scritta con chi è sospeso');
 
 reset role;
 update public.sospensioni set tolta_il = now() where persona = '7d7d7d7d-0000-4000-8000-00000000007d';
