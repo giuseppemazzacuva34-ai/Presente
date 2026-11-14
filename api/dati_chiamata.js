@@ -174,7 +174,15 @@ export async function riproponiDb(env, per, f = fetch) {
   const righe = await funzione(s, "richiameresti_da_riproporre", { p_utente: per }, f);
   if (!Array.isArray(righe)) return undefined;
   const r = righe[0];
-  return r ? { chi: r.chi, con: r.con, inizio: r.inizio } : null;
+  if (!r) return null;
+  // Durata per il diario (#5 passo 2): solo quella colonna. Se non si legge la domanda resta (è già segnata come
+  // proposta), il diario no. L'inizio resta la stringa del database: il diario lo confronta con chiamate.inizio.
+  let durata = null;
+  if (UUID.test(r.chi || "") && typeof r.inizio === "string") {
+    const d = await leggi(s, `chiamate?select=durata&chi=eq.${r.chi}&inizio=eq.${encodeURIComponent(r.inizio)}&limit=1`, f);
+    if (d && d[0] && Number.isInteger(d[0].durata)) durata = d[0].durata;
+  }
+  return { chi: r.chi, con: r.con, inizio: r.inizio, durata };
 }
 
 // L'ultima chiamata finita (con durata ed esito) della persona: solo le colonne del registro che servono.
