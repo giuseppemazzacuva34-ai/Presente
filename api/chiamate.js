@@ -20,12 +20,35 @@ export const CARTE = Object.freeze({ versione: "v1", dopo: 10, attesa: 20, sugge
 
 export const ESITI = Object.freeze(["tempo_scaduto", "chiusa", "chiudi_e_segnala", "caduta"]);
 
-const TESTI = Object.freeze({
-  occupato: "È in un'altra chiamata",
+// Testi del pulsante «Chiama» disattivato (spec v1.3 § 2), nell'ordine di priorità: se ne mostra sempre uno solo.
+// «fuori_fascia» si calcola con testoDisponibile(): «Disponibile da H:MM» / «Disponibile domani dalle H:MM».
+export const TESTI_PULSANTE = Object.freeze({
   tre_con_lei: "Avete già parlato 3 volte. Ora tocca alle chiavi",
   cinque_oggi: "Per oggi hai fatto 5 chiamate. A domani",
+  cinque_oggi_lei: "Per oggi non può ricevere altre chiamate. Riprova domani.",
+  occupato: "È in un'altra chiamata",
+  fuori_fascia: null,
   serve_permesso: "Chiedi di parlare",
 });
+const TESTI = TESTI_PULSANTE;
+
+// Fascia di disponibilità (spec v1.3 § 1): una sola, uguale per tutti i giorni, ore di Roma, passo di 30 minuti,
+// almeno 1 ora, fine dopo l'inizio (niente mezzanotte a cavallo). Chi non la tocca ha 9:00–23:00.
+export const FASCIA_DEFAULT = Object.freeze({ da: "09:00", a: "23:00" });
+export const ERRORE_FASCIA = "La fascia deve durare almeno un'ora e finire dopo l'inizio.";
+const ORA_FASCIA = /^(?:([01][0-9]|2[0-3]):(00|30)|(24):(00))$/;
+const minutiFascia = (hhmm) => { const m = ORA_FASCIA.exec(hhmm || ""); return m ? Number(m[1] ?? m[3]) * 60 + Number(m[2] ?? m[4]) : null; };
+
+// Controllo prima di salvare: { ok: true, fascia } oppure { ok: false, errore }.
+export function controllaFascia(da, a) {
+  const x = minutiFascia(da), y = minutiFascia(a);
+  if (x === null || y === null || x === 1440) return { ok: false, errore: "Scegli un orario valido." };
+  if (y - x < 60) return { ok: false, errore: ERRORE_FASCIA };
+  return { ok: true, fascia: { da, a } };
+}
+
+// Fascia da usare: quella salvata se è valida, altrimenti il default.
+const fasciaInUso = (fascia) => (fascia && controllaFascia(fascia.da, fascia.a).ok ? fascia : FASCIA_DEFAULT);
 
 export const contaNeiLimiti = (durata) => Number.isFinite(durata) && durata >= CHIAMATA.minimoPerContare;
 
@@ -36,25 +59,35 @@ export const giornoDiRoma = (istante) => formatoGiorno.format(istante);
 const minutiDiRoma = (istante) => { const [h, m] = formatoOra.format(istante).split(":").map(Number); return h * 60 + m; };
 const minuti = (hhmm) => { const m = /^(\d{2}):(\d{2})$/.exec(hhmm || ""); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 
-// Fascia di disponibilità di chi riceve (D31 B), ore di Roma «HH:MM». Senza fascia: sempre disponibile.
-// «da» > «a» vuol dire che passa la mezzanotte (22:00–01:00). «a» è escluso.
+// Dentro la fascia di chi riceve adesso? «a» è escluso: con 9:00–23:00 alle 23:00 non squilla più.
 export function dentroFascia(fascia, adesso) {
-  if (!fascia) return true;
-  const da = minuti(fascia.da), a = minuti(fascia.a);
-  if (da === null || a === null || da === a) return true;
+  const f = fasciaInUso(fascia);
   const ora = minutiDiRoma(adesso);
-  return da < a ? ora >= da && ora < a : ora >= da || ora < a;
+  return ora >= minutiFascia(f.da) && ora < minutiFascia(f.a);
+}
+
+// «Oggi non ricevo chiamate»: nel profilo c'è il giorno di Roma in cui è stato acceso; vale fino alle 23:59.
+export const inPausa = (pausa, adesso) => typeof pausa === "string" && pausa === giornoDiRoma(adesso);
+
+const testoOra = (hhmm) => hhmm.replace(/^0(\d)/, "$1");
+// Testo per chi chiama quando l'altra persona non è disponibile. La pausa ha lo stesso testo di «dopo la fascia»:
+// non si dice mai che l'ha accesa.
+export function testoDisponibile(fascia, adesso, pausa) {
+  const f = fasciaInUso(fascia);
+  if (!pausa && minutiDiRoma(adesso) < minutiFascia(f.da)) return `Disponibile da ${testoOra(f.da)}`;
+  return `Disponibile domani dalle ${testoOra(f.da)}`;
 }
 
 const no = (motivo, testo) => (testo ? { ok: false, motivo, testo } : { ok: false, motivo });
 const partecipa = (c, id) => c.chi === id || c.con === id;
 
-// Può «chi» chiamare «verso» adesso? Tutti i controlli del passo 2 del flusso (docs/architettura.md), nell'ordine.
+// Può «chi» chiamare «verso» adesso? Tutti i controlli del passo 2 del flusso (docs/architettura.md);
+// quelli con un testo per il pulsante seguono l'ordine di priorità della spec v1.3 § 2.
 // stanza: { apre, chiude, membri: [id] } · chiamate: righe del registro { chi, con, inizio, durata } (durata in secondi,
 // null se in corso) · blocchi: [{ chi, bloccato }] · inChiamata: Set degli id in una chiamata aperta ·
-// fascia: fascia di «verso» · soloConPermesso + permessi (Set di chi ha il permesso di «verso», D32).
+// fascia: fascia di «verso» (null = 9:00–23:00) · pausa: giorno di «Oggi non ricevo chiamate» · soloConPermesso + permessi (Set di chi ha il permesso di «verso», D32).
 export function puoChiamare({ chi, verso, adesso, stanza, chiamate = [], blocchi = [], inChiamata = new Set(), fascia = null,
-  soloConPermesso = false, permessi = new Set() }) {
+  pausa = null, soloConPermesso = false, permessi = new Set() }) {
   const membri = new Set(stanza?.membri || []);
   if (!chi || !verso || chi === verso || !membri.has(chi) || !membri.has(verso)) return no("non_in_stanza");
   const t = adesso.getTime();
@@ -62,7 +95,6 @@ export function puoChiamare({ chi, verso, adesso, stanza, chiamate = [], blocchi
   if (t >= stanza.chiude.getTime() - CHIAMATA.ultimoMinuto * 1000) return no("stanza_chiude");
   if (blocchi.some((b) => (b.chi === chi && b.bloccato === verso) || (b.chi === verso && b.bloccato === chi))) return no("bloccati");
   if (inChiamata.has(chi)) return no("gia_in_chiamata");
-  if (inChiamata.has(verso)) return no("occupato", TESTI.occupato);
 
   const valide = chiamate.filter((c) => contaNeiLimiti(c.durata));
   const inSettimana = (c) => { const i = new Date(c.inizio).getTime(); return i >= stanza.apre.getTime() && i < stanza.chiude.getTime(); };
@@ -72,9 +104,11 @@ export function puoChiamare({ chi, verso, adesso, stanza, chiamate = [], blocchi
   const oggi = giornoDiRoma(adesso);
   const diOggi = (id) => valide.filter((c) => partecipa(c, id) && giornoDiRoma(new Date(c.inizio)) === oggi).length;
   if (diOggi(chi) >= CHIAMATA.alGiorno) return no("cinque_oggi", TESTI.cinque_oggi);
-  if (diOggi(verso) >= CHIAMATA.alGiorno) return no("cinque_oggi_lei");
+  if (diOggi(verso) >= CHIAMATA.alGiorno) return no("cinque_oggi_lei", TESTI.cinque_oggi_lei);
 
-  if (!dentroFascia(fascia, adesso)) return no("fuori_fascia", `Disponibile da ${fascia.da}`);
+  if (inChiamata.has(verso)) return no("occupato", TESTI.occupato);
+  const inPausaOggi = inPausa(pausa, adesso);
+  if (inPausaOggi || !dentroFascia(fascia, adesso)) return no("fuori_fascia", testoDisponibile(fascia, adesso, inPausaOggi));
   if (soloConPermesso && !permessi.has(chi)) return no("serve_permesso", TESTI.serve_permesso);
   return { ok: true };
 }

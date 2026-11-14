@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { apriChiamata, statoChiamata, rispondiChiamata, rifiutaChiamata, chiudiChiamata } from "../api/apri_chiamata.js";
 import { oraDiRoma } from "../api/stanze.js";
+import { giornoDiRoma } from "../api/chiamate.js";
 
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
@@ -97,11 +98,12 @@ test("dati non leggibili dal database: «riprova», niente linee", async () => {
   assert.equal(registro.occupa.length, 0);
 });
 
-test("le regole di api/chiamate.js valgono: blocco, 3 volte, fascia, permesso", async () => {
+test("le regole di api/chiamate.js valgono: blocco, 3 volte, fascia, «Oggi non ricevo chiamate», permesso", async () => {
   const casi = [
     [{ blocchi: [{ chi: B, bloccato: A }] }, "bloccati"],
     [{ chiamate: [1, 2, 3].map((g) => ({ chi: A, con: B, inizio: oraDiRoma(2026, 11, 9, 10 + g).toISOString(), durata: 120 })) }, "tre_con_lei"],
     [{ fascia: { da: "21:00", a: "23:00" } }, "fuori_fascia"],
+    [{ pausa: giornoDiRoma(ADESSO) }, "fuori_fascia"],
     [{ soloConPermesso: true }, "serve_permesso"],
     [{ membri: [A, C] }, "non_in_stanza"],
   ];

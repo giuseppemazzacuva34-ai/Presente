@@ -16,7 +16,12 @@ const TESTI_EXTRA = Object.freeze({
   solo_voce: "Non riusciamo ad avviare la voce. Riprova tra poco",
   lettura: "Non riusciamo a vedere la tua stanza. Riprova tra poco",
 });
-export const testoErrore = (motivo) => (Object.hasOwn(TESTI_EXTRA, motivo) ? TESTI_EXTRA[motivo] : testoMotivo(motivo));
+// Fuori fascia il server manda l'orario («Disponibile da 19:00»): si usa solo se ha esattamente quella forma.
+const TESTO_FASCIA = /^Disponibile (da|domani dalle) ([01]?[0-9]|2[0-4]):[0-5][0-9]$/;
+export const testoErrore = (motivo, testo) => {
+  if (motivo === "fuori_fascia" && TESTO_FASCIA.test(String(testo || ""))) return testo;
+  return Object.hasOwn(TESTI_EXTRA, motivo) ? TESTI_EXTRA[motivo] : testoMotivo(motivo);
+};
 
 const ATTIVE = new Set(["squilla", "in_corso"]);
 const PAUSA_ASCOLTO_MS = 3000;
@@ -95,7 +100,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
       if (voceDopo) s.voceAttiva = true;
       if (r.vista !== undefined) applica(r.vista);
     } else {
-      s.errore = testoErrore(r && r.motivo);
+      s.errore = testoErrore(r && r.motivo, r && r.testo);
     }
     avvisa();
     try { subito(); } catch { /* la sentinella riprova da sola */ }

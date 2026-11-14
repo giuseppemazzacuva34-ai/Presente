@@ -17,7 +17,7 @@ const no = (motivo) => ({ ok: false, motivo });
 const offertaValida = (o) => !!o && typeof o === "object" && o.type === "offer" && soloAudio(o.sdp) && !!midAudio(o.sdp);
 
 // d: { stanzaDi(chi, adesso) → { id, apre, chiude } | null,
-//      datiPerChiamare({ stanza, chi, verso }) → { ok, membri, chiamate, blocchi, fascia, soloConPermesso, permessi },
+//      datiPerChiamare({ stanza, chi, verso }) → { ok, membri, chiamate, blocchi, fascia, pausa, soloConPermesso, permessi },
 //      centralino(idStanza) → { linea, occupa, libera }, chiamata(idChiamata) → { apri, vista },
 //      nuovaSessione(), pubblicaVoce(sessione, offerta), chiudiSessione(sessione, mids), nuovoId() }
 export async function apriChiamata({ chi, verso, offerta, adesso }, d) {
@@ -35,7 +35,7 @@ export async function apriChiamata({ chi, verso, offerta, adesso }, d) {
   const regole = puoChiamare({
     chi, verso, adesso,
     stanza: { apre: stanza.apre, chiude: stanza.chiude, membri: dati.membri },
-    chiamate: dati.chiamate, blocchi: dati.blocchi, inChiamata, fascia: dati.fascia,
+    chiamate: dati.chiamate, blocchi: dati.blocchi, inChiamata, fascia: dati.fascia, pausa: dati.pausa,
     soloConPermesso: dati.soloConPermesso, permessi: dati.permessi,
   });
   if (!regole.ok) return regole;

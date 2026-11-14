@@ -6,7 +6,8 @@
 
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const ORA = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const ORA = /^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$/;
+const GIORNO_ISO = /^\d{4}-\d{2}-\d{2}$/;
 const ATTESA_MS = 1500;
 const GIORNO = 24 * 60 * 60 * 1000;
 
@@ -64,7 +65,7 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
     leggi(s, `membri_stanza?stanza_id=eq.${stanza.id}&select=utente_id`, f),
     leggi(s, `chiamate?select=chi,con,inizio,durata&inizio=gte.${da}&or=(chi.in.(${coppia}),con.in.(${coppia}))`, f),
     leggi(s, `blocchi?select=chi,bloccato&or=(and(chi.eq.${chi},bloccato.eq.${verso}),and(chi.eq.${verso},bloccato.eq.${chi}))`, f),
-    leggi(s, `profili?id=eq.${verso}&select=fascia_da,fascia_a,solo_con_permesso&limit=1`, f),
+    leggi(s, `profili?id=eq.${verso}&select=fascia_da,fascia_a,pausa_il,solo_con_permesso&limit=1`, f),
     leggi(s, `permessi_chiamata?utente_id=eq.${verso}&permesso_a=eq.${chi}&select=permesso_a`, f),
   ]);
   if (!membri || !chiamate || !blocchi || !profili || !permessi) return { ok: false, motivo: "riprova" };
@@ -76,6 +77,7 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
     chiamate: chiamate.map(({ chi, con, inizio, durata }) => ({ chi, con, inizio, durata })),
     blocchi: blocchi.map(({ chi, bloccato }) => ({ chi, bloccato })),
     fascia,
+    pausa: GIORNO_ISO.test(p.pausa_il || "") ? p.pausa_il : null,
     soloConPermesso: p.solo_con_permesso === true,
     permessi: new Set(permessi.map((x) => x.permesso_a)),
   };

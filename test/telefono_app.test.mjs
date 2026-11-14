@@ -96,6 +96,17 @@ test("microfono negato: testo chiaro", async () => {
   assert.match(testoErrore("microfono_assente"), /microfono/);
 });
 
+test("fuori fascia: si mostra l'orario del server, solo se ha la forma «Disponibile …» (spec v1.3)", async () => {
+  for (const [testo, atteso] of [["Disponibile da 19:00", "Disponibile da 19:00"],
+    ["Disponibile domani dalle 9:00", "Disponibile domani dalle 9:00"], ["<b>strano</b>", testoErrore("fuori_fascia")]]) {
+    const a = ambiente({ linea: { chiama: async () => ({ ok: false, motivo: "fuori_fascia", testo }) } });
+    await a.t.caricaPersone();
+    await a.t.chiama(ID1);
+    assert.equal(a.t.modello().errore, atteso);
+  }
+  assert.equal(testoErrore("cinque_oggi_lei"), "Per oggi non può ricevere altre chiamate. Riprova domani.");
+});
+
 test("mai due azioni insieme", async () => {
   let libera;
   const a = ambiente({ linea: { chiama: (id) => new Promise((r) => { libera = () => r({ ok: false, motivo: "occupato" }); }) } });

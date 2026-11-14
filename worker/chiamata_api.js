@@ -38,6 +38,8 @@ const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 // sono risposte delle regole (200), che l'app mostra con il suo testo.
 const RICHIESTA_SBAGLIATA = new Set(["dati", "solo_voce"]);
 const RIPROVA = new Set(["riprova", "realtime", "spento", "sessione", "mid"]);
+// Unico testo che arriva dal server: l'orario di chi è fuori fascia (spec v1.3 § 1). Mai altro.
+const TESTO_FASCIA = /^Disponibile (da|domani dalle) ([01]?[0-9]|2[0-4]):[0-5][0-9]$/;
 
 function risposta(stato, corpo, extra = {}) {
   return new Response(JSON.stringify(corpo), {
@@ -145,6 +147,7 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
     const motivo = String((r && r.motivo) || "riprova");
     if (RICHIESTA_SBAGLIATA.has(motivo)) return risposta(400, { ok: false, motivo });
     if (RIPROVA.has(motivo)) return risposta(503, { ok: false, motivo: "riprova" });
+    if (motivo === "fuori_fascia" && TESTO_FASCIA.test(String(r.testo || ""))) return risposta(200, { ok: false, motivo, testo: r.testo });
     return risposta(200, { ok: false, motivo });
   } catch (e) {
     console.error("chiamata: errore", e && e.name);
