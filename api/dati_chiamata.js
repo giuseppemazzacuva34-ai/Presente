@@ -86,6 +86,43 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
   };
 }
 
+// Passo 3c-5b-2a: i dati per i testi del pulsante di TUTTA la stanza in 6 letture (non 6 per persona: il piano
+// gratuito dei Workers ha 50 sottorichieste). Prima i membri, poi il resto in parallelo. Solo colonne delle regole.
+// profili: Map id → { fascia, pausa, soloConPermesso } · permessi: Set di chi ha dato a «chi» il permesso di chiamare.
+export async function datiPerPulsanti(env, { stanza, chi }, f = fetch) {
+  const s = server(env);
+  if (!s || !UUID.test(chi || "") || !UUID.test(stanza?.id || "")) return { ok: false, motivo: "riprova" };
+  const righe = await leggi(s, `membri_stanza?stanza_id=eq.${stanza.id}&select=utente_id`, f);
+  if (!righe) return { ok: false, motivo: "riprova" };
+  const membri = righe.map((m) => m.utente_id).filter((id) => UUID.test(id || ""));
+  if (!membri.includes(chi)) return { ok: true, membri, chiamate: [], blocchi: [], profili: new Map(), permessi: new Set(), sospesi: new Set() };
+  const tutti = membri.join(",");
+  const da = encodeURIComponent(new Date(stanza.apre.getTime() - GIORNO).toISOString());
+  const [chiamate, blocchi, profili, permessi, sospensioni] = await Promise.all([
+    leggi(s, `chiamate?select=chi,con,inizio,durata&inizio=gte.${da}&or=(chi.in.(${tutti}),con.in.(${tutti}))`, f),
+    leggi(s, `blocchi?select=chi,bloccato&or=(chi.eq.${chi},bloccato.eq.${chi})`, f),
+    leggi(s, `profili?id=in.(${tutti})&select=id,fascia_da,fascia_a,pausa_il,solo_con_permesso`, f),
+    leggi(s, `permessi_chiamata?permesso_a=eq.${chi}&select=utente_id`, f),
+    leggi(s, `sospensioni?persona=in.(${tutti})&tolta_il=is.null&select=persona`, f),
+  ]);
+  if (!chiamate || !blocchi || !profili || !permessi || !sospensioni) return { ok: false, motivo: "riprova" };
+  const mappa = new Map();
+  for (const p of profili) {
+    if (!UUID.test(p.id || "")) continue;
+    const fascia = ORA.test(p.fascia_da || "") && ORA.test(p.fascia_a || "") ? { da: p.fascia_da, a: p.fascia_a } : null;
+    mappa.set(p.id, { fascia, pausa: GIORNO_ISO.test(p.pausa_il || "") ? p.pausa_il : null, soloConPermesso: p.solo_con_permesso === true });
+  }
+  return {
+    ok: true,
+    membri,
+    chiamate: chiamate.map(({ chi, con, inizio, durata }) => ({ chi, con, inizio, durata })),
+    blocchi: blocchi.map(({ chi, bloccato }) => ({ chi, bloccato })),
+    profili: mappa,
+    permessi: new Set(permessi.map((x) => x.utente_id)),
+    sospesi: new Set(sospensioni.map((x) => x.persona)),
+  };
+}
+
 // --- Passo 3b-2b-2c-2b-2: carte della conversazione (spec v1.2) ------------------------------------------------------
 // Le carte (tabella di configurazione) e le carte già viste dalla coppia: solo server. La coppia è sempre a < b,
 // come nel vincolo del database. Nessun testo di conversazione, nessun audio: solo id di carta.

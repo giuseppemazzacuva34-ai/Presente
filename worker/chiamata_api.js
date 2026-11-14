@@ -12,6 +12,7 @@
 //   POST /app/api/chiamata/carta    {}          → { ok: true, vista }                (pescata: vista.carta { id, testo, daMe })
 //   POST /app/api/chiamata/dopo     { appena }  → { ok: true, dopo }                 (schermata dopo la chiamata, 3c-4b)
 //   POST /app/api/chiamata/richiameresti { chi, inizio, risposta } → { ok: true, salvata }  («La richiameresti?»)
+//   GET  /app/api/chiamata/pulsanti → { ok: true, pulsanti: [{ id, testo }] }  (testi del pulsante «Chiama», 3c-5b-2a)
 //
 // Chi chiama lo dice SOLO il token di Supabase: un «chi» scritto nel corpo non conta. Le regole (stanza, blocchi,
 // 3 volte, 5 al giorno, fascia, solo voce) le applica api/apri_chiamata.js; qui solo accesso, forma della richiesta
@@ -24,12 +25,17 @@ import {
 } from "../api/apri_chiamata.js";
 import { stanzaDi, datiPerChiamare, carteAttiveDb, carteVisteDb, segnaCartaVista } from "../api/dati_chiamata.js";
 import { dopoChiamata, rispondiRichiameresti } from "../api/dopo_chiamata.js";
-import { riproponiDb, ultimaChiamataDb, salvaRichiamerestiDb } from "../api/dati_chiamata.js";
+import { pulsantiStanza } from "../api/pulsanti.js";
+import { TESTI_PULSANTE } from "../api/chiamate.js";
+import { riproponiDb, ultimaChiamataDb, salvaRichiamerestiDb, datiPerPulsanti } from "../api/dati_chiamata.js";
 import { nuovaSessione, pubblicaVoce, chiudiVoce, riceviVoce, confermaRisposta } from "../api/realtime.js";
 
 export const PERCORSO_CHIAMATA = "/app/api/chiamata";
-// Tutte POST con corpo JSON; «/app/api/chiamata» da solo è la GET dello stato.
-const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro", "carta", "dopo", "richiameresti"]);
+// Tutte POST con corpo JSON; «/app/api/chiamata» da solo è la GET dello stato, «/pulsanti» l'altra GET.
+const PASSI = new Set(["apri", "rispondi", "rifiuta", "chiudi", "ascolta", "conferma", "caduta", "rientro", "carta", "dopo", "richiameresti", "pulsanti"]);
+const LETTURE = new Set(["pulsanti"]);
+// Testi del pulsante che possono arrivare al telefono: i 5 fissi della spec v1.3 § 2 e quello dell'orario.
+const TESTI_FISSI = new Set(Object.values(TESTI_PULSANTE).filter(Boolean));
 const CORPO_MASSIMO = 32 * 1024; // un'offerta solo voce sta sotto i 20 mila caratteri (api/realtime.js)
 const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -91,6 +97,9 @@ function operazioniVere(env, f) {
       riproponi: (per) => riproponiDb(env, per, f), ultima: (per) => ultimaChiamataDb(env, per, f),
       salva: () => undefined,
     }),
+    pulsantiStanza: (dati) => pulsantiStanza(dati, {
+      stanzaDi: d.stanzaDi, centralino: d.centralino, datiPerPulsanti: (q) => datiPerPulsanti(env, q, f),
+    }),
     rispondiRichiameresti: (dati) => rispondiRichiameresti(dati, {
       riproponi: () => undefined, ultima: () => undefined, salva: (x) => salvaRichiamerestiDb(env, x, f),
     }),
@@ -101,7 +110,7 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
   const { pathname } = new URL(request.url);
   const passo = pathname.startsWith(PERCORSO_CHIAMATA + "/") ? pathname.slice(PERCORSO_CHIAMATA.length + 1) : null;
   if (pathname !== PERCORSO_CHIAMATA && !PASSI.has(passo)) return risposta(404, { ok: false, motivo: "non_trovato" });
-  const metodo = passo ? "POST" : "GET";
+  const metodo = passo && !LETTURE.has(passo) ? "POST" : "GET";
   if (request.method !== metodo) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodo });
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
@@ -116,6 +125,14 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
       const r = await op.statoChiamata({ per: chi.id, adesso });
       if (!r || !r.ok) return risposta(r && RICHIESTA_SBAGLIATA.has(r.motivo) ? 400 : 503, { ok: false, motivo: "riprova" });
       return risposta(200, { ok: true, vista: r.vista ?? null });
+    }
+    if (passo === "pulsanti") {
+      const r = await op.pulsantiStanza({ per: chi.id, adesso });
+      if (!r || !r.ok || !Array.isArray(r.pulsanti)) return risposta(503, { ok: false, motivo: "riprova" });
+      const pulsanti = r.pulsanti
+        .filter((p) => p && UUID.test(String(p.id || "")) && (TESTI_FISSI.has(p.testo) || TESTO_FASCIA.test(String(p.testo || ""))))
+        .map(({ id, testo }) => ({ id, testo }));
+      return risposta(200, { ok: true, pulsanti });
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
