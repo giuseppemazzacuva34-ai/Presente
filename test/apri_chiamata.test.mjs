@@ -106,6 +106,8 @@ test("le regole di api/chiamate.js valgono: blocco, 3 volte, fascia, «Oggi non 
     [{ pausa: giornoDiRoma(ADESSO) }, "fuori_fascia"],
     [{ soloConPermesso: true }, "serve_permesso"],
     [{ membri: [A, C] }, "non_in_stanza"],
+    [{ sospesi: new Set([B]) }, "non_in_stanza"],
+    [{ sospesi: new Set([A]) }, "non_in_stanza"],
   ];
   for (const [dati, motivo] of casi) {
     const { d, registro } = finti({ dati });

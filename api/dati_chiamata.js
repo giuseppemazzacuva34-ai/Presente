@@ -61,14 +61,16 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
   // Dal giorno prima dell'apertura: copre la settimana e il conto «5 al giorno» di oggi.
   const da = encodeURIComponent(new Date(stanza.apre.getTime() - GIORNO).toISOString());
   const coppia = `${chi},${verso}`;
-  const [membri, chiamate, blocchi, profili, permessi] = await Promise.all([
+  const [membri, chiamate, blocchi, profili, permessi, sospensioni] = await Promise.all([
     leggi(s, `membri_stanza?stanza_id=eq.${stanza.id}&select=utente_id`, f),
     leggi(s, `chiamate?select=chi,con,inizio,durata&inizio=gte.${da}&or=(chi.in.(${coppia}),con.in.(${coppia}))`, f),
     leggi(s, `blocchi?select=chi,bloccato&or=(and(chi.eq.${chi},bloccato.eq.${verso}),and(chi.eq.${verso},bloccato.eq.${chi}))`, f),
     leggi(s, `profili?id=eq.${verso}&select=fascia_da,fascia_a,pausa_il,solo_con_permesso&limit=1`, f),
     leggi(s, `permessi_chiamata?utente_id=eq.${verso}&permesso_a=eq.${chi}&select=permesso_a`, f),
+    // #7 spec v1.1: sospensioni ancora attive dei due (solo la colonna persona, mai motivo o segnalazione).
+    leggi(s, `sospensioni?persona=in.(${coppia})&tolta_il=is.null&select=persona`, f),
   ]);
-  if (!membri || !chiamate || !blocchi || !profili || !permessi) return { ok: false, motivo: "riprova" };
+  if (!membri || !chiamate || !blocchi || !profili || !permessi || !sospensioni) return { ok: false, motivo: "riprova" };
   const p = profili[0] || {};
   const fascia = ORA.test(p.fascia_da || "") && ORA.test(p.fascia_a || "") ? { da: p.fascia_da, a: p.fascia_a } : null;
   return {
@@ -80,6 +82,7 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
     pausa: GIORNO_ISO.test(p.pausa_il || "") ? p.pausa_il : null,
     soloConPermesso: p.solo_con_permesso === true,
     permessi: new Set(permessi.map((x) => x.permesso_a)),
+    sospesi: new Set(sospensioni.map((x) => x.persona)),
   };
 }
 
