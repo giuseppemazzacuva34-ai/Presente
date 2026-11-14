@@ -29,6 +29,7 @@ begin;
 insert into auth.users (id, email) select pg_temp.p(n), 'cs' || n || '@example.com' from generate_series(1, 9) n;
 insert into public.profili (id, nome, data_nascita, citta)
   select pg_temp.p(n), 'Prova', '1990-01-01', 'Milano' from generate_series(1, 9) n;
+update public.profili set nome = 'Giulia' where id = pg_temp.p(2);
 -- A: chiusa un minuto fa (1, 2, 3, 4). E: chiusa 13 ore fa (5): la sera è finita (lunedì 9:00 passato).
 -- C: aperta (6, 7). D: chiude tra 30 secondi (8, 9): chiavi già chiuse.
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
@@ -90,8 +91,8 @@ create temp table dopo on commit drop as select n, public.sera_di(pg_temp.p(n)) 
 reset role;
 select pg_temp.ok((select s from dopo where n = 1) = jsonb_build_object('stato', 'pronta', 'porte', jsonb_build_array(
     jsonb_build_object('id', (select id from public.porte where a = least(pg_temp.p(1), pg_temp.p(2)) and b = greatest(pg_temp.p(1), pg_temp.p(2))),
-      'con', pg_temp.p(2), 'frase_per_te', 'Il treno, ancora.'))),
-  'sera: 1 vede la porta con 2 e la frase che 2 gli ha lasciato');
+      'con', pg_temp.p(2), 'nome', 'Giulia', 'frase_per_te', 'Il treno, ancora.'))),
+  'sera: 1 vede la porta con 2, il suo nome e la frase che 2 gli ha lasciato');
 select pg_temp.ok((select s->'porte'->0->'frase_per_te' from dopo where n = 2) = 'null'::jsonb
   and (select s->'porte'->0->>'con' from dopo where n = 2) = pg_temp.p(1)::text,
   'sera: 2 vede la porta con 1, senza frase (1 non l''ha scritta), mai la propria');

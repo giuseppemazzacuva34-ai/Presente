@@ -33,3 +33,16 @@ test("niente SQL distruttivo e niente diario", () => {
   assert.doesNotMatch(sql, /\b(drop|truncate|delete|alter system)\b/i);
   assert.doesNotMatch(sql, /diario/i);
 });
+
+// Passo 5c: sera_di con il nome dell'altra persona (solo il nome, solo per le porte aperte).
+const fileNome = readdirSync(cartella).find((n) => /^\d{14}_sera_nome\.sql$/.test(n));
+const sqlNome = fileNome ? readFileSync(new URL(fileNome, cartella), "utf8") : "";
+
+test("sera_di con il nome: solo il nome del profilo, chiusa al telefono", () => {
+  assert.ok(fileNome, "manca supabase/migrations/*_sera_nome.sql");
+  assert.match(sqlNome, /'nome', pr\.nome/);
+  assert.doesNotMatch(sqlNome, /pr\.(foto|cognome|data_nascita|citta|email)/);
+  assert.match(sqlNome, /revoke all on function public\.sera_di\(uuid\) from public, anon, authenticated/);
+  assert.doesNotMatch(sqlNome, /grant [^;]* to (anon|authenticated)/);
+  assert.doesNotMatch(sqlNome, /\b(drop|truncate|delete|alter system)\b/i);
+});
