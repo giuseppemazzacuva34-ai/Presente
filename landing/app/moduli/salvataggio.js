@@ -22,7 +22,8 @@ export const fileRisposta = (i) => `risposta-${i + 1}`; // i = 0, 1, 2 (ordine d
 export const fileFoto = (i) => `foto-${i + 1}`; // i = 0, 1, 2
 
 // Messaggi del database che l'app mostra così come sono.
-const REGOLE_LEGGIBILI = [/^Puoi cambiarla di nuovo dal \d{2}\/\d{2}\.$/, /^Prima scegli la tua provincia\.$/, /^La provincia non si può togliere\.$/];
+const REGOLE_LEGGIBILI = [/^Puoi cambiarla di nuovo dal \d{2}\/\d{2}\.$/, /^Prima scegli la tua provincia\.$/, /^La provincia non si può togliere\.$/,
+  /^«Oggi non ricevo chiamate» vale solo per oggi\.$/];
 
 // Paese per chi vive all'estero e non ha ancora indicato quale (codice ISO riservato «ZZ» = sconosciuto).
 export const PAESE_ESTERO = "ZZ";
@@ -77,6 +78,15 @@ export function creaSalvataggio({ supabaseUrl, supabaseAnonKey, token, utenteId,
     // campi: { data_nascita, regole_accettate_il, nome, provincia, provincia_origine, paese, mi_presento_come, mi_descrivo, domande_voce, passo }
     salvaProfilo(campi) {
       return upsert("profili", "id", pulisci(campi, ["data_nascita", "regole_accettate_il", "nome", "provincia", "provincia_origine", "paese", "mi_presento_come", "mi_descrivo", "domande_voce", "passo"]));
+    },
+
+    // «Quando posso ricevere chiamate» (spec #4 v1.3 § 1): solo fascia e pausa, solo sulla propria riga (PATCH, niente
+    // insert). Le regole le controlla anche il database (vincolo fascia_v13, pausa solo per oggi).
+    async salvaDisponibilita(campi) {
+      const r = await chiama(`/rest/v1/profili?id=eq.${io()}`, {
+        metodo: "PATCH", corpo: pulisci(campi, ["fascia_da", "fascia_a", "pausa_il"]), extra: { prefer: "return=minimal" },
+      });
+      return r.ok ? { ok: true } : r;
     },
 
     // Passo 6. La data del consenso la mette il server; qui si manda solo la versione dell'informativa.
@@ -184,6 +194,8 @@ export function statoDaSalvato(s, salvato) {
     s.provinciaTesto = nomeMenu(s.provincia);
     s.miPresento = p.mi_presento_come || "";
     s.miDescrivo = p.mi_descrivo || "";
+    // Fascia di disponibilità (spec #4 v1.3): si mostra in «Quando posso ricevere chiamate» (disponibilita.js).
+    s.fasciaDa = p.fascia_da || ""; s.fasciaA = p.fascia_a || ""; s.pausaIl = p.pausa_il || "";
     if (Array.isArray(p.domande_voce)) s.domandeVoce = p.domande_voce.filter((i) => Number.isInteger(i)).slice(0, 3);
   }
   const fi = salvato.filtri;

@@ -16,6 +16,7 @@ import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisi
 import { testoZona, etichettaRaggio } from "./aree.js";
 import { testoConferma, chiediItalia, contatoreSoloZona } from "./stanza.js";
 import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from "./segnala.js";
+import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -102,6 +103,8 @@ let passoMassimo = 0;
 const email = { inviata: false, codice: "", errore: "", attesa: false };
 // «Cambia provincia» da «Il mio profilo»: dopo «Chi sei» si torna al profilo invece di rifare tutti i passi.
 const cambio = { daProfilo: false, avviso: "" };
+// «Il mio profilo › Quando posso ricevere chiamate» (spec #4 v1.3 § 1). Solo con l'accesso vero.
+const disponibilita = { aperta: false, da: "", a: "", pausa: false, inCorso: false, errore: "", avviso: "" };
 
 const MESSAGGI_SALVATAGGIO = {
   accesso: "La sessione è scaduta: rientra con la tua email.",
@@ -345,6 +348,67 @@ function avviaSentinella() {
   sentinella.avvia();
 }
 
+// «Quando posso ricevere chiamate» (spec #4 v1.3 § 1): due selettori a passo di 30 minuti, l'interruttore della pausa
+// e «Salva». Vale subito; i controlli sono gli stessi del server (disponibilita.js) e li ripete il database.
+function apriDisponibilita() {
+  Object.assign(disponibilita, daProfilo({ fascia_da: stato.fasciaDa, fascia_a: stato.fasciaA, pausa_il: stato.pausaIl }),
+    { aperta: true, inCorso: false, errore: "", avviso: "" });
+  disegna();
+  window.scrollTo(0, 0);
+  const titolo = radice.querySelector("h1");
+  if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: true }); }
+}
+
+function chiudiDisponibilita() {
+  disponibilita.aperta = false;
+  disegna();
+}
+
+async function salvaDisponibilita() {
+  if (disponibilita.inCorso) return;
+  const c = campiDaSalvare(disponibilita);
+  disponibilita.avviso = "";
+  if (!c.ok) { disponibilita.errore = c.errore; disegna(); return; }
+  disponibilita.inCorso = true; disponibilita.errore = ""; disegna();
+  const r = await archivio.salvaDisponibilita(c.campi);
+  disponibilita.inCorso = false;
+  if (r.ok) {
+    stato.fasciaDa = c.campi.fascia_da; stato.fasciaA = c.campi.fascia_a; stato.pausaIl = c.campi.pausa_il || "";
+    disponibilita.avviso = testoSalvato(disponibilita);
+  } else if (r.motivo === "accesso") {
+    disponibilita.aperta = false; await accesso.esci(); stato.passo = 1;
+  } else {
+    disponibilita.errore = r.motivo === "regola" ? r.messaggio : (MESSAGGI_SALVATAGGIO[r.motivo] || MESSAGGI_SALVATAGGIO.salvataggio);
+  }
+  disegna();
+}
+
+function schermoDisponibilita() {
+  const d = disponibilita;
+  const selettore = (id, etichetta, orari, valore, imposta) => h("div", { classe: "campo" },
+    h("label", { for: id }, etichetta),
+    h("select", { id, onchange: (e) => { imposta(e.target.value); d.avviso = ""; d.errore = ""; } },
+      orari.map((o) => h("option", { value: o, selected: o === valore }, o))));
+  return h("section", { classe: "schermata" },
+    h("h1", {}, TESTI_FASCIA.titolo),
+    h("p", { classe: "sottotitolo" }, TESTI_FASCIA.sottotitolo),
+    h("div", { classe: "corpo" },
+      selettore("fascia-da", TESTI_FASCIA.dalle, ORARI_DALLE, d.da, (v) => { d.da = v; }),
+      selettore("fascia-a", TESTI_FASCIA.alle, ORARI_ALLE, d.a, (v) => { d.a = v; }),
+      h("div", { classe: "campo" },
+        h("label", { for: "pausa-oggi" },
+          h("input", { id: "pausa-oggi", type: "checkbox", role: "switch", checked: d.pausa, "aria-describedby": "pausa-nota",
+            onchange: (e) => { d.pausa = e.target.checked; d.avviso = ""; } }),
+          " ", TESTI_FASCIA.pausa),
+        h("p", { classe: "nota", id: "pausa-nota" }, TESTI_FASCIA.notaPausa))),
+    errore(d.errore),
+    d.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
+    d.avviso ? h("p", { classe: "nota", role: "status" }, d.avviso) : null,
+    h("div", { classe: "azioni" },
+      h("button", { classe: "bottone", type: "button", disabled: d.inCorso, onclick: salvaDisponibilita }, "Salva"),
+      h("button", { classe: "bottone-secondario", type: "button", onclick: chiudiDisponibilita }, "Torna al profilo")));
+}
+
 // «La tua stanza» nella home: le persone della stanza con la scheda e «Chiama».
 function bloccoTuaStanza() {
   if (!telefono) return null;
@@ -473,6 +537,7 @@ function disegna() {
     const m = telefono.modello();
     if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
   }
+  if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
   const parti = [
@@ -841,6 +906,7 @@ const SCHERMATE = {
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
           testoZona(stato.provincia) ? h("p", { classe: "nota", id: "la-tua-zona" }, testoZona(stato.provincia)) : null,
           archivio ? h("button", { classe: "link", type: "button", onclick: () => { cambio.daProfilo = true; cambio.avviso = ""; vai(4); } }, "Cambia provincia") : null,
+          archivio ? h("button", { classe: "link", type: "button", onclick: apriDisponibilita }, TESTI_FASCIA.titolo) : null,
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
