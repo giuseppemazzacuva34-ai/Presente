@@ -83,6 +83,8 @@ let stanza = null;
 // Modulo di segnalazione #7 (segnala.js, linea «sviluppatore-b»): scelte solo in memoria, si azzerano a ogni modulo nuovo.
 let segnalatore = null;
 const segnalazione = { chiave: "", motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null };
+// Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
+const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
 // «Vuoi entrare intanto nella Stanza Italia?»: «Aspetto la mia zona» la nasconde per questa sessione.
 const italia = { aspetto: false, inCorso: false, errore: "", avviso: "" };
@@ -441,6 +443,7 @@ function bloccoTuaStanza() {
 function schermoChiamata(m) {
   const sc = m.schermo;
   const t = telefono;
+  if (sc.tipo !== "diario") notaDiario.testo = "";
   const bottone = (testo, onclick, { classe = "bottone-secondario", disabled = false, ...altri } = {}) =>
     h("button", { classe, type: "button", disabled: disabled || m.attesa, onclick, ...altri }, testo);
   let parti;
@@ -474,6 +477,15 @@ function schermoChiamata(m) {
         sc.risposte.map(([valore, testo]) => bottone(testo, () => t.richiameresti(valore), { classe: valore === "salta" ? "link" : "bottone-secondario" }))),
       h("p", { classe: "nota" }, sc.nota),
       bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
+  } else if (sc.tipo === "diario") {
+    // #5 spec v1.1 passo 2: «Lo leggi solo tu. Non lo usiamo per niente.» Salva o Salta, nessun obbligo.
+    parti = [h("h1", {}, sc.titolo),
+      h("label", { for: "testo-diario" }, sc.suggerimento),
+      h("textarea", { id: "testo-diario", classe: "racconto-segnala", maxlength: String(sc.massimo), rows: "5", disabled: m.attesa,
+        oninput: (e) => { notaDiario.testo = e.target.value; } }, notaDiario.testo),
+      h("p", { classe: "nota" }, sc.nota),
+      h("div", { classe: "azioni-chiamata" }, bottone(sc.salva, () => t.salvaDiario(notaDiario.testo), { classe: "bottone" })),
+      bottone(sc.salta, () => t.saltaDiario(), { classe: "link" })];
   } else if (sc.tipo === "dopo_fine") {
     parti = [h("h1", {}, sc.titolo),
       sc.testo ? h("p", { classe: "sottotitolo" }, sc.testo) : null,
