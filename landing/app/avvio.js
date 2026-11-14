@@ -12,6 +12,7 @@ import { creaVoce, collegaVoce } from "/app/moduli/voce.js";
 import { creaCompagni } from "/app/moduli/compagni.js";
 import { creaSentinella } from "/app/moduli/sentinella.js";
 import { creaTelefono } from "/app/moduli/telefono.js";
+import { creaSegnala } from "/app/moduli/segnala.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -51,7 +52,9 @@ async function preparaAccesso() {
       token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Chiamate solo voce (#4): le richieste rispondono solo con ACCESSO_APP = «si»; altrimenti la sentinella si ferma.
     const { telefono, sentinella } = preparaTelefono(config, accesso);
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Segnalazioni (#7): il modulo dopo «Chiudi e segnala» e «Segnala un problema»; chi segnala lo dice il token.
+    const segnala = creaSegnala({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

@@ -15,6 +15,7 @@ import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta,
 import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisibile, testoCambio, lunediCambio } from "./province.js";
 import { testoZona, etichettaRaggio } from "./aree.js";
 import { testoConferma, chiediItalia, contatoreSoloZona } from "./stanza.js";
+import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from "./segnala.js";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -78,6 +79,9 @@ let zona = null;
 const contatore = { chiesto: false, testo: null };
 // «Entra nella stanza» (stanza.js): conferma scritta dal database; una lettura per sessione.
 let stanza = null;
+// Modulo di segnalazione #7 (segnala.js, linea «sviluppatore-b»): scelte solo in memoria, si azzerano a ogni modulo nuovo.
+let segnalatore = null;
+const segnalazione = { chiave: "", motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
 // «Vuoi entrare intanto nella Stanza Italia?»: «Aspetto la mia zona» la nasconde per questa sessione.
 const italia = { aspetto: false, inCorso: false, errore: "", avviso: "" };
@@ -114,6 +118,7 @@ export function avvia(elemento, opzioni = {}) {
   stanza = (archivio && opzioni.stanza) || null;
   telefono = (archivio && opzioni.telefono) || null;
   sentinella = (telefono && opzioni.sentinella) || null;
+  segnalatore = (telefono && opzioni.segnala) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -411,16 +416,56 @@ function schermoChiamata(m) {
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" })),
       bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
   } else if (sc.tipo === "segnala") {
-    // Il modulo #7 lo aggiunge la linea «sviluppatore-b» leggendo m.segnala { contro, origine, chiamataIl }.
-    parti = [h("h1", {}, sc.titolo),
-      h("p", { classe: "sottotitolo" }, "Il modulo per segnalare arriva con il prossimo aggiornamento dell'app."),
-      h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
+    parti = schermoSegnala(m);
   } else {
     parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
   }
   return h("section", { classe: "schermata chiamata", "aria-label": "Chiamata" }, parti, errore(m.errore));
 }
+
+// Modulo di segnalazione (#7 spec v1.1 punti 2-3): motivo, racconto facoltativo, «Blocca anche», conferma con il 112.
+function schermoSegnala(m) {
+  const sg = m.segnala || {};
+  const chiave = `${sg.contro || ""}|${sg.origine || ""}`;
+  const st = segnalazione;
+  if (st.chiave !== chiave) Object.assign(st, { chiave, motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null });
+  const torna = () => { Object.assign(st, { chiave: "", esito: null }); telefono.torna(); };
+  if (st.esito) {
+    const c = confermaSegnala(st.esito, m.nome);
+    return [h("h1", { tabindex: "-1" }, c.titolo), h("p", { classe: "sottotitolo", role: "status" }, c.testo),
+      c.pericolo ? [h("p", { classe: "avviso-chiamata", role: "alert" }, c.pericolo), h("a", { classe: "bottone-pericolo", href: c.telefono }, "Chiama il 112")] : null,
+      h("div", { classe: "azioni-chiamata" }, h("button", { classe: "bottone", type: "button", onclick: torna }, "Torna alla stanza"))];
+  }
+  const mod = moduloSegnala(sg, m.nome);
+  const invia = async () => {
+    const c = corpoSegnala(sg, st);
+    if (!c.ok) { st.errore = c.errore; disegna(); return; }
+    if (!segnalatore) { st.errore = testoErroreSegnala("spento"); disegna(); return; }
+    st.invio = true; st.errore = ""; disegna();
+    const r = await segnalatore.invia(c.corpo).catch(() => ({ ok: false, motivo: "rete" }));
+    st.invio = false;
+    if (r.ok) st.esito = { ore: r.ore, pericolo: r.pericolo }; else st.errore = testoErroreSegnala(r.motivo);
+    disegna();
+  };
+  return [h("h1", {}, titoloSegnala(m)),
+    h("fieldset", { classe: "motivi-segnala" }, h("legend", {}, mod.titolo),
+      mod.motivi.map(([valore, testo]) => h("label", { classe: "casella" },
+        h("input", { type: "radio", name: "motivo-segnala", value: valore, checked: st.motivo === valore, disabled: st.invio,
+          onchange: () => { st.motivo = valore; st.errore = ""; } }), testo))),
+    h("label", { for: "racconto-segnala" }, mod.etichettaTesto),
+    h("textarea", { id: "racconto-segnala", classe: "racconto-segnala", maxlength: String(mod.massimo), rows: "4", disabled: st.invio,
+      oninput: (e) => { st.testo = e.target.value; } }, st.testo),
+    h("label", { classe: "casella" },
+      h("input", { type: "checkbox", checked: mod.bloccoFisso || st.blocca, disabled: mod.bloccoFisso || st.invio,
+        onchange: (e) => { st.blocca = e.target.checked; } }), mod.casella),
+    h("p", { classe: "nota" }, mod.anonimato),
+    st.errore ? h("p", { classe: "errore", role: "alert" }, st.errore) : null,
+    h("div", { classe: "azioni-chiamata" },
+      h("button", { classe: "bottone", type: "button", disabled: st.invio, onclick: invia }, st.invio ? "Invio…" : mod.invia),
+      h("button", { classe: "link", type: "button", disabled: st.invio, onclick: torna }, "Torna alla stanza"))];
+}
+const titoloSegnala = (m) => (m.schermo && m.schermo.titolo) || "Segnala un problema";
 
 function disegna() {
   if (telefono) {
