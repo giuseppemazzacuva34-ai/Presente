@@ -171,7 +171,9 @@ Sospensioni e chiamate (fatto, PR #192, #7 spec v1.1): `datiPerChiamare()` legge
 
 Passo «diario» del dopo chiamata (fatto, PR #193 e #194, #5 spec v1.1 passo 2): la risposta `/dopo` ha `diario = { con, chiamataIl, durata }` con l'inizio **esatto** del database (la tabella `diario` lo confronta con `chiamate.inizio`) e la durata vera, letta da `riproponiDb()`; null per chiamate brevi o se la durata non si legge. In `telefono.js` il passo arriva dopo «La richiameresti?»: «Il tuo diario su <nome>», area di testo (max 1000), «Lo leggi solo tu. Non lo usiamo per niente.», Salva / Salta. La nota va dritta su Supabase dal telefono col proprio token (`diario.js`): il server non vede mai il testo.
 
-Prossimo, 3c-5b-2: i testi sul pulsante «Chiama» della scheda prima del tocco (il server li aggiunge a ogni persona della stanza), poi le schede in sola lettura dopo le 21:00 della domenica fino a lunedì 9:00 (spec #5 passo 9). Le notifiche push dello squillo (spec v1.1) vengono dopo, con D24.
+Passo 3c-5b-2a (fatto, lato server): `GET /app/api/chiamata/pulsanti` → `{ ok, pulsanti: [{ id, testo }] }`. `api/pulsanti.js` applica `puoChiamare()` a ogni persona della stanza con dati letti una volta sola (`datiPerPulsanti()` in `api/dati_chiamata.js`: 6 letture per tutta la stanza, dentro il limite di 50 sottorichieste del piano gratuito) e le linee del Centralino. Arrivano al telefono solo le persone con il pulsante spento e uno dei 6 testi della spec v1.3 § 2; il Worker lascia passare solo id validi e solo quei testi. Sospesi, blocchi e stanza chiusa non danno mai una riga (si vede «Chiama» e decide il tocco): l'altra persona non scopre una sospensione. Test in `test/pulsanti.test.mjs`.
+
+Prossimo, 3c-5b-2b: la web app legge `/pulsanti` (con la sentinella, non a ogni secondo) e mostra il testo sul pulsante della scheda; poi le schede in sola lettura dopo le 21:00 della domenica fino a lunedì 9:00 (spec #5 passo 9). Le notifiche push dello squillo (spec v1.1) vengono dopo, con D24.
 
 ### Audio e video sulla stessa base (D48 A, 29/10)
 
