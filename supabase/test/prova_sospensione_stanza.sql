@@ -19,6 +19,15 @@ begin
 exception when others then
   return true;
 end $$;
+-- Vale come rifiuto sia un errore sia la risposta 'non_nella_stanza' (dai_chiave può scegliere l'una o l'altra).
+create function pg_temp.chiave_negata(comando text) returns boolean language plpgsql as $$
+declare r text;
+begin
+  execute comando into r;
+  return r = 'non_nella_stanza';
+exception when others then
+  return true;
+end $$;
 create function pg_temp.vede(chi uuid) returns text[] language plpgsql as $$
 declare r text[];
 begin
@@ -70,9 +79,9 @@ select public.nuova_segnalazione('9c9c9c9c-0000-4000-8000-00000000009c', '9d9d9d
 select pg_temp.ok(public.sospeso('9d9d9d9d-0000-4000-8000-00000000009d'), 'sospensione: Ugo è sospeso');
 select pg_temp.ok(not exists (select 1 from public.chiavi where da = '9d9d9d9d-0000-4000-8000-00000000009d'
   or a = '9d9d9d9d-0000-4000-8000-00000000009d'), 'sospensione: chiavi date e ricevute da Ugo annullate');
-select pg_temp.ok(pg_temp.rifiutato($$select public.dai_chiave('9a9a9a9a-0000-4000-8000-00000000009a',
+select pg_temp.ok(pg_temp.chiave_negata($$select public.dai_chiave('9a9a9a9a-0000-4000-8000-00000000009a',
   '9d9d9d9d-0000-4000-8000-00000000009d', null)$$)
-  and pg_temp.rifiutato($$select public.dai_chiave('9d9d9d9d-0000-4000-8000-00000000009d',
+  and pg_temp.chiave_negata($$select public.dai_chiave('9d9d9d9d-0000-4000-8000-00000000009d',
   '9c9c9c9c-0000-4000-8000-00000000009c', null)$$)
   and not exists (select 1 from public.chiavi where da = '9d9d9d9d-0000-4000-8000-00000000009d'
   or a = '9d9d9d9d-0000-4000-8000-00000000009d'),
