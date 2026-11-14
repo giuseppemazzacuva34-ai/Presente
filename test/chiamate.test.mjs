@@ -48,6 +48,14 @@ test("chi non è nella stessa stanza non può chiamare (neanche via API)", () =>
   assert.equal(puoChiamare(base({ verso: "a" })).motivo, "non_in_stanza");
 });
 
+test("#7 spec v1.1: chi è sospeso non chiama e non riceve, come se non fosse più nella stanza", () => {
+  assert.equal(puoChiamare(base({ sospesi: new Set(["b"]) })).motivo, "non_in_stanza");
+  assert.equal(puoChiamare(base({ sospesi: new Set(["a"]) })).motivo, "non_in_stanza");
+  // Nessun testo che dica «è sospesa»: stessa risposta di chi non è nella stanza.
+  assert.equal(puoChiamare(base({ sospesi: new Set(["b"]) })).testo, undefined);
+  assert.deepEqual(puoChiamare(base({ sospesi: new Set(["z"]) })), { ok: true });
+});
+
 test("fuori dalla settimana della stanza non si chiama", () => {
   assert.equal(puoChiamare(base({ adesso: new Date(CHIUDE.getTime() + 1000) })).motivo, "stanza_chiusa");
   assert.equal(puoChiamare(base({ adesso: new Date(APRE.getTime() - 1000) })).motivo, "stanza_chiusa");

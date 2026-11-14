@@ -85,11 +85,13 @@ const partecipa = (c, id) => c.chi === id || c.con === id;
 // quelli con un testo per il pulsante seguono l'ordine di priorità della spec v1.3 § 2.
 // stanza: { apre, chiude, membri: [id] } · chiamate: righe del registro { chi, con, inizio, durata } (durata in secondi,
 // null se in corso) · blocchi: [{ chi, bloccato }] · inChiamata: Set degli id in una chiamata aperta ·
-// fascia: fascia di «verso» (null = 9:00–23:00) · pausa: giorno di «Oggi non ricevo chiamate» · soloConPermesso + permessi (Set di chi ha il permesso di «verso», D32).
+// fascia: fascia di «verso» (null = 9:00–23:00) · pausa: giorno di «Oggi non ricevo chiamate» · soloConPermesso + permessi (Set di chi ha il permesso di «verso», D32) ·
+// sospesi: Set di chi ha una sospensione attiva (#7 spec v1.1: non chiama e non riceve; risposta uguale a «non è nella stanza»).
 export function puoChiamare({ chi, verso, adesso, stanza, chiamate = [], blocchi = [], inChiamata = new Set(), fascia = null,
-  pausa = null, soloConPermesso = false, permessi = new Set() }) {
+  pausa = null, soloConPermesso = false, permessi = new Set(), sospesi = new Set() }) {
   const membri = new Set(stanza?.membri || []);
   if (!chi || !verso || chi === verso || !membri.has(chi) || !membri.has(verso)) return no("non_in_stanza");
+  if (sospesi.has(chi) || sospesi.has(verso)) return no("non_in_stanza");
   const t = adesso.getTime();
   if (t < stanza.apre.getTime() || t >= stanza.chiude.getTime()) return no("stanza_chiusa");
   if (t >= stanza.chiude.getTime() - CHIAMATA.ultimoMinuto * 1000) return no("stanza_chiude");
