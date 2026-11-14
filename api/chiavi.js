@@ -17,6 +17,7 @@ export const TESTI_CHIAVI = Object.freeze({
   nessunaPorta: "Stasera nessuna porta si è aperta. Lunedì alle 9 apre una nuova stanza.",
   finite: "Hai già dato le tue 2 chiavi. Puoi riprenderne una.",
   nonChiamato: "Puoi dare una chiave solo a chi hai già chiamato in questa stanza.",
+  nonNellaStanza: "Non è più nella stanza.", // spec, casi limite: stesso testo per uscita, sospensione o blocco
 });
 
 const no = (motivo, testo = null) => ({ ok: false, motivo, testo });
