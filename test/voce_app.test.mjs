@@ -157,6 +157,8 @@ test("collegaVoce: se il server dice no, il microfono si spegne e il motivo arri
   const voce = creaVoce(b);
   const c = collegaVoce({ chiamata: { apri: async () => ({ ok: false, motivo: "fascia" }) }, voce });
   assert.deepEqual(await c.chiama("x"), { ok: false, motivo: "fascia" });
+  const f = collegaVoce({ chiamata: { apri: async () => ({ ok: false, motivo: "fuori_fascia", testo: "Disponibile da 19:00" }) }, voce: creaVoce(browserFinto()) });
+  assert.deepEqual(await f.chiama("x"), { ok: false, motivo: "fuori_fascia", testo: "Disponibile da 19:00" });
   assert.equal(b.log.tracceFermate, 1);
   const neg = collegaVoce({ chiamata: { apri: async () => assert.fail("non deve chiamare il server") }, voce: creaVoce(browserFinto({ negato: "NotAllowedError" })) });
   assert.deepEqual(await neg.chiama("x"), { ok: false, motivo: "microfono_negato" });

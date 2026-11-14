@@ -110,11 +110,10 @@ test("fuori dalla fascia di B nessuno squillo: «Disponibile da 19:00»", () => 
   assert.deepEqual(puoChiamare(base({ fascia: { da: "19:00", a: "23:00" } })), { ok: true });
 });
 
-test("la fascia può passare la mezzanotte", () => {
+test("spec v1.3: niente fasce a cavallo della mezzanotte; una fascia non valida vale come 9:00–23:00", () => {
   const f = { da: "22:00", a: "01:00" };
-  assert.equal(dentroFascia(f, oraDiRoma(2026, 11, 10, 23, 30)), true);
-  assert.equal(dentroFascia(f, oraDiRoma(2026, 11, 11, 0, 30)), true);
-  assert.equal(dentroFascia(f, oraDiRoma(2026, 11, 11, 1, 0)), false);
+  assert.equal(dentroFascia(f, oraDiRoma(2026, 11, 10, 22, 30)), true);
+  assert.equal(dentroFascia(f, oraDiRoma(2026, 11, 11, 0, 30)), false);
   assert.equal(dentroFascia(null, MARTEDI_20), true);
 });
 

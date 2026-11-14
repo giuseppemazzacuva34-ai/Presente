@@ -74,6 +74,10 @@ test("chiudi e segnala: manda segnala true e riporta segnala dalla risposta", as
 
 test("i «no» delle regole tornano col loro motivo; errori di rete e server con motivi fissi", async () => {
   assert.deepEqual(await crea(finto(() => [200, { ok: false, motivo: "tre_con_lei" }]).f).apri(UUID, "o"), { ok: false, motivo: "tre_con_lei" });
+  // Fuori fascia arriva anche l'orario (spec v1.3); un testo con altri motivi non passa.
+  assert.deepEqual(await crea(finto(() => [200, { ok: false, motivo: "fuori_fascia", testo: "Disponibile da 19:00" }]).f).apri(UUID, "o"),
+    { ok: false, motivo: "fuori_fascia", testo: "Disponibile da 19:00" });
+  assert.deepEqual(await crea(finto(() => [200, { ok: false, motivo: "occupato", testo: "x" }]).f).apri(UUID, "o"), { ok: false, motivo: "occupato" });
   assert.deepEqual(await crea(finto(() => [401, { ok: false, motivo: "accesso" }]).f).stato(), { ok: false, motivo: "accesso" });
   assert.deepEqual(await crea(finto(() => [429, { ok: false, motivo: "troppe" }]).f).stato(), { ok: false, motivo: "troppe" });
   assert.deepEqual(await crea(finto(() => [503, { ok: false, motivo: "riprova" }]).f).stato(), { ok: false, motivo: "riprova" });

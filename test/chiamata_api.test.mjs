@@ -105,6 +105,20 @@ test("apri: un no delle regole torna con il suo motivo (200), «riprova» è 503
   assert.equal(soloVoce.status, 400);
 });
 
+test("apri: fuori fascia arriva anche l'orario «Disponibile da …» (spec v1.3), e nient'altro", async () => {
+  const { f } = supabaseFinto();
+  const post = () => richiesta(PERCORSO_CHIAMATA + "/apri", { metodo: "POST", corpo: { verso: ALTRO, offerta: OFFERTA } });
+  for (const testo of ["Disponibile da 19:00", "Disponibile domani dalle 9:00"]) {
+    const r = await chiamataApi(post(), ENV, f, finte({ apri: { ok: false, motivo: "fuori_fascia", testo } }));
+    assert.deepEqual(await r.json(), { ok: false, motivo: "fuori_fascia", testo });
+  }
+  // Un testo che non ha la forma attesa non passa; gli altri motivi non portano testo.
+  const strano = await chiamataApi(post(), ENV, f, finte({ apri: { ok: false, motivo: "fuori_fascia", testo: "In pausa oggi" } }));
+  assert.deepEqual(await strano.json(), { ok: false, motivo: "fuori_fascia" });
+  const altro = await chiamataApi(post(), ENV, f, finte({ apri: { ok: false, motivo: "occupato", testo: "x" } }));
+  assert.deepEqual(await altro.json(), { ok: false, motivo: "occupato" });
+});
+
 test("apri: corpo non JSON o troppo grande non arriva alle regole", async () => {
   const { f } = supabaseFinto();
   const d = finte();

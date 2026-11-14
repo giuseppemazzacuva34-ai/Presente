@@ -133,7 +133,7 @@ export function collegaVoce({ chiamata, voce }) {
     const mia = await voce.parti();
     if (!mia.ok) { voce.chiudi(); return mia; }
     const r = await invia(mia.offerta);
-    if (!r.ok) { voce.chiudi(); return { ok: false, motivo: r.motivo }; }
+    if (!r.ok) { voce.chiudi(); return r.testo ? { ok: false, motivo: r.motivo, testo: r.testo } : { ok: false, motivo: r.motivo }; }
     const fatto = await voce.risposta(r.descrizione);
     if (!fatto.ok) { voce.chiudi(); return fatto; }
     return { ok: true, vista: r.vista ?? null };

@@ -17,7 +17,7 @@ const TESTI = Object.freeze({
   occupato: "È in un'altra chiamata",
   tre_con_lei: "Avete già parlato 3 volte. Ora tocca alle chiavi",
   cinque_oggi: "Per oggi hai fatto 5 chiamate. A domani",
-  cinque_oggi_lei: "Oggi non può ricevere altre chiamate. Riprova domani",
+  cinque_oggi_lei: "Per oggi non può ricevere altre chiamate. Riprova domani.",
   fuori_fascia: "Ora non è disponibile. Riprova più tardi",
   serve_permesso: "Chiedi di parlare",
   non_in_stanza: "Potete chiamarvi solo dentro la stessa stanza",
@@ -73,7 +73,11 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
       if (r.status === 404) return { ok: false, motivo: "spento" };
       const dati = await r.json();
       if (!dati || typeof dati !== "object") return { ok: false, motivo: "riprova" };
-      if (dati.ok !== true) return { ok: false, motivo: MOTIVI.has(dati.motivo) ? dati.motivo : "riprova" };
+      if (dati.ok !== true) {
+        const no = { ok: false, motivo: MOTIVI.has(dati.motivo) ? dati.motivo : "riprova" };
+        if (no.motivo === "fuori_fascia" && typeof dati.testo === "string") no.testo = dati.testo; // controllato da testoErrore()
+        return no;
+      }
       if (!r.ok) return { ok: false, motivo: "riprova" };
       const fine = { ok: true };
       if (typeof dati.descrizione === "string") fine.descrizione = dati.descrizione;
