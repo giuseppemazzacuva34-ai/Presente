@@ -28,6 +28,28 @@ function dati(o = {}) {
   };
 }
 
+// --- Passo diario (#5 passo 2): i dati per la nota, dal server, mai ricalcolati dal telefono ---------------------
+test("dopo: con la durata della chiamata → «diario» con persona, inizio ESATTO come nel database e durata", async () => {
+  const d = dati({ proposta: { chi: LEI, con: IO, inizio: "2026-11-13T19:00:00.123456+00:00", durata: 845 } });
+  const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
+  assert.deepEqual(r.dopo.diario, { con: LEI, chiamataIl: "2026-11-13T19:00:00.123456+00:00", durata: 845 });
+});
+
+test("dopo: senza durata valida (lettura non riuscita o fuori 60–900) → diario null, la domanda resta", async () => {
+  for (const durata of [undefined, null, 59, 901, 12.5, "600"]) {
+    const d = dati({ proposta: { chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00", durata } });
+    const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
+    assert.equal(r.dopo.tipo, "richiameresti");
+    assert.equal(r.dopo.diario, null, String(durata));
+  }
+});
+
+test("dopo: chiamata breve → niente diario (solo dopo una chiamata che conta)", async () => {
+  const d = dati({ ultima: { chi: LEI, con: IO, inizio: "2026-11-13T19:18:30Z", durata: 40, esito: "chiusa" } });
+  const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
+  assert.equal(r.dopo.diario, null);
+});
+
 // --- Logica ------------------------------------------------------------------------------------------------------
 test("dopo: una chiamata che conta senza risposta → «La richiameresti?» con l'altra persona e la chiave della chiamata", async () => {
   for (const [chi, con] of [[IO, LEI], [LEI, IO]]) {
@@ -35,6 +57,7 @@ test("dopo: una chiamata che conta senza risposta → «La richiameresti?» con 
     const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
     assert.deepEqual(r, { ok: true, dopo: {
       tipo: "richiameresti", passi: ["richiameresti", "diario", "fine"], testo: null, altra: LEI, chiamata: { chi, inizio: INIZIO },
+      diario: null,
     } });
   }
 });
@@ -50,6 +73,7 @@ test("dopo: chiamata appena finita sotto i 60 s → testo «durata poco», Segna
   const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
   assert.deepEqual(r, { ok: true, dopo: {
     tipo: "breve", passi: ["fine"], testo: "La chiamata è durata poco e non conta nei limiti.", altra: LEI, chiamata: null,
+    diario: null,
   } });
 });
 
@@ -131,9 +155,33 @@ function supabase(risposte) {
   return { f, chieste };
 }
 
+test("riproponiDb: legge anche la durata della chiamata (solo quella colonna), con l'inizio esatto del database", async () => {
+  const inizio = "2026-11-13T19:00:00.123456+00:00";
+  const { f, chieste } = supabase([
+    ["rpc/richiameresti_da_riproporre", [{ chi: LEI, con: IO, inizio }]],
+    ["/chiamate?", [{ durata: 845 }]],
+  ]);
+  const grezze = [];
+  const g = (url, init) => { grezze.push(url); return f(url, init); };
+  assert.deepEqual(await riproponiDb(ENV, IO, g), { chi: LEI, con: IO, inizio, durata: 845 });
+  const u = chieste[1].url;
+  assert.ok(u.startsWith(ENV.SUPABASE_URL + "/rest/v1/chiamate?select=durata&"));
+  assert.ok(u.includes(`chi=eq.${LEI}`) && u.includes(`inizio=eq.${inizio}`));
+  // Il «+» dell'orario va codificato, altrimenti PostgREST lo legge come spazio.
+  assert.ok(grezze[1].includes("%2B00%3A00"));
+});
+
+test("riproponiDb: se la durata non si legge la domanda resta (durata null): la proposta è già segnata", async () => {
+  const { f } = supabase([
+    ["rpc/richiameresti_da_riproporre", [{ chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00" }]],
+    ["/chiamate?", { stato: 503, corpo: {} }],
+  ]);
+  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00", durata: null });
+});
+
 test("riproponiDb: funzione del server con la persona del token; nessuna riga → null; errore → undefined", async () => {
   const { f, chieste } = supabase([["rpc/richiameresti_da_riproporre", [{ chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00" }]]]);
-  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00" });
+  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00", durata: null });
   assert.equal(chieste[0].url, ENV.SUPABASE_URL + "/rest/v1/rpc/richiameresti_da_riproporre");
   assert.equal(chieste[0].init.method, "POST");
   assert.deepEqual(JSON.parse(chieste[0].init.body), { p_utente: IO });

@@ -78,7 +78,11 @@ export async function dopoChiamata({ per, appena, adesso }, d) {
     const inizio = istante(proposta.inizio);
     if (!altra || !inizio) return { ok: true, dopo: null };
     const s = schermataDopo({ esito: "chiusa", durata: CHIAMATA.minimoPerContare });
-    return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: { chi: proposta.chi, inizio: inizio.toISOString() } } };
+    // Passo «diario» (#5): persona, inizio ESATTO come lo dà il database (la tabella lo confronta con chiamate.inizio)
+    // e durata vera; null se la durata non c'è o non conta, e l'app salta il passo.
+    const conta = Number.isInteger(proposta.durata) && proposta.durata >= CHIAMATA.minimoPerContare && durataValida(proposta.durata);
+    const diario = conta ? { con: altra, chiamataIl: proposta.inizio, durata: proposta.durata } : null;
+    return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: { chi: proposta.chi, inizio: inizio.toISOString() }, diario } };
   }
   if (appena !== true) return { ok: true, dopo: null };
   const ultima = await d.ultima(per);
@@ -94,7 +98,7 @@ export async function dopoChiamata({ per, appena, adesso }, d) {
   const s = schermataDopo({ esito, durata: ultima.durata });
   // Una chiamata che conta senza proposta ha già avuto la domanda (risposta o riproposta): non si chiede di nuovo.
   if (s.tipo !== "breve") return { ok: true, dopo: null };
-  return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: null } };
+  return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: null, diario: null } };
 }
 
 export async function rispondiRichiameresti({ per, corpo }, d) {
