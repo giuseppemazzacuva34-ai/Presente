@@ -9,12 +9,18 @@
 
 import { schermata, schermataDopo, testoMotivo } from "./chiamata.js";
 import { schedaCompagno, nomeInChiamata } from "./compagni.js";
+import { schermataDiario, controllaTesto } from "./diario.js";
 
 const TESTI_EXTRA = Object.freeze({
   microfono_negato: "Per chiamare serve il microfono. Consentilo nelle impostazioni del telefono e riprova",
   microfono_assente: "Non troviamo un microfono su questo telefono. Prova da un altro dispositivo",
   solo_voce: "Non riusciamo ad avviare la voce. Riprova tra poco",
   lettura: "Non riusciamo a vedere la tua stanza. Riprova tra poco",
+  // Diario (#5 passo 2): la nota non è salvata, il testo resta sullo schermo.
+  vuoto: "Scrivi qualcosa, oppure tocca «Salta»",
+  lungo: "Al massimo 1000 caratteri",
+  rifiutato: "Non riusciamo a salvare la nota. Riprova tra poco",
+  non_valida: "Non riusciamo a salvare la nota. Riprova tra poco",
 });
 // Fuori fascia il server manda l'orario («Disponibile da 19:00»): si usa solo se ha esattamente quella forma.
 const TESTO_FASCIA = /^Disponibile (da|domani dalle) ([01]?[0-9]|2[0-4]):[0-5][0-9]$/;
@@ -26,7 +32,8 @@ export const testoErrore = (motivo, testo) => {
 const ATTIVE = new Set(["squilla", "in_corso"]);
 const PAUSA_ASCOLTO_MS = 3000;
 
-export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {}, cambiato = () => {}, adesso = () => Date.now() }) {
+// diario: facoltativo, il modulo di diario.js (creaDiario) per il passo «diario» dopo «La richiameresti?».
+export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, subito = () => {}, cambiato = () => {}, adesso = () => Date.now() }) {
   const s = {
     persone: [], statoStanza: "attesa", erroreStanza: "",
     vista: null, nascondiFinita: false,
@@ -35,6 +42,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     attesa: false, errore: "",
     // Dopo la chiamata (3c-4b-2): risposta del server a /dopo, domanda già risposta, modulo di segnalazione da aprire.
     dopo: null, dopoChiesto: false, rientroChiesto: false, risposto: false, segnala: null,
+    diarioFatto: false, // passo «diario» salvato o saltato
   };
 
   const avvisa = () => { try { cambiato(); } catch { /* lo schermo non deve fermare il telefono */ } };
@@ -51,7 +59,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
     const v = vista && typeof vista === "object" ? vista : null;
     if (!v || !ATTIVE.has(v.fase)) spegniVoce();
     if (v && v.fase !== "finita") s.nascondiFinita = false;
-    if (v && ATTIVE.has(v.fase)) { s.dopo = null; s.dopoChiesto = false; s.risposto = false; s.segnala = null; }
+    if (v && ATTIVE.has(v.fase)) { s.dopo = null; s.dopoChiesto = false; s.risposto = false; s.segnala = null; s.diarioFatto = false; }
     if (v && v.fase === "finita" && !s.dopoChiesto && !s.segnala && !s.nascondiFinita) { s.dopoChiesto = true; chiediDopo(true); }
     if (v && v.fase === "in_corso") { if (s.visibileDal === null) s.visibileDal = adesso(); }
     else s.visibileDal = null;
@@ -68,6 +76,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
       if (s.vista && ATTIVE.has(s.vista.fase)) return;
       s.dopo = r.dopo;
       s.risposto = false;
+      s.diarioFatto = false;
       s.nascondiFinita = false;
       avvisa();
     }, () => { /* niente schermata «dopo»: resta la fine semplice */ });
@@ -111,9 +120,14 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
 
   const rifAltra = () => s.vista || (s.dopo ? { altra: s.dopo.altra } : null);
 
+  // Il passo «diario» c'è solo dopo la domanda, se il server ha dato i dati della chiamata e il modulo esiste.
+  const passoDiario = () => !!diario && !!s.dopo && s.dopo.tipo === "richiameresti" && s.risposto && !s.diarioFatto
+    && !!s.dopo.diario && typeof s.dopo.diario === "object";
+
   function schermo() {
     if (s.segnala) return { tipo: "segnala", titolo: "Segnala un problema" };
     if (s.dopo && !s.nascondiFinita && !inChiamata()) {
+      if (passoDiario()) return { tipo: "diario", ...schermataDiario(nomeInChiamata({ altra: s.dopo.altra }, s.persone)) };
       return schermataDopo(s.dopo, { nomeAltra: nomeInChiamata({ altra: s.dopo.altra }, s.persone), risposto: s.risposto });
     }
     if (!s.vista || (s.vista.fase === "finita" && s.nascondiFinita)) return { tipo: "nessuna" };
@@ -212,6 +226,25 @@ export function creaTelefono({ compagni, linea, chiamata, voce, subito = () => {
         if (r && r.ok) s.risposto = true;
         return r;
       });
+    },
+    // Diario: la nota va dritta su Supabase dal telefono, con persona, inizio e durata come li ha dati il server.
+    // «gia_scritta» (doppio tocco o nota già salvata): si va avanti lo stesso.
+    salvaDiario(testo) {
+      if (!passoDiario()) return Promise.resolve();
+      const { con, chiamataIl, durata } = s.dopo.diario;
+      const c = controllaTesto(testo);
+      if (!c.ok) { s.errore = testoErrore(c.motivo); avvisa(); return Promise.resolve(); }
+      return azione(async () => {
+        const r = await diario.salva({ con, chiamataIl, durata, testo });
+        if ((r && r.ok) || (r && r.motivo === "gia_scritta")) { s.diarioFatto = true; return { ok: true }; }
+        return r;
+      });
+    },
+    saltaDiario() {
+      if (!passoDiario()) return;
+      s.diarioFatto = true;
+      s.errore = "";
+      avvisa();
     },
     // «Segnala un problema» in fondo alla schermata dopo la chiamata: il modulo #7 con persona e chiamata collegate.
     segnalaProblema() {

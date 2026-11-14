@@ -13,6 +13,7 @@ import { creaCompagni } from "/app/moduli/compagni.js";
 import { creaSentinella } from "/app/moduli/sentinella.js";
 import { creaTelefono } from "/app/moduli/telefono.js";
 import { creaSegnala } from "/app/moduli/segnala.js";
+import { creaDiario } from "/app/moduli/diario.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -80,7 +81,10 @@ function preparaTelefono(config, accesso) {
   });
   const compagni = creaCompagni({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, token, fetch });
   let sentinella = null;
-  telefono = creaTelefono({ compagni, linea: collegaVoce({ chiamata, voce }), chiamata, voce,
+  // Diario privato (#5): la nota va dritta su Supabase col proprio token; senza configurazione il passo si salta.
+  let diario = null;
+  try { diario = creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, token, fetch }); } catch { diario = null; }
+  telefono = creaTelefono({ compagni, linea: collegaVoce({ chiamata, voce }), chiamata, voce, diario,
     subito: () => sentinella && sentinella.subito(), cambiato: () => telefonoCambiato() });
   sentinella = creaSentinella({ leggi: () => chiamata.stato(), quando: (r) => telefono.aggiorna(r), pagina: document });
   return { telefono, sentinella };
