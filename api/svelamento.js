@@ -35,7 +35,6 @@ const ORA = 3600000;
 const no = (motivo, extra = {}) => ({ ok: false, motivo, ...extra });
 const t = (d) => new Date(d).getTime();
 const nellaPorta = (porta, id) => id === porta.a || id === porta.b;
-const altro = (porta, id) => (id === porta.a ? porta.b : porta.a);
 const chiave = (porta, id) => (id === porta.a ? "a" : "b");
 
 export const scadenzaPorta = (aperta) => new Date(t(aperta) + SVELAMENTO.finestraOre * ORA);
@@ -131,12 +130,13 @@ export function portaScaduta({ porta, adesso }) {
 }
 
 // Chiusure prima dell'esito. «Chiudi e segnala» e blocco: crediti a entrambi (spec, «Casi limite»).
-// Sospensione di «da» durante le 48 ore: crediti restituiti all'altro (testo della spec v1).
+// Sospensione di uno dei due durante le 48 ore: porta chiusa e crediti bloccati restituiti a ENTRAMBI, anche a chi è
+// sospeso (risposta del CPO del 13/11 su #65): la sospensione è una sanzione sull'account, non sui crediti.
 export function chiusuraForzata({ porta, motivo, da }) {
   const bloccati = [porta.a, porta.b].filter((id) => porta.caparre?.[chiave(porta, id)]);
   if (motivo === "chiudi_e_segnala") return { chiusa: true, restituisci: bloccati, blocca: true, segnalazione: true, penale: 0 };
   if (motivo === "blocco") return { chiusa: true, restituisci: bloccati, blocca: true, segnalazione: false, penale: 0 };
-  if (motivo === "sospensione") return { chiusa: true, restituisci: bloccati.filter((id) => id === altro(porta, da)), blocca: false, segnalazione: false, penale: 0 };
+  if (motivo === "sospensione") return { chiusa: true, restituisci: bloccati, blocca: false, segnalazione: false, penale: 0 };
   throw new Error(`motivo sconosciuto: ${motivo}`);
 }
 

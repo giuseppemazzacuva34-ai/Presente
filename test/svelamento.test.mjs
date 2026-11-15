@@ -179,8 +179,12 @@ test("«Chiudi e segnala», blocco e sospensione: porta chiusa senza penale", ()
   const blocco = chiusuraForzata({ porta: p, motivo: "blocco", da: "b" });
   assert.deepEqual(blocco.restituisci, ["a", "b"]);
   assert.equal(blocco.segnalazione, false);
+  // CPO 13/11 (#65): con una sospensione i crediti bloccati tornano a entrambi, anche a chi è sospeso; nessuna penale.
   const sosp = chiusuraForzata({ porta: p, motivo: "sospensione", da: "b" });
-  assert.deepEqual(sosp.restituisci, ["a"]);
+  assert.deepEqual(sosp.restituisci, ["a", "b"]);
+  assert.equal(sosp.penale, 0);
+  const sospSolaA = chiusuraForzata({ porta: porta({ caparre: { a: false, b: true } }), motivo: "sospensione", da: "b" });
+  assert.deepEqual(sospSolaA.restituisci, ["b"]);
   assert.throws(() => chiusuraForzata({ porta: p, motivo: "altro", da: "a" }), /motivo/);
 });
 
