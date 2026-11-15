@@ -59,3 +59,8 @@ test("service worker: difficolta.js in memoria e versione nuova", () => {
   assert.ok(sw.includes('"/app/moduli/difficolta.js"'));
   assert.ok(!sw.includes('"presente-app-18"'));
 });
+
+test("persone: il nome senza l'età del titolo della scheda", () => {
+  const m = { stanza: { stato: "pronta", persone: [{ id: LEI, titolo: "Luca, 41" }] } };
+  assert.deepEqual(personeDifficolta(m), [{ id: LEI, nome: "Luca" }]);
+});
