@@ -1,7 +1,7 @@
 // Avvio della web app (Fase 2): registra il service worker (app installabile) e apre l'iscrizione.
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
-import { avvia, telefonoCambiato, chiaviCambiate } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -18,6 +18,7 @@ import { creaBlocca } from "/app/moduli/blocca.js";
 import { creaStorico } from "/app/moduli/storico_chiamate.js";
 import { creaChiavi } from "/app/moduli/chiavi.js";
 import { creaChiaviStanza } from "/app/moduli/chiavi_stanza.js";
+import { creaAppuntiStanza } from "/app/moduli/appunti_stanza.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -68,7 +69,13 @@ async function preparaAccesso() {
     // «Le tue chiamate» (#7): solo le proprie chiamate degli ultimi 30 giorni, con il proprio token.
     const storico = creaStorico({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
       token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // «I tuoi appunti» (#5): le proprie note, direttamente su Supabase col proprio token; il Worker non le vede.
+    let appunti = null;
+    try {
+      appunti = creaAppuntiStanza({ diario: creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+        token: () => accesso.token(), fetch: window.fetch.bind(window) }), aggiorna: () => appuntiCambiati() });
+    } catch { appunti = null; }
+    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

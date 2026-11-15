@@ -21,8 +21,11 @@ import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
+import { vistaAppunti } from "./appunti_stanza.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
+// «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
+let appuntiStanza = null;
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 
@@ -145,6 +148,7 @@ export function avvia(elemento, opzioni = {}) {
   chiaviStanza = (telefono && opzioni.chiavi) || null;
   svelamento = typeof opzioni.svelamento === "function" ? opzioni.svelamento : null;
   storicoChiamate = (telefono && opzioni.storico) || null;
+  appuntiStanza = (telefono && opzioni.appunti) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -441,6 +445,7 @@ function bloccoTuaStanza() {
   const st = m.stanza;
   let contenuto;
   if (chiaviStanza) chiaviStanza.prepara();
+  if (appuntiStanza && st.stato === "pronta") appuntiStanza.prepara(st.persone.map((p) => p.id));
   if (st.stato === "pronta") {
     // Con un testo della spec v1.3 il pulsante è spento ma resta raggiungibile da tastiera e lettore di schermo
     // (aria-disabled); il tocco non chiama (telefono.chiama controlla di nuovo). Mentre si è in chiamata: disabled.
@@ -451,7 +456,8 @@ function bloccoTuaStanza() {
         h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione,
           "aria-disabled": conTesto ? "true" : null, disabled: m.attesa || (!p.chiama && !conTesto),
           onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
-        chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null);
+        chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null,
+        appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null);
     }));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
@@ -1187,4 +1193,13 @@ function schermoStorico() {
     righe.length ? h("ul", { classe: "compagni" }, righe) : null,
     h("p", { classe: "nota" }, TESTI_STORICO.nota),
     h("button", { classe: "bottone-secondario", type: "button", onclick: chiudiStorico }, TESTI_STORICO.torna));
+}
+
+// «I tuoi appunti» (#5 passo 3, linea «sviluppatore-c»): si ridisegna solo nella home; con il campo aperto il fuoco
+// va lì, così tastiera e lettore di schermo non lo perdono.
+export function appuntiCambiati() {
+  if (!radice || !appuntiStanza || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  disegna();
+  const primo = radice.querySelector(".appunto textarea, .appunto [role=alertdialog] button");
+  if (primo) primo.focus({ preventScroll: true });
 }
