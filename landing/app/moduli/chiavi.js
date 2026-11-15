@@ -13,7 +13,7 @@ const FRASE_MASSIMO = 140;
 const MINUTO = 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const TESTI = Object.freeze({
+export const TESTI = Object.freeze({
   chiuse: "Le chiavi sono chiuse. Tra poco le porte.",
   nessunaPorta: "Stasera nessuna porta si è aperta. Lunedì alle 9 apre una nuova stanza.",
 });
