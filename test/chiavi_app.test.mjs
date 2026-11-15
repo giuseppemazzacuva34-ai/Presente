@@ -59,15 +59,15 @@ test("sera con porte: «Una porta si è aperta: <nome>.», la frase dell'altra p
     { id: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", con: LUI, nome: "Marco", frase_per_te: null },
   ] });
   assert.deepEqual(s, { tipo: "porte", schede: [
-    { porta: PORTA, testo: "Una porta si è aperta: Giulia.", scritto: "Giulia ti ha scritto:", frase: "Il treno, ancora.", bottone: "Vai allo svelamento" },
-    { porta: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", testo: "Una porta si è aperta: Marco.", scritto: null, frase: null, bottone: "Vai allo svelamento" },
+    { porta: PORTA, testo: "Una porta si è aperta: Giulia.", scritto: "Giulia ti ha scritto:", frase: "Il treno, ancora.", bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Giulia" },
+    { porta: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", testo: "Una porta si è aperta: Marco.", scritto: null, frase: null, bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Marco" },
   ] });
 });
 
 test("sera senza porte: lo stesso testo per tutti; in attesa e senza sera niente da mostrare", () => {
   assert.deepEqual(schermataSera({ ok: true, stato: "pronta", porte: [], testo: TESTI_CHIAVI.nessunaPorta }),
     { tipo: "nessuna_porta", testo: "Stasera nessuna porta si è aperta. Lunedì alle 9 apre una nuova stanza." });
-  assert.deepEqual(schermataSera({ ok: true, stato: "attesa" }), { tipo: "attesa" });
+  assert.deepEqual(schermataSera({ ok: true, stato: "attesa" }), { tipo: "attesa", testo: "Le chiavi sono chiuse. Tra poco le porte." });
   assert.equal(schermataSera({ ok: true, stato: "nessuna" }), null);
   // Righe senza id valido non diventano schede.
   assert.deepEqual(schermataSera({ ok: true, stato: "pronta", porte: [{ id: "x", con: LEI, nome: "Giulia" }] }).tipo, "nessuna_porta");

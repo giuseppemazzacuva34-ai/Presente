@@ -19,9 +19,11 @@ import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from
 import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./difficolta.js";
 import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
-import { vistaChiavi, vistaSchedaChiave } from "./chiavi_stanza.js";
+import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
+// Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
+let svelamento = null;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -137,6 +139,7 @@ export function avvia(elemento, opzioni = {}) {
   segnalatore = (telefono && opzioni.segnala) || null;
   bloccatore = (telefono && opzioni.blocca) || null;
   chiaviStanza = (telefono && opzioni.chiavi) || null;
+  svelamento = typeof opzioni.svelamento === "function" ? opzioni.svelamento : null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -432,7 +435,7 @@ function bloccoTuaStanza() {
   const m = telefono.modello();
   const st = m.stanza;
   let contenuto;
-  if (st.stato === "pronta" && chiaviStanza) chiaviStanza.prepara();
+  if (chiaviStanza) chiaviStanza.prepara();
   if (st.stato === "pronta") {
     contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => h("li", { classe: "compagno" },
       h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
@@ -448,6 +451,7 @@ function bloccoTuaStanza() {
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     h("h2", { id: "tua-stanza-titolo" }, "La tua stanza"),
+    chiaviStanza ? vistaSera(h, chiaviStanza, { svelamento }) : null,
     chiaviStanza && st.stato === "pronta" ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
     st.stato === "pronta" ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,

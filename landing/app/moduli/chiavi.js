@@ -68,7 +68,7 @@ export function contoAllaRovescia(chiudeIl, adesso = new Date()) {
 // La schermata delle 21:00 (spec, passo 8). null = niente da mostrare (stanza aperta o sera finita).
 export function schermataSera(sera) {
   if (!sera || sera.ok !== true) return null;
-  if (sera.stato === "attesa") return { tipo: "attesa" };
+  if (sera.stato === "attesa") return { tipo: "attesa", testo: TESTI.chiuse };
   if (sera.stato !== "pronta") return null;
   const schede = (Array.isArray(sera.porte) ? sera.porte : [])
     .filter((p) => p && UUID.test(String(p.id || "")) && UUID.test(String(p.con || "")))
@@ -76,7 +76,7 @@ export function schermataSera(sera) {
       const nome = chi(p.nome) || "una persona della stanza";
       const frase = typeof p.frase_per_te === "string" && p.frase_per_te.trim() ? p.frase_per_te.trim() : null;
       return { porta: p.id, testo: `Una porta si è aperta: ${nome}.`, scritto: frase ? `${nome} ti ha scritto:` : null, frase,
-        bottone: "Vai allo svelamento" };
+        bottone: "Vai allo svelamento", etichetta: `Vai allo svelamento con ${nome}` };
     });
   // Chi non ha porte vede sempre lo stesso testo, che abbia dato chiavi o no.
   return schede.length ? { tipo: "porte", schede } : { tipo: "nessuna_porta", testo: TESTI.nessunaPorta };

@@ -4,12 +4,15 @@
 // Le regole (2 chiavi, solo a chi hai chiamato, frase senza contatti, chiuse dalle 20:59) le decide il server: un suo
 // rifiuto lascia la finestra aperta con il suo testo. Nessuno scopre un no: qui ci sono solo le chiavi date da te.
 // Niente salvataggi locali. Il modulo non tocca la pagina: la vista (flusso.js) legge modello() e scheda(persona).
-import { contatoreChiavi, schedaChiave, finestraDai, confermaRiprendi, contoAllaRovescia } from "./chiavi.js";
+import { contatoreChiavi, schedaChiave, finestraDai, confermaRiprendi, contoAllaRovescia, schermataSera } from "./chiavi.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// In attesa del calcolo delle 21:00 si rilegge la sera dopo 20 secondi, finché non è pronta.
+const RILEGGI_SERA_MS = 20000;
 
-export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date() }) {
+export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date(), dopo = (fn, ms) => setTimeout(fn, ms) }) {
   let stato = null;
+  let sera = null;
   let finestra = null;
   let errore = null;
   let inCorso = false;
@@ -24,6 +27,12 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
   };
 
   let letto = null;
+  async function caricaSera() {
+    if (typeof chiavi.sera !== "function") return;
+    sera = schermataSera(await chiavi.sera());
+    if (sera && sera.tipo === "attesa") dopo(caricaSera, RILEGGI_SERA_MS);
+    avvisa();
+  }
   async function carica() {
     const r = await chiavi.leggi();
     stato = r && r.ok ? r.stato : null;
@@ -33,11 +42,12 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
   return {
     carica,
     // Per la home, che si ridisegna spesso: la prima lettura parte una volta sola.
-    prepara: () => (letto ??= carica()),
+    prepara: () => (letto ??= Promise.all([carica(), caricaSera()])),
     modello: () => ({
       contatore: contatoreChiavi(stato),
       conto: stato && stato.stanza === true ? contoAllaRovescia(stato.chiude_il, adesso()) : null,
       finestra: finestra ? { ...finestra } : null,
+      sera,
       errore,
       inCorso,
     }),
@@ -128,4 +138,19 @@ function finestra(h, ks, m, f) {
     m.errore ? h("p", { classe: "errore", role: "alert" }, m.errore) : null,
     h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ks.conferma() }, m.inCorso ? "Un attimo…" : f.bottone),
     h("button", { classe: "link", type: "button", disabled: m.inCorso, onclick: () => ks.chiudi() }, "Annulla"));
+}
+
+// La sera delle chiavi (passo 8), in cima a «La tua stanza» dalle 21:00 a lunedì 9:00. «Vai allo svelamento» solo se
+// chi costruisce lo svelamento (#65) passa la funzione che lo apre: niente pulsanti che non fanno niente.
+export function vistaSera(h, ks, { svelamento = null } = {}) {
+  const s = ks.modello().sera;
+  if (!s) return null;
+  if (s.tipo === "attesa") return h("div", { classe: "chiavi-sera", role: "status" }, s.testo);
+  if (s.tipo === "nessuna_porta") return h("div", { classe: "chiavi-sera" }, h("p", {}, s.testo));
+  // Solo i testi della spec: nessun titolo nuovo. Con due porte, due schede una sotto l'altra.
+  return h("div", { classe: "chiavi-sera" },
+    s.schede.map((p) => h("div", { classe: "porta-aperta" },
+      h("p", {}, h("strong", {}, p.testo)),
+      p.frase ? [h("p", { classe: "nota" }, p.scritto), h("blockquote", {}, p.frase)] : null,
+      typeof svelamento === "function" ? h("button", { classe: "bottone", type: "button", "aria-label": p.etichetta, onclick: () => svelamento(p.porta) }, p.bottone) : null)));
 }
