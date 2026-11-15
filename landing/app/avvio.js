@@ -14,6 +14,7 @@ import { creaSentinella } from "/app/moduli/sentinella.js";
 import { creaTelefono } from "/app/moduli/telefono.js";
 import { creaSegnala } from "/app/moduli/segnala.js";
 import { creaDiario } from "/app/moduli/diario.js";
+import { creaBlocca } from "/app/moduli/blocca.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -55,7 +56,10 @@ async function preparaAccesso() {
     const { telefono, sentinella } = preparaTelefono(config, accesso);
     // Segnalazioni (#7): il modulo dopo «Chiudi e segnala» e «Segnala un problema»; chi segnala lo dice il token.
     const segnala = creaSegnala({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Blocco dalla scheda (#7 punto 5): solo la propria riga in blocchi, con il proprio token (regole per riga).
+    const blocca = creaBlocca({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), utenteId: () => accesso.utenteId(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

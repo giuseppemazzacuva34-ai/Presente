@@ -17,6 +17,7 @@ import { testoZona, etichettaRaggio } from "./aree.js";
 import { testoConferma, chiediItalia, contatoreSoloZona } from "./stanza.js";
 import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from "./segnala.js";
 import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./difficolta.js";
+import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -86,6 +87,10 @@ let segnalatore = null;
 const segnalazione = { chiave: "", motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null };
 // «Sono in difficoltà» dal menu dell'app (#7 punto 6, passo 7b): solo in memoria, si azzera alla chiusura.
 const difficolta = { aperta: false, contro: "", invio: false, errore: "", conferma: null };
+// Menu ⋯ della scheda (#7 punto 1 e 5, passo 8b): menu aperto, conferma del blocco, segnalazione dalla scheda.
+// Le persone bloccate in questa sessione spariscono subito dall'elenco (al prossimo caricamento lo fa il database).
+let bloccatore = null;
+const scheda = { menu: "", conferma: "", invio: false, errore: "", segnala: null, bloccate: new Set() };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -127,6 +132,7 @@ export function avvia(elemento, opzioni = {}) {
   telefono = (archivio && opzioni.telefono) || null;
   sentinella = (telefono && opzioni.sentinella) || null;
   segnalatore = (telefono && opzioni.segnala) || null;
+  bloccatore = (telefono && opzioni.blocca) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -423,10 +429,10 @@ function bloccoTuaStanza() {
   const st = m.stanza;
   let contenuto;
   if (st.stato === "pronta") {
-    contenuto = h("ul", { classe: "compagni" }, st.persone.map((p) => h("li", { classe: "compagno" },
+    contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => h("li", { classe: "compagno" },
       h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
       h("button", { classe: "bottone-secondario", type: "button", "aria-label": `Chiama ${p.titolo}`, disabled: !p.chiama || m.attesa,
-        onclick: () => telefono.chiama(p.id) }, "Chiama"))));
+        onclick: () => telefono.chiama(p.id) }, "Chiama"), menuDellaScheda(p))));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
   } else if (st.stato === "errore") {
@@ -504,12 +510,12 @@ function schermoChiamata(m) {
 }
 
 // Modulo di segnalazione (#7 spec v1.1 punti 2-3): motivo, racconto facoltativo, «Blocca anche», conferma con il 112.
-function schermoSegnala(m) {
+function schermoSegnala(m, alla = () => telefono.torna()) {
   const sg = m.segnala || {};
   const chiave = `${sg.contro || ""}|${sg.origine || ""}`;
   const st = segnalazione;
   if (st.chiave !== chiave) Object.assign(st, { chiave, motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null });
-  const torna = () => { Object.assign(st, { chiave: "", esito: null }); telefono.torna(); };
+  const torna = () => { const inviata = !!st.esito; Object.assign(st, { chiave: "", esito: null }); alla(inviata); };
   if (st.esito) {
     const c = confermaSegnala(st.esito, m.nome);
     return [h("h1", { tabindex: "-1" }, c.titolo), h("p", { classe: "sottotitolo", role: "status" }, c.testo),
@@ -553,6 +559,7 @@ function disegna() {
     if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
   }
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
+  if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -1057,4 +1064,50 @@ function schermoDifficolta() {
     h("p", { classe: "nota" }, s.fisso),
     h("ul", { classe: "nota" }, s.consigli.map((c) => h("li", {}, c))),
     h("button", { classe: "link", type: "button", disabled: d.invio, onclick: chiudiDifficolta }, "Chiudi"));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Menu ⋯ nella scheda della persona (#7 spec v1.1 punti 1 e 5, linea «sviluppatore-b»): «Segnala» · «Blocca».
+function menuDellaScheda(p) {
+  const nome = nomeScheda(p);
+  const e = menuScheda(nome);
+  const aperto = scheda.menu === p.id;
+  const chiudi = () => { Object.assign(scheda, { menu: "", conferma: "", errore: "" }); disegna(); };
+  const parti = [h("button", { classe: "link", type: "button", "aria-label": e.apri, "aria-expanded": aperto ? "true" : "false",
+    disabled: scheda.invio, onclick: () => { Object.assign(scheda, { menu: aperto ? "" : p.id, conferma: "", errore: "" }); disegna(); } }, "⋯")];
+  if (!aperto) return parti;
+  if (scheda.conferma === p.id) {
+    const c = confermaBlocco(nome);
+    const blocca = async () => {
+      if (!bloccatore) { scheda.errore = "Il blocco non è ancora attivo."; disegna(); return; }
+      scheda.invio = true; scheda.errore = ""; disegna();
+      const r = await bloccatore.blocca(p.id).catch(() => ({ ok: false, motivo: "rete" }));
+      scheda.invio = false;
+      if (r.ok) { scheda.bloccate.add(p.id); Object.assign(scheda, { menu: "", conferma: "" }); }
+      else scheda.errore = MESSAGGI_STANZA[r.motivo] || "Non è andata. Riprova tra poco.";
+      disegna();
+    };
+    parti.push(h("div", { classe: "conferma-blocco", role: "alertdialog", "aria-label": c.titolo },
+      h("p", {}, h("strong", {}, c.titolo)), h("p", { classe: "nota" }, c.testo),
+      errore(scheda.errore),
+      h("button", { classe: "bottone-pericolo", type: "button", disabled: scheda.invio, onclick: blocca }, scheda.invio ? "Un attimo…" : c.conferma),
+      h("button", { classe: "link", type: "button", disabled: scheda.invio, onclick: chiudi }, c.annulla)));
+  } else {
+    parti.push(h("div", { classe: "menu-scheda" },
+      h("button", { classe: "link", type: "button", onclick: () => { Object.assign(scheda, { menu: "", segnala: { contro: p.id, origine: "scheda", nome } }); disegna(); } }, e.segnala),
+      h("button", { classe: "link", type: "button", onclick: () => { scheda.conferma = p.id; disegna(); } }, e.blocca)));
+  }
+  return parti;
+}
+
+// «Segnala» dalla scheda: lo stesso modulo di «Segnala un problema», con origine «scheda» e la casella «Blocca anche».
+function schermoSegnalaScheda() {
+  const sg = scheda.segnala;
+  const m = { segnala: { contro: sg.contro, origine: "scheda", chiamataIl: null }, nome: sg.nome, schermo: { titolo: "Segnala" } };
+  const torna = (inviata) => {
+    // Segnalazione inviata con «Blocca anche» spuntata: la persona sparisce subito dall'elenco.
+    if (inviata && segnalazione.blocca) scheda.bloccate.add(sg.contro);
+    scheda.segnala = null; disegna();
+  };
+  return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" }, schermoSegnala(m, torna));
 }

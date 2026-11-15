@@ -49,3 +49,17 @@ export function creaBlocca({ supabaseUrl, supabaseAnonKey, token, utenteId, fetc
     },
   };
 }
+
+// Menu ⋯ della scheda (spec punto 1): «Segnala» · «Blocca». Il nome serve solo all'etichetta per chi usa il lettore
+// di schermo.
+export function menuScheda(nome) {
+  const n = typeof nome === "string" && nome.trim() ? nome.trim() : "";
+  return { apri: `Altre azioni per ${n || "questa persona"}`, segnala: "Segnala", blocca: "Blocca" };
+}
+
+// Il modello del telefono dà la scheda come «Nome, età» (compagni.js): nei testi serve solo il nome.
+export function nomeScheda(p) {
+  if (!p || typeof p !== "object") return "";
+  if (typeof p.nome === "string" && p.nome.trim()) return p.nome.trim();
+  return typeof p.titolo === "string" ? p.titolo.replace(/,\s*\d{2,3}$/, "").trim() : "";
+}

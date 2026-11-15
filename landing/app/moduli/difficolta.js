@@ -71,5 +71,5 @@ export async function inviaDifficolta(segnalatore, scelte = {}) {
 export function personeDifficolta(modello) {
   const st = modello && modello.stanza;
   if (!st || st.stato !== "pronta" || !Array.isArray(st.persone)) return [];
-  return st.persone.filter((p) => p && UUID.test(String(p.id || ""))).map((p) => ({ id: p.id, nome: String(p.titolo || "") }));
+  return st.persone.filter((p) => p && UUID.test(String(p.id || ""))).map((p) => ({ id: p.id, nome: String(p.titolo || "").replace(/,\s*\d{2,3}$/, "").trim() }));
 }
