@@ -19,6 +19,7 @@ import { creaStorico } from "/app/moduli/storico_chiamate.js";
 import { creaChiavi } from "/app/moduli/chiavi.js";
 import { creaChiaviStanza } from "/app/moduli/chiavi_stanza.js";
 import { creaAppuntiStanza } from "/app/moduli/appunti_stanza.js";
+import { creaEsiti } from "/app/moduli/esiti_segnalazioni.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -77,7 +78,10 @@ async function preparaAccesso() {
       appunti = creaAppuntiStanza({ diario: creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
         token: () => accesso.token(), fetch: window.fetch.bind(window) }), aggiorna: () => appuntiCambiati() });
     } catch { appunti = null; }
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Esito per chi segnala (#7 passo 4): solo le proprie segnalazioni chiuse, con il proprio token.
+    const esiti = creaEsiti({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
