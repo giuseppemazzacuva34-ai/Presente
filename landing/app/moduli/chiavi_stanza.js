@@ -23,6 +23,7 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
     avvisa();
   };
 
+  let letto = null;
   async function carica() {
     const r = await chiavi.leggi();
     stato = r && r.ok ? r.stato : null;
@@ -31,6 +32,8 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
 
   return {
     carica,
+    // Per la home, che si ridisegna spesso: la prima lettura parte una volta sola.
+    prepara: () => (letto ??= carica()),
     modello: () => ({
       contatore: contatoreChiavi(stato),
       conto: stato && stato.stanza === true ? contoAllaRovescia(stato.chiude_il, adesso()) : null,
@@ -76,4 +79,53 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
       }
     },
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Viste (passo 8b). Ricevono h() da flusso.js, così si provano con node --test senza pagina.
+
+// In alto in «La tua stanza»: «Le tue chiavi: N» con due icone (piene quelle da dare) e, dalle 20:00, il conto.
+export function vistaChiavi(h, ks) {
+  const m = ks.modello();
+  if (!m.contatore) return null;
+  return h("div", { classe: "chiavi-stanza" },
+    h("p", { classe: "chiavi-contatore" }, m.contatore.icone.map((piena) =>
+      h("span", { classe: piena ? "chiave-icona" : "chiave-icona chiave-usata", "aria-hidden": "true" }, "🔑")), " ", m.contatore.testo),
+    m.conto ? h("p", { classe: "nota", id: "chiavi-conto", role: "status" }, m.conto) : null);
+}
+
+// Sulla scheda di una persona: «Dai una chiave», oppure il segno con «Riprendi» e «Modifica la frase», oppure il
+// testo delle chiavi chiuse. La finestra aperta per questa persona prende il posto dei pulsanti, vicino a dove si è
+// toccato (tastiera e lettore di schermo restano lì).
+export function vistaSchedaChiave(h, ks, persona, nome) {
+  const s = ks.scheda(persona);
+  if (!s) return null;
+  const m = ks.modello();
+  const f = m.finestra && m.finestra.a === persona ? m.finestra : null;
+  const n = typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona";
+  const segno = s.segno ? [h("p", { classe: "chiave-segno" }, s.segno),
+    s.frase ? h("p", { classe: "nota chiave-frase-data" }, `«${s.frase}»`) : null] : [];
+  if (s.chiuse) return h("div", { classe: "chiave-scheda" }, segno, h("p", { classe: "nota" }, s.chiuse));
+  if (f) return h("div", { classe: "chiave-scheda" }, segno, finestra(h, ks, m, f));
+  const link = (testo, onclick, etichetta) => h("button", { classe: "link", type: "button", "aria-label": etichetta, onclick }, testo);
+  return h("div", { classe: "chiave-scheda" }, segno,
+    s.dai ? h("button", { classe: "bottone-secondario", type: "button", "aria-label": `${s.dai} a ${n}`, onclick: () => ks.apriDai(persona, nome) }, s.dai) : null,
+    s.modifica ? link(s.modifica, () => ks.apriFrase(persona, nome), `${s.modifica} per ${n}`) : null,
+    s.riprendi ? link(s.riprendi, () => ks.apriRiprendi(persona, nome), `${s.riprendi} a ${n}`) : null);
+}
+
+function finestra(h, ks, m, f) {
+  const titolo = `chiave-titolo-${f.a}`;
+  const corpo = f.tipo === "riprendi"
+    ? [h("p", { id: titolo }, h("strong", {}, f.testo))]
+    : [h("p", { id: titolo }, h("strong", {}, f.titolo)),
+      h("label", { for: "chiave-frase" }, f.etichetta),
+      h("textarea", { id: "chiave-frase", classe: "racconto-segnala", maxlength: String(f.massimo), rows: "3", disabled: m.inCorso,
+        "aria-describedby": "chiave-nota", oninput: (e) => ks.scrivi(e.target.value) }, f.frase || ""),
+      h("p", { classe: "nota", id: "chiave-nota" }, f.nota)];
+  return h("div", { classe: "chiave-finestra", role: "dialog", "aria-labelledby": titolo },
+    corpo,
+    m.errore ? h("p", { classe: "errore", role: "alert" }, m.errore) : null,
+    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ks.conferma() }, m.inCorso ? "Un attimo…" : f.bottone),
+    h("button", { classe: "link", type: "button", disabled: m.inCorso, onclick: () => ks.chiudi() }, "Annulla"));
 }

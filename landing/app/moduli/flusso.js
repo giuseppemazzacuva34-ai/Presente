@@ -19,6 +19,9 @@ import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from
 import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./difficolta.js";
 import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
+import { vistaChiavi, vistaSchedaChiave } from "./chiavi_stanza.js";
+// Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
+let chiaviStanza = null;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -133,6 +136,7 @@ export function avvia(elemento, opzioni = {}) {
   sentinella = (telefono && opzioni.sentinella) || null;
   segnalatore = (telefono && opzioni.segnala) || null;
   bloccatore = (telefono && opzioni.blocca) || null;
+  chiaviStanza = (telefono && opzioni.chiavi) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -428,11 +432,13 @@ function bloccoTuaStanza() {
   const m = telefono.modello();
   const st = m.stanza;
   let contenuto;
+  if (st.stato === "pronta" && chiaviStanza) chiaviStanza.prepara();
   if (st.stato === "pronta") {
     contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => h("li", { classe: "compagno" },
       h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
       h("button", { classe: "bottone-secondario", type: "button", "aria-label": `Chiama ${p.titolo}`, disabled: !p.chiama || m.attesa,
-        onclick: () => telefono.chiama(p.id) }, "Chiama"), menuDellaScheda(p))));
+        onclick: () => telefono.chiama(p.id) }, "Chiama"), menuDellaScheda(p),
+      chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null)));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
   } else if (st.stato === "errore") {
@@ -442,6 +448,7 @@ function bloccoTuaStanza() {
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     h("h2", { id: "tua-stanza-titolo" }, "La tua stanza"),
+    chiaviStanza && st.stato === "pronta" ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
     st.stato === "pronta" ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
     m.attesa ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
@@ -1110,4 +1117,13 @@ function schermoSegnalaScheda() {
     scheda.segnala = null; disegna();
   };
   return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" }, schermoSegnala(m, torna));
+}
+
+// Chiavi (#5): il modulo avvisa a ogni cambio; si ridisegna solo nella home. Con una finestra aperta il fuoco va
+// al suo primo campo o pulsante, così chi usa la tastiera o il lettore di schermo non lo perde.
+export function chiaviCambiate() {
+  if (!radice || !chiaviStanza || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  disegna();
+  const primo = radice.querySelector(".chiave-finestra textarea, .chiave-finestra button");
+  if (primo) primo.focus({ preventScroll: true });
 }
