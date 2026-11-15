@@ -54,3 +54,22 @@ export function inEvidenza(appuntamento, adesso = new Date()) {
   if (!Number.isFinite(da) || !Number.isFinite(a) || !Number.isFinite(ora)) return false;
   return ora >= da && ora <= a;
 }
+
+// Passo 7b: invio dal menu dell'app. Riceve il segnalatore di segnala.js (null quando l'app è spenta).
+// Ogni errore rimanda al 112: la chiamata al telefono funziona sempre, anche senza rete.
+const ERRORE_112 = "Non riusciamo ad avvisare Presente ora. Se sei in pericolo, chiama il 112.";
+export async function inviaDifficolta(segnalatore, scelte = {}) {
+  const c = corpoDifficolta(scelte);
+  if (!c.ok) return { ok: false, errore: c.errore };
+  if (!segnalatore || typeof segnalatore.invia !== "function") return { ok: false, errore: ERRORE_112 };
+  const r = await Promise.resolve().then(() => segnalatore.invia(c.corpo)).catch(() => null);
+  return r && r.ok === true ? { ok: true, conferma: confermaDifficolta() } : { ok: false, errore: ERRORE_112 };
+}
+
+// Persone da proporre in «Riguarda una persona di Presente?»: quelle della stanza già caricate dal telefono
+// (telefono.modello().stanza). Le persone della porta arriveranno con la #5 (linea «sviluppatore-c»).
+export function personeDifficolta(modello) {
+  const st = modello && modello.stanza;
+  if (!st || st.stato !== "pronta" || !Array.isArray(st.persone)) return [];
+  return st.persone.filter((p) => p && UUID.test(String(p.id || ""))).map((p) => ({ id: p.id, nome: String(p.titolo || "") }));
+}

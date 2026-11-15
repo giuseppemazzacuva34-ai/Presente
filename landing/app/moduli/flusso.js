@@ -16,6 +16,7 @@ import { MENU_PROVINCE, ESTERO, cercaProvincia, suggerimenti, nomeMenu, nomeVisi
 import { testoZona, etichettaRaggio } from "./aree.js";
 import { testoConferma, chiediItalia, contatoreSoloZona } from "./stanza.js";
 import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from "./segnala.js";
+import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./difficolta.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -83,6 +84,8 @@ let stanza = null;
 // Modulo di segnalazione #7 (segnala.js, linea «sviluppatore-b»): scelte solo in memoria, si azzerano a ogni modulo nuovo.
 let segnalatore = null;
 const segnalazione = { chiave: "", motivo: "", testo: "", blocca: true, invio: false, errore: "", esito: null };
+// «Sono in difficoltà» dal menu dell'app (#7 punto 6, passo 7b): solo in memoria, si azzera alla chiusura.
+const difficolta = { aperta: false, contro: "", invio: false, errore: "", conferma: null };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -549,6 +552,7 @@ function disegna() {
     const m = telefono.modello();
     if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
   }
+  if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -922,6 +926,7 @@ const SCHERMATE = {
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
+        h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],
@@ -1008,4 +1013,48 @@ async function eliminaAccount() {
   await accesso.esci();
   if (stato.minorenne) { disegna(); return; } // resta la schermata «solo per maggiorenni»
   location.replace("/app/");
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// «Sono in difficoltà» (#7 spec v1.1 punto 6, linea «sviluppatore-b»): 112 in alto, sotto «Avvisa Presente».
+// Nessuna posizione, nessun salvataggio sul telefono; l'invio passa da segnala.js (chi avvisa lo dice il token).
+function apriDifficolta() {
+  Object.assign(difficolta, { aperta: true, contro: "", invio: false, errore: "", conferma: null });
+  disegna();
+}
+function chiudiDifficolta() {
+  Object.assign(difficolta, { aperta: false, contro: "", invio: false, errore: "", conferma: null });
+  disegna();
+}
+function schermoDifficolta() {
+  const d = difficolta;
+  const s = schermataDifficolta(telefono ? personeDifficolta(telefono.modello()) : []);
+  // Spec: il 112 in alto e grande, è l'azione principale; «Avvisa Presente» viene dopo.
+  const chiama = h("a", { classe: "bottone", href: s.telefono }, s.chiama);
+  if (d.conferma) {
+    return h("section", { classe: "schermata difficolta", "aria-label": "Sono in difficoltà" },
+      h("h1", {}, s.titolo), chiama,
+      h("p", { classe: "sottotitolo", role: "status" }, d.conferma.testo),
+      h("p", { classe: "nota" }, d.conferma.pericolo),
+      h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: chiudiDifficolta }, "Torna all'app")));
+  }
+  const avvisa = async () => {
+    d.invio = true; d.errore = ""; disegna();
+    const r = await inviaDifficolta(segnalatore, { contro: d.contro || null });
+    d.invio = false;
+    if (r.ok) d.conferma = r.conferma; else d.errore = r.errore;
+    disegna();
+  };
+  return h("section", { classe: "schermata difficolta", "aria-label": "Sono in difficoltà" },
+    h("h1", {}, s.titolo), chiama,
+    s.persone ? h("fieldset", { classe: "motivi-segnala" }, h("legend", {}, s.domanda),
+      s.persone.map(([valore, testo]) => h("label", { classe: "casella" },
+        h("input", { type: "radio", name: "persona-difficolta", value: valore, checked: d.contro === valore, disabled: d.invio,
+          onchange: () => { d.contro = valore; } }), testo))) : null,
+    h("div", { classe: "azioni" },
+      h("button", { classe: "bottone-secondario", type: "button", disabled: d.invio, onclick: avvisa }, d.invio ? "Invio…" : s.avvisa)),
+    errore(d.errore),
+    h("p", { classe: "nota" }, s.fisso),
+    h("ul", { classe: "nota" }, s.consigli.map((c) => h("li", {}, c))),
+    h("button", { classe: "link", type: "button", disabled: d.invio, onclick: chiudiDifficolta }, "Chiudi"));
 }
