@@ -437,11 +437,17 @@ function bloccoTuaStanza() {
   let contenuto;
   if (chiaviStanza) chiaviStanza.prepara();
   if (st.stato === "pronta") {
-    contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => h("li", { classe: "compagno" },
-      h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
-      h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione, disabled: !p.chiama || m.attesa,
-        onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
-      chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null)));
+    // Con un testo della spec v1.3 il pulsante è spento ma resta raggiungibile da tastiera e lettore di schermo
+    // (aria-disabled); il tocco non chiama (telefono.chiama controlla di nuovo). Mentre si è in chiamata: disabled.
+    contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => {
+      const conTesto = !p.chiama && Boolean(p.etichetta) && p.etichetta !== "Chiama";
+      return h("li", { classe: "compagno" },
+        h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
+        h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione,
+          "aria-disabled": conTesto ? "true" : null, disabled: m.attesa || (!p.chiama && !conTesto),
+          onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
+        chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null);
+    }));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
   } else if (st.stato === "errore") {
