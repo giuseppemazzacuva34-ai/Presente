@@ -118,3 +118,10 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .compagno .menu-scheda, .compagno .conferma-blocco { flex-basis: 100%; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
 .compagno .conferma-blocco p { flex-basis: 100%; margin: 0; }
 .compagno > button[aria-expanded] { min-width: 44px; min-height: 44px; }
+/* Chiavi nella stanza (#5): contatore in alto, segno e finestra sulla scheda, a tutta larghezza. */
+.chiavi-contatore { display: flex; align-items: center; gap: 0.35rem; margin: 0 0 0.5rem; }
+.chiave-icona.chiave-usata { opacity: 0.35; filter: grayscale(1); }
+.compagno .chiave-scheda { flex-basis: 100%; text-align: left; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.compagno .chiave-scheda > p { flex-basis: 100%; margin: 0; }
+.compagno .chiave-finestra { flex-basis: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+.compagno .chiave-finestra textarea { width: 100%; }
