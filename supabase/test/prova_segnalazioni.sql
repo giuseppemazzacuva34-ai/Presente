@@ -81,7 +81,7 @@ select pg_temp.ok(pg_temp.rifiutato($$select public.nuova_segnalazione('7a7a7a7a
   'segnalazioni: racconto al massimo di 1000 caratteri');
 select pg_temp.ok((select array_agg(column_name::text order by column_name::text) from information_schema.columns
   where table_schema = 'public' and table_name = 'segnalazioni') is not distinct from
-  array['aperta_il', 'chiusa_il', 'contro', 'creata_il', 'da', 'esito', 'id', 'motivo', 'origine', 'scade_il', 'testo'],
+  array['aperta_il', 'chiusa_il', 'contro', 'creata_il', 'da', 'esito', 'esito_letto_il', 'id', 'motivo', 'origine', 'scade_il', 'testo'],
   'segnalazioni: solo i campi della spec (niente diario, questionario o «la richiameresti?»)');
 reset role;
 
