@@ -8,6 +8,9 @@
 // Il modulo non tocca la pagina: riceve fetch e token dall'esterno, così si prova con node --test.
 
 const PERCORSO = "/rest/v1/rpc/compagni_di_stanza";
+// Stanza appena chiusa (#5 spec v1.1 passo 9): da domenica 21:00 a lunedì 9:00 di Roma, stessi quattro campi, in sola
+// lettura. Si chiede solo quando la stanza aperta non dà nessuno (migrazione 20261115170000).
+const PERCORSO_CHIUSA = "/rest/v1/rpc/compagni_stanza_chiusa";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function creaCompagni({ supabaseUrl, supabaseAnonKey, token, fetch: f = globalThis.fetch }) {
@@ -17,27 +20,36 @@ export function creaCompagni({ supabaseUrl, supabaseAnonKey, token, fetch: f = g
   const base = supabaseUrl.replace(/\/+$/, "");
 
   return {
-    // { ok: true, persone: [{ id, nome, eta, citta }] } oppure { ok: false, motivo: "accesso" | "rete" | "lettura" }.
+    // { ok: true, persone: [{ id, nome, eta, citta }] } — con «chiusa: true» se è la stanza appena chiusa (sola
+    // lettura) — oppure { ok: false, motivo: "accesso" | "rete" | "lettura" }.
     async leggi() {
       const t = await Promise.resolve().then(token).catch(() => null);
       if (!t) return { ok: false, motivo: "accesso" };
-      let r;
-      try {
-        r = await f(`${base}${PERCORSO}`, {
-          method: "POST",
-          headers: { apikey: supabaseAnonKey, authorization: `Bearer ${t}`, "content-type": "application/json" },
-          body: "{}",
-        });
-      } catch {
-        return { ok: false, motivo: "rete" };
-      }
-      if (r.status === 401) return { ok: false, motivo: "accesso" };
-      if (!r.ok) return { ok: false, motivo: "lettura" };
-      let righe;
-      try { righe = await r.json(); } catch { return { ok: false, motivo: "lettura" }; }
-      return { ok: true, persone: pulisci(righe) };
+      const aperta = await rpc(PERCORSO, t);
+      if (!aperta.ok || aperta.persone.length) return aperta;
+      // Nessuna stanza aperta: forse è appena chiusa. Se questa lettura non riesce, la stanza resta semplicemente vuota.
+      const chiusa = await rpc(PERCORSO_CHIUSA, t);
+      return chiusa.ok && chiusa.persone.length ? { ok: true, chiusa: true, persone: chiusa.persone } : aperta;
     },
   };
+
+  async function rpc(percorso, t) {
+    let r;
+    try {
+      r = await f(`${base}${percorso}`, {
+        method: "POST",
+        headers: { apikey: supabaseAnonKey, authorization: `Bearer ${t}`, "content-type": "application/json" },
+        body: "{}",
+      });
+    } catch {
+      return { ok: false, motivo: "rete" };
+    }
+    if (r.status === 401) return { ok: false, motivo: "accesso" };
+    if (!r.ok) return { ok: false, motivo: "lettura" };
+    let righe;
+    try { righe = await r.json(); } catch { return { ok: false, motivo: "lettura" }; }
+    return { ok: true, persone: pulisci(righe) };
+  }
 }
 
 // Solo righe con un id valido, una volta sola, e solo i quattro campi; in ordine di nome.
