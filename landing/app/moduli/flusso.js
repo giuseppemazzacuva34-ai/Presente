@@ -22,6 +22,7 @@ import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalva
 import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
+import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -103,6 +104,9 @@ const scheda = { menu: "", conferma: "", invio: false, errore: "", segnala: null
 // «Le tue chiamate» (#7, caso limite «Persona già bloccata», passo 9c): elenco e segnalazione solo in memoria.
 let storicoChiamate = null;
 const storico = { aperto: false, carica: false, voci: [], errore: "", menu: "", segnala: null };
+// Esito per chi segnala (#7 passo 4, passo 10c): letto una volta per sessione, solo in memoria.
+let esitiSegnalazioni = null;
+const esiti = { chiesti: false, voci: [] };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -151,6 +155,7 @@ export function avvia(elemento, opzioni = {}) {
   svelamento = typeof opzioni.svelamento === "function" ? opzioni.svelamento : null;
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
+  esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -968,6 +973,7 @@ const SCHERMATE = {
         italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null,
         bloccoStanza(),
         bloccoTuaStanza(),
+        bloccoEsiti(),
         h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
@@ -1217,4 +1223,24 @@ export function appuntiCambiati() {
   disegna();
   const primo = radice.querySelector(".appunto textarea, .appunto [role=alertdialog] button");
   if (primo) primo.focus({ preventScroll: true });
+}
+
+// Esito per chi segnala (#7 spec v1.1, passo 4): «Abbiamo esaminato la tua segnalazione…», uno dei due testi della
+// spec, mai il dettaglio della sanzione. Si legge una volta per sessione dalla home; «Ho capito» non lo fa tornare.
+function bloccoEsiti() {
+  if (!esitiSegnalazioni) return null;
+  if (!esiti.chiesti) {
+    esiti.chiesti = true;
+    esitiSegnalazioni.leggi().then((r) => {
+      if (r && r.ok && r.esiti.length) { esiti.voci = r.esiti; disegna(); }
+    }).catch(() => {});
+  }
+  if (!esiti.voci.length) return null;
+  return h("div", { classe: "esiti-segnalazioni" }, ...esiti.voci.map((v) => h("div", { classe: "riepilogo", role: "status" },
+    h("p", {}, v.testo),
+    h("button", { classe: "link", type: "button", onclick: () => {
+      esiti.voci = esiti.voci.filter((x) => x.id !== v.id);
+      disegna();
+      esitiSegnalazioni.letto(v.id).catch(() => {});
+    } }, TESTI_ESITO.ok))));
 }
