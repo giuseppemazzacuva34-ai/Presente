@@ -15,6 +15,13 @@ test("flusso: il pulsante della scheda usa etichetta e descrizione, non più «C
   assert.doesNotMatch(blocco, /"aria-label": `Chiama \$\{p\.titolo\}`/);
 });
 
+test("flusso: con un testo il pulsante resta raggiungibile da tastiera (aria-disabled, non disabled)", () => {
+  const flusso = leggi("../landing/app/moduli/flusso.js");
+  const blocco = flusso.slice(flusso.indexOf("function bloccoTuaStanza"), flusso.indexOf("function schermoChiamata"));
+  assert.match(blocco, /"aria-disabled": conTesto \? "true" : null/);
+  assert.match(blocco, /disabled: m\.attesa \|\| \(!p\.chiama && !conTesto\)/);
+});
+
 test("scheda: con un testo della spec il pulsante è spento e porta quel testo", () => {
   const p = schedaCompagno({ nome: "Sara", eta: 30, citta: "Roma" }, { testo: "È in un'altra chiamata" });
   assert.equal(p.chiama, false);
@@ -28,4 +35,5 @@ test("scheda: con un testo della spec il pulsante è spento e porta quel testo",
 test("service worker: versione nuova dopo la modifica di flusso.js", () => {
   const sw = leggi("../landing/app/sw.js");
   assert.ok(!sw.includes('"presente-app-22"'));
+  assert.ok(!sw.includes('"presente-app-23"'));
 });
