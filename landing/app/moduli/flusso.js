@@ -439,8 +439,8 @@ function bloccoTuaStanza() {
   if (st.stato === "pronta") {
     contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => h("li", { classe: "compagno" },
       h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
-      h("button", { classe: "bottone-secondario", type: "button", "aria-label": `Chiama ${p.titolo}`, disabled: !p.chiama || m.attesa,
-        onclick: () => telefono.chiama(p.id) }, "Chiama"), menuDellaScheda(p),
+      h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione, disabled: !p.chiama || m.attesa,
+        onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
       chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null)));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
