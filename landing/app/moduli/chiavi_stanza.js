@@ -4,13 +4,25 @@
 // Le regole (2 chiavi, solo a chi hai chiamato, frase senza contatti, chiuse dalle 20:59) le decide il server: un suo
 // rifiuto lascia la finestra aperta con il suo testo. Nessuno scopre un no: qui ci sono solo le chiavi date da te.
 // Niente salvataggi locali. Il modulo non tocca la pagina: la vista (flusso.js) legge modello() e scheda(persona).
-import { contatoreChiavi, schedaChiave, finestraDai, confermaRiprendi, contoAllaRovescia, schermataSera } from "./chiavi.js";
+import { contatoreChiavi, schedaChiave, finestraDai, confermaRiprendi, contoAllaRovescia, schermataSera, TESTI } from "./chiavi.js";
 
+const TESTO_CHIUSE = TESTI.chiuse;
+// Timer del browser; in node (test) non tiene acceso il processo.
+const dopoPredefinito = (fn, ms) => {
+  const t = setTimeout(fn, ms);
+  if (t && typeof t.unref === "function") t.unref();
+  return t;
+};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // In attesa del calcolo delle 21:00 si rilegge la sera dopo 20 secondi, finché non è pronta.
 const RILEGGI_SERA_MS = 20000;
+// Conto alla rovescia (passo 10): si ricontrolla al cambio di minuto (+50 ms), al massimo ogni 10 minuti.
+const MINUTO_MS = 60000;
+const ORA_MS = 60 * MINUTO_MS;
+const MASSIMA_ATTESA_MS = 10 * MINUTO_MS;
+const MARGINE_MS = 50;
 
-export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date(), dopo = (fn, ms) => setTimeout(fn, ms) }) {
+export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date(), dopo = dopoPredefinito, conto = () => {} }) {
   let stato = null;
   let sera = null;
   let finestra = null;
@@ -26,6 +38,35 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
     avvisa();
   };
 
+  // Il conto scorre da solo: il testo cambia sul posto (conto), senza ridisegnare la pagina; si ridisegna solo
+  // quando compare o sparisce. Alle 20:59 si rilegge lo stato (chiavi chiuse dal server), alle 21:00 la sera.
+  let timerConto = false;
+  let ultimoConto = null;
+  const manca = () => {
+    const chiude = stato && stato.stanza === true ? new Date(stato.chiude_il).getTime() : NaN;
+    return Number.isFinite(chiude) ? chiude - adesso().getTime() : NaN;
+  };
+  function programmaConto() {
+    const m = manca();
+    if (timerConto || !Number.isFinite(m) || m <= 0) return;
+    const attesa = m > ORA_MS ? m - ORA_MS : (m % MINUTO_MS || MINUTO_MS);
+    timerConto = true;
+    dopo(scattaConto, Math.min(attesa, MASSIMA_ATTESA_MS) + MARGINE_MS);
+  }
+  async function scattaConto() {
+    timerConto = false;
+    if (!stato || stato.stanza !== true) return;
+    const m = manca();
+    const nuovo = contoAllaRovescia(stato.chiude_il, adesso());
+    const prima = ultimoConto;
+    ultimoConto = nuovo;
+    if (m <= 0) { await Promise.all([carica(), caricaSera()]); return; }
+    if (nuovo === TESTO_CHIUSE && prima !== TESTO_CHIUSE) { await carica(); return; }
+    if ((prima === null) !== (nuovo === null)) avvisa();
+    else if (nuovo !== prima) { try { conto(nuovo); } catch { /* la vista non deve fermare il conto */ } }
+    programmaConto();
+  }
+
   let letto = null;
   async function caricaSera() {
     if (typeof chiavi.sera !== "function") return;
@@ -36,7 +77,9 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
   async function carica() {
     const r = await chiavi.leggi();
     stato = r && r.ok ? r.stato : null;
+    ultimoConto = stato && stato.stanza === true ? contoAllaRovescia(stato.chiude_il, adesso()) : null;
     avvisa();
+    programmaConto();
   }
 
   return {
