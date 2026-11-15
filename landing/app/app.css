@@ -125,3 +125,7 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .compagno .chiave-scheda > p { flex-basis: 100%; margin: 0; }
 .compagno .chiave-finestra { flex-basis: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 .compagno .chiave-finestra textarea { width: 100%; }
+/* Sera delle chiavi (#5): le porte aperte in cima a «La tua stanza». */
+.chiavi-sera { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 0.9rem; margin: 0 0 1rem; text-align: left; }
+.chiavi-sera .porta-aperta + .porta-aperta { border-top: 1px solid var(--linea); margin-top: 0.9rem; padding-top: 0.9rem; }
+.chiavi-sera blockquote { margin: 0.25rem 0 0.75rem; font-style: italic; }
