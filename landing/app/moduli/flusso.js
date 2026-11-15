@@ -20,6 +20,7 @@ import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./diffi
 import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
+import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
@@ -96,6 +97,9 @@ const difficolta = { aperta: false, contro: "", invio: false, errore: "", confer
 // Le persone bloccate in questa sessione spariscono subito dall'elenco (al prossimo caricamento lo fa il database).
 let bloccatore = null;
 const scheda = { menu: "", conferma: "", invio: false, errore: "", segnala: null, bloccate: new Set() };
+// «Le tue chiamate» (#7, caso limite «Persona già bloccata», passo 9c): elenco e segnalazione solo in memoria.
+let storicoChiamate = null;
+const storico = { aperto: false, carica: false, voci: [], errore: "", menu: "", segnala: null };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -140,6 +144,7 @@ export function avvia(elemento, opzioni = {}) {
   bloccatore = (telefono && opzioni.blocca) || null;
   chiaviStanza = (telefono && opzioni.chiavi) || null;
   svelamento = typeof opzioni.svelamento === "function" ? opzioni.svelamento : null;
+  storicoChiamate = (telefono && opzioni.storico) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -577,6 +582,7 @@ function disegna() {
   }
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
+  if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -951,6 +957,7 @@ const SCHERMATE = {
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
+        storicoChiamate ? h("button", { classe: "link", type: "button", onclick: apriStorico }, TESTI_STORICO.titolo) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],
@@ -1136,4 +1143,48 @@ export function chiaviCambiate() {
   disegna();
   const primo = radice.querySelector(".chiave-finestra textarea, .chiave-finestra button");
   if (primo) primo.focus({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// «Le tue chiamate» (#7 spec v1.1, caso limite «Persona già bloccata: si può ancora segnalare dallo storico delle
+// chiamate («Le tue chiamate» → ⋯ → Segnala) per 30 giorni»; linea «sviluppatore-b»). I dati arrivano da
+// storico_chiamate.js (solo id, nome, data e durata); la segnalazione usa lo stesso modulo di «Segnala un problema».
+async function apriStorico() {
+  Object.assign(storico, { aperto: true, carica: true, voci: [], errore: "", menu: "", segnala: null });
+  disegna();
+  const r = await storicoChiamate.leggi().catch(() => ({ ok: false, motivo: "rete" }));
+  if (!storico.aperto) return;
+  storico.carica = false;
+  if (r.ok) storico.voci = r.chiamate; else storico.errore = MESSAGGI_SALVATAGGIO[r.motivo] || "Non riusciamo a leggere le tue chiamate. Riprova tra poco.";
+  disegna();
+}
+function chiudiStorico() {
+  Object.assign(storico, { aperto: false, carica: false, voci: [], errore: "", menu: "", segnala: null });
+  disegna();
+}
+function schermoStorico() {
+  const sg = storico.segnala;
+  if (sg) {
+    const torna = () => { storico.segnala = null; disegna(); };
+    return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" },
+      schermoSegnala({ segnala: { contro: sg.contro, origine: "storico_chiamate", chiamataIl: sg.chiamataIl }, nome: sg.nome, schermo: { titolo: "Segnala" } }, torna));
+  }
+  const righe = storico.voci.map((v) => {
+    const id = `${v.con}|${v.chiamataIl}`;
+    const aperto = storico.menu === id;
+    return h("li", { classe: "compagno" },
+      h("p", {}, h("strong", {}, v.nome), ` · ${v.quando} · ${v.durata}`),
+      h("button", { classe: "link", type: "button", "aria-label": `Altre azioni per la chiamata con ${v.nome}`, "aria-expanded": aperto ? "true" : "false",
+        onclick: () => { storico.menu = aperto ? "" : id; disegna(); } }, "⋯"),
+      aperto ? h("div", { classe: "menu-scheda" },
+        h("button", { classe: "link", type: "button", onclick: () => { Object.assign(storico, { menu: "", segnala: segnalaDaStorico(v) }); disegna(); } }, TESTI_STORICO.segnala)) : null);
+  });
+  return h("section", { classe: "schermata", "aria-label": TESTI_STORICO.titolo },
+    h("h1", {}, TESTI_STORICO.titolo),
+    storico.carica ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
+    errore(storico.errore),
+    !storico.carica && !storico.errore && righe.length === 0 ? h("p", { classe: "nota" }, TESTI_STORICO.vuoto) : null,
+    righe.length ? h("ul", { classe: "compagni" }, righe) : null,
+    h("p", { classe: "nota" }, TESTI_STORICO.nota),
+    h("button", { classe: "bottone-secondario", type: "button", onclick: chiudiStorico }, TESTI_STORICO.torna));
 }

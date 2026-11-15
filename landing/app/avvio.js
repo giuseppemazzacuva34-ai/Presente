@@ -15,6 +15,7 @@ import { creaTelefono } from "/app/moduli/telefono.js";
 import { creaSegnala } from "/app/moduli/segnala.js";
 import { creaDiario } from "/app/moduli/diario.js";
 import { creaBlocca } from "/app/moduli/blocca.js";
+import { creaStorico } from "/app/moduli/storico_chiamate.js";
 import { creaChiavi } from "/app/moduli/chiavi.js";
 import { creaChiaviStanza } from "/app/moduli/chiavi_stanza.js";
 
@@ -64,7 +65,10 @@ async function preparaAccesso() {
     // Chiavi (#5): le regole le decide il Worker (/app/api/chiavi); chi dà la chiave lo dice solo il token.
     const chiavi = creaChiaviStanza({ chiavi: creaChiavi({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       aggiorna: () => chiaviCambiate() });
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // «Le tue chiamate» (#7): solo le proprie chiamate degli ultimi 30 giorni, con il proprio token.
+    const storico = creaStorico({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
