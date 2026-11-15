@@ -68,7 +68,9 @@ async function preparaAccesso() {
     const chiavi = creaChiaviStanza({ chiavi: creaChiavi({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       aggiorna: () => chiaviCambiate(),
       // Il conto alla rovescia delle 20:00 cambia sul posto ogni minuto, senza ridisegnare la pagina.
-      conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; } });
+      conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; },
+      // Sera delle chiavi: porte che si aprono per 3 secondi, saltabili; niente animazione per chi chiede meno movimento.
+      animazioneMs: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 3000 });
     // «Le tue chiamate» (#7): solo le proprie chiamate degli ultimi 30 giorni, con il proprio token.
     const storico = creaStorico({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
       token: () => accesso.token(), fetch: window.fetch.bind(window) });

@@ -22,7 +22,8 @@ const ORA_MS = 60 * MINUTO_MS;
 const MASSIMA_ATTESA_MS = 10 * MINUTO_MS;
 const MARGINE_MS = 50;
 
-export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date(), dopo = dopoPredefinito, conto = () => {} }) {
+export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => new Date(), dopo = dopoPredefinito, conto = () => {},
+  animazioneMs = 0 }) {
   let stato = null;
   let sera = null;
   let finestra = null;
@@ -67,11 +68,21 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
     programmaConto();
   }
 
+  // Passo 11: alle 21:00 le porte che si aprono (3 secondi, saltabile) prima dell'esito. Una volta sola per apertura
+  // dell'app, uguale per chi ha porte e per chi no; con animazioneMs 0 (meno movimento) l'esito si vede subito.
+  let animazione = false;
+  let animata = false;
+  const fermaAnimazione = () => { if (!animazione) return; animazione = false; avvisa(); };
   let letto = null;
   async function caricaSera() {
     if (typeof chiavi.sera !== "function") return;
     sera = schermataSera(await chiavi.sera());
     if (sera && sera.tipo === "attesa") dopo(caricaSera, RILEGGI_SERA_MS);
+    else if (sera && !animata && animazioneMs > 0) {
+      animata = true;
+      animazione = true;
+      dopo(fermaAnimazione, animazioneMs);
+    }
     avvisa();
   }
   async function carica() {
@@ -91,10 +102,12 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
       conto: stato && stato.stanza === true ? contoAllaRovescia(stato.chiude_il, adesso()) : null,
       finestra: finestra ? { ...finestra } : null,
       sera,
+      animazione,
       errore,
       inCorso,
     }),
     scheda: (persona) => schedaChiave(stato, persona),
+    saltaAnimazione: fermaAnimazione,
     apriDai: (a, nome) => apri("dai", a, { ...finestraDai(nome), frase: "" }),
     apriFrase: (a, nome) => {
       const d = data(a);
@@ -189,6 +202,10 @@ export function vistaSera(h, ks, { svelamento = null } = {}) {
   const s = ks.modello().sera;
   if (!s) return null;
   if (s.tipo === "attesa") return h("div", { classe: "chiavi-sera", role: "status" }, s.testo);
+  // Le ante sono solo decorazione: il lettore di schermo trova «Salta» e poi l'esito.
+  if (ks.modello().animazione) return h("div", { classe: "chiavi-sera porte-animazione" },
+    h("div", { classe: "porte-ante", "aria-hidden": "true" }, h("span", { classe: "porta-anta" }), h("span", { classe: "porta-anta" })),
+    h("button", { classe: "link", type: "button", "aria-label": "Salta l'animazione delle porte", onclick: () => ks.saltaAnimazione() }, "Salta"));
   if (s.tipo === "nessuna_porta") return h("div", { classe: "chiavi-sera" }, h("p", {}, s.testo));
   // Solo i testi della spec: nessun titolo nuovo. Con due porte, due schede una sotto l'altra.
   return h("div", { classe: "chiavi-sera" },
