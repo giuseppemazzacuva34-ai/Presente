@@ -66,7 +66,7 @@ test("indirizzo di Supabase non valido: errore subito", () => {
 
 test("scheda: nome, età e città; «Chiama» solo se non c'è già una chiamata", () => {
   const p = { id: ID1, nome: "Giulia", eta: 34, citta: "Torino" };
-  assert.deepEqual(schedaCompagno(p, { inChiamata: false }), { titolo: "Giulia, 34", sottotitolo: "Torino", chiama: true });
+  assert.deepEqual(schedaCompagno(p, { inChiamata: false }), { titolo: "Giulia, 34", sottotitolo: "Torino", chiama: true, etichetta: "Chiama", descrizione: "Chiama Giulia, 34" });
   assert.equal(schedaCompagno(p, { inChiamata: true }).chiama, false);
   assert.equal(schedaCompagno({ ...p, citta: "" }).sottotitolo, "");
 });

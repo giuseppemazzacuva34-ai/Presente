@@ -36,6 +36,7 @@ const PAUSA_ASCOLTO_MS = 3000;
 export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, subito = () => {}, cambiato = () => {}, adesso = () => Date.now() }) {
   const s = {
     persone: [], statoStanza: "attesa", erroreStanza: "",
+    testi: new Map(), // id → testo sul pulsante «Chiama» disattivato (spec v1.3 § 2, 3c-5b-2b)
     vista: null, nascondiFinita: false,
     voceAttiva: false, muto: false, riconnetti: false,
     visibileDal: null, ascoltoInCorso: false, ultimoAscolto: 0,
@@ -44,6 +45,19 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     dopo: null, dopoChiesto: false, rientroChiesto: false, risposto: false, segnala: null,
     diarioFatto: false, // passo «diario» salvato o saltato
   };
+
+  // Testi dei pulsanti dal server; se non arrivano i pulsanti restano «Chiama» e decide il server al tocco.
+  let pulsantiInCorso = false;
+  function leggiPulsanti() {
+    if (typeof chiamata.pulsanti !== "function" || pulsantiInCorso) return Promise.resolve();
+    pulsantiInCorso = true;
+    return Promise.resolve().then(() => chiamata.pulsanti()).then((r) => {
+      if (r && r.ok && Array.isArray(r.pulsanti)) {
+        s.testi = new Map(r.pulsanti.map((x) => [x.id, x.testo]));
+        avvisa();
+      }
+    }, () => { /* nessun testo: restano «Chiama» */ }).finally(() => { pulsantiInCorso = false; });
+  }
 
   const avvisa = () => { try { cambiato(); } catch { /* lo schermo non deve fermare il telefono */ } };
 
@@ -145,6 +159,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
         s.persone = (Array.isArray(r.persone) ? r.persone : []).map((p) => ({ id: p.id, nome: p.nome, eta: p.eta ?? null, citta: p.citta || "" }));
         s.statoStanza = s.persone.length ? "pronta" : "vuota";
         s.erroreStanza = "";
+        if (s.persone.length) await leggiPulsanti();
       } else {
         s.statoStanza = "errore";
         s.erroreStanza = testoErrore(r && r.motivo);
@@ -165,7 +180,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     },
 
     chiama(id) {
-      if (inChiamata() || !s.persone.some((p) => p.id === id)) return Promise.resolve();
+      if (inChiamata() || !s.persone.some((p) => p.id === id) || !schedaCompagno(s.persone.find((p) => p.id === id), { testo: s.testi.get(id) }).chiama) return Promise.resolve();
       return azione(() => linea.chiama(id), { voceDopo: true });
     },
     rispondi() {
@@ -260,6 +275,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
       s.nascondiFinita = true;
       s.errore = "";
       avvisa();
+      if (s.statoStanza === "pronta") leggiPulsanti(); // dopo una chiamata i testi (3 volte, 5 al giorno) cambiano
     },
 
     modello() {
@@ -268,7 +284,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
         stanza: {
           stato: s.statoStanza,
           errore: s.erroreStanza,
-          persone: s.persone.map((p) => ({ id: p.id, ...schedaCompagno(p, { inChiamata: occupato }) })),
+          persone: s.persone.map((p) => ({ id: p.id, ...schedaCompagno(p, { inChiamata: occupato, testo: s.testi.get(p.id) }) })),
         },
         schermo: schermo(),
         nome: rifAltra() ? nomeInChiamata(rifAltra(), s.persone) : "",

@@ -6,6 +6,8 @@
 // Tempi e regole li decide il server; qui solo testi. Niente registrazioni, niente video, niente salvataggi locali.
 // Le richieste rispondono solo con l'accesso acceso (ACCESSO_APP = «si»).
 
+import { testoPulsante } from "./compagni.js";
+
 const PERCORSO = "/app/api/chiamata";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const ATTESA_MS = 8000;
@@ -50,7 +52,9 @@ export function testoTimer(restanti) {
 }
 
 export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTESA_MS }) {
+  // «pulsanti» è una GET come lo stato (worker/chiamata_api.js, LETTURE); tutte le altre sono POST.
   async function richiesta(passo, corpo) {
+    const post = Boolean(passo) && passo !== "pulsanti";
     const t = await Promise.resolve().then(token).catch(() => null);
     if (!t) return { ok: false, motivo: "accesso" };
     const ferma = new AbortController();
@@ -58,10 +62,10 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
     let r;
     try {
       r = await f(passo ? `${PERCORSO}/${passo}` : PERCORSO, {
-        method: passo ? "POST" : "GET",
+        method: post ? "POST" : "GET",
         signal: ferma.signal,
-        headers: { authorization: `Bearer ${t}`, ...(passo ? { "content-type": "application/json" } : {}) },
-        ...(passo ? { body: JSON.stringify(corpo || {}) } : {}),
+        headers: { authorization: `Bearer ${t}`, ...(post ? { "content-type": "application/json" } : {}) },
+        ...(post ? { body: JSON.stringify(corpo || {}) } : {}),
       });
     } catch {
       clearTimeout(timer);
@@ -85,6 +89,7 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
       if (dati.segnala === true) fine.segnala = true;
       if (passo === "dopo") return { ok: true, dopo: dati.dopo && typeof dati.dopo === "object" ? dati.dopo : null };
       if (passo === "richiameresti") return { ok: true, salvata: dati.salvata === true };
+      if (passo === "pulsanti") return { ok: true, pulsanti: pulsantiPuliti(dati.pulsanti) };
       return fine;
     } catch {
       return { ok: false, motivo: "riprova" };
@@ -95,6 +100,8 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
 
   return {
     stato: () => richiesta(null),
+    // Testi sui pulsanti «Chiama» della stanza (3c-5b-2b): solo { id, testo } con id valido e testo ammesso.
+    pulsanti: () => richiesta("pulsanti"),
     async apri(verso, offerta) {
       if (!UUID.test(verso || "")) return { ok: false, motivo: "dati" };
       return richiesta("apri", { verso, offerta });
@@ -115,6 +122,18 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
       return richiesta("richiameresti", { chi: c.chi, inizio: c.inizio, risposta });
     },
   };
+}
+
+// Una riga per persona (la prima), solo id valido e uno dei testi della spec v1.3 (testoPulsante di compagni.js).
+function pulsantiPuliti(righe) {
+  if (!Array.isArray(righe)) return [];
+  const visti = new Map();
+  for (const x of righe) {
+    if (!x || typeof x !== "object" || !UUID.test(x.id || "") || visti.has(x.id)) continue;
+    const testo = testoPulsante(x.testo);
+    if (testo) visti.set(x.id, { id: x.id, testo });
+  }
+  return [...visti.values()];
 }
 
 // Cosa mostrare. vista: quella del server (o null). nomeAltra: il nome mostrato nella stanza. secondiVisti: da quanti

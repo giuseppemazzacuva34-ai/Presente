@@ -58,14 +58,31 @@ function pulisci(righe) {
   return [...viste.values()].sort((a, b) => a.nome.localeCompare(b.nome, "it"));
 }
 
+// Testi sul pulsante «Chiama» disattivato (spec #4 v1.3 § 2), identici a api/chiamate.js e a chiamata.js. Arrivano
+// da GET /app/api/chiamata/pulsanti; si mostra SOLO uno di questi (o l'orario della fascia nella sua forma esatta):
+// qualunque altro testo si ignora e il pulsante resta «Chiama» (decide il server al tocco). Mai pausa, numeri o nomi.
+const TESTI_PULSANTE = new Set([
+  "Avete già parlato 3 volte. Ora tocca alle chiavi",
+  "Per oggi hai fatto 5 chiamate. A domani",
+  "Per oggi non può ricevere altre chiamate. Riprova domani.",
+  "È in un'altra chiamata",
+  "Chiedi di parlare",
+]);
+const TESTO_FASCIA = /^Disponibile (da|domani dalle) ([01]?[0-9]|2[0-4]):[0-5][0-9]$/;
+export const testoPulsante = (t) => (typeof t === "string" && (TESTI_PULSANTE.has(t) || TESTO_FASCIA.test(t)) ? t : "");
+
 // Testi della scheda (spec #4 v1, passo 1: «Dalla scheda di una persona della stanza: pulsante Chiama»).
-// Il pulsante non c'è mentre si è già in una chiamata: una sola alla volta. I «no» delle regole (3 volte, 5 al
-// giorno, fascia, permesso) li dice il server al tocco, con i testi di chiamata.js.
-export function schedaCompagno(p, { inChiamata = false } = {}) {
+// Il pulsante non c'è mentre si è già in una chiamata: una sola alla volta. Con un testo della v1.3 (3c-5b-2b) il
+// pulsante è disattivato e porta quel testo; «descrizione» è per il lettore di schermo (aria-label).
+export function schedaCompagno(p, { inChiamata = false, testo = "" } = {}) {
+  const titolo = p.eta ? `${p.nome}, ${p.eta}` : p.nome;
+  const t = testoPulsante(testo);
   return {
-    titolo: p.eta ? `${p.nome}, ${p.eta}` : p.nome,
+    titolo,
     sottotitolo: p.citta || "",
-    chiama: !inChiamata,
+    chiama: !inChiamata && !t,
+    etichetta: t || "Chiama",
+    descrizione: t ? `${titolo}: ${t}` : `Chiama ${titolo}`,
   };
 }
 
