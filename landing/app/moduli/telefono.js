@@ -36,6 +36,8 @@ const PAUSA_ASCOLTO_MS = 3000;
 export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, subito = () => {}, cambiato = () => {}, adesso = () => Date.now() }) {
   const s = {
     persone: [], statoStanza: "attesa", erroreStanza: "",
+    chiusa: false, // stanza appena chiusa (#5 passo 9): da domenica 21:00 a lunedì 9:00 schede in sola lettura
+    ricarica: null, // rilettura in corso (ricaricaPersone), una alla volta
     testi: new Map(), // id → testo sul pulsante «Chiama» disattivato (spec v1.3 § 2, 3c-5b-2b)
     vista: null, nascondiFinita: false,
     voceAttiva: false, muto: false, riconnetti: false,
@@ -138,6 +140,17 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
   const passoDiario = () => !!diario && !!s.dopo && s.dopo.tipo === "richiameresti" && s.risposto && !s.diarioFatto
     && !!s.dopo.diario && typeof s.dopo.diario === "object";
 
+  async function leggiPersone() {
+    try { return await compagni.leggi(); } catch { return { ok: false, motivo: "rete" }; }
+  }
+  function applicaPersone(r) {
+    s.persone = (Array.isArray(r.persone) ? r.persone : []).map((p) => ({ id: p.id, nome: p.nome, eta: p.eta ?? null, citta: p.citta || "" }));
+    s.chiusa = r.chiusa === true && s.persone.length > 0;
+    s.statoStanza = s.persone.length ? "pronta" : "vuota";
+    s.erroreStanza = "";
+    if (s.chiusa) s.testi = new Map();
+  }
+
   function schermo() {
     if (s.segnala) return { tipo: "segnala", titolo: "Segnala un problema" };
     if (s.dopo && !s.nascondiFinita && !inChiamata()) {
@@ -153,18 +166,31 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     async caricaPersone() {
       if (s.statoStanza === "pronta" || s.statoStanza === "vuota" || s.statoStanza === "lettura") return;
       s.statoStanza = "lettura";
-      let r;
-      try { r = await compagni.leggi(); } catch { r = { ok: false, motivo: "rete" }; }
-      if (r && r.ok) {
-        s.persone = (Array.isArray(r.persone) ? r.persone : []).map((p) => ({ id: p.id, nome: p.nome, eta: p.eta ?? null, citta: p.citta || "" }));
-        s.statoStanza = s.persone.length ? "pronta" : "vuota";
-        s.erroreStanza = "";
-        if (s.persone.length) await leggiPulsanti();
-      } else {
+      const r = await leggiPersone();
+      if (r && r.ok) applicaPersone(r);
+      else {
         s.statoStanza = "errore";
         s.erroreStanza = testoErrore(r && r.motivo);
       }
+      if (s.statoStanza === "pronta" && !s.chiusa) await leggiPulsanti();
       avvisa();
+    },
+
+    // Rilegge la stanza anche se era già pronta: dopo un blocco (richiesta di «sviluppatore-b»), alle 21:00 della
+    // domenica (stanza chiusa) e lunedì alle 9:00. Se la rilettura non riesce restano le persone di prima.
+    ricaricaPersone() {
+      if (s.statoStanza === "lettura") return Promise.resolve();
+      if (s.ricarica) return s.ricarica;
+      if (s.statoStanza !== "pronta" && s.statoStanza !== "vuota") return this.caricaPersone();
+      s.ricarica = (async () => {
+        const r = await leggiPersone();
+        if (r && r.ok) {
+          applicaPersone(r);
+          if (s.statoStanza === "pronta" && !s.chiusa) await leggiPulsanti();
+          avvisa();
+        }
+      })().finally(() => { s.ricarica = null; });
+      return s.ricarica;
     },
 
     // Risposta della sentinella (GET /app/api/chiamata).
@@ -180,7 +206,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     },
 
     chiama(id) {
-      if (inChiamata() || !s.persone.some((p) => p.id === id) || !schedaCompagno(s.persone.find((p) => p.id === id), { testo: s.testi.get(id) }).chiama) return Promise.resolve();
+      if (s.chiusa || inChiamata() || !s.persone.some((p) => p.id === id) || !schedaCompagno(s.persone.find((p) => p.id === id), { testo: s.testi.get(id) }).chiama) return Promise.resolve();
       return azione(() => linea.chiama(id), { voceDopo: true });
     },
     rispondi() {
@@ -275,7 +301,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
       s.nascondiFinita = true;
       s.errore = "";
       avvisa();
-      if (s.statoStanza === "pronta") leggiPulsanti(); // dopo una chiamata i testi (3 volte, 5 al giorno) cambiano
+      if (s.statoStanza === "pronta" && !s.chiusa) leggiPulsanti(); // dopo una chiamata i testi (3 volte, 5 al giorno) cambiano
     },
 
     modello() {
@@ -284,7 +310,12 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
         stanza: {
           stato: s.statoStanza,
           errore: s.erroreStanza,
-          persone: s.persone.map((p) => ({ id: p.id, ...schedaCompagno(p, { inChiamata: occupato, testo: s.testi.get(p.id) }) })),
+          chiusa: s.chiusa,
+          // Stanza chiusa: schede in sola lettura, nessun pulsante Chiama (né etichetta).
+          persone: s.persone.map((p) => {
+            const sc = schedaCompagno(p, { inChiamata: occupato, testo: s.testi.get(p.id) });
+            return s.chiusa ? { id: p.id, ...sc, chiama: false, etichetta: "", descrizione: sc.titolo } : { id: p.id, ...sc };
+          }),
         },
         schermo: schermo(),
         nome: rifAltra() ? nomeInChiamata(rifAltra(), s.persone) : "",

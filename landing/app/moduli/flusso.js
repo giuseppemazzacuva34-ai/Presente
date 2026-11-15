@@ -111,6 +111,8 @@ const italia = { aspetto: false, inCorso: false, errore: "", avviso: "" };
 // Chiamate (telefono.js + sentinella.js, issue #4 passo 3c-3b-2): «La tua stanza» nella home e schermo della chiamata.
 // Solo con l'accesso vero; la sentinella parte la prima volta che si arriva alla home.
 let telefono = null;
+// Alle 21:00 della domenica (sera delle chiavi) la stanza si rilegge una volta: diventa «Chiusa» in sola lettura.
+let stanzaRilettaDiSera = false;
 let sentinella = null;
 let sentinellaAvviata = false;
 let ultimaFirma = "";
@@ -445,8 +447,20 @@ function bloccoTuaStanza() {
   const st = m.stanza;
   let contenuto;
   if (chiaviStanza) chiaviStanza.prepara();
+  if (chiaviStanza && chiaviStanza.modello().sera && st.stato === "pronta" && !st.chiusa && !stanzaRilettaDiSera) {
+    stanzaRilettaDiSera = true;
+    telefono.ricaricaPersone();
+  }
   if (appuntiStanza && st.stato === "pronta") appuntiStanza.prepara(st.persone.map((p) => p.id));
-  if (st.stato === "pronta") {
+  if (st.stato === "pronta" && st.chiusa) {
+    // #5 spec v1.1 passo 9: stanza «Chiusa» fino a lunedì 9:00. Schede in sola lettura (con i tuoi appunti), senza
+    // pulsanti Chiama o Chiave; il menu ⋯ resta per segnalare o bloccare.
+    contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) =>
+      h("li", { classe: "compagno" },
+        h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
+        menuDellaScheda(p),
+        appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null)));
+  } else if (st.stato === "pronta") {
     // Con un testo della spec v1.3 il pulsante è spento ma resta raggiungibile da tastiera e lettore di schermo
     // (aria-disabled); il tocco non chiama (telefono.chiama controlla di nuovo). Mentre si è in chiamata: disabled.
     contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => {
@@ -467,11 +481,12 @@ function bloccoTuaStanza() {
     contenuto = h("p", { classe: "nota", role: "status" }, "Un attimo…");
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
-    h("h2", { id: "tua-stanza-titolo" }, "La tua stanza"),
+    h("h2", { id: "tua-stanza-titolo" }, "La tua stanza", st.chiusa ? h("span", { classe: "etichetta-chiusa" }, " · Chiusa") : null),
     chiaviStanza ? vistaSera(h, chiaviStanza, { svelamento }) : null,
-    chiaviStanza && st.stato === "pronta" ? vistaChiavi(h, chiaviStanza) : null,
+    chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
-    st.stato === "pronta" ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
+    st.stato === "pronta" && st.chiusa ? h("p", { classe: "nota" }, "La stanza è chiusa: puoi rileggere le schede e i tuoi appunti fino a lunedì alle 9:00, quando apre una nuova stanza.") : null,
+    st.stato === "pronta" && !st.chiusa ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
     m.attesa ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
     errore(m.errore));
 }

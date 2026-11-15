@@ -95,6 +95,7 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 .compagno { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; border: 1px solid var(--linea); border-radius: 0.75rem; padding: 0.7rem 0.9rem; }
 .compagno div { display: flex; flex-direction: column; }
 .compagno .nota { margin: 0; }
+.etichetta-chiusa { font-weight: normal; font-style: normal; opacity: 0.8; }
 .chiamata { min-height: 70dvh; display: flex; flex-direction: column; gap: 0.6rem; }
 .timer-chiamata { font-size: 3rem; font-variant-numeric: tabular-nums; }
 .banner-chiamata { background: var(--avorio); color: var(--nero); border-radius: 0.5rem; padding: 0.55rem 0.75rem; margin: 0; font-size: 0.9rem; }
