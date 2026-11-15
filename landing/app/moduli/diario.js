@@ -88,6 +88,25 @@ export function creaDiario({ supabaseUrl, supabaseAnonKey, token, fetch: f = glo
       try { righe = await r.json(); } catch { return { ok: false, motivo: "lettura" }; }
       return { ok: true, appunti: (Array.isArray(righe) ? righe : []).map(appunto).filter(Boolean) };
     },
+    // Le proprie note su tutte le persone della stanza, con una richiesta sola (passo 9, «I tuoi appunti» sulla scheda):
+    // { ok: true, perPersona: { id: [appunti dalla più recente] } } oppure { ok: false, motivo }.
+    async appuntiDi(ids) {
+      const validi = [...new Set((Array.isArray(ids) ? ids : []).filter((x) => UUID.test(String(x || ""))))];
+      if (!validi.length) return { ok: true, perPersona: {} };
+      const { r, motivo } = await richiesta(`${base}?select=con,chiamata_il,durata,testo&con=in.(${validi.join(",")})&order=chiamata_il.desc`, "GET");
+      if (motivo) return { ok: false, motivo };
+      if (r.status === 401) return { ok: false, motivo: "accesso" };
+      if (!r.ok) return { ok: false, motivo: "lettura" };
+      let righe;
+      try { righe = await r.json(); } catch { return { ok: false, motivo: "lettura" }; }
+      const perPersona = {};
+      for (const riga of Array.isArray(righe) ? righe : []) {
+        const a = appunto(riga);
+        if (!a || !validi.includes(riga.con)) continue;
+        (perPersona[riga.con] ??= []).push(a);
+      }
+      return { ok: true, perPersona };
+    },
     // Una nota per chiamata: la tabella controlla che la chiamata ci sia stata e sia durata almeno 60 secondi.
     async salva({ con, chiamataIl, durata, testo }) {
       if (!UUID.test(con || "") || !dataValida(chiamataIl) || !Number.isInteger(durata) || durata < 60 || durata > 900) {
