@@ -29,6 +29,13 @@ export const TESTI_SVELAMENTO = Object.freeze({
   inAttesa: "Hai risposto. Ti avvisiamo quando sapremo.",
   chiusa: "Questa volta non vi incontrerete. I tuoi 10 crediti sono di nuovo disponibili.",
   scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
+  // Caparra (spec v1, passo 2). Per una porta chiusa da un blocco o da una sospensione non si dice mai il motivo.
+  blocca: "Blocca 10 crediti",
+  spiegazioneCaparra: "I tuoi 10 crediti restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
+  aspettaCaparra: "Aspettiamo che anche <nome> blocchi la caparra.",
+  ricarica: "Ricarica",
+  beta: "In beta i crediti sono di prova",
+  portaChiusa: "Questa porta si è chiusa.",
 });
 
 const ORA = 3600000;
