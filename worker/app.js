@@ -7,6 +7,7 @@ import { chiaviApi, PERCORSO_CHIAVI } from "./chiavi_api.js";
 import { pannelloApi, PERCORSO_PANNELLO } from "./pannello_api.js";
 import { supportoApi, PERCORSO_SUPPORTO } from "./supporto_api.js";
 import { supportoOperatoreApi } from "./supporto_operatore_api.js";
+import { svelamentoApi, PERCORSO_SVELAMENTO } from "./svelamento_api.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -57,6 +58,7 @@ export async function app(request, env) {
   if (url.pathname === PERCORSO_CHIAVI || url.pathname.startsWith(PERCORSO_CHIAVI + "/")) {
     return conIntestazioniApp(await chiaviApi(request, env), url.pathname);
   }
+  if (url.pathname === PERCORSO_SVELAMENTO) return conIntestazioniApp(await svelamentoApi(request, env), url.pathname);
   if (url.pathname.startsWith(PERCORSO_PANNELLO + "/")) return conIntestazioniApp(await pannelloApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_SUPPORTO) return conIntestazioniApp(await supportoApi(request, env), url.pathname);
   if (url.pathname.startsWith(PERCORSO_SUPPORTO + "/")) return conIntestazioniApp(await supportoOperatoreApi(request, env), url.pathname);
