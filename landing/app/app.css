@@ -145,3 +145,12 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 @keyframes porta-apri { to { transform: rotateY(-80deg); } }
 @keyframes porta-apri-destra { to { transform: rotateY(80deg); } }
 @media (prefers-reduced-motion: reduce) { .porta-anta { animation: none; } }
+
+/* Pannello di chi decide (#7, passo 13c della linea «sviluppatore-b»). */
+.coda { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.voce-coda { border: 1px solid var(--linea); border-radius: 0.75rem; padding: 0.75rem; }
+.voce-coda .bottone-secondario { width: 100%; display: block; white-space: normal; text-align: left; min-height: 44px; border-radius: 0.75rem; height: auto; line-height: 1.4; padding: 0.6rem 0.9rem; }
+.voce-rossa { border-color: var(--rosso); border-left-width: 6px; }
+.racconto { white-space: pre-wrap; border-left: 3px solid var(--linea); padding-left: 0.75rem; }
+#pannello textarea { font: inherit; color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.5rem; padding: 0.6rem; }
+#pannello .azioni { position: static; flex-wrap: wrap; background: none; }

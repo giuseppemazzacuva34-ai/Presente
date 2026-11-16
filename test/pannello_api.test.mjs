@@ -119,12 +119,13 @@ test("database vero (finto): chiama solo le funzioni del pannello con la chiave 
     if (u.pathname === "/auth/v1/user") return Response.json({ id: ID });
     chieste.push([u.pathname, JSON.parse(init.body || "{}"), init.headers?.authorization]);
     if (u.pathname === "/rest/v1/rpc/e_moderatore") return Response.json(true);
-    if (u.pathname === "/rest/v1/rpc/coda_moderazione") return Response.json([{ id: SEG, ore: 1 }]);
+    if (u.pathname === "/rest/v1/rpc/coda_moderazione") return Response.json([{ id: SEG, ore: 1, sospeso: true }]);
     if (u.pathname === "/rest/v1/rpc/decidi_segnalazione") return Response.json({ message: "Segnalazione già decisa." }, { status: 400 });
     return new Response("{}", { status: 404 });
   };
   const coda = await pannelloApi(richiesta("/coda", { metodo: "GET", corpo: null }), ENV, f);
-  assert.deepEqual(await coda.json(), { ok: true, coda: [{ id: SEG, ore: 1 }] });
+  // «sospeso» diventa «in_sospensione»: il codice del browser non contiene la parola (controllo di scripts/test_worker.mjs).
+  assert.deepEqual(await coda.json(), { ok: true, coda: [{ id: SEG, ore: 1, in_sospensione: true }] });
   assert.deepEqual(chieste.slice(0, 2).map((c) => c.slice(0, 2)), [["/rest/v1/rpc/e_moderatore", { p_persona: ID }], ["/rest/v1/rpc/coda_moderazione", { p_moderatore: ID }]]);
   assert.equal(chieste[0][2], "Bearer chiave-server-finta");
   const decisa = await pannelloApi(richiesta("/decidi", { corpo: { id: SEG, azione: "archivia", testo: "niente" } }), ENV, f);

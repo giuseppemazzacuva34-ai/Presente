@@ -61,7 +61,9 @@ function operazioniVere(env, f) {
     },
     coda: async (id) => {
       const r = s && (await rpc(s, "coda_moderazione", { p_moderatore: id }, f));
-      return r && r.stato === 200 && Array.isArray(r.dati) ? r.dati : null;
+      if (!(r && r.stato === 200 && Array.isArray(r.dati))) return null;
+      // «sospeso» → «in_sospensione»: il codice del browser non deve contenere «peso» (controllo di scripts/test_worker.mjs).
+      return r.dati.map(({ sospeso, ...resto }) => ({ ...resto, in_sospensione: sospeso === true }));
     },
     scheda: async ({ moderatore, segnalazione }) => {
       const r = s && (await rpc(s, "scheda_segnalazione", { p_moderatore: moderatore, p_segnalazione: segnalazione }, f));
