@@ -21,6 +21,7 @@ import { creaChiaviStanza } from "/app/moduli/chiavi_stanza.js";
 import { creaAppuntiStanza } from "/app/moduli/appunti_stanza.js";
 import { creaEsiti } from "/app/moduli/esiti_segnalazioni.js";
 import { creaSanzioni } from "/app/moduli/sanzioni.js";
+import { creaAiuto } from "/app/moduli/aiuto.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -87,7 +88,9 @@ async function preparaAccesso() {
     // Sanzione e «Contesta» (#7 punti 7-8): solo le proprie sanzioni, con il proprio token.
     const sanzioni = creaSanzioni({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
       token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    return { accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Pagina Aiuto (#10): «Scrivici» e «I miei messaggi» via Worker; chi scrive lo dice solo il token.
+    const aiuto = creaAiuto({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

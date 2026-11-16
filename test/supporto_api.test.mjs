@@ -21,7 +21,7 @@ function supabaseFinto({ utente = 200, rpc = {} } = {}) {
     const u = new URL(url);
     viste.push({ percorso: u.pathname, corpo: opzioni.body ? JSON.parse(opzioni.body) : null, headers: opzioni.headers || {} });
     if (u.origin !== BASE) throw new Error("rete assente");
-    if (u.pathname === "/auth/v1/user") return utente === 200 ? Response.json({ id: ID }) : new Response("{}", { status: utente });
+    if (u.pathname === "/auth/v1/user") return utente === 200 ? Response.json({ id: ID, email: "prova@example.invalid" }) : new Response("{}", { status: utente });
     const nome = u.pathname.replace("/rest/v1/rpc/", "");
     if (nome in rpc) return typeof rpc[nome] === "number" ? new Response("{}", { status: rpc[nome] }) : Response.json(rpc[nome]);
     return new Response("{}", { status: 404 });
@@ -134,7 +134,7 @@ test("GET: i messaggi sono sempre quelli dell'utente del token", async () => {
   const op = finta({ miei: [{ id: ALTRO, categoria: "altro", testo: "ciao", creato_il: "2026-11-16T10:00:00Z", stato: "inviato", risposta: null, risposto_il: null }] });
   const r = await supportoApi(richiesta({ metodo: "GET", corpo: null, percorso: PERCORSO_SUPPORTO + "?utente=" + ALTRO }), ENV, supabaseFinto().f, op);
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { ok: true, messaggi: [{ id: ALTRO, categoria: "altro", testo: "ciao", creatoIl: "2026-11-16T10:00:00Z", stato: "inviato", risposta: null, rispostoIl: null }] });
+  assert.deepEqual(await r.json(), { ok: true, email: "prova@example.invalid", messaggi: [{ id: ALTRO, categoria: "altro", testo: "ciao", creatoIl: "2026-11-16T10:00:00Z", stato: "inviato", risposta: null, rispostoIl: null }] });
   assert.deepEqual(op.ricevute[0], ["miei", { utente: ID }]);
 });
 
@@ -168,4 +168,12 @@ test("il Worker instrada /app/api/supporto (spento senza ACCESSO_APP)", async ()
   const r = await worker.fetch(richiesta(), { ...ENV, ACCESSO_APP: "no" }, {});
   assert.equal(r.status, 404);
   assert.deepEqual(await r.json(), { ok: false, motivo: "spento" });
+});
+
+test("GET: torna anche l'email dell'account (quella della risposta, solo da mostrare)", async () => {
+  const r = await supportoApi(richiesta({ metodo: "GET", corpo: null }), ENV, supabaseFinto().f, finta());
+  const dati = await r.json();
+  assert.equal(dati.email, "prova@example.invalid");
+  const conPost = await supportoApi(richiesta(), ENV, supabaseFinto().f, finta());
+  assert.equal("email" in (await conPost.json()), false);
 });

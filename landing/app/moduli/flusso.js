@@ -24,6 +24,7 @@ import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
+import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -111,6 +112,9 @@ const esiti = { chiesti: false, voci: [] };
 // Sanzione e «Contesta» (#7 punti 7-8, passo 12d): lette una volta per sessione, solo in memoria.
 let sanzioniMie = null;
 const sanzioniStato = { chieste: false, voci: [], aperta: "", testo: "", invio: false, errore: "", inviata: "" };
+// Pagina Aiuto (#10 parte A, linea «sviluppatore-c»): domande frequenti, «Scrivici» e «I miei messaggi», solo in memoria.
+let supporto = null;
+const aiuto = { aperta: false, cerca: "", categoria: "", testo: "", invio: false, errore: "", conferma: null, carica: false, email: "", messaggi: [], erroreMiei: "" };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -161,6 +165,7 @@ export function avvia(elemento, opzioni = {}) {
   appuntiStanza = (telefono && opzioni.appunti) || null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
+  supporto = (telefono && opzioni.aiuto) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -614,6 +619,7 @@ function disegna() {
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
+  if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -991,6 +997,7 @@ const SCHERMATE = {
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
         storicoChiamate ? h("button", { classe: "link", type: "button", onclick: apriStorico }, TESTI_STORICO.titolo) : null,
+        supporto ? h("button", { classe: "link", type: "button", onclick: apriAiuto }, TESTI_AIUTO.titolo) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],
@@ -1305,4 +1312,90 @@ function bloccoSanzioni() {
     }
     return h("div", { classe: "riepilogo", role: "region", "aria-label": v.titolo }, ...parti);
   }));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Pagina Aiuto (#10 spec v1 del CPO, parte A, linea «sviluppatore-c»). In alto «Sono in difficoltà» a un tocco
+// (schermata della #7); poi le domande frequenti con «Cerca» sul telefono (solo quando i testi sono approvati);
+// in fondo «Scrivici» e «I miei messaggi». Chi scrive lo dice il token (aiuto.js → /app/api/supporto).
+async function apriAiuto() {
+  Object.assign(aiuto, { aperta: true, cerca: "", categoria: "", testo: "", invio: false, errore: "", conferma: null,
+    carica: true, email: "", messaggi: [], erroreMiei: "" });
+  disegna();
+  await leggiMieiMessaggi();
+}
+async function leggiMieiMessaggi() {
+  const r = await supporto.miei().catch(() => ({ ok: false, motivo: "rete" }));
+  if (!aiuto.aperta) return;
+  aiuto.carica = false;
+  if (r.ok) Object.assign(aiuto, { email: r.email, messaggi: r.messaggi, erroreMiei: "" });
+  else aiuto.erroreMiei = testoErroreAiuto(r.motivo);
+  disegna();
+}
+function chiudiAiuto() {
+  Object.assign(aiuto, { aperta: false, cerca: "", categoria: "", testo: "", invio: false, errore: "", conferma: null,
+    carica: false, email: "", messaggi: [], erroreMiei: "" });
+  disegna();
+}
+// Da Aiuto a «Sono in difficoltà»: chiudendo quella schermata si torna qui.
+function apriDifficoltaDaAiuto() {
+  apriDifficolta();
+}
+function domandeAiuto(cerca) {
+  return h("ul", { classe: "domande-frequenti", id: "aiuto-domande" },
+    filtraDomande(DOMANDE_FREQUENTI, cerca).map((d) => h("li", {}, h("details", {}, h("summary", {}, d.domanda), h("p", {}, d.risposta)))));
+}
+function schermoAiuto() {
+  const a = aiuto;
+  const m = moduloScrivici(a.email);
+  const invia = async () => {
+    const c = corpoScrivici({ categoria: a.categoria, testo: a.testo });
+    if (!c.ok) { a.errore = c.errore; disegna(); return; }
+    a.invio = true; a.errore = ""; disegna();
+    const r = await supporto.invia(c.corpo).catch(() => ({ ok: false, motivo: "rete" }));
+    a.invio = false;
+    if (r.ok) {
+      Object.assign(a, { conferma: confermaScrivici(r), categoria: "", testo: "" });
+      leggiMieiMessaggi();
+    } else a.errore = testoErroreAiuto(r.motivo);
+    disegna();
+  };
+  const quando = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("it-IT"); };
+  const nomeCategoria = (v) => (m.categorie.find(([c]) => c === v) || [v, ""])[1];
+  return h("section", { classe: "schermata aiuto", "aria-label": TESTI_AIUTO.titolo },
+    h("h1", {}, TESTI_AIUTO.titolo),
+    h("p", {}, TESTI_AIUTO.sicurezza),
+    h("button", { classe: "bottone", type: "button", onclick: apriDifficoltaDaAiuto }, TESTI_AIUTO.difficolta),
+    DOMANDE_FREQUENTI.length ? h("div", {},
+      h("h2", {}, TESTI_AIUTO.domande),
+      h("label", { for: "aiuto-cerca" }, TESTI_AIUTO.cerca),
+      h("input", { id: "aiuto-cerca", type: "search", value: a.cerca, "aria-controls": "aiuto-domande",
+        // Filtra sul posto, senza ridisegnare: il fuoco resta nel campo.
+        oninput: (e) => { a.cerca = e.target.value; const l = document.getElementById("aiuto-domande"); if (l) l.replaceWith(domandeAiuto(a.cerca)); } }),
+      domandeAiuto(a.cerca)) : null,
+    h("h2", {}, `${TESTI_AIUTO.nonTrovato} ${TESTI_AIUTO.scrivici}`),
+    a.conferma ? h("div", { role: "status" }, h("p", {}, a.conferma.testo),
+      a.conferma.difficolta ? h("button", { classe: "bottone", type: "button", onclick: apriDifficoltaDaAiuto }, a.conferma.difficolta) : null) : null,
+    h("label", { for: "aiuto-categoria" }, "Categoria"),
+    h("select", { id: "aiuto-categoria", disabled: a.invio, onchange: (e) => { a.categoria = e.target.value; } },
+      h("option", { value: "", selected: a.categoria === "" }, "Scegli una categoria"),
+      m.categorie.map(([v, t]) => h("option", { value: v, selected: a.categoria === v }, t))),
+    h("label", { for: "aiuto-testo" }, "Messaggio"),
+    h("textarea", { id: "aiuto-testo", classe: "racconto-segnala", maxlength: String(m.massimo), rows: "6", disabled: a.invio,
+      "aria-describedby": "aiuto-contatore",
+      oninput: (e) => { a.testo = e.target.value; const c = document.getElementById("aiuto-contatore"); if (c) c.textContent = contatore(a.testo); } }, a.testo),
+    h("p", { classe: "nota", id: "aiuto-contatore", "aria-live": "polite" }, contatore(a.testo)),
+    h("label", { for: "aiuto-email" }, "Email"),
+    h("input", { id: "aiuto-email", readonly: true, type: "email", value: m.email }),
+    errore(a.errore),
+    h("div", { classe: "azioni" },
+      h("button", { classe: "bottone", type: "button", disabled: a.invio, onclick: invia }, a.invio ? "Invio…" : m.invia)),
+    h("h2", {}, TESTI_AIUTO.miei),
+    a.carica ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
+    errore(a.erroreMiei),
+    a.messaggi.length ? h("ul", { classe: "compagni" }, a.messaggi.map((x) => h("li", { classe: "riepilogo" },
+      h("p", {}, h("strong", {}, nomeCategoria(x.categoria)), ` · ${quando(x.creatoIl)} · ${statoMessaggio(x)}`),
+      h("p", {}, x.testo),
+      x.risposta ? h("p", { classe: "nota" }, x.risposta) : null))) : null,
+    h("button", { classe: "bottone-secondario", type: "button", disabled: a.invio, onclick: chiudiAiuto }, "Chiudi"));
 }

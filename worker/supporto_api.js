@@ -1,7 +1,7 @@
 // «Scrivici» della pagina Aiuto (issue #10, parte A, passo 2 della linea «sviluppatore-c»): la richiesta del Worker.
 //
 //   POST /app/api/supporto { categoria, testo } → { ok: true, id, sicurezza } | { ok: false, motivo }
-//   GET  /app/api/supporto                      → { ok: true, messaggi: [...] }  («I miei messaggi»)
+//   GET  /app/api/supporto                      → { ok: true, email, messaggi: [...] }  («I miei messaggi»)
 //
 // Chi scrive lo dice SOLO il token di Supabase: un utente scritto nel corpo o nell'indirizzo non conta, quindi nessuno
 // vede i messaggi di un altro. Chi è bloccato o sospeso può comunque scrivere (spec, casi limite). Le regole sono in
@@ -44,7 +44,8 @@ export async function supportoApi(request, env, f = fetch, operazioni = null) {
   try {
     if (request.method === "GET") {
       const r = await mieiMessaggi({ utente: chi.id }, op);
-      return r && r.ok ? risposta(200, r) : risposta(503, { ok: false, motivo: "riprova" });
+      // L'email dell'account (dove arriva la risposta) si mostra nella schermata, non si cambia qui.
+      return r && r.ok ? risposta(200, { ok: true, email: chi.email, messaggi: r.messaggi }) : risposta(503, { ok: false, motivo: "riprova" });
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
@@ -71,8 +72,10 @@ async function chiEDavvero(request, env, f) {
     const r = await entro(ATTESA_SUPABASE_MS, f(`${base}/auth/v1/user`, { headers: { apikey: servizio, authorization: `Bearer ${token[1]}` } }));
     if (r.status === 401 || r.status === 403) return { errore: risposta(401, { ok: false, motivo: "accesso" }) };
     if (!r.ok) return { errore: risposta(503, { ok: false, motivo: "riprova" }) };
-    const id = String(((await r.json()) || {}).id || "");
-    return UUID.test(id) ? { id } : { errore: risposta(401, { ok: false, motivo: "accesso" }) };
+    const u = (await r.json()) || {};
+    const id = String(u.id || "");
+    const email = typeof u.email === "string" ? u.email : "";
+    return UUID.test(id) ? { id, email } : { errore: risposta(401, { ok: false, motivo: "accesso" }) };
   } catch (e) {
     console.error("supporto: accesso", e && e.name);
     return { errore: risposta(503, { ok: false, motivo: "riprova" }) };
