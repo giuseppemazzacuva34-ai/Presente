@@ -3,6 +3,8 @@
 //   GET  /app/api/pannello/coda                                 → { ok: true, coda: [...] }
 //   POST /app/api/pannello/scheda { id }                        → { ok: true, scheda: {...} }   (l'apertura va nel registro)
 //   POST /app/api/pannello/decidi { id, azione, regola?, testo } → { ok: true, sanzione } | { ok: false, motivo }
+//   GET  /app/api/pannello/ricorsi                              → { ok: true, ricorsi: [...] }          (passo 13e)
+//   POST /app/api/pannello/ricorso { id, esito, testo }         → { ok: true } | { ok: false, motivo } (passo 13e)
 //
 // Chi decide lo dicono SOLO il token di Supabase e la tabella «moderatori» (in beta Giuseppe): un campo nel corpo
 // non conta. Le regole stanno nel database (migrazioni 20261116094039 e 20261116144014): qui solo accesso, forma
@@ -11,6 +13,7 @@
 
 export const PERCORSO_PANNELLO = "/app/api/pannello";
 export const AZIONI = Object.freeze(["archivia", "avviso", "sospensione_7", "sospensione_30", "esclusione", "togli_cautelare"]);
+export const ESITI_RICORSO = Object.freeze(["accolto", "respinto"]);
 const SENZA_REGOLA = new Set(["archivia", "togli_cautelare"]);
 const CORPO_MASSIMO = 16 * 1024; // motivo di 2000 caratteri al massimo, anche con caratteri di 4 byte
 const ATTESA_MS = 2500;
@@ -45,7 +48,8 @@ async function rpc(s, nome, parametri, f) {
       console.error("pannello: risposta", nome, r.status);
       return { stato: r.status, dati: null };
     }
-    return { stato: r.status, dati: await r.json() };
+    // Le funzioni «void» (decidi_ricorso) possono rispondere 204 senza corpo.
+    return { stato: r.status, dati: r.status === 204 ? null : await r.json() };
   } catch (e) {
     console.error("pannello: errore", nome, e && e.name);
     return null;
@@ -78,13 +82,25 @@ function operazioniVere(env, f) {
       if (r.stato >= 400 && r.stato < 500) return { ok: false, motivo: "rifiutata" };
       return null;
     },
+    ricorsi: async (id) => {
+      const r = s && (await rpc(s, "ricorsi_da_decidere", { p_moderatore: id }, f));
+      return r && r.stato === 200 && Array.isArray(r.dati) ? r.dati : null;
+    },
+    // Persona diversa da chi ha sanzionato, una sola volta: lo controlla decidi_ricorso() nel database.
+    decidiRicorso: async ({ moderatore, ricorso, esito, testo }) => {
+      const r = s && (await rpc(s, "decidi_ricorso", { p_moderatore: moderatore, p_ricorso: ricorso, p_esito: esito, p_testo: testo }, f));
+      if (!r) return null;
+      if (r.stato >= 200 && r.stato < 300) return { ok: true };
+      if (r.stato >= 400 && r.stato < 500) return { ok: false, motivo: "rifiutata" };
+      return null;
+    },
   };
 }
 
 export async function pannelloApi(request, env, f = fetch, operazioni = null) {
   const percorso = new URL(request.url).pathname.slice(PERCORSO_PANNELLO.length);
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
-  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST" };
+  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST" };
   if (!Object.hasOwn(metodi, percorso)) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (request.method !== metodi[percorso]) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodi[percorso] });
 
@@ -100,11 +116,23 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
       const coda = await op.coda(chi.id);
       return Array.isArray(coda) ? risposta(200, { ok: true, coda }) : risposta(503, { ok: false, motivo: "riprova" });
     }
+    if (percorso === "/ricorsi") {
+      const ricorsi = await op.ricorsi(chi.id);
+      return Array.isArray(ricorsi) ? risposta(200, { ok: true, ricorsi }) : risposta(503, { ok: false, motivo: "riprova" });
+    }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
     const id = corpo.dati.id;
     if (typeof id !== "string" || !UUID.test(id)) return risposta(400, { ok: false, motivo: "dati" });
 
+    if (percorso === "/ricorso") {
+      const { esito } = corpo.dati;
+      const motivo = typeof corpo.dati.testo === "string" ? corpo.dati.testo.trim() : "";
+      if (!ESITI_RICORSO.includes(esito) || !motivo || motivo.length > 2000) return risposta(400, { ok: false, motivo: "dati" });
+      const fatto = await op.decidiRicorso({ moderatore: chi.id, ricorso: id, esito, testo: motivo });
+      if (!fatto) return risposta(503, { ok: false, motivo: "riprova" });
+      return risposta(200, fatto.ok ? { ok: true } : { ok: false, motivo: String(fatto.motivo || "rifiutata") });
+    }
     if (percorso === "/scheda") {
       const scheda = await op.scheda({ moderatore: chi.id, segnalazione: id });
       return scheda ? risposta(200, { ok: true, scheda }) : risposta(503, { ok: false, motivo: "riprova" });
