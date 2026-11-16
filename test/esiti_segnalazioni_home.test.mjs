@@ -21,7 +21,7 @@ test("avvio: gli esiti si leggono da Supabase con il token di chi è entrato", (
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /import \{ creaEsiti \} from "\/app\/moduli\/esiti_segnalazioni\.js";/);
   assert.match(avvio, /creaEsiti\(\{ supabaseUrl: config\.supabaseUrl, supabaseAnonKey: config\.supabaseAnonKey,/);
-  assert.match(avvio, /esiti, erroreLink/);
+  assert.match(avvio, /esiti, (sanzioni, )?erroreLink/);
 });
 
 test("service worker: esiti_segnalazioni.js in memoria e versione nuova", () => {
