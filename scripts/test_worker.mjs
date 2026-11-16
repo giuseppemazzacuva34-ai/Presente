@@ -17,6 +17,7 @@ import { normalizzaCitta, nomeCitta, chiaveCitta, perCitta } from "../worker/cit
 
 // User agent di un telefono vero (browser interno di Instagram): le richieste senza user agent contano come automatiche.
 const TELEFONO = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0";
+const BROWSER_VERO = { "accept-language": "it-IT,it;q=0.9", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" };
 
 let errori = 0;
 function verifica(condizione, descrizione) {
@@ -272,7 +273,8 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
   const home = readFileSync(new URL("../landing/index.html", import.meta.url), "utf8");
   const ASSETS = { fetch: async () => new Response(home, { headers: { "content-type": "text/html; charset=utf-8" } }) };
   const apri = async (percorso, env, init = {}) => {
-    const headers = { "user-agent": TELEFONO, ...(init.headers || {}) };
+    // Intestazioni di un browser vero (dal 16/11 senza Accept-Language / Sec-Fetch-Mode la visita va in «automatiche»).
+    const headers = { "user-agent": TELEFONO, ...BROWSER_VERO, ...(init.headers || {}) };
     const r = await worker.fetch(new Request("https://presente.example" + percorso, { ...init, headers }), env);
     return { r, conta: env.DB.query.filter((q) => q.sql.startsWith("INSERT INTO visite_pagina")) };
   };
@@ -985,7 +987,7 @@ const aperte = (extra = {}) => ({ ISCRIZIONI_APERTE: "si", DB: databaseFinto(), 
     // D82 A: /segui conta il clic (solo persone) e rimanda al profilo Instagram.
     const clic = [];
     const dbClic = { prepare: (sql) => ({ bind(...v) { clic.push(v); return this; }, async run() { return {}; } }) };
-    const persona = { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" };
+    const persona = { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", ...BROWSER_VERO };
     const sg = await worker.fetch(new Request("https://presente.example/segui", { headers: persona }), { DB: dbClic });
     const robot = await worker.fetch(new Request("https://presente.example/segui", { headers: { "user-agent": "facebookexternalhit/1.1" } }), { DB: dbClic });
     verifica(sg.status === 302 && sg.headers.get("location") === "https://www.instagram.com/presente_app/" && robot.status === 302

@@ -2,7 +2,7 @@
 // Serve a misurare quante visite diventano iscrizioni (anche per le sponsorizzate Meta con utm_source/utm_campaign).
 // Solo totali in D1: nessun IP, cookie, user agent o referrer salvato, nessuno script nella pagina.
 import { CANALI, canaleValido } from "./canale.js";
-import { tipoRichiesta } from "./automatiche.js";
+import { tipoRichiesta, motivoAutomatica } from "./automatiche.js";
 
 const PAGINE = { "/": "home", "/grazie": "grazie", "/grazie.html": "grazie", "/da/meta": "da-meta", "/da/meta/": "da-meta" };
 
@@ -45,7 +45,9 @@ export function contaVisitaPagina(request, env) {
   const paginaVera = PAGINE[url.pathname];
   if (!paginaVera || !env.DB || request.method !== "GET") return null;
   const tipo = tipoRichiesta(request);
-  const pagina = tipo === "persona" ? paginaVera : tipo === "precaricata" ? "precaricate" : "automatiche";
+  // Visite vere (16/11): una «persona» da data center o senza le intestazioni di un browser va in «automatiche:<motivo>».
+  const motivo = tipo === "persona" ? motivoAutomatica(request) : "";
+  const pagina = tipo === "persona" ? (motivo ? "automatiche:" + motivo : paginaVera) : tipo === "precaricata" ? "precaricate" : "automatiche";
   const utm = etichetteUtm(url.searchParams, env);
   const sorgente = utm.sorgente || canaleValido(url.searchParams.get("da"));
   const campagna = utm.campagna;
@@ -155,7 +157,8 @@ const nuovaRiga = () => ({ home: 0, grazie: 0, home_persona: 0, grazie_persona: 
 
 // Numeri per /conteggio: totali per pagina, per giorno e per sorgente/campagna utm. Solo numeri.
 export async function perVisite(env) {
-  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, inizio: 0, automatiche: 0, per_giorno: {}, per_utm: {}, per_pagina: {} };
+  const vuoto = { home: 0, grazie: 0, home_persona: 0, grazie_persona: 0, precaricate: 0, grazie_ig: 0, da_meta: 0, da_meta_persona: 0, segui_ig: 0, inizio: 0, automatiche: 0,
+    automatiche_motivi: { robot: 0, server: 0, intestazioni: 0 }, per_giorno: {}, per_utm: {}, per_pagina: {} };
   if (!env.DB) return vuoto;
   try {
     const righe = await env.DB.prepare(
@@ -163,8 +166,13 @@ export async function perVisite(env) {
     ).all();
     for (const r of righe.results || []) {
       const n = r.n || 0;
-      if (r.pagina === "automatiche") {
+      if (r.pagina === "automatiche" || String(r.pagina).startsWith("automatiche:")) {
+        // «automatiche» = robot riconosciuti dallo user agent; «automatiche:server» e «automatiche:intestazioni» dal 16/11.
+        const motivo = r.pagina === "automatiche" ? "robot" : r.pagina.slice("automatiche:".length);
         vuoto.automatiche += n;
+        if (Object.prototype.hasOwnProperty.call(vuoto.automatiche_motivi, motivo)) vuoto.automatiche_motivi[motivo] += n;
+        const g = (vuoto.per_giorno[r.giorno] ||= nuovaRiga());
+        g.automatiche = (g.automatiche || 0) + n;
         continue;
       }
       if (String(r.pagina).startsWith(PREFISSO_PAGINA)) {
