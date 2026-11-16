@@ -126,6 +126,28 @@ export function schedaLeggibile(scheda) {
   };
 }
 
+// Ricorsi (spec «Ricorso», passo 13f): stessi esiti del Worker (worker/pannello_api.js, ESITI_RICORSO).
+export const ESITI_RICORSO_PANNELLO = Object.freeze([
+  ["accolto", "Accolto: la sanzione si annulla subito"],
+  ["respinto", "Respinto: la sanzione resta"],
+].map(Object.freeze));
+
+// Elenco dei ricorsi in attesa: { id, titolo, motivoSanzione, perche, inviato, resta, rossa, puoiDecidere }.
+// «puoiDecidere» è falso per chi ha dato la sanzione: lo rifiuta comunque il database.
+export function vociRicorsi(righe, adesso = new Date()) {
+  if (!Array.isArray(righe)) return [];
+  return righe.filter((r) => r && UUID.test(r.id || "")).map((r) => ({
+    id: r.id,
+    titolo: `${nome(r.nome) || "Senza nome"} contesta «${LIVELLI[r.livello] || "?"}» (${nome(r.regola) || "regola non indicata"})`,
+    motivoSanzione: typeof r.motivo_sanzione === "string" ? r.motivo_sanzione : "",
+    perche: typeof r.testo === "string" && r.testo.trim() ? r.testo : "Nessun motivo scritto.",
+    inviato: quando(r.inviato_il),
+    resta: tempoCheResta(r.risposta_entro, adesso),
+    rossa: new Date(r.risposta_entro || "").getTime() < adesso.getTime(),
+    puoiDecidere: r.decisa_da_te !== true,
+  }));
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -170,6 +192,18 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       if (!SENZA_REGOLA.has(azione) && !r) return { ok: false, motivo: "regola" };
       if (!t || t.length > 2000) return { ok: false, motivo: "testo" };
       const d = await chiama("/decidi", { id, azione, regola: r, testo: t });
+      return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
+    },
+    async ricorsi() {
+      const d = await chiama("/ricorsi");
+      return d.ok ? { ok: true, ricorsi: Array.isArray(d.ricorsi) ? d.ricorsi : [] } : d;
+    },
+    async decidiRicorso({ id, esito, testo }) {
+      if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
+      if (!ESITI_RICORSO_PANNELLO.some(([e]) => e === esito)) return { ok: false, motivo: "esito" };
+      const t = typeof testo === "string" ? testo.trim() : "";
+      if (!t || t.length > 2000) return { ok: false, motivo: "testo" };
+      const d = await chiama("/ricorso", { id, esito, testo: t });
       return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
     },
   };

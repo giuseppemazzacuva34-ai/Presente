@@ -2,7 +2,8 @@
 // Si entra con lo stesso accesso dell'app (/app/). Chi decide lo controlla il Worker (tabella moderatori): qui la
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML.
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO } from "/app/moduli/pannello.js";
+import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, vociRicorsi, ESITI_RICORSO_PANNELLO }
+  from "/app/moduli/pannello.js";
 
 const radice = document.getElementById("pannello");
 const stato = document.getElementById("stato");
@@ -15,6 +16,7 @@ const MESSAGGI = {
   regola: "Scegli la regola violata.",
   testo: "Scrivi il motivo della decisione (massimo 2000 caratteri).",
   spento: "Il pannello non è ancora attivo.",
+  rifiutata_ricorso: "Decisione non salvata: il ricorso è già deciso, oppure la sanzione l'hai data tu (decide un'altra persona).",
 };
 
 function h(tag, attributi = {}, ...figli) {
@@ -70,8 +72,54 @@ async function mostraCoda(p) {
         h("strong", { testo: v.motivo }),
         h("span", { testo: ` · ${v.priorita} · ${v.resta}${v.rossa ? " · urgente" : ""}` })),
       h("p", { class: "nota", testo: [v.chi, ...v.note].join(" · ") })))),
-    h("p", {}, h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Aggiorna" })),
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Aggiorna" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Ricorsi in attesa" })),
   );
+}
+
+// Ricorsi in attesa (spec «Ricorso», passo 13f): accolto annulla subito la sanzione, respinto la lascia.
+// Chi ha dato la sanzione vede il ricorso ma non il modulo: decide un'altra persona.
+async function mostraRicorsi(p) {
+  avvisa("");
+  const r = await p.ricorsi();
+  if (!r.ok) { avvisa(MESSAGGI[r.motivo] || MESSAGGI.riprova); return; }
+  const voci = vociRicorsi(r.ricorsi, new Date());
+  mostra(
+    h("h1", { testo: "Ricorsi in attesa" }),
+    h("p", { class: "sottotitolo", testo: voci.length ? `${voci.length} da decidere, prima quelli con la risposta più vicina.` : "Nessun ricorso da decidere." }),
+    h("ul", { class: "coda" }, voci.map((v, i) => h("li", { class: v.rossa ? "voce-coda voce-rossa" : "voce-coda" },
+      h("h2", { testo: v.titolo }),
+      h("p", { class: "nota", testo: `Inviato il ${v.inviato} · ${v.resta}${v.rossa ? " · urgente" : ""}` }),
+      h("p", { testo: `Motivo della sanzione: ${v.motivoSanzione || "non indicato"}` }),
+      h("p", { class: "racconto", testo: `Perché la contesta: ${v.perche}` }),
+      v.puoiDecidere ? moduloRicorso(p, v, i) : h("p", { class: "nota", testo: "La sanzione l'hai data tu: questo ricorso lo decide un'altra persona." })))),
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna alle segnalazioni" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Aggiorna" })),
+  );
+}
+
+function moduloRicorso(p, v, i) {
+  const esito = h("select", { id: `esito-${i}`, name: "esito" }, ESITI_RICORSO_PANNELLO.map(([e, t]) => h("option", { value: e, testo: t })));
+  const motivo = h("textarea", { id: `motivo-ricorso-${i}`, name: "motivo", rows: "3", maxlength: "2000", required: true });
+  const errore = h("p", { class: "errore", role: "alert" });
+  const invia = h("button", { type: "submit", class: "bottone", testo: "Conferma la decisione sul ricorso" });
+  return h("form", { class: "corpo", onsubmit: async (e) => {
+    e.preventDefault();
+    invia.disabled = true;
+    const fatto = await p.decidiRicorso({ id: v.id, esito: esito.value, testo: motivo.value });
+    invia.disabled = false;
+    if (!fatto.ok) {
+      errore.textContent = fatto.motivo === "rifiutata" ? MESSAGGI.rifiutata_ricorso : MESSAGGI[fatto.motivo] || MESSAGGI.riprova;
+      return;
+    }
+    await mostraRicorsi(p);
+    avvisa("Decisione sul ricorso salvata e scritta nel registro.");
+  } },
+  h("label", { for: `esito-${i}`, testo: "Decisione" }), esito,
+  h("label", { for: `motivo-ricorso-${i}`, testo: "Motivo (obbligatorio, resta nel registro)" }), motivo,
+  errore, invia);
 }
 
 async function mostraScheda(p, id) {
