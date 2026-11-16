@@ -30,3 +30,42 @@ export function tipoRichiesta(request) {
 export function richiestaAutomatica(request) {
   return tipoRichiesta(request) !== "persona";
 }
+
+// VISITE VERE DELLA HOME (16/11, richiesta del coordinatore su domanda di Giuseppe, D137): ~65 aperture al giorno di "/"
+// con uno user agent da browser ma senza l'immagine 1×1. Qui si riconoscono, solo per le aperture delle pagine contate,
+// due segnali che un telefono vero non dà. Si leggono e si buttano: nel database va solo il motivo, mai IP, ASN o user agent.
+// 1) «server»: la richiesta parte da un data center (numero di rete ASN di Amazon, Google Cloud, Microsoft, Hetzner,
+//    OVH, DigitalOcean...). Le reti che usano anche le persone (iCloud Relay privato su Akamai/Cloudflare/Fastly,
+//    Cloudflare WARP) NON sono in elenco.
+const ASN_SERVER = new Set([
+  16509, 14618, 8987, // Amazon AWS
+  15169, 396982, 19527, // Google e Google Cloud
+  8075, // Microsoft Azure
+  14061, // DigitalOcean
+  24940, 213230, // Hetzner
+  16276, // OVH
+  63949, // Linode
+  31898, // Oracle Cloud
+  45102, 37963, // Alibaba Cloud
+  132203, // Tencent Cloud
+  51167, 40021, // Contabo
+  20473, // Vultr
+  60781, 28753, // Leaseweb
+  12876, // Scaleway
+  9009, // M247
+  212238, // Datacamp
+  36352, // ColoCrossing
+  136907, // Huawei Cloud
+  197540, // netcup
+]);
+// 2) «intestazioni»: ogni browser vero manda Accept-Language; Chrome e i browser interni Android (Chromium) mandano
+//    anche Sec-Fetch-Mode. Chi dice di essere Chrome e non li manda è un programma che si finge browser.
+//    Safari e WebView degli iPhone vecchi possono non mandare Sec-Fetch: per loro basta la lingua.
+export function motivoAutomatica(request) {
+  const asn = Number(request.cf && request.cf.asn);
+  if (asn && ASN_SERVER.has(asn)) return "server";
+  const ua = request.headers.get("user-agent") || "";
+  if (!request.headers.get("accept-language")) return "intestazioni";
+  if (/Chrome\/\d/.test(ua) && !request.headers.get("sec-fetch-mode")) return "intestazioni";
+  return "";
+}
