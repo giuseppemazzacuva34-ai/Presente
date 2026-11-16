@@ -22,6 +22,10 @@ export const TESTI_AIUTO = Object.freeze({
   miei: "I miei messaggi",
 });
 
+// Le 12 domande frequenti con le risposte: restano vuote (sezione nascosta) finché i testi dei «contenuti» non passano
+// il gate_v3. Forma: [{ domanda, risposta }].
+export const DOMANDE_FREQUENTI = Object.freeze([]);
+
 // Le 7 categorie della spec, con i codici della tabella «supporto».
 export const CATEGORIE_SCRIVICI = Object.freeze([
   ["account", "Account e accesso"],
@@ -129,6 +133,7 @@ export function creaAiuto({ token, fetch: f = globalThis.fetch, attesa = ATTESA_
       if (dati.ok !== true || !Array.isArray(dati.messaggi)) return { ok: false, motivo: "riprova" };
       return {
         ok: true,
+        email: typeof dati.email === "string" ? dati.email : "",
         messaggi: dati.messaggi.map((m) => ({
           id: m.id, categoria: m.categoria, testo: m.testo, creatoIl: m.creatoIl,
           stato: m.stato === "risposto" ? "risposto" : "inviato", risposta: m.risposta ?? null, rispostoIl: m.rispostoIl ?? null,

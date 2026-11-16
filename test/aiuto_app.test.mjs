@@ -107,9 +107,9 @@ test("invio: senza accesso, rete giù, 429, 404 e motivi del server", async () =
 
 test("«I miei messaggi»: GET con il token, solo i campi attesi", async () => {
   const m = { id: ID, categoria: "altro", testo: "ciao", creatoIl: "2026-11-16T10:00:00Z", stato: "risposto", risposta: "Eccoci", rispostoIl: "2026-11-16T12:00:00Z" };
-  const { f, viste } = rete([{ ok: true, messaggi: [m] }]);
+  const { f, viste } = rete([{ ok: true, email: "prova@example.invalid", messaggi: [m] }]);
   const a = creaAiuto({ token: async () => "t".repeat(30), fetch: f });
-  assert.deepEqual(await a.miei(), { ok: true, messaggi: [m] });
+  assert.deepEqual(await a.miei(), { ok: true, email: "prova@example.invalid", messaggi: [m] });
   assert.equal(viste[0].metodo, "GET");
   assert.equal(viste[0].url, "/app/api/supporto");
   assert.deepEqual(await creaAiuto({ token: async () => "t".repeat(30), fetch: rete([503]).f }).miei(), { ok: false, motivo: "riprova" });
