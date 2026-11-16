@@ -1134,7 +1134,7 @@ function menuDellaScheda(p) {
       scheda.invio = true; scheda.errore = ""; disegna();
       const r = await bloccatore.blocca(p.id).catch(() => ({ ok: false, motivo: "rete" }));
       scheda.invio = false;
-      if (r.ok) { scheda.bloccate.add(p.id); Object.assign(scheda, { menu: "", conferma: "" }); }
+      if (r.ok) { scheda.bloccate.add(p.id); Object.assign(scheda, { menu: "", conferma: "" }); ricaricaStanzaDopoBlocco(); }
       else scheda.errore = MESSAGGI_STANZA[r.motivo] || "Non è andata. Riprova tra poco.";
       disegna();
     };
@@ -1151,13 +1151,20 @@ function menuDellaScheda(p) {
   return parti;
 }
 
+// Dopo un blocco la stanza si rilegge dal database (chiavi annullate, persona tolta): la persona è già nascosta da
+// scheda.bloccate, quindi se la rilettura non riesce non cambia niente per chi usa l'app.
+function ricaricaStanzaDopoBlocco() {
+  if (!telefono || typeof telefono.ricaricaPersone !== "function") return;
+  Promise.resolve(telefono.ricaricaPersone()).catch(() => {});
+}
+
 // «Segnala» dalla scheda: lo stesso modulo di «Segnala un problema», con origine «scheda» e la casella «Blocca anche».
 function schermoSegnalaScheda() {
   const sg = scheda.segnala;
   const m = { segnala: { contro: sg.contro, origine: "scheda", chiamataIl: null }, nome: sg.nome, schermo: { titolo: "Segnala" } };
   const torna = (inviata) => {
     // Segnalazione inviata con «Blocca anche» spuntata: la persona sparisce subito dall'elenco.
-    if (inviata && segnalazione.blocca) scheda.bloccate.add(sg.contro);
+    if (inviata && segnalazione.blocca) { scheda.bloccate.add(sg.contro); ricaricaStanzaDopoBlocco(); }
     scheda.segnala = null; disegna();
   };
   return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" }, schermoSegnala(m, torna));
