@@ -103,6 +103,7 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
   const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST" };
   if (!Object.hasOwn(metodi, percorso)) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (request.method !== metodi[percorso]) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodi[percorso] });
+  if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
 
   const chi = await chiEDavvero(request, env, f);
   if (chi.errore) return chi.errore;
@@ -166,6 +167,20 @@ async function chiEDavvero(request, env, f) {
   } catch (e) {
     console.error("pannello: accesso", e && e.name);
     return { errore: risposta(503, { ok: false, motivo: "riprova" }) };
+  }
+}
+
+// Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. Qui serve
+// soprattutto contro una coda di richieste senza token valido, che altrimenti costerebbe una chiamata a Supabase
+// per ognuna, senza nessun limite (le altre rotte nuove di Fase 2 lo hanno già). L'IP serve solo a contare in
+// memoria, mai salvato.
+async function troppeRichieste(request, env) {
+  if (!env.LIMITE_PROVINCIA) return false;
+  try {
+    const { success } = await env.LIMITE_PROVINCIA.limit({ key: "pannello:" + (request.headers.get("cf-connecting-ip") || "sconosciuto") });
+    return !success;
+  } catch {
+    return false;
   }
 }
 

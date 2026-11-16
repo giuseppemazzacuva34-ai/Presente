@@ -58,6 +58,15 @@ test("chi non è moderatore riceve 403 e non legge nulla", async () => {
   assert.deepEqual(op.chiamate.map((c) => c[0]), ["eModeratore"]);
 });
 
+test("troppe richieste dallo stesso indirizzo: 429 prima di toccare Supabase", async () => {
+  const s = supabaseFinto();
+  const op = finta();
+  const env = { ...ENV, LIMITE_PROVINCIA: { limit: async ({ key }) => ({ success: !key.startsWith("pannello:") }) } };
+  const r = await pannelloApi(richiesta("/coda", { metodo: "GET", corpo: null }), env, s.f, op);
+  assert.equal(r.status, 429);
+  assert.equal(s.viste.length + op.chiamate.length, 0);
+});
+
 test("coda: GET con l'id del token", async () => {
   const op = finta();
   const r = await pannelloApi(richiesta("/coda", { metodo: "GET", corpo: null }), ENV, supabaseFinto().f, op);
