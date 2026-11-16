@@ -23,6 +23,7 @@ import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
+import { TESTI_SANZIONE } from "./sanzioni.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -107,6 +108,9 @@ const storico = { aperto: false, carica: false, voci: [], errore: "", menu: "", 
 // Esito per chi segnala (#7 passo 4, passo 10c): letto una volta per sessione, solo in memoria.
 let esitiSegnalazioni = null;
 const esiti = { chiesti: false, voci: [] };
+// Sanzione e «Contesta» (#7 punti 7-8, passo 12d): lette una volta per sessione, solo in memoria.
+let sanzioniMie = null;
+const sanzioniStato = { chieste: false, voci: [], aperta: "", testo: "", invio: false, errore: "", inviata: "" };
 // Testo del diario mentre si scrive (resta tra un ridisegno e l'altro; si svuota appena si lascia la schermata).
 const notaDiario = { testo: "" };
 const ingresso = { chiesto: false, letto: false, apreIl: null, inCorso: false, errore: "", avviso: "" };
@@ -156,6 +160,7 @@ export function avvia(elemento, opzioni = {}) {
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
+  sanzioniMie = (telefono && opzioni.sanzioni) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -974,6 +979,7 @@ const SCHERMATE = {
         bloccoStanza(),
         bloccoTuaStanza(),
         bloccoEsiti(),
+        bloccoSanzioni(),
         h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
@@ -1250,4 +1256,53 @@ function bloccoEsiti() {
       disegna();
       esitiSegnalazioni.letto(v.id).catch(() => {});
     } }, TESTI_ESITO.ok))));
+}
+
+// Sanzione e «Contesta» (#7 spec v1.1, punti 7-8; D51 A): livello, regola violata, data di fine e «Contesta»; mai chi
+// ha segnalato. Il ricorso si fa una volta, entro 14 giorni; la sanzione resta attiva finché una persona decide.
+const ERRORI_RICORSO = {
+  testo: `Scrivi perché, al massimo ${TESTI_SANZIONE.massimo} caratteri.`,
+  gia_fatto: "Hai già contestato questa decisione.",
+  scaduto: "Sono passati più di 14 giorni: non si può più contestare.",
+};
+function bloccoSanzioni() {
+  if (!sanzioniMie) return null;
+  const st = sanzioniStato;
+  if (!st.chieste) {
+    st.chieste = true;
+    sanzioniMie.leggi().then((r) => {
+      if (r && r.ok && r.sanzioni.length) { st.voci = r.sanzioni; disegna(); }
+    }).catch(() => {});
+  }
+  if (!st.voci.length) return null;
+  return h("div", { classe: "sanzioni" }, ...st.voci.map((v) => {
+    const parti = [h("p", {}, h("strong", {}, v.titolo)),
+      v.regola ? h("p", {}, v.regola) : null,
+      v.fine ? h("p", {}, v.fine) : null,
+      v.stato ? h("p", { classe: "nota" }, v.stato) : null,
+      st.inviata === v.id ? h("p", { classe: "nota", role: "status" }, TESTI_SANZIONE.conferma) : null];
+    if (v.contesta && st.aperta !== v.id && st.inviata !== v.id) {
+      parti.push(h("button", { classe: "link", type: "button",
+        onclick: () => { Object.assign(st, { aperta: v.id, testo: "", errore: "" }); disegna(); } }, TESTI_SANZIONE.contesta));
+    }
+    if (st.aperta === v.id) {
+      const invia = async () => {
+        st.invio = true; st.errore = ""; disegna();
+        const r = await sanzioniMie.contesta(v.id, st.testo).catch(() => ({ ok: false, motivo: "rete" }));
+        st.invio = false;
+        if (r.ok) Object.assign(st, { aperta: "", testo: "", inviata: v.id });
+        else st.errore = ERRORI_RICORSO[r.motivo] || "Non è andata. Riprova tra poco.";
+        disegna();
+      };
+      parti.push(h("label", { for: `ricorso-${v.id}` }, TESTI_SANZIONE.domanda),
+        h("textarea", { id: `ricorso-${v.id}`, classe: "racconto-segnala", maxlength: String(TESTI_SANZIONE.massimo), rows: "5",
+          disabled: st.invio, oninput: (e) => { st.testo = e.target.value; } }, st.testo),
+        errore(st.errore),
+        h("div", { classe: "azioni" },
+          h("button", { classe: "bottone", type: "button", disabled: st.invio, onclick: invia }, st.invio ? "Invio…" : "Invia"),
+          h("button", { classe: "link", type: "button", disabled: st.invio,
+            onclick: () => { Object.assign(st, { aperta: "", testo: "", errore: "" }); disegna(); } }, "Annulla")));
+    }
+    return h("div", { classe: "riepilogo", role: "region", "aria-label": v.titolo }, ...parti);
+  }));
 }
