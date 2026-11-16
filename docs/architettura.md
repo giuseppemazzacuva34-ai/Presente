@@ -188,6 +188,8 @@ I dettagli (quanto sfocato all'inizio, se si schiarisce, cosa succede se uno si 
 
 Svelamento (#65, spec v1), passo 1 *Regole* (fatto, `api/svelamento.js` + `test/svelamento.test.mjs`): caparra di 10 crediti e «Ti mancano N crediti», avvio solo con le due caparre ed entro 48 ore dalla porta, «Preferisco le foto» di uno vale per entrambi, prima fascia comune da 30 minuti (max 3 a testa), timer di 10 s che parte all'arrivo del secondo video (sfocato che si schiarisce in 3 s), caduta prima dei 10 s → «Riprova» per 2 minuti, max 3 tentativi, sì/no segreto con lo stesso esito per «no» e silenzio, porta scaduta / blocco / «Chiudi e segnala» senza penale, riga di registro senza le singole risposte. Solo calcoli. Prossimi passi: tabelle (porte, caparre, fasce) con regole per riga, poi richieste del Worker sulla base Realtime della #4, poi schermate.
 
+Svelamento, passi 2–4a (fatti): tabella `svelamenti` (una riga per porta, nessuna colonna per audio, video o immagini; le risposte sì/no si cancellano con l'esito), registro dei crediti in sola aggiunta `crediti_movimenti` (contatore interno della beta, saldo mai negativo, una caparra per persona e porta) e, dal passo 4a (`supabase/migrations/20261116230000_caparra_server.sql`, prove in `supabase/test/prova_caparra_server.sql`), `caparra_svelamento()` e `svelamento_di()` per il Worker: prima di bloccare o di mostrare lo stato chiudono le porte con un blocco, con una persona sospesa (`sospeso()`) o scadute dopo 48 ore senza svelamento, e restituiscono i crediti a entrambi senza penali. Prossimo (4b): richieste `/app/api/svelamento` del Worker, spente finché `ACCESSO_APP` non vale «si».
+
 ## Lavori programmati
 
 | Quando (ora di Roma) | Cosa |
