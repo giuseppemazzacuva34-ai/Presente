@@ -3,6 +3,9 @@
 //   GET  /app/api/svelamento  → { ok, saldo, caparra, beta, testi, porte: [...] }               (svelamento_di)
 //   POST /app/api/svelamento  { azione: "caparra", porta }
 //                             → { ok: true, esito, stato } | { ok: false, motivo, testo?, mancano? }
+//   POST /app/api/svelamento  { azione: "scelta", porta, scelta: "video" | "foto" }                (passo 3a)
+//                             → { ok: true, esito: "salvata", stato } | { ok: false, motivo, testo? }
+//   La scelta dell'altra persona non esce mai: solo «mia_scelta».
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
 // (10 crediti, una caparra per persona e porta, mai sotto zero, chiusura per scadenza, blocco o sospensione con le
@@ -19,6 +22,7 @@ const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const CAMPI_PORTA = ["porta", "con", "nome", "eta", "aperta_il", "scade_il", "mia_caparra", "sua_caparra"];
+const SCELTE = ["video", "foto"];
 const BLOCCATA = ["bloccata", "gia_bloccata"];
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
 
@@ -56,6 +60,7 @@ async function rpc(s, nome, argomenti, f) {
 function porta(p) {
   const pulita = {};
   for (const campo of CAMPI_PORTA) pulita[campo] = p[campo] ?? null;
+  pulita.mia_scelta = SCELTE.includes(p.mia_scelta) ? p.mia_scelta : "video";
   pulita.aspetta = p.mia_caparra === true && p.sua_caparra !== true
     ? TESTI_SVELAMENTO.aspettaCaparra.replace("<nome>", String(p.nome || ""))
     : null;
@@ -69,7 +74,10 @@ async function stato(s, id, f) {
     saldo: d.saldo,
     caparra: SVELAMENTO.caparra,
     beta: true,
-    testi: { blocca: TESTI_SVELAMENTO.blocca, spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra, beta: TESTI_SVELAMENTO.beta },
+    testi: {
+      blocca: TESTI_SVELAMENTO.blocca, spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra, beta: TESTI_SVELAMENTO.beta,
+      scelta: { video: TESTI_SVELAMENTO.sceltaVideo, foto: TESTI_SVELAMENTO.sceltaFoto },
+    },
     porte: d.porte.filter((p) => p && typeof p === "object").map(porta),
   };
 }
@@ -91,8 +99,10 @@ export async function svelamentoApi(request, env, f = fetch) {
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
   if (corpo.errore) return corpo.errore;
-  const { azione, porta: idPorta } = corpo.dati;
-  if (azione !== "caparra" || !UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
+  const { azione, porta: idPorta, scelta } = corpo.dati;
+  if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
+  if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
+  if (azione !== "caparra") return risposta(400, { ok: false, motivo: "dati" });
 
   const esito = await rpc(s, "caparra_svelamento", { p_porta: idPorta, p_persona: chi.id }, f);
   if (BLOCCATA.includes(esito)) return risposta(200, { ok: true, esito, stato: await stato(s, chi.id, f) });
@@ -108,6 +118,19 @@ export async function svelamentoApi(request, env, f = fetch) {
       ricarica: TESTI_SVELAMENTO.ricarica, beta: TESTI_SVELAMENTO.beta,
     });
   }
+  return riprova();
+}
+
+// Passo 3a: «Videochiamata di 10 secondi» o «Preferisco le foto», solo per la persona del token. Le regole (porta
+// aperta, non ancora iniziata, chiusura per scadenza, blocco o sospensione) le applica scelta_svelamento() nel database.
+async function sceltaSvelamento(s, id, idPorta, scelta, f) {
+  if (!SCELTE.includes(scelta)) return risposta(400, { ok: false, motivo: "dati" });
+  const esito = await rpc(s, "scelta_svelamento", { p_porta: idPorta, p_persona: id, p_scelta: scelta }, f);
+  if (esito === "salvata") return risposta(200, { ok: true, esito, stato: await stato(s, id, f) });
+  if (esito === "gia_iniziato") return risposta(200, { ok: false, motivo: esito });
+  if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+  if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
+  if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
   return riprova();
 }
 

@@ -190,6 +190,8 @@ Svelamento (#65, spec v1), passo 1 *Regole* (fatto, `api/svelamento.js` + `test/
 
 Svelamento, passi 2–4a (fatti): tabella `svelamenti` (una riga per porta, nessuna colonna per audio, video o immagini; le risposte sì/no si cancellano con l'esito), registro dei crediti in sola aggiunta `crediti_movimenti` (contatore interno della beta, saldo mai negativo, una caparra per persona e porta) e, dal passo 4a (`supabase/migrations/20261116230000_caparra_server.sql`, prove in `supabase/test/prova_caparra_server.sql`), `caparra_svelamento()` e `svelamento_di()` per il Worker: prima di bloccare o di mostrare lo stato chiudono le porte con un blocco, con una persona sospesa (`sospeso()`) o scadute dopo 48 ore senza svelamento, e restituiscono i crediti a entrambi senza penali. Prossimo (4b): richieste `/app/api/svelamento` del Worker, spente finché `ACCESSO_APP` non vale «si».
 
+Svelamento, passi 4b–4c (fatti, PR #241 e #243): `/app/api/svelamento` del Worker (GET stato, POST `caparra`) e schermata della porta nella web app. Passo 3a (scelta video/foto, `supabase/migrations/20261117121900_scelta_svelamento.sql`, prove in `supabase/test/prova_scelta_svelamento.sql`): `scelta_svelamento()` salva «Videochiamata di 10 secondi» (predefinita) o «Preferisco le foto» solo per chi chiede, fino all'inizio dello svelamento, con le stesse chiusure di `caparra_svelamento()`; `svelamento_di()` restituisce anche `mia_scelta`, mai la scelta dell'altra persona; il Worker accetta POST `{ azione: "scelta", porta, scelta }`. Prossimo (3b): le due scelte nella schermata della porta, poi «Sono pronto ora» / «Scegli un orario».
+
 ## Lavori programmati
 
 | Quando (ora di Roma) | Cosa |

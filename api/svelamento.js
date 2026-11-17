@@ -36,6 +36,9 @@ export const TESTI_SVELAMENTO = Object.freeze({
   ricarica: "Ricarica",
   beta: "In beta i crediti sono di prova",
   portaChiusa: "Questa porta si è chiusa.",
+  // «Come vuoi lo svelamento» (spec v1, passo 3). Si cambia fino all'inizio dello svelamento.
+  sceltaVideo: "Videochiamata di 10 secondi",
+  sceltaFoto: "Preferisco le foto",
 });
 
 const ORA = 3600000;
