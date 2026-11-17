@@ -27,7 +27,14 @@ export const TESTI = Object.freeze({
   // Provvisorio, da rivedere con «contenuti»: il passo 3 della spec (video o foto, quando) arriva con il passo 5.
   entrambe: "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
   torna: "Torna alla stanza",
+  // Passo 3 della spec: «Come vuoi lo svelamento». Si cambia fino all'inizio; la scelta dell'altra persona non si vede.
+  sceltaTitolo: "Come vuoi lo svelamento?",
+  sceltaVideo: "Videochiamata di 10 secondi",
+  sceltaFoto: "Preferisco le foto",
+  // Provvisorio, da rivedere con «contenuti».
+  giaIniziato: "Lo svelamento è già iniziato: la scelta non si può più cambiare.",
 });
+const SCELTE = ["video", "foto"];
 
 const nome = (n) => (typeof n === "string" && n.trim() ? n.trim() : "");
 const plurale = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -62,10 +69,15 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
     caparra = { tipo: "ricarica", testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${plurale(mancano, "credito", "crediti")}`,
       bottone: TESTI.ricarica, beta: TESTI.beta, spiegazione: TESTI.spiegazioneCaparra };
   }
+  // Passo 3: dopo la propria caparra. «video» è la predefinita; un valore non previsto vale come «video».
+  const scelta = p.mia_caparra === true ? {
+    attuale: SCELTE.includes(p.mia_scelta) ? p.mia_scelta : "video",
+    opzioni: [{ valore: "video", testo: TESTI.sceltaVideo }, { valore: "foto", testo: TESTI.sceltaFoto }],
+  } : null;
   return {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
-    conto, saldo: `I tuoi crediti: ${saldo}`, caparra,
+    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta,
   };
 }
 
@@ -74,6 +86,7 @@ const ERRORI = Object.freeze({
   accesso: "Accedi di nuovo per continuare.",
   troppe: "Troppi tentativi. Aspetta un minuto.",
   non_trovata: TESTI.portaChiusa,
+  gia_iniziato: TESTI.giaIniziato,
 });
 export const testoErroreSvelamento = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 const errore = (motivo) => ({ ok: false, motivo, testo: testoErroreSvelamento(motivo) });
@@ -101,6 +114,7 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       if (!dati || typeof dati !== "object" || (r.status !== 200 && dati.ok !== false)) return errore("riprova");
       if (dati.ok === false) {
         // Il testo per l'utente lo manda il server per i rifiuti delle regole (crediti, scaduta, chiusa).
+        if (dati.motivo === "gia_iniziato") return errore("gia_iniziato");
         return typeof dati.testo === "string" && dati.testo ? { ok: false, motivo: String(dati.motivo || ""), testo: dati.testo }
           : errore(String(dati.motivo || "riprova"));
       }
@@ -119,6 +133,12 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
     async blocca(porta) {
       if (!UUID.test(String(porta || ""))) return errore("non_trovata");
       const r = await chiedi({ azione: "caparra", porta });
+      return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
+    },
+    // Passo 3b: la propria scelta, mai quella dell'altra persona (chi sceglie lo dice solo il token).
+    async scegli(porta, scelta) {
+      if (!UUID.test(String(porta || "")) || !SCELTE.includes(scelta)) return errore("riprova");
+      const r = await chiedi({ azione: "scelta", porta, scelta });
       return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
     },
   };
@@ -194,6 +214,32 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       errore = (r && r.testo) || testoErroreSvelamento(motivo);
       avvisa();
     },
+    async scegli(valore) {
+      if (inCorso || !porta || !SCELTE.includes(valore)) return;
+      const attuale = schermataPorta(stato, porta, adesso());
+      if (!attuale || attuale.tipo !== "porta" || !attuale.scelta || attuale.scelta.attuale === valore) return;
+      inCorso = true;
+      errore = null;
+      avvisa();
+      const id = porta;
+      const r = await svelamento.scegli(id, valore).catch(() => ({ ok: false, motivo: "rete" }));
+      inCorso = false;
+      if (porta !== id) return;
+      if (r && r.ok) {
+        if (r.stato) stato = r.stato;
+        else await leggi();
+        avvisa();
+        return;
+      }
+      const motivo = r && r.motivo;
+      if (["porta_chiusa", "porta_scaduta", "non_trovata"].includes(motivo)) {
+        await leggi();
+        return;
+      }
+      if (motivo === "gia_iniziato") await leggi();
+      errore = (r && r.testo) || testoErroreSvelamento(motivo);
+      avvisa();
+    },
     modello: () => ({
       aperta: porta !== null,
       carica,
@@ -235,6 +281,12 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
         m.ricarica ? h("p", { classe: "nota", id: "ricarica-beta", role: "status" }, c.beta) : null);
     } else {
       parti.push(h("p", { role: "status" }, c.testo));
+    }
+    if (s.scelta) {
+      parti.push(h("div", { classe: "scelta-svelamento", role: "group", "aria-labelledby": "scelta-titolo" },
+        h("h2", { id: "scelta-titolo" }, TESTI.sceltaTitolo),
+        s.scelta.opzioni.map((o) => h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso,
+          "aria-pressed": o.valore === s.scelta.attuale ? "true" : "false", onclick: () => ps.scegli(o.valore) }, o.testo))));
     }
   }
   return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
