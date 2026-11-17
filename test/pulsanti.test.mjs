@@ -114,7 +114,7 @@ test("datiPerPulsanti: membri, chiamate di tutti, blocchi miei, profili, permess
     ["blocchi", [{ chi: B, bloccato: A }]],
     ["profili", [{ id: B, fascia_da: "19:00", fascia_a: "24:00", pausa_il: "2026-11-10", solo_con_permesso: true }, { id: A, fascia_da: "x" }]],
     ["permessi_chiamata", [{ utente_id: B }]],
-    ["sospensioni", [{ persona: B }]],
+    ["rpc/sospesi_tra", [{ persona: B }]],
   ]);
   const r = await datiPerPulsanti(ENV, { stanza: STANZA, chi: A }, f);
   assert.equal(r.ok, true);
@@ -131,12 +131,17 @@ test("datiPerPulsanti: membri, chiamate di tutti, blocchi miei, profili, permess
   assert.ok(testo.includes(`profili?id=in.(${A},${B})&select=id,fascia_da,fascia_a,pausa_il,solo_con_permesso`));
   assert.ok(testo.includes(`permessi_chiamata?permesso_a=eq.${A}&select=utente_id`));
   assert.ok(!/nome|foto|questionario|diario/.test(testo));
+  // #7: sospesi con la regola del database (sospesi_tra), POST con gli id validi dei membri, mai la tabella.
+  const rpc = chieste.find((c) => c.url.endsWith("/rest/v1/rpc/sospesi_tra"));
+  assert.equal(rpc.init.method, "POST");
+  assert.deepEqual(JSON.parse(rpc.init.body), { p_persone: [A, B] });
+  assert.equal(testo.includes("sospensioni?"), false);
   for (const c of chieste) assert.equal(c.init.headers.apikey, "chiave-server");
   assert.ok(chieste.length <= 6);
 });
 
 test("datiPerPulsanti: una lettura che non va → riprova; id sbagliati → nessuna lettura", async () => {
-  const { f } = finto([["membri_stanza", [{ utente_id: A }]], ["sospensioni", new Error("rete")]]);
+  const { f } = finto([["membri_stanza", [{ utente_id: A }]], ["rpc/sospesi_tra", new Error("rete")]]);
   assert.deepEqual(await datiPerPulsanti(ENV, { stanza: STANZA, chi: A }, f), { ok: false, motivo: "riprova" });
   const vuoto = finto([]);
   assert.deepEqual(await datiPerPulsanti(ENV, { stanza: STANZA, chi: "' or 1=1" }, vuoto.f), { ok: false, motivo: "riprova" });

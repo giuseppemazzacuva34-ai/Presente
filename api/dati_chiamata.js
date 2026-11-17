@@ -18,11 +18,11 @@ function server(env) {
 }
 
 // Una lettura: la lista di righe, oppure null per qualunque problema (errore, tempo scaduto, risposta non lista).
-async function leggi(s, percorso, f) {
+async function leggi(s, percorso, f, init = { headers: s.headers }) {
   let timer;
   try {
     const r = await Promise.race([
-      f(`${s.base}/rest/v1/${percorso}`, { headers: s.headers }),
+      f(`${s.base}/rest/v1/${percorso}`, init),
       new Promise((_, no) => { timer = setTimeout(() => no(new Error("tempo scaduto")), ATTESA_MS); }),
     ]);
     if (!r.ok) {
@@ -38,6 +38,14 @@ async function leggi(s, percorso, f) {
     clearTimeout(timer);
   }
 }
+
+// #7 passo 14c: chi di un elenco è fuori adesso, con la stessa regola del database (sospeso(): sospensioni,
+// sanzioni decise da una persona, uscita per contatti prima della porta). Solo id in entrata e in uscita.
+const sospesiTra = (s, persone, f) => leggi(s, "rpc/sospesi_tra", f, {
+  method: "POST",
+  headers: { ...s.headers, "content-type": "application/json" },
+  body: JSON.stringify({ p_persone: persone }),
+});
 
 const data = (x) => { const d = new Date(x); return Number.isFinite(d.getTime()) ? d : null; };
 
@@ -67,8 +75,8 @@ export async function datiPerChiamare(env, { stanza, chi, verso }, f = fetch) {
     leggi(s, `blocchi?select=chi,bloccato&or=(and(chi.eq.${chi},bloccato.eq.${verso}),and(chi.eq.${verso},bloccato.eq.${chi}))`, f),
     leggi(s, `profili?id=eq.${verso}&select=fascia_da,fascia_a,pausa_il,solo_con_permesso&limit=1`, f),
     leggi(s, `permessi_chiamata?utente_id=eq.${verso}&permesso_a=eq.${chi}&select=permesso_a`, f),
-    // #7 spec v1.1: sospensioni ancora attive dei due (solo la colonna persona, mai motivo o segnalazione).
-    leggi(s, `sospensioni?persona=in.(${coppia})&tolta_il=is.null&select=persona`, f),
+    // #7: chi dei due è fuori adesso (solo la colonna persona, mai motivo o segnalazione).
+    sospesiTra(s, [chi, verso], f),
   ]);
   if (!membri || !chiamate || !blocchi || !profili || !permessi || !sospensioni) return { ok: false, motivo: "riprova" };
   const p = profili[0] || {};
@@ -103,7 +111,7 @@ export async function datiPerPulsanti(env, { stanza, chi }, f = fetch) {
     leggi(s, `blocchi?select=chi,bloccato&or=(chi.eq.${chi},bloccato.eq.${chi})`, f),
     leggi(s, `profili?id=in.(${tutti})&select=id,fascia_da,fascia_a,pausa_il,solo_con_permesso`, f),
     leggi(s, `permessi_chiamata?permesso_a=eq.${chi}&select=utente_id`, f),
-    leggi(s, `sospensioni?persona=in.(${tutti})&tolta_il=is.null&select=persona`, f),
+    sospesiTra(s, membri, f),
   ]);
   if (!chiamate || !blocchi || !profili || !permessi || !sospensioni) return { ok: false, motivo: "riprova" };
   const mappa = new Map();
