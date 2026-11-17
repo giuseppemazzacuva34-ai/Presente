@@ -24,6 +24,7 @@ import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
+import { vistaPorta } from "./svelamento.js";
 import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
@@ -31,6 +32,8 @@ let chiaviStanza = null;
 let appuntiStanza = null;
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
+// Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
+let portaSvelamento = null;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -160,7 +163,8 @@ export function avvia(elemento, opzioni = {}) {
   segnalatore = (telefono && opzioni.segnala) || null;
   bloccatore = (telefono && opzioni.blocca) || null;
   chiaviStanza = (telefono && opzioni.chiavi) || null;
-  svelamento = typeof opzioni.svelamento === "function" ? opzioni.svelamento : null;
+  portaSvelamento = (telefono && opzioni.porta) || null;
+  svelamento = portaSvelamento ? (id) => portaSvelamento.apri(id) : null;
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
@@ -620,6 +624,7 @@ function disegna() {
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
+  if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -1190,6 +1195,20 @@ export function chiaviCambiate() {
   disegna();
   const primo = radice.querySelector(".chiave-finestra textarea, .chiave-finestra button");
   if (primo) primo.focus({ preventScroll: true });
+}
+
+// Schermata della porta (#65): il modulo avvisa a ogni cambio; si ridisegna solo nella home, e il fuoco va al titolo
+// quando la schermata si apre o si chiude, così tastiera e lettore di schermo non si perdono.
+let portaEraAperta = false;
+export function portaCambiata() {
+  if (!radice || !portaSvelamento || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  disegna();
+  const aperta = portaSvelamento.modello().aperta;
+  if (aperta !== portaEraAperta) {
+    portaEraAperta = aperta;
+    const titolo = radice.querySelector(aperta ? "#porta-titolo" : "#tua-stanza-titolo");
+    if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: false }); }
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------

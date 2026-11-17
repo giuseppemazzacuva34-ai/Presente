@@ -154,3 +154,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .racconto { white-space: pre-wrap; border-left: 3px solid var(--linea); padding-left: 0.75rem; }
 #pannello textarea { font: inherit; color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.5rem; padding: 0.6rem; }
 #pannello .azioni { position: static; flex-wrap: wrap; background: none; }
+/* Schermata della porta (#65 passi 1-2): nome ed età grandi, poi conto, crediti e caparra. */
+.porta-svelamento .porta-chi { font-size: 1.4rem; margin: 0.25rem 0; }
+.porta-svelamento .bottone, .porta-svelamento .bottone-secondario { min-height: 44px; }
