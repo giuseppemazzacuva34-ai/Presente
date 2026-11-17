@@ -83,6 +83,7 @@ const ERRORI = Object.freeze({
   persona: "Non riusciamo a collegare questa persona. Torna alla stanza e riprova.",
   scaduta: "Sono passati più di 30 giorni: questa chiamata non si può più segnalare.",
   dati: "Controlla il modulo e riprova.",
+  in_attesa: "Sei senza connessione: la segnalazione partirà da sola appena torni online.",
 });
 export const testoErroreSegnala = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 
