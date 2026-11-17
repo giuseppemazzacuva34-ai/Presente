@@ -23,6 +23,7 @@ import { creaEsiti } from "/app/moduli/esiti_segnalazioni.js";
 import { creaSanzioni } from "/app/moduli/sanzioni.js";
 import { creaAiuto } from "/app/moduli/aiuto.js";
 import { creaSvelamento, creaPortaSvelamento } from "/app/moduli/svelamento.js";
+import { conAttesa } from "/app/moduli/in_attesa.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -63,10 +64,12 @@ async function preparaAccesso() {
     // Chiamate solo voce (#4): le richieste rispondono solo con ACCESSO_APP = «si»; altrimenti la sentinella si ferma.
     const { telefono, sentinella } = preparaTelefono(config, accesso);
     // Segnalazioni (#7): il modulo dopo «Chiudi e segnala» e «Segnala un problema»; chi segnala lo dice il token.
-    const segnala = creaSegnala({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    // Senza connessione segnalazione e blocco restano nella memoria della pagina e partono al rientro (#7 Offline).
+    const segnala = conAttesa(creaSegnala({ token: () => accesso.token(), fetch: window.fetch.bind(window) }), "invia", { finestra: window });
     // Blocco dalla scheda (#7 punto 5): solo la propria riga in blocchi, con il proprio token (regole per riga).
-    const blocca = creaBlocca({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
-      token: () => accesso.token(), utenteId: () => accesso.utenteId(), fetch: window.fetch.bind(window) });
+    const blocca = conAttesa(creaBlocca({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
+      token: () => accesso.token(), utenteId: () => accesso.utenteId(), fetch: window.fetch.bind(window) }),
+      "blocca", { finestra: window, inAttesa: { ok: true, inAttesa: true } });
     // Chiavi (#5): le regole le decide il Worker (/app/api/chiavi); chi dà la chiave lo dice solo il token.
     const chiavi = creaChiaviStanza({ chiavi: creaChiavi({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       aggiorna: () => chiaviCambiate(),

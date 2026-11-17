@@ -1,7 +1,7 @@
 // Service worker della web app (Fase 2, issue #1).
 // Rende l'app installabile e tiene in memoria solo i file pubblici dell'app (mai risposte con dati personali):
 // se la rete manca, mostra l'ultima versione salvata della pagina.
-const VERSIONE = "presente-app-31";
+const VERSIONE = "presente-app-32";
 const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js", "/app/moduli/domande.js", "/app/moduli/registratore.js",
   "/app/moduli/foto.js", "/app/moduli/accesso.js", "/app/moduli/salvataggio.js", "/app/moduli/province.js", "/app/moduli/lista.js", "/app/moduli/aree.js", "/app/moduli/zona.js", "/app/moduli/stanza.js", "/app/moduli/chiamata.js", "/app/moduli/voce.js", "/app/moduli/compagni.js", "/app/moduli/sentinella.js", "/app/moduli/telefono.js", "/app/manifest.webmanifest", "/stile.css", "/favicon.svg",
   "/app/moduli/segnala.js", "/app/moduli/disponibilita.js", "/app/moduli/diario.js",
@@ -12,7 +12,8 @@ const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js",
   "/app/moduli/sanzioni.js",
   "/app/moduli/appunti_stanza.js",
   "/app/moduli/aiuto.js",
-  "/app/moduli/svelamento.js"];
+  "/app/moduli/svelamento.js",
+  "/app/moduli/in_attesa.js"];
 
 self.addEventListener("install", (evento) => {
   evento.waitUntil(caches.open(VERSIONE).then((cache) => cache.addAll(FILE)).then(() => self.skipWaiting()));
