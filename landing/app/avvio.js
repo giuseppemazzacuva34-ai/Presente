@@ -1,7 +1,7 @@
 // Avvio della web app (Fase 2): registra il service worker (app installabile) e apre l'iscrizione.
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
-import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -22,6 +22,7 @@ import { creaAppuntiStanza } from "/app/moduli/appunti_stanza.js";
 import { creaEsiti } from "/app/moduli/esiti_segnalazioni.js";
 import { creaSanzioni } from "/app/moduli/sanzioni.js";
 import { creaAiuto } from "/app/moduli/aiuto.js";
+import { creaSvelamento, creaPortaSvelamento } from "/app/moduli/svelamento.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -90,7 +91,10 @@ async function preparaAccesso() {
       token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Pagina Aiuto (#10): «Scrivici» e «I miei messaggi» via Worker; chi scrive lo dice solo il token.
     const aiuto = creaAiuto({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null };
+    // Schermata della porta (#65 passi 1-2): caparra via Worker (/app/api/svelamento); chi blocca lo dice solo il token.
+    const porta = creaPortaSvelamento({ svelamento: creaSvelamento({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
+      aggiorna: () => portaCambiata() });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

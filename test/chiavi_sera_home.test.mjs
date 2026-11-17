@@ -88,7 +88,8 @@ test("errore di rete sulla sera: niente da mostrare, la stanza resta com'è", as
 test("flusso: la sera in cima a «La tua stanza», lo svelamento lo passa chi lo costruisce (#65)", () => {
   const flusso = leggi("../landing/app/moduli/flusso.js");
   assert.match(flusso, /vistaSera\(h, chiaviStanza, \{ svelamento \}\)/);
-  assert.match(flusso, /svelamento = typeof opzioni\.svelamento === "function" \? opzioni\.svelamento : null/);
+  // Dal passo 4c (CTO) la funzione la costruisce il flusso dalla schermata della porta (svelamento.js).
+  assert.match(flusso, /svelamento = portaSvelamento \? \(id\) => portaSvelamento\.apri\(id\) : null/);
 });
 
 test("service worker: versione nuova, così i telefoni prendono i moduli delle chiavi aggiornati", () => {
