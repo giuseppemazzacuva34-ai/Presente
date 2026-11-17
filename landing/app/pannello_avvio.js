@@ -17,6 +17,7 @@ const MESSAGGI = {
   testo: "Scrivi il motivo della decisione (massimo 2000 caratteri).",
   spento: "Il pannello non è ancora attivo.",
   rifiutata_ricorso: "Decisione non salvata: il ricorso è già deciso, oppure la sanzione l'hai data tu (decide un'altra persona).",
+  seconda_volta_contatti: "Decisione non salvata: è la seconda volta in 6 mesi che chiede contatti prima della porta. Scegli «Sospensione 7 giorni».",
 };
 
 function h(tag, attributi = {}, ...figli) {

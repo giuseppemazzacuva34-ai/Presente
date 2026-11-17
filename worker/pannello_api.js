@@ -40,13 +40,18 @@ function server(env) {
     ? { base, chiave, headers: { apikey: chiave, authorization: `Bearer ${chiave}`, "content-type": "application/json" } } : null;
 }
 
+// Codici fissi che il database usa per rifiutare una decisione e che il pannello sa spiegare.
+const CODICI_DATABASE = Object.freeze(["seconda_volta_contatti"]);
+
 // Chiamata a una funzione del database con la chiave del server: { stato, dati } oppure null se la rete non va.
 async function rpc(s, nome, parametri, f) {
   try {
     const r = await entro(ATTESA_MS, f(`${s.base}/rest/v1/rpc/${nome}`, { method: "POST", headers: s.headers, body: JSON.stringify(parametri) }));
     if (!r.ok) {
       console.error("pannello: risposta", nome, r.status);
-      return { stato: r.status, dati: null };
+      // Solo i codici fissi scritti da noi nel database passano oltre (mai altro testo, mai nei log).
+      const errore = await r.json().catch(() => null);
+      return { stato: r.status, dati: null, codice: CODICI_DATABASE.includes(errore?.message) ? errore.message : null };
     }
     // Le funzioni «void» (decidi_ricorso) possono rispondere 204 senza corpo.
     return { stato: r.status, dati: r.status === 204 ? null : await r.json() };
@@ -79,7 +84,8 @@ function operazioniVere(env, f) {
       if (!r) return null;
       if (r.stato >= 200 && r.stato < 300) return { ok: true, sanzione: typeof r.dati === "string" ? r.dati : null };
       // Segnalazione già decisa o inesistente, persona mancante: lo dice il database, si mostra «non riuscita».
-      if (r.stato >= 400 && r.stato < 500) return { ok: false, motivo: "rifiutata" };
+      // Seconda volta in 6 mesi per contatti prima della porta (passo 14a): serve la sospensione di 7 giorni.
+      if (r.stato >= 400 && r.stato < 500) return { ok: false, motivo: r.codice || "rifiutata" };
       return null;
     },
     ricorsi: async (id) => {
