@@ -19,6 +19,8 @@ const UNA_PORTA = {
   mia_caparra: false, sua_caparra: true, mia_scelta: "video",
 };
 const STATO = { saldo: 25, porte: [UNA_PORTA] };
+// Passo 5a: campi di «Quando» quando il database non li manda (prima della migrazione o porta senza riga).
+const QUANDO_VUOTO = { mie_fasce: [], fascia_fissata: null, mio_pronto: false, suo_pronto: false, pronto_scade_il: null, pronta: null };
 
 function supabaseFinto({ utente = 200, rpc = {} } = {}) {
   const viste = [];
@@ -71,7 +73,7 @@ test("GET: saldo e porte da svelamento_di per la persona del token, con i testi 
   assert.equal(j.saldo, 25);
   assert.equal(j.caparra, 10);
   assert.equal(j.beta, true);
-  assert.deepEqual(j.porte, [{ ...UNA_PORTA, aspetta: null }]);
+  assert.deepEqual(j.porte, [{ ...UNA_PORTA, aspetta: null, ...QUANDO_VUOTO }]);
   assert.equal(j.testi.blocca, "Blocca 10 crediti");
   assert.equal(j.testi.spiegazione, TESTI_SVELAMENTO.spiegazioneCaparra);
   assert.deepEqual(j.testi.scelta, { video: "Videochiamata di 10 secondi", foto: "Preferisco le foto" });
@@ -241,4 +243,79 @@ test("POST scelta dopo l'inizio: non cambia; porta scaduta, chiusa o di altri co
   assert.equal((await svelamentoApi(scelta("foto"), ENV, s.f)).status, 404);
   s = supabaseFinto({ rpc: { scelta_svelamento: "boh" } });
   assert.equal((await svelamentoApi(scelta("foto"), ENV, s.f)).status, 503);
+});
+
+// --- Passo 5a: «Sono pronto ora» e «Scegli un orario» ----------------------------------------------------------------
+const F1 = "2026-11-16T18:00:00.000Z", F2 = "2026-11-16T18:30:00.000Z", F3 = "2026-11-17T09:00:00.000Z";
+const pronto = (extra = {}) => richiesta({ metodo: "POST", corpo: { azione: "pronto", porta: PORTA, ...extra } });
+const fasce = (valore, extra = {}) => richiesta({ metodo: "POST", corpo: { azione: "fasce", porta: PORTA, fasce: valore, ...extra } });
+
+test("GET: proprie fasce, fascia fissata e «<nome> è pronta per lo svelamento»; mai le fasce dell'altra persona", async () => {
+  const s = supabaseFinto({ rpc: { svelamento_di: { saldo: 25, porte: [
+    { ...UNA_PORTA, mia_caparra: true, mie_fasce: [F1, F2], fascia_fissata: F1, mio_pronto: false, suo_pronto: true, pronto_scade_il: null, sue_fasce: [F3], fasce_b: [F3] },
+    { ...UNA_PORTA, mie_fasce: "strano", fascia_fissata: 7, mio_pronto: "si", suo_pronto: 1, pronto_scade_il: 5 }] } } });
+  const j = await (await svelamentoApi(richiesta(), ENV, s.f)).json();
+  assert.deepEqual(j.porte[0].mie_fasce, [F1, F2]);
+  assert.equal(j.porte[0].fascia_fissata, F1);
+  assert.equal(j.porte[0].suo_pronto, true);
+  assert.equal(j.porte[0].pronta, "Giulia è pronta per lo svelamento");
+  for (const campo of ["sue_fasce", "fasce_a", "fasce_b"]) assert.equal(campo in j.porte[0], false, campo);
+  assert.deepEqual(j.porte[1].mie_fasce, []);
+  assert.equal(j.porte[1].fascia_fissata, null);
+  assert.equal(j.porte[1].mio_pronto, false);
+  assert.equal(j.porte[1].suo_pronto, false);
+  assert.equal(j.porte[1].pronto_scade_il, null);
+  assert.equal(j.porte[1].pronta, null);
+  assert.deepEqual(j.testi.quando, { ora: "Sono pronto ora", orario: "Scegli un orario", maxFasce: 3, fasciaMinuti: 30 });
+});
+
+test("POST pronto: per la persona del token, risponde se ora siete pronti entrambi e rimanda lo stato", async () => {
+  for (const esito of ["pronto", "entrambi_pronti"]) {
+    const s = supabaseFinto({ rpc: { pronto_svelamento: esito, svelamento_di: STATO } });
+    const r = await svelamentoApi(pronto({ persona: LEI }), ENV, s.f);
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.ok, true);
+    assert.equal(j.esito, esito);
+    assert.equal(j.stato.saldo, 25);
+    assert.deepEqual(s.rpc("pronto_svelamento")[0].corpo, { p_porta: PORTA, p_persona: ID });
+  }
+});
+
+test("POST pronto senza le due caparre: niente; scaduta, chiusa, iniziata o di altri come per la scelta", async () => {
+  const prova = async (esito) => svelamentoApi(pronto(), ENV, supabaseFinto({ rpc: { pronto_svelamento: esito } }).f);
+  assert.deepEqual(await (await prova("manca_caparra")).json(), { ok: false, motivo: "manca_caparra" });
+  assert.deepEqual(await (await prova("gia_iniziato")).json(), { ok: false, motivo: "gia_iniziato" });
+  assert.deepEqual(await (await prova("porta_scaduta")).json(), { ok: false, motivo: "porta_scaduta", testo: TESTI_SVELAMENTO.scaduta });
+  assert.deepEqual(await (await prova("porta_chiusa")).json(), { ok: false, motivo: "porta_chiusa", testo: "Questa porta si è chiusa." });
+  assert.equal((await prova("non_nella_porta")).status, 404);
+  assert.equal((await prova("boh")).status, 503);
+});
+
+test("POST fasce: per la persona del token, ordinate e senza doppioni; «fissata» o «salvate»", async () => {
+  for (const esito of ["fissata", "salvate"]) {
+    const s = supabaseFinto({ rpc: { fasce_svelamento: esito, svelamento_di: STATO } });
+    const r = await svelamentoApi(fasce([F3, F1, F3], { persona: LEI }), ENV, s.f);
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.ok, true);
+    assert.equal(j.esito, esito);
+    assert.deepEqual(s.rpc("fasce_svelamento")[0].corpo, { p_porta: PORTA, p_persona: ID, p_fasce: [F1, F3] });
+  }
+});
+
+test("POST fasce con forma sbagliata: 400 senza chiamare il database", async () => {
+  for (const valore of [[], null, "x", [F1, F2, F3, "2026-11-17T10:00:00.000Z"], ["2026-11-16T18:15:00.000Z"], ["domani"], [123], ["2026-11-16T18:00:01.000Z"]]) {
+    const s = supabaseFinto({ rpc: { fasce_svelamento: "salvate" } });
+    const r = await svelamentoApi(fasce(valore), ENV, s.f);
+    assert.equal(r.status, 400, JSON.stringify(valore));
+    assert.equal(s.viste.filter((v) => v.percorso.startsWith("/rest/")).length, 0);
+  }
+});
+
+test("POST fasce fuori dalle 48 ore o già iniziate: il database dice no e il telefono lo sa", async () => {
+  const prova = async (esito) => (await svelamentoApi(fasce([F1]), ENV, supabaseFinto({ rpc: { fasce_svelamento: esito } }).f)).json();
+  assert.deepEqual(await prova("fasce_non_valide"), { ok: false, motivo: "fasce_non_valide" });
+  assert.deepEqual(await prova("manca_caparra"), { ok: false, motivo: "manca_caparra" });
+  assert.deepEqual(await prova("porta_chiusa"), { ok: false, motivo: "porta_chiusa", testo: "Questa porta si è chiusa." });
 });

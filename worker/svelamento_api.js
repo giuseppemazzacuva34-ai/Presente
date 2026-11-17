@@ -5,7 +5,11 @@
 //                             → { ok: true, esito, stato } | { ok: false, motivo, testo?, mancano? }
 //   POST /app/api/svelamento  { azione: "scelta", porta, scelta: "video" | "foto" }                (passo 3a)
 //                             → { ok: true, esito: "salvata", stato } | { ok: false, motivo, testo? }
-//   La scelta dell'altra persona non esce mai: solo «mia_scelta».
+//   POST /app/api/svelamento  { azione: "pronto", porta }                                          (passo 5a)
+//                             → { ok: true, esito: "pronto" | "entrambi_pronti", stato } | { ok: false, motivo, testo? }
+//   POST /app/api/svelamento  { azione: "fasce", porta, fasce: [ISO, …] } (1-3 inizi da 30 minuti)  (passo 5a)
+//                             → { ok: true, esito: "salvate" | "fissata", stato } | { ok: false, motivo, testo? }
+//   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
 // (10 crediti, una caparra per persona e porta, mai sotto zero, chiusura per scadenza, blocco o sospensione con le
@@ -24,6 +28,8 @@ const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const CAMPI_PORTA = ["porta", "con", "nome", "eta", "aperta_il", "scade_il", "mia_caparra", "sua_caparra"];
 const SCELTE = ["video", "foto"];
 const BLOCCATA = ["bloccata", "gia_bloccata"];
+const FASCIA_MS = SVELAMENTO.fasciaMinuti * 60000;
+const istante = (x) => (typeof x === "string" && x.length <= 40 && Number.isFinite(Date.parse(x)) ? new Date(Date.parse(x)).toISOString() : null);
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
 
 function entro(ms, promessa) {
@@ -61,6 +67,13 @@ function porta(p) {
   const pulita = {};
   for (const campo of CAMPI_PORTA) pulita[campo] = p[campo] ?? null;
   pulita.mia_scelta = SCELTE.includes(p.mia_scelta) ? p.mia_scelta : "video";
+  // Passo 5a: solo le proprie fasce (al massimo 3 orari validi) e la fascia fissata; «pronto» vale solo se è vero.
+  pulita.mie_fasce = Array.isArray(p.mie_fasce) ? p.mie_fasce.map(istante).filter(Boolean).slice(0, SVELAMENTO.maxFasce) : [];
+  pulita.fascia_fissata = istante(p.fascia_fissata);
+  pulita.mio_pronto = p.mio_pronto === true;
+  pulita.suo_pronto = p.suo_pronto === true;
+  pulita.pronto_scade_il = pulita.mio_pronto ? istante(p.pronto_scade_il) : null;
+  pulita.pronta = pulita.suo_pronto ? TESTI_SVELAMENTO.prontaAltro.replace("<nome>", String(p.nome || "")) : null;
   pulita.aspetta = p.mia_caparra === true && p.sua_caparra !== true
     ? TESTI_SVELAMENTO.aspettaCaparra.replace("<nome>", String(p.nome || ""))
     : null;
@@ -77,6 +90,7 @@ async function stato(s, id, f) {
     testi: {
       blocca: TESTI_SVELAMENTO.blocca, spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra, beta: TESTI_SVELAMENTO.beta,
       scelta: { video: TESTI_SVELAMENTO.sceltaVideo, foto: TESTI_SVELAMENTO.sceltaFoto },
+      quando: { ora: TESTI_SVELAMENTO.prontoOra, orario: TESTI_SVELAMENTO.scegliOrario, maxFasce: SVELAMENTO.maxFasce, fasciaMinuti: SVELAMENTO.fasciaMinuti },
     },
     porte: d.porte.filter((p) => p && typeof p === "object").map(porta),
   };
@@ -99,9 +113,15 @@ export async function svelamentoApi(request, env, f = fetch) {
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
   if (corpo.errore) return corpo.errore;
-  const { azione, porta: idPorta, scelta } = corpo.dati;
+  const { azione, porta: idPorta, scelta, fasce } = corpo.dati;
   if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
   if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
+  if (azione === "pronto") return quando(s, chi.id, idPorta, "pronto_svelamento", {}, ["pronto", "entrambi_pronti"], f);
+  if (azione === "fasce") {
+    const pulite = formaFasce(fasce);
+    if (!pulite) return risposta(400, { ok: false, motivo: "dati" });
+    return quando(s, chi.id, idPorta, "fasce_svelamento", { p_fasce: pulite }, ["salvate", "fissata"], f);
+  }
   if (azione !== "caparra") return risposta(400, { ok: false, motivo: "dati" });
 
   const esito = await rpc(s, "caparra_svelamento", { p_porta: idPorta, p_persona: chi.id }, f);
@@ -128,6 +148,31 @@ async function sceltaSvelamento(s, id, idPorta, scelta, f) {
   const esito = await rpc(s, "scelta_svelamento", { p_porta: idPorta, p_persona: id, p_scelta: scelta }, f);
   if (esito === "salvata") return risposta(200, { ok: true, esito, stato: await stato(s, id, f) });
   if (esito === "gia_iniziato") return risposta(200, { ok: false, motivo: esito });
+  if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+  if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
+  if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
+  return riprova();
+}
+
+// Passo 5a: da 1 a 3 orari leggibili, allineati a :00 o :30; ordinati e senza doppioni. Che siano futuri e dentro le
+// 48 ore lo controlla il database (fasce_svelamento), che conosce l'apertura della porta.
+function formaFasce(fasce) {
+  if (!Array.isArray(fasce) || fasce.length < 1 || fasce.length > SVELAMENTO.maxFasce) return null;
+  const inizi = [];
+  for (const f of fasce) {
+    const x = istante(f);
+    if (!x || Date.parse(x) % FASCIA_MS !== 0) return null;
+    if (!inizi.includes(x)) inizi.push(x);
+  }
+  return inizi.sort();
+}
+
+// Passo 5a: «Sono pronto ora» e «Scegli un orario», solo per la persona del token. Le regole (caparre, porta aperta,
+// non iniziata, 5 minuti, prima fascia comune) le applicano pronto_svelamento() e fasce_svelamento() nel database.
+async function quando(s, id, idPorta, nome, extra, buoni, f) {
+  const esito = await rpc(s, nome, { p_porta: idPorta, p_persona: id, ...extra }, f);
+  if (buoni.includes(esito)) return risposta(200, { ok: true, esito, stato: await stato(s, id, f) });
+  if (["gia_iniziato", "manca_caparra", "fasce_non_valide"].includes(esito)) return risposta(200, { ok: false, motivo: esito });
   if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
   if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
   if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
