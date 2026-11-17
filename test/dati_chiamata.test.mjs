@@ -56,7 +56,7 @@ test("datiPerChiamare: membri, chiamate della settimana, blocchi, fascia e perme
     ["blocchi", []],
     ["profili", [{ fascia_da: "19:00", fascia_a: "24:00", pausa_il: "2026-11-10", solo_con_permesso: true }]],
     ["permessi_chiamata", [{ permesso_a: A }]],
-    ["sospensioni", [{ persona: B }]],
+    ["rpc/sospesi_tra", [{ persona: B }]],
   ]);
   const r = await datiPerChiamare(ENV, { stanza: STANZA, chi: A, verso: B }, f);
   assert.deepEqual(r, {
@@ -73,8 +73,15 @@ test("datiPerChiamare: membri, chiamate della settimana, blocchi, fascia e perme
   assert.ok(tutte.includes(`or=(and(chi.eq.${A},bloccato.eq.${B}),and(chi.eq.${B},bloccato.eq.${A}))`));
   assert.ok(tutte.includes(`profili?id=eq.${B}&select=fascia_da,fascia_a,pausa_il,solo_con_permesso`));
   assert.ok(tutte.includes(`permessi_chiamata?utente_id=eq.${B}&permesso_a=eq.${A}`));
-  // #7: solo le sospensioni attive dei due, solo la colonna persona (mai motivo o segnalazione).
-  assert.ok(tutte.includes(`sospensioni?persona=in.(${A},${B})&tolta_il=is.null&select=persona`));
+  // #7: chi dei due è fuori adesso, con la stessa regola del database (sospesi_tra: sospensioni, sanzioni,
+  // uscita per contatti). Una POST con solo i due id; la risposta ha solo la colonna persona.
+  const rpc = chieste.find((c) => c.url.endsWith("/rest/v1/rpc/sospesi_tra"));
+  assert.ok(rpc, "manca la lettura di sospesi_tra");
+  assert.equal(rpc.init.method, "POST");
+  assert.equal(rpc.init.headers.apikey, "chiave-server");
+  assert.equal(rpc.init.headers["content-type"], "application/json");
+  assert.deepEqual(JSON.parse(rpc.init.body), { p_persone: [A, B] });
+  assert.equal(tutte.includes("sospensioni?"), false);
   // Mai colonne del profilo diverse da fascia, pausa e permesso (niente nomi, foto, questionario).
   assert.equal(/select=\*/.test(tutte), false);
 });
@@ -91,7 +98,7 @@ test("datiPerChiamare: senza fascia e senza permessi", async () => {
 });
 
 test("datiPerChiamare: una sola lettura che non va → ok false (mai regole su dati a metà)", async () => {
-  for (const pezzo of ["membri_stanza", "/chiamate?", "blocchi", "profili", "permessi_chiamata", "sospensioni"]) {
+  for (const pezzo of ["membri_stanza", "/chiamate?", "blocchi", "profili", "permessi_chiamata", "rpc/sospesi_tra"]) {
     for (const guasto of [{ stato: 503, corpo: {} }, new Error("rete"), { corpo: { non: "lista" } }]) {
       const { f } = finto([[pezzo, guasto], ["membri_stanza", [{ utente_id: A }]]]);
       assert.deepEqual(await datiPerChiamare(ENV, { stanza: STANZA, chi: A, verso: B }, f), { ok: false, motivo: "riprova" }, pezzo);
