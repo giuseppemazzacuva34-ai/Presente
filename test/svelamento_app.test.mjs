@@ -73,6 +73,8 @@ test("caparra di entrambi: niente più pulsante, si aspetta il passo dello svela
   const s = schermataPorta(stato([porta({ mia_caparra: true, sua_caparra: true })], 10), PORTA, LUNEDI);
   assert.equal(s.caparra.tipo, "entrambe");
   assert.equal(s.caparra.bottone, undefined);
+  // Testo di Contenuti (17/11): «crediti bloccati» come nei contenuti, mai «caparra» in questa frase.
+  assert.equal(s.caparra.testo, "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.");
 });
 
 test("porta che non c'è più (chiusa, di altri o non valida): solo «Questa porta si è chiusa.», mai il motivo", () => {

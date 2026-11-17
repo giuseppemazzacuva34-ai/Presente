@@ -25,7 +25,7 @@ export const TESTI = Object.freeze({
   portaChiusa: "Questa porta si è chiusa.",
   scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
   // Provvisorio, da rivedere con «contenuti»: il passo 3 della spec (video o foto, quando) arriva con il passo 5.
-  entrambe: "Caparra bloccata da tutti e due. Tra poco scegliete come e quando fare lo svelamento.",
+  entrambe: "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
   torna: "Torna alla stanza",
 });
 
