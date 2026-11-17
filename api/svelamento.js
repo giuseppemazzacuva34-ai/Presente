@@ -39,6 +39,12 @@ export const TESTI_SVELAMENTO = Object.freeze({
   // «Come vuoi lo svelamento» (spec v1, passo 3). Si cambia fino all'inizio dello svelamento.
   sceltaVideo: "Videochiamata di 10 secondi",
   sceltaFoto: "Preferisco le foto",
+  // «Quando» (spec v1, passo 4).
+  prontoOra: "Sono pronto ora",
+  scegliOrario: "Scegli un orario",
+  prontaAltro: "<nome> è pronta per lo svelamento",
+  fasciaFissata: "Lo svelamento è fissato",
+  nessunaFascia: "Ancora nessun orario in comune.",
 });
 
 const ORA = 3600000;
@@ -94,6 +100,32 @@ export function primaFasciaComune({ fasceA = [], fasceB = [], aperta, adesso }) 
   const diB = new Set(fasceB.map(t));
   const comuni = fasceA.map(t).filter((x) => diB.has(x) && x >= t(adesso) && x >= t(aperta) && x + durata <= fine);
   return comuni.length ? new Date(Math.min(...comuni)) : null;
+}
+
+// «Scegli un orario» (passo 5a): il server accetta da 1 a 3 inizi di fascia da 30 minuti (allineati a :00 o :30),
+// non ancora iniziati, dentro le 48 ore della porta (la fascia deve finire entro la scadenza). Doppioni tolti, in ordine.
+const FASCIA_MS = SVELAMENTO.fasciaMinuti * 60000;
+export function fasceValide({ fasce, aperta, adesso }) {
+  const nonValide = no("fasce_non_valide");
+  if (!Array.isArray(fasce) || fasce.length < 1 || fasce.length > SVELAMENTO.maxFasce) return nonValide;
+  const fine = t(scadenzaPorta(aperta));
+  const inizi = [];
+  for (const f of fasce) {
+    if (typeof f !== "string" || f.length > 40) return nonValide;
+    const x = Date.parse(f);
+    if (!Number.isFinite(x) || x % FASCIA_MS !== 0 || x < t(adesso) || x < t(aperta) || x + FASCIA_MS > fine) return nonValide;
+    if (!inizi.includes(x)) inizi.push(x);
+  }
+  return { ok: true, fasce: inizi.sort((p, q) => p - q).map((x) => new Date(x).toISOString()) };
+}
+
+// «Sono pronto ora» (passo 5a): vale 5 minuti, il tempo che l'altro ha per entrare. mio / suo = quando ciascuno ha
+// toccato il pulsante (null se mai). «entrambi» = si può passare alla sala d'attesa.
+export function prontoValido({ mio, suo, adesso }) {
+  const finestra = SVELAMENTO.attesaOraMinuti * 60000;
+  const vivo = (x) => x != null && t(adesso) - t(x) < finestra && t(x) <= t(adesso);
+  const m = vivo(mio), s = vivo(suo);
+  return { mio: m, suo: s, entrambi: m && s, scade: m ? new Date(t(mio) + finestra) : null };
 }
 
 // Timer dei 10 secondi: parte solo quando arrivano entrambi i video. sfocatura 1 = molto sfocato, 0 = nitido.

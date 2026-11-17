@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   SVELAMENTO, scadenzaPorta, bloccaCaparra, puoAvviare, tipoSvelamento, primaFasciaComune, timerSvelamento,
   dopoCaduta, esitoRisposte, portaScaduta, chiusuraForzata, registroFinale, giorniAppuntamento, TESTI_SVELAMENTO,
+  fasceValide, prontoValido,
 } from "../api/svelamento.js";
 import { oraDiRoma } from "../api/stanze.js";
 
@@ -203,4 +204,34 @@ test("registro finale: restano solo orari, tipo, durata, fine ed esito; mai le s
 test("giorni per l'appuntamento: 10 nella stessa area, 30 tra aree diverse", () => {
   assert.equal(giorniAppuntamento(true), 10);
   assert.equal(giorniAppuntamento(false), 30);
+});
+
+// Passo 5a (linea «sviluppatore»): «Scegli un orario» e «Sono pronto ora» controllati dal server prima del database.
+test("fasce valide: 1-3 inizi da 30 minuti (:00 o :30), futuri, dentro le 48 ore; ordinate e senza doppioni", () => {
+  const r = fasceValide({ fasce: [dopo(ore(30)).toISOString(), dopo(ore(20)).toISOString(), dopo(ore(20)).toISOString()], aperta: APERTA, adesso: dopo(ore(1)) });
+  assert.deepEqual(r, { ok: true, fasce: [dopo(ore(20)).toISOString(), dopo(ore(30)).toISOString()] });
+  assert.deepEqual(fasceValide({ fasce: [dopo(min(90)).toISOString()], aperta: APERTA, adesso: dopo(ore(1)) }).ok, true);
+});
+
+test("fasce non valide: vuote, più di 3, non allineate, già iniziate, oltre la scadenza, non date", () => {
+  const no = (fasce, adesso = dopo(ore(1))) => assert.deepEqual(fasceValide({ fasce, aperta: APERTA, adesso }), { ok: false, motivo: "fasce_non_valide" });
+  no([]);
+  no(null);
+  no("2026-11-16T10:00:00Z");
+  no([dopo(ore(10)), dopo(ore(11)), dopo(ore(12)), dopo(ore(13))].map((d) => d.toISOString()));
+  no([dopo(min(75)).toISOString()]); // :15, non allineata
+  no([dopo(ore(1) + s(1)).toISOString()]); // secondi
+  no([dopo(ore(1)).toISOString()], dopo(ore(1) + min(1))); // già iniziata
+  no([dopo(min(47 * 60 + 30) + min(30)).toISOString()]); // finisce dopo la scadenza
+  no([dopo(min(47 * 60 + 30)).toISOString()].concat(["domani"]));
+  no([12345]);
+  assert.equal(fasceValide({ fasce: [dopo(min(47 * 60 + 30)).toISOString()], aperta: APERTA, adesso: dopo(ore(1)) }).ok, true); // ultima fascia utile
+});
+
+test("«Sono pronto ora»: vale 5 minuti; entrambi pronti solo se l'altro lo è ancora", () => {
+  const ora = dopo(ore(2));
+  assert.deepEqual(prontoValido({ mio: ora, suo: null, adesso: ora }), { mio: true, suo: false, entrambi: false, scade: new Date(ora.getTime() + min(5)) });
+  assert.equal(prontoValido({ mio: ora, suo: new Date(ora.getTime() - min(4)), adesso: ora }).entrambi, true);
+  assert.equal(prontoValido({ mio: ora, suo: new Date(ora.getTime() - min(5)), adesso: ora }).entrambi, false);
+  assert.equal(prontoValido({ mio: new Date(ora.getTime() - min(6)), suo: null, adesso: ora }).mio, false);
 });
