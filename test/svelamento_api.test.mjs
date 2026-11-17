@@ -16,7 +16,7 @@ const ENV = { ACCESSO_APP: "si", SUPABASE_URL: BASE, SUPABASE_SERVICE_ROLE_KEY: 
 const UNA_PORTA = {
   porta: PORTA, con: LEI, nome: "Giulia", eta: 31,
   aperta_il: "2026-11-15T20:00:00+00:00", scade_il: "2026-11-17T20:00:00+00:00",
-  mia_caparra: false, sua_caparra: true,
+  mia_caparra: false, sua_caparra: true, mia_scelta: "video",
 };
 const STATO = { saldo: 25, porte: [UNA_PORTA] };
 
@@ -74,6 +74,7 @@ test("GET: saldo e porte da svelamento_di per la persona del token, con i testi 
   assert.deepEqual(j.porte, [{ ...UNA_PORTA, aspetta: null }]);
   assert.equal(j.testi.blocca, "Blocca 10 crediti");
   assert.equal(j.testi.spiegazione, TESTI_SVELAMENTO.spiegazioneCaparra);
+  assert.deepEqual(j.testi.scelta, { video: "Videochiamata di 10 secondi", foto: "Preferisco le foto" });
   assert.deepEqual(s.rpc("svelamento_di")[0].corpo, { p_utente: ID });
 });
 
@@ -194,4 +195,50 @@ test("il Worker instrada /app/api/svelamento con le intestazioni dell'app", asyn
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.ok(r.headers.get("content-security-policy"));
   assert.equal((await r.json()).motivo, "spento");
+});
+
+// --- Passo 3a: «Come vuoi lo svelamento» (video o foto) ----------------------------------------------------------
+const scelta = (valore, extra = {}) => richiesta({ metodo: "POST", corpo: { azione: "scelta", porta: PORTA, scelta: valore, ...extra } });
+
+test("GET: mia_scelta solo «video» o «foto»; valori strani → «video»; mai la scelta dell'altra persona", async () => {
+  const s = supabaseFinto({ rpc: { svelamento_di: { saldo: 25, porte: [
+    { ...UNA_PORTA, mia_scelta: "foto", sua_scelta: "video", scelta_b: "foto" }, { ...UNA_PORTA, mia_scelta: "audio" }] } } });
+  const j = await (await svelamentoApi(richiesta(), ENV, s.f)).json();
+  assert.equal(j.porte[0].mia_scelta, "foto");
+  assert.equal(j.porte[1].mia_scelta, "video");
+  for (const campo of ["sua_scelta", "scelta_a", "scelta_b"]) assert.equal(campo in j.porte[0], false, campo);
+});
+
+test("POST scelta: salva per la persona del token (non quella del corpo) e rimanda lo stato", async () => {
+  const s = supabaseFinto({ rpc: { scelta_svelamento: "salvata", svelamento_di: STATO } });
+  const r = await svelamentoApi(scelta("foto", { persona: LEI }), ENV, s.f);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.ok, true);
+  assert.equal(j.esito, "salvata");
+  assert.equal(j.stato.saldo, 25);
+  assert.deepEqual(s.rpc("scelta_svelamento")[0].corpo, { p_porta: PORTA, p_persona: ID, p_scelta: "foto" });
+  assert.equal(s.rpc("caparra_svelamento").length, 0);
+});
+
+test("POST scelta con valore sbagliato: 400 senza chiamare il database", async () => {
+  for (const valore of ["audio", "", null, 1, "FOTO"]) {
+    const s = supabaseFinto({ rpc: { scelta_svelamento: "salvata" } });
+    const r = await svelamentoApi(scelta(valore), ENV, s.f);
+    assert.equal(r.status, 400, String(valore));
+    assert.equal(s.viste.filter((v) => v.percorso.startsWith("/rest/")).length, 0);
+  }
+});
+
+test("POST scelta dopo l'inizio: non cambia; porta scaduta, chiusa o di altri come per la caparra", async () => {
+  let s = supabaseFinto({ rpc: { scelta_svelamento: "gia_iniziato" } });
+  assert.deepEqual(await (await svelamentoApi(scelta("foto"), ENV, s.f)).json(), { ok: false, motivo: "gia_iniziato" });
+  s = supabaseFinto({ rpc: { scelta_svelamento: "porta_scaduta" } });
+  assert.deepEqual(await (await svelamentoApi(scelta("foto"), ENV, s.f)).json(), { ok: false, motivo: "porta_scaduta", testo: TESTI_SVELAMENTO.scaduta });
+  s = supabaseFinto({ rpc: { scelta_svelamento: "porta_chiusa" } });
+  assert.deepEqual(await (await svelamentoApi(scelta("foto"), ENV, s.f)).json(), { ok: false, motivo: "porta_chiusa", testo: "Questa porta si è chiusa." });
+  s = supabaseFinto({ rpc: { scelta_svelamento: "non_nella_porta" } });
+  assert.equal((await svelamentoApi(scelta("foto"), ENV, s.f)).status, 404);
+  s = supabaseFinto({ rpc: { scelta_svelamento: "boh" } });
+  assert.equal((await svelamentoApi(scelta("foto"), ENV, s.f)).status, 503);
 });
