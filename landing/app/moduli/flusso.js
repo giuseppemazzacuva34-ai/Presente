@@ -25,7 +25,7 @@ import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
 import { vistaPorta } from "./svelamento.js";
-import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
+import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore as contatoreAiuto, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -1402,8 +1402,8 @@ function schermoAiuto() {
     h("label", { for: "aiuto-testo" }, "Messaggio"),
     h("textarea", { id: "aiuto-testo", classe: "racconto-segnala", maxlength: String(m.massimo), rows: "6", disabled: a.invio,
       "aria-describedby": "aiuto-contatore",
-      oninput: (e) => { a.testo = e.target.value; const c = document.getElementById("aiuto-contatore"); if (c) c.textContent = contatore(a.testo); } }, a.testo),
-    h("p", { classe: "nota", id: "aiuto-contatore", "aria-live": "polite" }, contatore(a.testo)),
+      oninput: (e) => { a.testo = e.target.value; const c = document.getElementById("aiuto-contatore"); if (c) c.textContent = contatoreAiuto(a.testo); } }, a.testo),
+    h("p", { classe: "nota", id: "aiuto-contatore", "aria-live": "polite" }, contatoreAiuto(a.testo)),
     h("label", { for: "aiuto-email" }, "Email"),
     h("input", { id: "aiuto-email", readonly: true, type: "email", value: m.email }),
     errore(a.errore),
