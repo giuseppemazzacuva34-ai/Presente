@@ -24,6 +24,7 @@ import { creaSanzioni } from "/app/moduli/sanzioni.js";
 import { creaAiuto } from "/app/moduli/aiuto.js";
 import { creaSvelamento, creaPortaSvelamento } from "/app/moduli/svelamento.js";
 import { creaAvvisiPorte } from "/app/moduli/avvisi_porte.js";
+import { creaSalaAttesa } from "/app/moduli/sala_attesa.js";
 import { conAttesa } from "/app/moduli/in_attesa.js";
 
 const stato = document.getElementById("stato");
@@ -97,7 +98,17 @@ async function preparaAccesso() {
     const aiuto = creaAiuto({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Schermata della porta (#65 passi 1-2): caparra via Worker (/app/api/svelamento); chi blocca lo dice solo il token.
     const sv = creaSvelamento({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
-    const porta = creaPortaSvelamento({ svelamento: sv, aggiorna: () => portaCambiata() });
+    // Sala d'attesa (#65 passo 6b): anteprima della propria fotocamera frontale, sfocata, muta, solo nel telefono.
+    // Lo schermo è sempre lo stesso <video>: i ridisegni della pagina non interrompono l'anteprima.
+    const schermo = document.createElement("video");
+    schermo.muted = true;
+    schermo.autoplay = true;
+    schermo.setAttribute("playsinline", "");
+    schermo.setAttribute("aria-hidden", "true");
+    const md = navigator.mediaDevices;
+    const porta = creaPortaSvelamento({ svelamento: sv, aggiorna: () => portaCambiata(),
+      sala: (passaAlleFoto, aggiorna) => creaSalaAttesa({ getUserMedia: md && md.getUserMedia ? md.getUserMedia.bind(md) : undefined,
+        schermo, passaAlleFoto, aggiorna }) });
     // Avvisi delle porte nella home (#65 passo 4, senza push finché non c'è D24): una lettura al minuto, solo con porte aperte.
     const avvisiPorte = creaAvvisiPorte({ svelamento: sv, aggiorna: () => avvisiCambiati(), pagina: document });
     return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte };
