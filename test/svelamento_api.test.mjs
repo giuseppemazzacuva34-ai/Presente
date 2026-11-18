@@ -19,8 +19,8 @@ const UNA_PORTA = {
   mia_caparra: false, sua_caparra: true, mia_scelta: "video",
 };
 const STATO = { saldo: 25, porte: [UNA_PORTA] };
-// Passo 5a: campi di «Quando» quando il database non li manda (prima della migrazione o porta senza riga).
-const QUANDO_VUOTO = { mie_fasce: [], fascia_fissata: null, mio_pronto: false, suo_pronto: false, pronto_scade_il: null, pronta: null };
+// Passi 5a e 6a: campi di «Quando» e del «momento» quando il database non li manda (porta senza riga).
+const QUANDO_VUOTO = { mie_fasce: [], fascia_fissata: null, mio_pronto: false, suo_pronto: false, pronto_scade_il: null, momento: false, tipo: null, pronta: null };
 
 function supabaseFinto({ utente = 200, rpc = {} } = {}) {
   const viste = [];
