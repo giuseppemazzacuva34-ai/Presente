@@ -1,5 +1,6 @@
-// Schermata della porta nella web app (issue #65, spec v1 del CPO, passi 1-2; D48 A, D12 A, D18 A). Passo 4c, linea del
-// CTO. Dopo «Vai allo svelamento»: nome, età, conto alla rovescia delle 48 ore e caparra («Blocca 10 crediti»).
+// Schermata della porta nella web app (issue #65, spec v1 del CPO, passi 1-4; D48 A, D12 A, D18 A). Passi 4c, 3b e 5b,
+// linea del CTO. Passo 5b: con le due caparre, «Sono pronto ora» e «Scegli un orario» (fino a 3 mezz'ore dentro le 48
+// ore; la prima comune la fissa il server). Le fasce dell'altra persona non arrivano mai al telefono. Dopo «Vai allo svelamento»: nome, età, conto alla rovescia delle 48 ore e caparra («Blocca 10 crediti»).
 // Le regole (10 crediti, una caparra per persona e porta, mai sotto zero, porte chiuse o scadute) le decide il server
 // (/app/api/svelamento, worker/svelamento_api.js): qui si mostrano le sue risposte.
 // Il corpo non dice mai chi blocca: lo dice solo il token. Una porta chiusa da un blocco o da una sospensione dà solo
@@ -33,7 +34,26 @@ export const TESTI = Object.freeze({
   sceltaFoto: "Preferisco le foto",
   // Provvisorio, da rivedere con «contenuti».
   giaIniziato: "Lo svelamento è già iniziato: la scelta non si può più cambiare.",
+  // Passo 4 della spec: «Quando». I testi dei pulsanti sono quelli del server (TESTI_SVELAMENTO).
+  prontoOra: "Sono pronto ora",
+  scegliOrario: "Scegli un orario",
+  fasciaFissata: "Lo svelamento è fissato",
+  nessunaFascia: "Ancora nessun orario in comune.",
+  // Provvisori, da rivedere con «contenuti».
+  quandoTitolo: "Quando?",
+  mioPronto: "<nome> ha ancora <minuti> per entrare.",
+  entrambiPronti: "Siete pronti tutti e due.",
+  orariSpiegazione: "Segna fino a 3 mezz'ore. L'app fissa la prima che avete in comune.",
+  orario: "Orario",
+  nessunOrario: "Nessuno",
+  salvaOrari: "Salva gli orari",
+  almenoUno: "Scegli almeno un orario.",
+  mancaCaparra: "Serve prima la caparra di tutti e due.",
+  fasceNonValide: "Uno degli orari non va più bene. Scegline un altro.",
 });
+const MAX_FASCE = 3;
+const FASCIA_MS = 30 * MINUTO;
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
 const SCELTE = ["video", "foto"];
 
 const nome = (n) => (typeof n === "string" && n.trim() ? n.trim() : "");
@@ -50,7 +70,49 @@ export function contoPorta(scadeIl, adesso = new Date()) {
   return `${m === 1 ? "Manca" : "Mancano"} ${plurale(m, "minuto", "minuti")} per lo svelamento.`;
 }
 
-// Cosa mostra la schermata di una porta (spec, passi 1-2). null = stato non ancora letto.
+// Le mezz'ore che si possono ancora segnare: iniziano da adesso in poi (allineate a :00 o :30) e finiscono entro la
+// scadenza della porta. Stessa regola del server (fasceValide in api/svelamento.js), che resta l'unico a decidere.
+export function fascePossibili(scadeIl, adesso = new Date()) {
+  const fine = new Date(scadeIl).getTime();
+  const ora = adesso.getTime();
+  if (!Number.isFinite(fine) || !Number.isFinite(ora)) return [];
+  const out = [];
+  for (let x = Math.ceil(ora / FASCIA_MS) * FASCIA_MS; x + FASCIA_MS <= fine; x += FASCIA_MS) out.push(new Date(x).toISOString());
+  return out;
+}
+
+const GIORNO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" });
+const ORARIO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+// «martedì 17 novembre, 21:30» (ora italiana); "" se l'orario non è leggibile.
+export function etichettaFascia(iso) {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return `${GIORNO.format(d)}, ${ORARIO.format(d)}`;
+}
+
+// Passo 4 della spec («Quando»): solo con la caparra di tutti e due.
+function quandoPorta(p, n, adesso) {
+  if (p.mia_caparra !== true || p.sua_caparra !== true) return null;
+  const mie = Array.isArray(p.mie_fasce) ? p.mie_fasce.filter((x) => typeof x === "string" && ISO.test(x)).slice(0, MAX_FASCE) : [];
+  const fissata = typeof p.fascia_fissata === "string" && etichettaFascia(p.fascia_fissata)
+    ? `${TESTI.fasciaFissata}: ${etichettaFascia(p.fascia_fissata)}` : null;
+  const restaMs = p.mio_pronto === true ? new Date(p.pronto_scade_il).getTime() - adesso.getTime() : NaN;
+  const mioVivo = Number.isFinite(restaMs) && restaMs > 0;
+  const suo = p.suo_pronto === true;
+  const minuti = mioVivo ? Math.ceil(restaMs / MINUTO) : 0;
+  return {
+    titolo: TESTI.quandoTitolo, ora: TESTI.prontoOra, orario: TESTI.scegliOrario,
+    entrambi: mioVivo && suo ? TESTI.entrambiPronti : null,
+    mioPronto: mioVivo && !suo ? TESTI.mioPronto.replace("<nome>", n).replace("<minuti>", plurale(minuti, "minuto", "minuti")) : null,
+    pronta: suo && !mioVivo && typeof p.pronta === "string" && p.pronta ? p.pronta : null,
+    fissata,
+    nessuna: mie.length && !fissata ? TESTI.nessunaFascia : null,
+    mie,
+    opzioni: fascePossibili(p.scade_il, adesso).map((valore) => ({ valore, testo: etichettaFascia(valore) })),
+  };
+}
+
+// Cosa mostra la schermata di una porta (spec, passi 1-4). null = stato non ancora letto.
 export function schermataPorta(stato, idPorta, adesso = new Date()) {
   if (!stato || !Array.isArray(stato.porte)) return null;
   const p = UUID.test(String(idPorta || "")) ? stato.porte.find((x) => x && x.porta === idPorta) : null;
@@ -77,7 +139,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   return {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
-    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta,
+    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
   };
 }
 
@@ -87,6 +149,8 @@ const ERRORI = Object.freeze({
   troppe: "Troppi tentativi. Aspetta un minuto.",
   non_trovata: TESTI.portaChiusa,
   gia_iniziato: TESTI.giaIniziato,
+  manca_caparra: TESTI.mancaCaparra,
+  fasce_non_valide: TESTI.fasceNonValide,
 });
 export const testoErroreSvelamento = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 const errore = (motivo) => ({ ok: false, motivo, testo: testoErroreSvelamento(motivo) });
@@ -141,6 +205,19 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "scelta", porta, scelta });
       return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
     },
+    // Passo 5b: «Sono pronto ora» (vale 5 minuti, lo decide il server).
+    async pronto(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "pronto", porta });
+      return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
+    },
+    // Passo 5b: da 1 a 3 inizi di mezz'ora; futuri e dentro le 48 ore lo controlla il server.
+    async fasce(porta, fasce) {
+      if (!UUID.test(String(porta || "")) || !Array.isArray(fasce) || fasce.length < 1 || fasce.length > MAX_FASCE
+        || !fasce.every((x) => typeof x === "string" && ISO.test(x))) return errore("riprova");
+      const r = await chiedi({ azione: "fasce", porta, fasce });
+      return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
+    },
   };
 }
 
@@ -152,6 +229,8 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
   let inCorso = false;
   let errore = null;
   let ricarica = false;
+  let orari = false;
+  let bozza = ["", "", ""];
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
 
   async function leggi() {
@@ -167,12 +246,43 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
     avvisa();
   }
 
+  // Invia una richiesta del passo 5b; true se il server l'ha accettata.
+  async function invia(richiesta) {
+    if (inCorso || !porta) return false;
+    const attuale = schermataPorta(stato, porta, adesso());
+    if (!attuale || attuale.tipo !== "porta" || !attuale.quando) return false;
+    inCorso = true;
+    errore = null;
+    avvisa();
+    const id = porta;
+    const r = await Promise.resolve().then(() => richiesta(id)).catch(() => ({ ok: false, motivo: "rete" }));
+    inCorso = false;
+    if (porta !== id) return false;
+    if (r && r.ok) {
+      if (r.stato) stato = r.stato;
+      else await leggi();
+      avvisa();
+      return true;
+    }
+    const motivo = r && r.motivo;
+    if (["porta_chiusa", "porta_scaduta", "non_trovata"].includes(motivo)) {
+      await leggi();
+      return false;
+    }
+    if (["gia_iniziato", "fasce_non_valide", "manca_caparra"].includes(motivo)) await leggi();
+    errore = (r && r.testo) || testoErroreSvelamento(motivo);
+    avvisa();
+    return false;
+  }
+
   return {
     async apri(id) {
       porta = String(id || "");
       stato = null;
       ricarica = false;
       inCorso = false;
+      orari = false;
+      bozza = ["", "", ""];
       await leggi();
     },
     chiudi() {
@@ -180,6 +290,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       stato = null;
       errore = null;
       ricarica = false;
+      orari = false;
       carica = false;
       avvisa();
     },
@@ -240,12 +351,43 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       errore = (r && r.testo) || testoErroreSvelamento(motivo);
       avvisa();
     },
+    // Passo 5b. Una sola funzione per «pronto» e «fasce»: stessa gestione delle risposte del server.
+    pronto: () => invia((id) => svelamento.pronto(id)),
+    mostraOrari() {
+      orari = !orari;
+      if (orari) {
+        const q = schermataPorta(stato, porta, adesso())?.quando;
+        const mie = q ? q.mie : [];
+        bozza = [0, 1, 2].map((i) => mie[i] || "");
+      }
+      errore = null;
+      avvisa();
+    },
+    impostaFascia(i, valore) {
+      if (!Number.isInteger(i) || i < 0 || i >= MAX_FASCE) return;
+      bozza[i] = typeof valore === "string" && ISO.test(valore) ? valore : "";
+      errore = null;
+      avvisa();
+    },
+    async inviaFasce() {
+      const scelte = [...new Set(bozza.filter(Boolean))].sort();
+      if (!scelte.length) {
+        errore = TESTI.almenoUno;
+        avvisa();
+        return;
+      }
+      const ok = await invia((id) => svelamento.fasce(id, scelte));
+      if (ok) orari = false;
+      avvisa();
+    },
     modello: () => ({
       aperta: porta !== null,
       carica,
       inCorso,
       errore,
       ricarica,
+      orari,
+      bozza: [...bozza],
       schermata: porta !== null ? schermataPorta(stato, porta, adesso()) : null,
     }),
   };
@@ -288,9 +430,33 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
         s.scelta.opzioni.map((o) => h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso,
           "aria-pressed": o.valore === s.scelta.attuale ? "true" : "false", onclick: () => ps.scegli(o.valore) }, o.testo))));
     }
+    if (s.quando) parti.push(vistaQuando(h, ps, m, s.quando));
   }
   return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
     h("h1", { id: "porta-titolo" }, s && s.tipo === "porta" ? s.titolo : "Svelamento"),
     parti,
     h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI.torna)));
+}
+
+// Passo 5b: «Quando?». Gli orari si scelgono con 3 menu (uno per mezz'ora), ognuno con la sua etichetta.
+function vistaQuando(h, ps, m, q) {
+  const stato = [q.entrambi, q.mioPronto, q.pronta, q.fissata, q.nessuna].filter(Boolean)
+    .map((t) => h("p", { role: "status" }, t));
+  const menu = m.orari ? h("div", { classe: "orari-svelamento" },
+    h("p", { classe: "nota", id: "orari-spiegazione" }, TESTI.orariSpiegazione),
+    [0, 1, 2].map((i) => h("div", { classe: "campo" },
+      h("label", { for: `fascia-${i + 1}` }, `${TESTI.orario} ${i + 1}`),
+      h("select", { id: `fascia-${i + 1}`, "aria-describedby": "orari-spiegazione", disabled: m.inCorso,
+        onchange: (e) => ps.impostaFascia(i, e.target.value) },
+        h("option", { value: "", selected: !m.bozza[i] }, TESTI.nessunOrario),
+        q.opzioni.map((o) => h("option", { value: o.valore, selected: o.valore === m.bozza[i] }, o.testo))))),
+    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.inviaFasce() },
+      m.inCorso ? "Un attimo…" : TESTI.salvaOrari)) : null;
+  return h("div", { classe: "quando-svelamento", role: "group", "aria-labelledby": "quando-titolo" },
+    h("h2", { id: "quando-titolo" }, q.titolo),
+    stato,
+    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.pronto() }, q.ora),
+    h("button", { classe: "bottone-secondario", type: "button", "aria-expanded": m.orari ? "true" : "false",
+      onclick: () => ps.mostraOrari() }, q.orario),
+    menu);
 }
