@@ -73,6 +73,10 @@ function porta(p) {
   pulita.mio_pronto = p.mio_pronto === true;
   pulita.suo_pronto = p.suo_pronto === true;
   pulita.pronto_scade_il = pulita.mio_pronto ? istante(p.pronto_scade_il) : null;
+  // Passo 6a: «momento» = lo svelamento si può fare adesso; il tipo esce solo allora e solo se è video o foto
+  // (un valore sconosciuto diventa null: la sala d'attesa non accende mai la fotocamera per errore).
+  pulita.momento = p.momento === true;
+  pulita.tipo = pulita.momento && SCELTE.includes(p.tipo) ? p.tipo : null;
   pulita.pronta = pulita.suo_pronto ? TESTI_SVELAMENTO.prontaAltro.replace("<nome>", String(p.nome || "")) : null;
   pulita.aspetta = p.mia_caparra === true && p.sua_caparra !== true
     ? TESTI_SVELAMENTO.aspettaCaparra.replace("<nome>", String(p.nome || ""))
