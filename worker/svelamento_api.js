@@ -9,6 +9,9 @@
 //                             → { ok: true, esito: "pronto" | "entrambi_pronti", stato } | { ok: false, motivo, testo? }
 //   POST /app/api/svelamento  { azione: "fasce", porta, fasce: [ISO, …] } (1-3 inizi da 30 minuti)  (passo 5a)
 //                             → { ok: true, esito: "salvate" | "fissata", stato } | { ok: false, motivo, testo? }
+//   POST /app/api/svelamento  { azione: "entra", porta }                                           (passo 6c)
+//                             → { ok: true, esito: "in_attesa" } | { ok: true, esito: "iniziato", tipo: "video" | "foto" }
+//                             | { ok: false, motivo, testo? }   (richiamarla mentre si aspetta dice se l'altra persona è arrivata)
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
@@ -120,6 +123,7 @@ export async function svelamentoApi(request, env, f = fetch) {
   const { azione, porta: idPorta, scelta, fasce } = corpo.dati;
   if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
   if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
+  if (azione === "entra") return entra(s, chi.id, idPorta, f);
   if (azione === "pronto") return quando(s, chi.id, idPorta, "pronto_svelamento", {}, ["pronto", "entrambi_pronti"], f);
   if (azione === "fasce") {
     const pulite = formaFasce(fasce);
@@ -177,6 +181,20 @@ async function quando(s, id, idPorta, nome, extra, buoni, f) {
   const esito = await rpc(s, nome, { p_porta: idPorta, p_persona: id, ...extra }, f);
   if (buoni.includes(esito)) return risposta(200, { ok: true, esito, stato: await stato(s, id, f) });
   if (["gia_iniziato", "manca_caparra", "fasce_non_valide"].includes(esito)) return risposta(200, { ok: false, motivo: esito });
+  if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+  if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
+  if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
+  return riprova();
+}
+
+// Passo 6c: ingresso dalla sala d'attesa, solo per la persona del token. Le regole (caparre, «momento», attesa massima
+// di 10 minuti, avvio quando ci sono tutti e due, tipo video o foto) le applica entra_svelamento() nel database.
+const INIZIATO = { iniziato_video: "video", iniziato_foto: "foto" };
+async function entra(s, id, idPorta, f) {
+  const esito = await rpc(s, "entra_svelamento", { p_porta: idPorta, p_persona: id }, f);
+  if (esito === "in_attesa") return risposta(200, { ok: true, esito });
+  if (Object.hasOwn(INIZIATO, esito)) return risposta(200, { ok: true, esito: "iniziato", tipo: INIZIATO[esito] });
+  if (["non_ancora", "non_arrivato", "manca_caparra", "gia_iniziato"].includes(esito)) return risposta(200, { ok: false, motivo: esito });
   if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
   if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
   if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
