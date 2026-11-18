@@ -170,3 +170,9 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .quando-svelamento h2 { font-size: 1.1rem; margin: 0; }
 .quando-svelamento .bottone, .quando-svelamento .bottone-secondario, .orari-svelamento select { min-height: 44px; }
 .orari-svelamento select { font-size: max(16px, 1rem); }
+/* Sala d'attesa dello svelamento (#65, passo 6b): anteprima della propria fotocamera, sfocata e specchiata, solo per sé. */
+.sala-attesa { display: grid; gap: 0.5rem; margin: 1rem 0; }
+.sala-attesa h2 { font-size: 1.1rem; margin: 0; }
+.sala-attesa .bottone, .sala-attesa .bottone-secondario { min-height: 44px; }
+.anteprima-sfocata { overflow: hidden; border-radius: 0.75rem; background: #000; aspect-ratio: 3 / 4; max-height: 50vh; }
+.anteprima-sfocata video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: blur(24px); }

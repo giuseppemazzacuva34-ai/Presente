@@ -9,6 +9,8 @@
 // Il modulo non tocca la pagina: riceve fetch, token e h dall'esterno, così si prova con node --test.
 // I testi sono gli stessi di api/svelamento.js (TESTI_SVELAMENTO): il test lo controlla.
 
+import { TESTI_SALA, vistaSala } from "./sala_attesa.js";
+
 const PERCORSO = "/app/api/svelamento";
 const ATTESA_MS = 8000;
 const CAPARRA = 10;
@@ -140,6 +142,9 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
     conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
+    // Passo 6b: «momento» e «tipo» solo come li dà il server (passo 6a); un tipo sconosciuto non accende la fotocamera.
+    momento: p.momento === true,
+    tipoSvelamento: p.momento === true && SCELTE.includes(p.tipo) ? p.tipo : null,
   };
 }
 
@@ -222,7 +227,8 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
 }
 
 // Il controllo della schermata: una porta aperta alla volta, una richiesta alla volta.
-export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = () => new Date() }) {
+// sala(passaAlleFoto, aggiorna) crea la sala d'attesa (sala_attesa.js, passo 6b); senza, la sala non compare.
+export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = () => new Date(), sala: creaSala = null }) {
   let porta = null;
   let stato = null;
   let carica = false;
@@ -232,6 +238,26 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
   let orari = false;
   let bozza = ["", "", ""];
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
+  // «Passa alle foto» dalla sala: la propria scelta diventa «foto» (vale per entrambi, lo decide il server).
+  async function passaAlleFoto() {
+    const id = porta;
+    if (!id) return { ok: false };
+    const r = await svelamento.scegli(id, "foto").catch(() => ({ ok: false, motivo: "rete" }));
+    if (porta !== id) return { ok: false };
+    if (r && r.ok) {
+      if (r.stato) stato = r.stato;
+      else await leggi();
+      return { ok: true };
+    }
+    return { ok: false, testo: (r && r.testo) || testoErroreSvelamento(r && r.motivo) };
+  }
+  const sala = typeof creaSala === "function" ? creaSala(passaAlleFoto, avvisa) : null;
+  // Dopo ogni lettura la sala segue il server: «foto» spegne la fotocamera, fuori dal momento la sala si chiude.
+  const seguiSala = () => {
+    if (!sala || sala.modello().stato === "chiusa") return;
+    const s = schermataPorta(stato, porta, adesso());
+    sala.aggiornaTipo(s && s.tipo === "porta" && s.momento ? s.tipoSvelamento : null);
+  };
 
   async function leggi() {
     const id = porta;
@@ -243,6 +269,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
     carica = false;
     if (r && r.ok) stato = r.stato;
     else errore = (r && r.testo) || testoErroreSvelamento(r && r.motivo);
+    if (r && r.ok) seguiSala();
     avvisa();
   }
 
@@ -277,6 +304,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
 
   return {
     async apri(id) {
+      if (sala) sala.chiudi();
       porta = String(id || "");
       stato = null;
       ricarica = false;
@@ -286,6 +314,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       await leggi();
     },
     chiudi() {
+      if (sala) sala.chiudi();
       porta = null;
       stato = null;
       errore = null;
@@ -295,6 +324,15 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       avvisa();
     },
     riprova: () => leggi(),
+    // Passo 6b: si rilegge lo stato (il tipo può essere cambiato) e si apre la sala solo nel momento.
+    async entraSala() {
+      if (!sala || !porta) return;
+      await leggi();
+      const s = schermataPorta(stato, porta, adesso());
+      if (s && s.tipo === "porta" && s.momento) sala.apri({ tipo: s.tipoSvelamento });
+      avvisa();
+    },
+    sala: () => sala,
     mostraRicarica() {
       ricarica = !ricarica;
       avvisa();
@@ -431,6 +469,12 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
           "aria-pressed": o.valore === s.scelta.attuale ? "true" : "false", onclick: () => ps.scegli(o.valore) }, o.testo))));
     }
     if (s.quando) parti.push(vistaQuando(h, ps, m, s.quando));
+    const sala = ps.sala ? ps.sala() : null;
+    if (s.momento && sala) {
+      parti.push(sala.modello().stato === "chiusa"
+        ? h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.entraSala() }, TESTI_SALA.vai)
+        : vistaSala(h, sala));
+    }
   }
   return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
     h("h1", { id: "porta-titolo" }, s && s.tipo === "porta" ? s.titolo : "Svelamento"),
