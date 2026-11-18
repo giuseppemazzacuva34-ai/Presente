@@ -1,7 +1,7 @@
 // Avvio della web app (Fase 2): registra il service worker (app installabile) e apre l'iscrizione.
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
-import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -23,6 +23,7 @@ import { creaEsiti } from "/app/moduli/esiti_segnalazioni.js";
 import { creaSanzioni } from "/app/moduli/sanzioni.js";
 import { creaAiuto } from "/app/moduli/aiuto.js";
 import { creaSvelamento, creaPortaSvelamento } from "/app/moduli/svelamento.js";
+import { creaAvvisiPorte } from "/app/moduli/avvisi_porte.js";
 import { conAttesa } from "/app/moduli/in_attesa.js";
 
 const stato = document.getElementById("stato");
@@ -95,9 +96,11 @@ async function preparaAccesso() {
     // Pagina Aiuto (#10): «Scrivici» e «I miei messaggi» via Worker; chi scrive lo dice solo il token.
     const aiuto = creaAiuto({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Schermata della porta (#65 passi 1-2): caparra via Worker (/app/api/svelamento); chi blocca lo dice solo il token.
-    const porta = creaPortaSvelamento({ svelamento: creaSvelamento({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
-      aggiorna: () => portaCambiata() });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta };
+    const sv = creaSvelamento({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    const porta = creaPortaSvelamento({ svelamento: sv, aggiorna: () => portaCambiata() });
+    // Avvisi delle porte nella home (#65 passo 4, senza push finché non c'è D24): una lettura al minuto, solo con porte aperte.
+    const avvisiPorte = creaAvvisiPorte({ svelamento: sv, aggiorna: () => avvisiCambiati(), pagina: document });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
