@@ -1,0 +1,120 @@
+// Incontro dopo il doppio sì (issue #6, spec v1 del CPO del 3/11, punti 2 e 3). Passo 2c, linea «sviluppatore-b».
+//   POST /app/api/incontro  { azione: "proponi", porta, orario (ISO), locale | luogo }  → proponi_incontro
+//        «Proponi quando e dove» e «Propongo un'altra data»: esito «proposto» o «controproposto»
+//   POST /app/api/incontro  { azione: "rispondi", porta, risposta: "accetto" | "annulla" } → rispondi_incontro
+//        esito «confermato» o «annullato»
+// Chi propone o risponde lo dice SOLO il token, mai il corpo. Le regole (orari 10:00–23:00 di Roma ogni 30 minuti da
+// domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
+// la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
+// La lettura dello stato (GET) arriva nel passo successivo.
+import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
+
+export const PERCORSO_INCONTRO = "/app/api/incontro";
+const CORPO_MASSIMO = 1024;
+const ATTESA_SUPABASE_MS = 1500;
+const TESTO_MASSIMO = 200; // il database ammette 80 caratteri: qui si scarta solo ciò che è chiaramente sbagliato
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+const RISPOSTE = ["accetto", "annulla"];
+const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_incontro: ["confermato", "annullato"] };
+const RIFIUTI = {
+  proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
+    "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
+  rispondi_incontro: ["nessuna_proposta", "proposta_scaduta", "non_puoi_rispondere", "orario_passato", "incontro_chiuso",
+    "incontro_scaduto"],
+};
+const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
+const dati = () => risposta(400, { ok: false, motivo: "dati" });
+const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
+
+function entro(ms, promessa) {
+  let timer;
+  return Promise.race([promessa, new Promise((_, no) => { timer = setTimeout(() => no(new Error("tempo scaduto")), ms); })])
+    .finally(() => clearTimeout(timer));
+}
+
+function server(env) {
+  const base = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  const chiave = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  return URL_SUPABASE.test(base) && chiave ? { base, chiave } : null;
+}
+
+async function rpc(s, nome, argomenti, f) {
+  try {
+    const r = await entro(ATTESA_SUPABASE_MS, f(`${s.base}/rest/v1/rpc/${nome}`, {
+      method: "POST",
+      headers: { apikey: s.chiave, authorization: `Bearer ${s.chiave}`, "content-type": "application/json" },
+      body: JSON.stringify(argomenti),
+    }));
+    if (!r.ok) {
+      console.error(`incontro: ${nome} risposta ${r.status}`);
+      return undefined;
+    }
+    return await r.json();
+  } catch (e) {
+    console.error(`incontro: ${nome} errore`, e && e.name);
+    return undefined;
+  }
+}
+
+// Esito del database → risposta al telefono. Un esito che non conosciamo è un guasto: «riprova», mai un successo.
+async function esegui(s, nome, argomenti, f) {
+  const esito = await rpc(s, nome, argomenti, f);
+  if (RIUSCITI[nome].includes(esito)) return risposta(200, { ok: true, esito });
+  if (RIFIUTI[nome].includes(esito)) return risposta(200, { ok: false, motivo: esito });
+  if (NON_TROVATO.includes(esito)) return risposta(404, { ok: false, motivo: "non_trovato" });
+  if (esito !== undefined) console.error(`incontro: ${nome} esito sconosciuto`);
+  return riprova();
+}
+
+// Testo facoltativo: assente → null; stringa non troppo lunga → così com'è (gli spazi li toglie il database); altro → errore.
+function testo(x) {
+  if (x === undefined || x === null) return { valore: null };
+  if (typeof x !== "string" || x.length > TESTO_MASSIMO) return { errore: true };
+  return { valore: x };
+}
+
+export async function incontroApi(request, env, f = fetch) {
+  if (new URL(request.url).pathname !== PERCORSO_INCONTRO) return risposta(404, { ok: false, motivo: "non_trovato" });
+  if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
+  if (request.method !== "POST") return risposta(405, { ok: false, motivo: "metodo" }, { allow: "POST" });
+  if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
+  const s = server(env);
+  if (!s) return riprova();
+  const chi = await chiEDavvero(request, env, f);
+  if (chi.errore) return chi.errore;
+
+  const corpo = await leggiCorpo(request, CORPO_MASSIMO);
+  if (corpo.errore) return corpo.errore;
+  const { azione, porta } = corpo.dati || {};
+  if (!UUID.test(String(porta || ""))) return dati();
+
+  if (azione === "proponi") {
+    const { orario } = corpo.dati;
+    if (typeof orario !== "string" || !ISO.test(orario) || !Number.isFinite(Date.parse(orario))) return dati();
+    const locale = testo(corpo.dati.locale);
+    const luogo = testo(corpo.dati.luogo);
+    if (locale.errore || luogo.errore) return dati();
+    return esegui(s, "proponi_incontro",
+      { p_porta: porta, p_persona: chi.id, p_orario: new Date(Date.parse(orario)).toISOString(), p_locale: locale.valore, p_luogo: luogo.valore }, f);
+  }
+  if (azione === "rispondi") {
+    const { risposta: scelta } = corpo.dati;
+    if (!RISPOSTE.includes(scelta)) return dati();
+    return esegui(s, "rispondi_incontro", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
+  }
+  return dati();
+}
+
+// Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve
+// solo a contare in memoria, mai salvato.
+async function troppeRichieste(request, env) {
+  if (!env.LIMITE_PROVINCIA) return false;
+  try {
+    const { success } = await env.LIMITE_PROVINCIA.limit({ key: "incontro:" + (request.headers.get("cf-connecting-ip") || "sconosciuto") });
+    return !success;
+  } catch {
+    return false;
+  }
+}
