@@ -3,10 +3,12 @@
 //        «Proponi quando e dove» e «Propongo un'altra data»: esito «proposto» o «controproposto»
 //   POST /app/api/incontro  { azione: "rispondi", porta, risposta: "accetto" | "annulla" } → rispondi_incontro
 //        esito «confermato» o «annullato»
+//   GET  /app/api/incontro?porta=<id>                                                → stato_incontro
+//        { ok: true, incontro: { stato, scadenza, orario, locale, luogo, proposta_mia, proposta_scade,
+//          controproposte_rimaste, azioni, ritardo_minuti, esito } }  (passo 2d)
 // Chi propone o risponde lo dice SOLO il token, mai il corpo. Le regole (orari 10:00–23:00 di Roma ogni 30 minuti da
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
-// La lettura dello stato (GET) arriva nel passo successivo.
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
 
 export const PERCORSO_INCONTRO = "/app/api/incontro";
@@ -25,6 +27,10 @@ const RIFIUTI = {
     "incontro_scaduto"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
+// Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
+const CAMPI_STATO = ["stato", "scadenza", "orario", "locale", "luogo", "proposta_mia", "proposta_scade",
+  "controproposte_rimaste", "azioni", "ritardo_minuti", "esito"];
+const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
 const dati = () => risposta(400, { ok: false, motivo: "dati" });
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
 
@@ -78,12 +84,13 @@ function testo(x) {
 export async function incontroApi(request, env, f = fetch) {
   if (new URL(request.url).pathname !== PERCORSO_INCONTRO) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
-  if (request.method !== "POST") return risposta(405, { ok: false, motivo: "metodo" }, { allow: "POST" });
+  if (request.method !== "POST" && request.method !== "GET") return risposta(405, { ok: false, motivo: "metodo" }, { allow: "GET, POST" });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
   const s = server(env);
   if (!s) return riprova();
   const chi = await chiEDavvero(request, env, f);
   if (chi.errore) return chi.errore;
+  if (request.method === "GET") return stato(s, request, chi, f);
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
   if (corpo.errore) return corpo.errore;
@@ -105,6 +112,20 @@ export async function incontroApi(request, env, f = fetch) {
     return esegui(s, "rispondi_incontro", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
   }
   return dati();
+}
+
+// Stato dell'incontro per la persona del token. Un errore noto → 404 senza dire perché; una risposta di forma
+// sconosciuta è un guasto → «riprova».
+async function stato(s, request, chi, f) {
+  const porta = new URL(request.url).searchParams.get("porta") || "";
+  if (!UUID.test(porta)) return dati();
+  const r = await rpc(s, "stato_incontro", { p_porta: porta, p_persona: chi.id }, f);
+  if (r && typeof r === "object" && NON_TROVATO.includes(r.errore)) return risposta(404, { ok: false, motivo: "non_trovato" });
+  if (!r || typeof r !== "object" || !STATI.includes(r.stato) || !Array.isArray(r.azioni)) {
+    if (r !== undefined) console.error("incontro: stato_incontro forma sconosciuta");
+    return riprova();
+  }
+  return risposta(200, { ok: true, incontro: Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null])) });
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve

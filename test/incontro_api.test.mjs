@@ -47,12 +47,12 @@ test("spento finché ACCESSO_APP non vale «si»: nessuna chiamata a Supabase", 
   assert.equal(s.viste.length, 0);
 });
 
-test("altri percorsi e metodi: 404 e 405 (per ora solo POST)", async () => {
+test("altri percorsi e metodi: 404 e 405 (solo GET e POST)", async () => {
   const s = supabaseFinto();
   assert.equal((await incontroApi(richiesta({ percorso: PERCORSO_INCONTRO + "/altro" }), ENV, s.f)).status, 404);
-  const r = await incontroApi(richiesta({ metodo: "GET" }), ENV, s.f);
+  const r = await incontroApi(richiesta({ metodo: "PUT" }), ENV, s.f);
   assert.equal(r.status, 405);
-  assert.equal(r.headers.get("allow"), "POST");
+  assert.equal(r.headers.get("allow"), "GET, POST");
   assert.equal(s.viste.length, 0);
 });
 
@@ -144,4 +144,54 @@ test("il Worker instrada /app/api/incontro con le intestazioni dell'app", async 
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.ok(r.headers.get("content-security-policy"));
   assert.equal((await r.json()).motivo, "spento");
+});
+
+// ── Lettura dello stato (passo 2d): GET /app/api/incontro?porta=<id> → stato_incontro. ──
+const STATO = {
+  stato: "proposto", scadenza: "2026-11-28T18:00:00+00:00", orario: "2026-11-20T18:00:00+00:00", locale: "bar-1", luogo: null,
+  proposta_mia: false, proposta_scade: "2026-11-20T10:00:00+00:00", controproposte_rimaste: 3,
+  azioni: ["accetto", "altra_data", "annulla"], ritardo_minuti: 0, esito: null,
+};
+const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
+
+test("stato: la persona è quella del token, mai quella scritta nell'indirizzo", async () => {
+  const s = supabaseFinto({ rpc: { stato_incontro: STATO } });
+  const r = await incontroApi(leggi(PORTA, `&persona=${ALTRO}&p_persona=${ALTRO}`), ENV, s.f);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await r.json(), { ok: true, incontro: STATO });
+  assert.deepEqual(s.rpc("stato_incontro")[0].corpo, { p_porta: PORTA, p_persona: ID });
+});
+
+test("stato: passano al telefono solo i campi previsti", async () => {
+  const s = supabaseFinto({ rpc: { stato_incontro: { ...STATO, a: ALTRO, proposto_da: ALTRO, segreto: "x" } } });
+  const corpo = await (await incontroApi(leggi(), ENV, s.f)).json();
+  assert.deepEqual(corpo, { ok: true, incontro: STATO });
+});
+
+test("stato: porta mancante o malformata non arriva al database (400)", async () => {
+  for (const r of [richiesta({ metodo: "GET" }), leggi("non-un-id")]) {
+    const s = supabaseFinto({ rpc: { stato_incontro: STATO } });
+    assert.equal((await incontroApi(r, ENV, s.f)).status, 400);
+    assert.equal(s.rpc("stato_incontro").length, 0);
+  }
+});
+
+test("stato: senza token valido niente (401)", async () => {
+  const s = supabaseFinto({ rpc: { stato_incontro: STATO } });
+  const r = await incontroApi(richiesta({ metodo: "GET", token: null, percorso: `${PERCORSO_INCONTRO}?porta=${PORTA}` }), ENV, s.f);
+  assert.equal(r.status, 401);
+  assert.equal(s.rpc("stato_incontro").length, 0);
+});
+
+test("stato: porta non sua o senza incontro → 404 senza dire perché; guasto → 503", async () => {
+  for (const errore of ["non_nella_porta", "nessun_incontro"]) {
+    const r = await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: { errore } } }).f);
+    assert.equal(r.status, 404);
+    assert.deepEqual(await r.json(), { ok: false, motivo: "non_trovato" });
+  }
+  for (const rotto of [new Response("{}", { status: 500 }), "testo", { stato: "boh" }]) {
+    const r = await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: rotto } }).f);
+    assert.equal(r.status, 503);
+  }
 });
