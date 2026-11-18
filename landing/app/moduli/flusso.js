@@ -25,6 +25,7 @@ import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
 import { vistaPorta } from "./svelamento.js";
+import { vistaAvvisiPorte } from "./avvisi_porte.js";
 import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore as contatoreAiuto, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
@@ -34,6 +35,10 @@ let appuntiStanza = null;
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
 let portaSvelamento = null;
+// Avvisi delle porte nella home (#65 passo 4, avvisi_porte.js): «è pronta», 10 minuti prima, «inizia ora»; la porta resta
+// raggiungibile fino alla scadenza delle 48 ore. Solo con il telefono acceso e la schermata della porta.
+let avvisiPorte = null;
+let avvisiAvviati = false;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
@@ -165,6 +170,7 @@ export function avvia(elemento, opzioni = {}) {
   chiaviStanza = (telefono && opzioni.chiavi) || null;
   portaSvelamento = (telefono && opzioni.porta) || null;
   svelamento = portaSvelamento ? (id) => portaSvelamento.apri(id) : null;
+  avvisiPorte = (portaSvelamento && opzioni.avvisiPorte) || null;
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
@@ -462,6 +468,7 @@ function bloccoTuaStanza() {
   if (!telefono) return null;
   telefono.caricaPersone();
   avviaSentinella();
+  if (avvisiPorte && !avvisiAvviati) { avvisiAvviati = true; avvisiPorte.avvia(); }
   const m = telefono.modello();
   const st = m.stanza;
   let contenuto;
@@ -502,6 +509,7 @@ function bloccoTuaStanza() {
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     h("h2", { id: "tua-stanza-titolo" }, "La tua stanza", st.chiusa ? h("span", { classe: "etichetta-chiusa" }, " · Chiusa") : null),
     chiaviStanza ? vistaSera(h, chiaviStanza, { svelamento }) : null,
+    avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
     chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
     st.stato === "pronta" && st.chiusa ? h("p", { classe: "nota" }, "La stanza è chiusa: puoi rileggere le schede e i tuoi appunti fino a lunedì alle 9:00, quando apre una nuova stanza.") : null,
@@ -1206,9 +1214,26 @@ export function portaCambiata() {
   const aperta = portaSvelamento.modello().aperta;
   if (aperta !== portaEraAperta) {
     portaEraAperta = aperta;
+    if (!aperta && avvisiPorte) avvisiPorte.subito();
     const titolo = radice.querySelector(aperta ? "#porta-titolo" : "#tua-stanza-titolo");
     if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: false }); }
   }
+}
+
+// Avvisi delle porte (#65): cambiano al massimo una volta al minuto. Si ridisegna solo nella home e mai sopra la
+// schermata della porta aperta (lì il conto e i pulsanti hanno già il loro stato).
+export function avvisiCambiati() {
+  if (!radice || !avvisiPorte || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  if (portaSvelamento && portaSvelamento.modello().aperta) return;
+  // Mentre si scrive (diario, appunti, «Scrivici») non si ridisegna: l'avviso compare al prossimo disegno.
+  const attivo = radice.ownerDocument && radice.ownerDocument.activeElement;
+  if (attivo && radice.contains(attivo) && /^(INPUT|TEXTAREA|SELECT)$/.test(attivo.tagName)) return;
+  disegna();
+}
+// La sera delle chiavi mostra già le porte con «Vai allo svelamento»: lì gli avvisi aggiungono solo quelli urgenti.
+function seraConPorte() {
+  const sera = chiaviStanza && chiaviStanza.modello().sera;
+  return Boolean(sera && sera.tipo === "porte");
 }
 
 // ---------------------------------------------------------------------------------------------------------------
