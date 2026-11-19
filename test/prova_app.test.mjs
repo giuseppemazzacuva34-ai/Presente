@@ -118,6 +118,7 @@ test("pagina della prova: comandi per farsi chiamare e saltare all'ultimo minuto
   assert.match(avvio, /portaCambiata/);
   assert.match(avvio, /avvisiCambiati/);
   assert.match(avvio, /creaSalaAttesa/);
+  assert.match(avvio, /appuntiCambiati/);
 });
 
 test("comando «Salta l'iscrizione»: profilo finto completo, si entra già nella home", async () => {

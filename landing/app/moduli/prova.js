@@ -9,7 +9,8 @@
 // (telefono.js, sentinella.js): squillo, timer di 15 minuti, carte, «La richiameresti?», diario. Niente microfono,
 // niente audio. Passo 3: chiavi (chiavi_stanza.js vero, regole di api/chiavi.js) e sera delle porte con il comando
 // «Domenica sera: apri le porte». Passo 4: porta e svelamento (svelamento.js e avvisi_porte.js veri) fino alla sala
-// d'attesa; la persona finta blocca la caparra e si dice pronta subito. Poi: segnala/blocca, Aiuto.
+// d'attesa; la persona finta blocca la caparra e si dice pronta subito. Passo 5: segnala e blocca, «Sono in
+// difficoltà», «Le tue chiamate», «I tuoi appunti», Aiuto con «Scrivici» e «I miei messaggi».
 
 import { creaTelefono } from "./telefono.js";
 import { creaSentinella } from "./sentinella.js";
@@ -17,6 +18,9 @@ import { DOMANDE, TEMI } from "./domande.js";
 import { creaChiaviStanza } from "./chiavi_stanza.js";
 import { creaPortaSvelamento } from "./svelamento.js";
 import { creaAvvisiPorte } from "./avvisi_porte.js";
+import { appunto } from "./diario.js";
+import { creaAppuntiStanza } from "./appunti_stanza.js";
+import { voceStorico } from "./storico_chiamate.js";
 
 export const UTENTE_PROVA = "00000000-0000-4000-8000-000000000001";
 const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -54,6 +58,11 @@ const CONTATTI = [
 // Nella prova ricambiano la chiave solo alcune persone finte, sempre le stesse, con una frase inventata.
 const RICAMBIANO = new Map([[0, "La tua risata mi è rimasta in testa."], [1, "Mi è piaciuto come racconti le cose."],
   [4, "Avrei parlato ancora un'ora."], [5, ""], [8, "Ci prendiamo quel caffè?"], [9, "Voce calma, idee chiare: mi piace."]]);
+// Priorità delle segnalazioni in ore: le stesse di api/segnalazioni.js (1 ora = pericolo).
+const ORE_SEGNALAZIONE = Object.freeze({ contatti_prima_porta: 72, insulti: 24, contenuti_sessuali: 24, minacce_pericolo: 1,
+  sembra_minorenne: 1, profilo_falso: 72, soldi: 24, diffusione_immagini: 24, altro: 72, sono_in_difficolta: 1 });
+// Nella prova «Scrivici» segna come urgente un messaggio con una di queste parole (nell'app vera lo decide il database).
+const PAROLE_PERICOLO = /\b(paura|pericolo|minacc\w*|aggredit\w*|segui\w*|112)\b/i;
 const TESTO_BREVE = "La chiamata è durata poco e non conta nei limiti.";
 const TESTO_TRE = "Avete già parlato 3 volte. Ora tocca alle chiavi";
 
@@ -101,9 +110,9 @@ const prossimaDomenica = (adesso) => prossimo(adesso, "Sun", 21);
 // animazioneMs: durata delle porte che si aprono la sera (0 = niente animazione).
 // sala: (passaAlleFoto, aggiorna) → sala d'attesa (sala_attesa.js) creata dalla pagina, che ha fotocamera e schermo.
 export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0, sala = null } = {}) {
-  const aggiorna = { chiavi: () => {}, conto: () => {}, porta: () => {}, avvisi: () => {}, ...daFuori };
+  const aggiorna = { chiavi: () => {}, conto: () => {}, porta: () => {}, avvisi: () => {}, appunti: () => {}, ...daFuori };
   // Tutto il «database» della prova: vive solo in questa pagina.
-  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false, seraIl: 0 };
+  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false, seraIl: 0, bloccati: new Set() };
   // Un attimo di attesa come una rete vera, così si vedono «Invio…» e «Un attimo…».
   const pausa = () => new Promise((fatto) => setTimeout(fatto, attesaMs));
   const ok = async (extra = {}) => { await pausa(); return { ok: true, ...extra }; };
@@ -265,13 +274,73 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     chiudi: (segnala) => chiamata.chiudi(segnala),
   };
   // Diario privato (#5): resta solo nella memoria della prova, nessuno lo legge.
+  let appunti = null;
+  const riga = (n) => appunto({ chiamata_il: n.chiamataIl, durata: n.durata, testo: n.testo });
   const diario = {
-    async salva({ con, chiamataIl, durata, testo }) { linea.diario.push({ con, chiamataIl, durata, testo }); return ok(); },
+    async salva({ con, chiamataIl, durata, testo }) {
+      if (linea.diario.some((n) => n.chiamataIl === chiamataIl)) return { ok: false, motivo: "gia_scritta" };
+      linea.diario.push({ con, chiamataIl, durata, testo: String(testo).trim() });
+      if (appunti) appunti.rileggi(); // la nota compare subito in «I tuoi appunti» sulla scheda
+      return ok();
+    },
+    async appunti(con) { return ok({ appunti: linea.diario.filter((n) => n.con === con).reverse().map(riga) }); },
+    async appuntiDi(ids) {
+      const perPersona = {};
+      for (const n of [...linea.diario].reverse()) if (ids.includes(n.con)) (perPersona[n.con] ??= []).push(riga(n));
+      return ok({ perPersona });
+    },
+    async modifica(chiamataIl, testo) {
+      const n = linea.diario.find((x) => x.chiamataIl === chiamataIl);
+      if (!n) return { ok: false, motivo: "rifiutato" };
+      n.testo = String(testo).trim();
+      return ok();
+    },
+    async cancella(chiamataIl) { linea.diario = linea.diario.filter((x) => x.chiamataIl !== chiamataIl); return ok(); },
   };
   const compagni = { async leggi() {
     await pausa();
-    return { ok: true, ...(mondo.sera ? { chiusa: true } : {}), persone: PERSONE_PROVA.map((p) => ({ ...p })) };
+    return { ok: true, ...(mondo.sera ? { chiusa: true } : {}),
+      persone: PERSONE_PROVA.filter((p) => !mondo.bloccati.has(p.id)).map((p) => ({ ...p })) };
   } };
+
+  // ---- Passo 5: segnala e blocca (#7), «Le tue chiamate», esiti e sanzioni, appunti, Aiuto (#10) -------------------
+  const segnala = {
+    async invia(corpo) {
+      const ore = ORE_SEGNALAZIONE[corpo && corpo.motivo];
+      if (!ore) return { ok: false, motivo: "dati" };
+      if (corpo.contro && corpo.blocca !== false) mondo.bloccati.add(corpo.contro);
+      return ok({ ore, pericolo: ore === 1 });
+    },
+  };
+  const blocca = {
+    async blocca(altra) {
+      if (!PERSONE_PROVA.some((p) => p.id === altra)) return { ok: false, motivo: "persona" };
+      mondo.bloccati.add(altra);
+      return ok();
+    },
+  };
+  const storico = {
+    async leggi() {
+      await pausa();
+      const chiamate = [...linea.registro].reverse().filter((r) => r.durata > 0)
+        .map((r) => voceStorico({ con: r.altra, nome: (PERSONE_PROVA.find((p) => p.id === r.altra) || {}).nome, inizio: r.inizio, durata: r.durata }))
+        .filter(Boolean);
+      return { ok: true, chiamate };
+    },
+  };
+  const esiti = { async leggi() { return { ok: true, esiti: [] }; }, async letto() { return { ok: true }; } };
+  const sanzioni = { async leggi() { return { ok: true, sanzioni: [] }; }, async contesta() { return { ok: false, motivo: "id" }; } };
+  const messaggi = [];
+  const aiuto = {
+    async invia(corpo) {
+      const testo = String((corpo && corpo.testo) || "");
+      const sicurezza = PAROLE_PERICOLO.test(testo);
+      const id = `00000000-0000-4000-9000-${String(messaggi.length + 1).padStart(12, "0")}`;
+      messaggi.unshift({ id, categoria: corpo.categoria, testo, creatoIl: new Date(adesso()).toISOString(), stato: "inviato", risposta: null, rispostoIl: null });
+      return ok({ id, sicurezza });
+    },
+    async miei() { await pausa(); return { ok: true, email: "prova@esempio.it", messaggi: messaggi.map((m) => ({ ...m })) }; },
+  };
 
   // ---- Passo 3: chiavi e sera delle porte (stesse regole di api/chiavi.js) ---------------------------------------
   const chiudeIl = prossimaDomenica(adesso());
@@ -414,8 +483,10 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
 
   const porta = creaPortaSvelamento({ svelamento: svelamentoServer, aggiorna: () => aggiorna.porta(), adesso: () => new Date(adesso()), sala });
   const avvisiPorte = creaAvvisiPorte({ svelamento: svelamentoServer, aggiorna: () => aggiorna.avvisi(), pagina, adesso: () => new Date(adesso()) });
+  appunti = creaAppuntiStanza({ diario, aggiorna: () => aggiorna.appunti() });
   const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(),
-    svelamentoServer, porta, avvisiPorte, regista };
+    svelamentoServer, porta, avvisiPorte, segnala, blocca, storico, esiti, sanzioni, aiuto, appunti,
+    compagniServer: compagni, diarioServer: diario, regista };
   // «Domenica sera: apri le porte»: le chiavi si chiudono, la stanza diventa «Chiusa» e un modulo delle chiavi nuovo
   // legge la sera (la pagina poi riparte dalla home, come all'apertura dell'app dopo le 21).
   regista.apriPorte = () => {

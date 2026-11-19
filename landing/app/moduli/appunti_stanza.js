@@ -30,6 +30,8 @@ export function creaAppuntiStanza({ diario, aggiorna = () => {} }) {
       if (k !== chiave) { chiave = k; letto = leggi(ids); }
       return letto;
     },
+    // Dopo una nota nuova del diario (fine chiamata): la prossima prepara() rilegge anche per le stesse persone.
+    rileggi() { chiave = null; },
     di: (persona) => (perPersona[persona] || []).map((a) => ({ ...a })),
     modello: () => ({ finestra: finestra ? { ...finestra } : null, errore, inCorso }),
     apriModifica(persona, chiamataIl) {
