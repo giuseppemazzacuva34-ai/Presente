@@ -10,7 +10,9 @@
 // niente audio. Passo 3: chiavi (chiavi_stanza.js vero, regole di api/chiavi.js) e sera delle porte con il comando
 // «Domenica sera: apri le porte». Passo 4: porta e svelamento (svelamento.js e avvisi_porte.js veri) fino alla sala
 // d'attesa; la persona finta blocca la caparra e si dice pronta subito. Passo 5: segnala e blocca, «Sono in
-// difficoltà», «Le tue chiamate», «I tuoi appunti», Aiuto con «Scrivici» e «I miei messaggi».
+// difficoltà», «Le tue chiamate», «I tuoi appunti», Aiuto con «Scrivici» e «I miei messaggi». Passo 6: «Il vostro
+// incontro» (incontro.js vero della linea B) con un /app/api/incontro finto: la persona finta accetta la tua proposta
+// dopo qualche secondo; il comando «L'altra persona propone» fa provare «Accetto», «Altra data» e «Annulla».
 
 import { creaTelefono } from "./telefono.js";
 import { creaSentinella } from "./sentinella.js";
@@ -21,6 +23,7 @@ import { creaAvvisiPorte } from "./avvisi_porte.js";
 import { appunto } from "./diario.js";
 import { creaAppuntiStanza } from "./appunti_stanza.js";
 import { voceStorico } from "./storico_chiamate.js";
+import { creaIncontro, orariProposta } from "./incontro.js";
 
 export const UTENTE_PROVA = "00000000-0000-4000-8000-000000000001";
 const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -109,8 +112,9 @@ const prossimaDomenica = (adesso) => prossimo(adesso, "Sun", 21);
 // aggiorna: { chiavi, conto } della pagina (flusso.js › chiaviCambiate e il conto alla rovescia delle 20:00).
 // animazioneMs: durata delle porte che si aprono la sera (0 = niente animazione).
 // sala: (passaAlleFoto, aggiorna) → sala d'attesa (sala_attesa.js) creata dalla pagina, che ha fotocamera e schermo.
-export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0, sala = null } = {}) {
-  const aggiorna = { chiavi: () => {}, conto: () => {}, porta: () => {}, avvisi: () => {}, appunti: () => {}, ...daFuori };
+// rispostaMs: dopo quanto la persona finta accetta la tua proposta d'incontro.
+export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0, sala = null, rispostaMs = 3000 } = {}) {
+  const aggiorna = { chiavi: () => {}, conto: () => {}, porta: () => {}, avvisi: () => {}, appunti: () => {}, incontro: () => {}, ...daFuori };
   // Tutto il «database» della prova: vive solo in questa pagina.
   const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false, seraIl: 0, bloccati: new Set() };
   // Un attimo di attesa come una rete vera, così si vedono «Invio…» e «Un attimo…».
@@ -481,11 +485,80 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     },
   };
 
+  // ---- Passo 6: «Il vostro incontro» (stesse risposte di worker/incontro_api.js, regole di api/incontro.js) -----------
+  // Ogni porta della sera ha il suo incontro: scadenza 10 giorni (stessa zona), orari da domani 10:00-23:00 ogni 30
+  // minuti (orariProposta, la stessa regola del server), 3 controproposte in tutto.
+  const incontri = new Map(); // porta → { stato, orario, luogo, proposta_mia, proposta_il, rimaste, esito }
+  const GIORNI_10 = 10 * 24 * 3600 * 1000;
+  const datiIncontro = (porta) => {
+    if (!mondo.sera || !statoSvelamento().porte.some((x) => x.porta === porta)) return null;
+    if (!incontri.has(porta)) incontri.set(porta, { stato: "da_fissare", orario: null, luogo: null, proposta_mia: false, proposta_il: null, rimaste: 3, esito: null });
+    return incontri.get(porta);
+  };
+  const vistaDati = (v) => {
+    const scadenza = new Date(mondo.seraIl + GIORNI_10).toISOString();
+    const ricevuta = v.stato === "proposto" && !v.proposta_mia;
+    return { stato: v.stato, scadenza, orario: v.orario, locale: null, luogo: v.luogo, proposta_mia: v.proposta_mia,
+      proposta_scade: v.stato === "proposto" ? new Date(Math.min(v.proposta_il + ORE_48, mondo.seraIl + GIORNI_10)).toISOString() : null,
+      controproposte_rimaste: v.rimaste,
+      azioni: v.stato === "da_fissare" ? ["proponi"] : ricevuta ? (v.rimaste > 0 ? ["accetto", "altra_data", "annulla"] : ["accetto", "annulla"]) : [],
+      ritardo_minuti: null, esito: v.esito };
+  };
+  const orarioValido = (orario) => orariProposta(new Date(mondo.seraIl + GIORNI_10).toISOString(), new Date(adesso()))
+    .some((g) => g.orari.some((o) => o.valore === orario));
+  const risposta = (status, corpo) => ({ status, json: async () => corpo });
+  let incontro = null;
+  // La persona finta accetta la tua proposta dopo «rispostaMs»; la schermata la rilegge.
+  const accettaDopo = (porta, v) => setTimeout(() => {
+    if (v.stato !== "proposto" || !v.proposta_mia) return;
+    v.stato = "confermato";
+    if (incontro && incontro.modello().porta === porta) incontro.riprova();
+  }, rispostaMs)?.unref?.(); // nei test con node il timer non tiene in vita il processo; nel browser non c'è unref
+  async function fetchIncontro(url, { method = "GET", body } = {}) {
+    await pausa();
+    const corpo = method === "POST" ? JSON.parse(body || "{}") : { porta: new URL(url, "https://prova.invalid").searchParams.get("porta") };
+    const v = datiIncontro(corpo.porta);
+    if (!v) return risposta(404, { ok: false, motivo: "non_trovato" });
+    if (method !== "POST") return risposta(200, { ok: true, incontro: vistaDati(v) });
+    if (v.stato === "confermato" || v.stato === "concluso") return risposta(200, { ok: false, motivo: v.stato === "confermato" ? "gia_confermato" : "incontro_chiuso" });
+    const ricevuta = v.stato === "proposto" && !v.proposta_mia;
+    if (corpo.azione === "proponi") {
+      if (v.stato === "proposto" && v.proposta_mia) return risposta(200, { ok: false, motivo: "attendi_risposta" });
+      if (!orarioValido(corpo.orario)) return risposta(200, { ok: false, motivo: "orario_non_valido" });
+      const luogo = typeof corpo.luogo === "string" ? corpo.luogo.trim() : "";
+      if (!luogo || luogo.length > 80) return risposta(200, { ok: false, motivo: "luogo_non_valido" });
+      if (ricevuta) v.rimaste -= 1;
+      Object.assign(v, { stato: "proposto", orario: corpo.orario, luogo, proposta_mia: true, proposta_il: adesso() });
+      accettaDopo(corpo.porta, v);
+      return risposta(200, { ok: true });
+    }
+    if (corpo.azione === "rispondi" && ricevuta && corpo.risposta === "accetto") { v.stato = "confermato"; return risposta(200, { ok: true }); }
+    if (corpo.azione === "rispondi" && ricevuta && corpo.risposta === "annulla") {
+      Object.assign(v, { stato: "concluso", esito: "annullato" });
+      return risposta(200, { ok: true });
+    }
+    return risposta(200, { ok: false, motivo: ricevuta ? "riprova" : "nessuna_proposta" });
+  }
+  incontro = creaIncontro({ token: () => "prova", fetch: fetchIncontro, attesa: 8000, aggiorna: () => aggiorna.incontro(), adesso: () => new Date(adesso()) });
+  // «L'altra persona propone»: dopodomani alle 19:00 al «Bar finto della piazza» (se l'orario è fuori dalla scadenza,
+  // il primo orario valido).
+  regista.propostaDallAltra = (porta) => {
+    const v = datiIncontro(porta);
+    if (!v || v.stato === "confermato" || v.stato === "concluso") return false;
+    const giorni = orariProposta(new Date(mondo.seraIl + GIORNI_10).toISOString(), new Date(adesso()));
+    const tutti = giorni.flatMap((g) => g.orari);
+    if (!tutti.length) return false;
+    const scelto = (giorni[1] || giorni[0]).orari.find((o) => o.testo === "19:00") || tutti[0];
+    if (v.stato === "proposto" && v.proposta_mia) v.rimaste = Math.max(0, v.rimaste - 1);
+    Object.assign(v, { stato: "proposto", orario: scelto.valore, luogo: "Bar finto della piazza", proposta_mia: false, proposta_il: adesso() });
+    return true;
+  };
+
   const porta = creaPortaSvelamento({ svelamento: svelamentoServer, aggiorna: () => aggiorna.porta(), adesso: () => new Date(adesso()), sala });
   const avvisiPorte = creaAvvisiPorte({ svelamento: svelamentoServer, aggiorna: () => aggiorna.avvisi(), pagina, adesso: () => new Date(adesso()) });
   appunti = creaAppuntiStanza({ diario, aggiorna: () => aggiorna.appunti() });
   const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(),
-    svelamentoServer, porta, avvisiPorte, segnala, blocca, storico, esiti, sanzioni, aiuto, appunti,
+    svelamentoServer, porta, avvisiPorte, segnala, blocca, storico, esiti, sanzioni, aiuto, appunti, incontro,
     compagniServer: compagni, diarioServer: diario, regista };
   // «Domenica sera: apri le porte»: le chiavi si chiudono, la stanza diventa «Chiusa» e un modulo delle chiavi nuovo
   // legge la sera (la pagina poi riparte dalla home, come all'apertura dell'app dopo le 21).
