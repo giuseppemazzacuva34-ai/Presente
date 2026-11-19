@@ -1,11 +1,24 @@
 // Prova finta dell'app (D141 A, linea «sviluppatore-c»): le schermate vere di flusso.js con il «server finto» di
 // prova.js al posto del database e del Worker. Niente rete, niente salvataggi sul telefono: ricaricando la pagina
 // si ricomincia da capo. Pagina non linkata e non indicizzata: /app/prova.html.
-import { avvia, telefonoCambiato, chiaviCambiate } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, portaCambiata, avvisiCambiati } from "/app/moduli/flusso.js";
 import { creaProva } from "/app/moduli/prova.js";
+import { creaSalaAttesa } from "/app/moduli/sala_attesa.js";
+
+// Sala d'attesa dello svelamento, come nell'app vera: anteprima della propria fotocamera frontale, sfocata, muta,
+// visibile solo a sé; niente lascia il telefono. Con «Preferisco le foto» la fotocamera non si accende mai.
+const schermo = document.createElement("video");
+schermo.muted = true;
+schermo.autoplay = true;
+schermo.setAttribute("playsinline", "");
+schermo.setAttribute("aria-hidden", "true");
+const md = navigator.mediaDevices;
+const sala = (passaAlleFoto, aggiorna) => creaSalaAttesa({ getUserMedia: md && md.getUserMedia ? md.getUserMedia.bind(md) : undefined,
+  schermo, passaAlleFoto, aggiorna });
 
 const prova = creaProva({ cambiato: () => telefonoCambiato(), pagina: document,
-  aggiorna: { chiavi: () => chiaviCambiate(), conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; } },
+  sala,
+  aggiorna: { chiavi: () => chiaviCambiate(), porta: () => portaCambiata(), avvisi: () => avvisiCambiati(), conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; } },
   // Sera delle chiavi: porte che si aprono per 3 secondi, saltabili; niente animazione per chi chiede meno movimento.
   animazioneMs: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 3000 });
 

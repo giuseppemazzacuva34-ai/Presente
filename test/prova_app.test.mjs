@@ -115,6 +115,9 @@ test("pagina della prova: comandi per farsi chiamare e saltare all'ultimo minuto
   assert.match(html, /id="comando-porte">Domenica sera: apri le porte</);
   assert.match(avvio, /regista\.apriPorte/);
   assert.match(avvio, /chiaviCambiate/);
+  assert.match(avvio, /portaCambiata/);
+  assert.match(avvio, /avvisiCambiati/);
+  assert.match(avvio, /creaSalaAttesa/);
 });
 
 test("comando «Salta l'iscrizione»: profilo finto completo, si entra già nella home", async () => {
