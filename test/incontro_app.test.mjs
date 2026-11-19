@@ -104,7 +104,7 @@ test("confermato: «Ci vediamo…» e il testo sulla caparra", () => {
 test("concluso: scaduto e annullato con i crediti restituiti; altri esiti con un testo neutro; nessuno stato → null", () => {
   assert.equal(schermataIncontro(base({ stato: "concluso", esito: "scaduto", azioni: [] }), ADESSO).testo, TESTI_INCONTRO.scaduto);
   assert.equal(schermataIncontro(base({ stato: "concluso", esito: "annullato", azioni: [] }), ADESSO).testo, TESTI_INCONTRO.annullato);
-  assert.equal(schermataIncontro(base({ stato: "concluso", esito: "avvenuto", azioni: [] }), ADESSO).testo, TESTI_INCONTRO.chiuso);
+  assert.equal(schermataIncontro(base({ stato: "concluso", esito: "contestato", azioni: [] }), ADESSO).testo, TESTI_INCONTRO.chiuso); // «avvenuto»: test/checkin_app.test.mjs
   assert.equal(schermataIncontro(null, ADESSO), null);
   assert.equal(schermataIncontro({ stato: "boh" }, ADESSO), null);
 });
