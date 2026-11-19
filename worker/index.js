@@ -16,10 +16,18 @@ import { contaVisitaPagina, pixel, PERCORSO_PIXEL, segui, PERCORSO_SEGUI } from 
 import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
 import { apriPorteDellaSera } from "./sera_porte.js";
+import { spedisciAvvisiSicurezza, CRON_AVVISI } from "./avvisi_sicurezza.js";
 
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
   async scheduled(evento, env, ctx) {
+    // Avvisi di sicurezza (#7, D139 A): il cron di ogni minuto fa solo questo; gli altri lavori restano sui loro orari.
+    if (evento && evento.cron === CRON_AVVISI) {
+      const avvisi = spedisciAvvisiSicurezza(env);
+      if (ctx && ctx.waitUntil) ctx.waitUntil(avvisi);
+      else await avvisi;
+      return;
+    }
     // Sera delle porte (#5): anche domenica alle 21:00 di Roma (cron a parte in wrangler.jsonc); spenta senza ACCESSO_APP.
     const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env), apriPorteDellaSera(env)]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);

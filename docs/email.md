@@ -96,3 +96,10 @@ SELECT email, 'https://presenteincontri.app/da/amico?invito=' || codice AS link 
 - L'email esce solo dopo la prova su un indirizzo interno e il via di Giuseppe.
 - Chi si è cancellato non riceve più nulla; chi ha chiesto la cancellazione dei dati non c'è più nella lista.
 - Nessun dato degli iscritti nel repository, nei log o in plancia: solo numeri.
+
+## Avvisi di sicurezza della #7 (D139 A, 19/11)
+
+- Il Worker manda da solo, ogni minuto se serve, **una** email via API di Brevo alla casella della sicurezza (`worker/avvisi_sicurezza.js`, cron `* * * * *`).
+- Testo con soli tipi e numeri (segnalazioni nuove, non aperte dopo 30 minuti, sospensioni da rivedere) e il link al pannello: mai nomi, email, racconti o id.
+- Mittente: `Presente · sicurezza <ciao@presenteincontri.app>` (dominio già autenticato in Brevo).
+- Spento finché `ACCESSO_APP` non vale «si» e mancano i due segreti del Worker, che inserisce Giuseppe su Cloudflare: `BREVO_API_KEY` (chiave API di Brevo) ed `EMAIL_SICUREZZA` (la casella che riceve gli avvisi). Mai nel repository.
