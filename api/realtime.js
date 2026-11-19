@@ -156,3 +156,94 @@ export async function chiudiVoce(env, sessione, mids, f = fetch) {
   if (!r || !Array.isArray(r.tracks)) return no("realtime");
   return r.tracks.every((t) => t && (!t.errorCode || t.errorCode === "close_track_error")) ? { ok: true } : no("realtime");
 }
+
+// ── Svelamento dopo la porta (issue #65, passo 7a; D48 A) ─────────────────────────────────────────────────────────
+// Unico caso con il video: 10 secondi tra i due della porta. Le regole su chi può entrare e quando restano al database
+// (entra_svelamento) e al Worker; qui solo la forma: chi pubblica manda ESATTAMENTE una voce e un video (una sola
+// fotocamera, nessun canale dati), con i nomi fissi «voce» e «video». Le funzioni delle chiamate qui sopra continuano
+// a rifiutare qualunque video. La sfocatura dei primi secondi la applica il telefono di chi trasmette, prima che il
+// video parta (docs/architettura.md); Realtime inoltra e basta: nessuna registrazione, nessuna immagine salvata.
+export const TRACCIA_VIDEO = "video";
+export const SEZIONI_SVELAMENTO = 6; // mia voce + mio video, voce + video dell'altra persona, 2 chiuse dopo un «Riprova»
+
+// true solo se l'SDP ha esattamente due sezioni: una audio e una video.
+export function soloSvelamento(sdp) {
+  if (typeof sdp !== "string" || !sdp || sdp.length > SDP_MASSIMO) return false;
+  const m = sezioni(sdp);
+  return m.length === 2 && m.includes("audio") && m.includes("video");
+}
+
+// Sessione intera dello svelamento: da 2 a 6 sezioni, solo audio o video, almeno una di ciascuno.
+export function svelamentoSessione(sdp) {
+  if (typeof sdp !== "string" || !sdp || sdp.length > SDP_MASSIMO) return false;
+  const m = sezioni(sdp);
+  return m.length >= 2 && m.length <= SEZIONI_SVELAMENTO && m.every((x) => x === "audio" || x === "video")
+    && m.includes("audio") && m.includes("video");
+}
+
+// mid della prima sezione del tipo chiesto («audio» o «video»), null se manca o non è valido.
+export function midDi(sdp, tipo) {
+  if (typeof sdp !== "string") return null;
+  let dentro = false;
+  for (const riga of sdp.split(/\r?\n/)) {
+    if (riga.startsWith("m=")) dentro = riga.startsWith(`m=${tipo} `);
+    else if (dentro && riga.startsWith("a=mid:")) {
+      const mid = riga.slice(6).trim();
+      return MID.test(mid) ? mid : null;
+    }
+  }
+  return null;
+}
+
+const descrizioneSvelamento = (d, tipo, sessione) =>
+  !!d && typeof d === "object" && d.type === tipo && (sessione ? svelamentoSessione(d.sdp) : soloSvelamento(d.sdp));
+
+// Il telefono pubblica voce e fotocamera frontale (già sfocata dal telefono nei primi secondi).
+export async function pubblicaSvelamento(env, sessione, offerta, f = fetch) {
+  if (!chiavi(env)) return no("spento");
+  if (typeof sessione !== "string" || !SESSIONE.test(sessione)) return no("sessione");
+  if (!descrizioneSvelamento(offerta, "offer")) return no("svelamento");
+  const voce = midDi(offerta.sdp, "audio");
+  const video = midDi(offerta.sdp, "video");
+  if (!voce || !video || voce === video) return no("svelamento");
+  const r = await chiedi(env, f, "POST", `/sessions/${sessione}/tracks/new`, {
+    sessionDescription: { type: "offer", sdp: offerta.sdp },
+    tracks: [
+      { location: "local", mid: voce, trackName: TRACCIA },
+      { location: "local", mid: video, trackName: TRACCIA_VIDEO },
+    ],
+  });
+  if (!r || traccieConErrore(r) || !descrizioneSvelamento(r.sessionDescription, "answer")) return no("realtime");
+  return { ok: true, descrizione: { type: "answer", sdp: r.sessionDescription.sdp } };
+}
+
+// Il telefono riceve voce e video dell'altra persona della porta (offerta di Cloudflare da completare).
+export async function riceviSvelamento(env, sessione, sessioneAltra, f = fetch) {
+  if (!chiavi(env)) return no("spento");
+  if (![sessione, sessioneAltra].every((s) => typeof s === "string" && SESSIONE.test(s)) || sessione === sessioneAltra) {
+    return no("sessione");
+  }
+  const r = await chiedi(env, f, "POST", `/sessions/${sessione}/tracks/new`, {
+    tracks: [
+      { location: "remote", sessionId: sessioneAltra, trackName: TRACCIA },
+      { location: "remote", sessionId: sessioneAltra, trackName: TRACCIA_VIDEO },
+    ],
+  });
+  if (!r || traccieConErrore(r) || r.tracks.length !== 2 || !descrizioneSvelamento(r.sessionDescription, "offer", true)) {
+    return no("realtime");
+  }
+  const mids = r.tracks.map((t) => t.mid);
+  if (!mids.every((m) => typeof m === "string" && MID.test(m))) return no("realtime");
+  return { ok: true, descrizione: { type: "offer", sdp: r.sessionDescription.sdp }, mids };
+}
+
+// Risposta del telefono all'offerta di riceviSvelamento.
+export async function confermaSvelamento(env, sessione, risposta, f = fetch) {
+  if (!chiavi(env)) return no("spento");
+  if (typeof sessione !== "string" || !SESSIONE.test(sessione)) return no("sessione");
+  if (!descrizioneSvelamento(risposta, "answer", true)) return no("svelamento");
+  const r = await chiedi(env, f, "PUT", `/sessions/${sessione}/renegotiate`, {
+    sessionDescription: { type: "answer", sdp: risposta.sdp },
+  });
+  return r ? { ok: true } : no("realtime");
+}
