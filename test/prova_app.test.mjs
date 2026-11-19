@@ -103,3 +103,26 @@ test("modulo della prova: nessuna rete e nessun salvataggio sul telefono", () =>
   const codice = readFileSync(new URL("../landing/app/moduli/prova.js", import.meta.url), "utf8");
   assert.doesNotMatch(codice, /fetch\(|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB|sendBeacon/);
 });
+
+test("pagina della prova: comandi per farsi chiamare e saltare all'ultimo minuto", () => {
+  assert.match(html, /<details class="comandi-prova">/);
+  assert.match(html, /id="comando-chiamata">Fatti chiamare</);
+  assert.match(html, /id="comando-minuto">Salta all'ultimo minuto</);
+  assert.match(avvio, /telefonoCambiato/);
+  assert.match(avvio, /regista\.chiamaMe/);
+  assert.match(html, /id="comando-profilo">Salta l'iscrizione</);
+  assert.match(avvio, /regista\.profiloPronto/);
+});
+
+test("comando «Salta l'iscrizione»: profilo finto completo, si entra già nella home", async () => {
+  const { DOMANDE, questionarioCompleto, VERSIONE } = await import("../landing/app/moduli/domande.js");
+  const p = nuova();
+  p.regista.profiloPronto();
+  assert.equal(p.accesso.connesso(), true);
+  const letto = await p.archivio.leggi();
+  assert.equal(letto.profilo.passo, 10);
+  assert.equal(letto.profilo.provincia, "MI");
+  assert.equal(letto.filtri.raggio, "citta");
+  assert.equal(questionarioCompleto({ ...letto.questionario, versione: VERSIONE }), true);
+  assert.equal(Object.keys(letto.questionario.risposte).length, DOMANDE.length);
+});
