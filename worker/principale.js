@@ -4,3 +4,4 @@
 export { default } from "./index.js";
 export { Chiamata } from "./chiamata.js";
 export { Centralino } from "./centralino.js";
+export { Svelamento } from "./svelamento.js";
