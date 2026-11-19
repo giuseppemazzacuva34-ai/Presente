@@ -488,21 +488,34 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
   // ---- Passo 6: «Il vostro incontro» (stesse risposte di worker/incontro_api.js, regole di api/incontro.js) -----------
   // Ogni porta della sera ha il suo incontro: scadenza 10 giorni (stessa zona), orari da domani 10:00-23:00 ogni 30
   // minuti (orariProposta, la stessa regola del server), 3 controproposte in tutto.
-  const incontri = new Map(); // porta → { stato, orario, luogo, proposta_mia, proposta_il, rimaste, esito }
+  const incontri = new Map(); // porta → { stato, orario, luogo, proposta_mia, proposta_il, rimaste, esito, checkin_mio, checkin_altro, segnale }
+  // Passo 7: «Sono qui» da 30 minuti prima a 30 dopo l'ora (checkin_incontro del database); il segnale è una parola
+  // a caso, uguale sui due telefoni, solo dopo i due check-in (qui poche parole della stessa lista del database).
+  const CHECKIN_MS = 30 * 60 * 1000;
+  const SEGNALI_PROVA = ["Peonia", "Primula", "Ninfea", "Genziana", "Mandorlo", "Zinnia"];
   const GIORNI_10 = 10 * 24 * 3600 * 1000;
   const datiIncontro = (porta) => {
     if (!mondo.sera || !statoSvelamento().porte.some((x) => x.porta === porta)) return null;
-    if (!incontri.has(porta)) incontri.set(porta, { stato: "da_fissare", orario: null, luogo: null, proposta_mia: false, proposta_il: null, rimaste: 3, esito: null });
+    if (!incontri.has(porta)) incontri.set(porta, { stato: "da_fissare", orario: null, luogo: null, proposta_mia: false, proposta_il: null, rimaste: 3, esito: null,
+      checkin_mio: false, checkin_altro: false, segnale: null });
     return incontri.get(porta);
   };
   const vistaDati = (v) => {
     const scadenza = new Date(mondo.seraIl + GIORNI_10).toISOString();
     const ricevuta = v.stato === "proposto" && !v.proposta_mia;
+    const finestra = (v.stato === "confermato" || v.stato === "concluso") && v.orario;
+    const da = finestra ? Date.parse(v.orario) - CHECKIN_MS : null;
+    const fino = finestra ? Date.parse(v.orario) + CHECKIN_MS : null;
+    const oraDelCheckin = v.stato === "confermato" && !v.esito && !v.checkin_mio && adesso() >= da && adesso() < fino;
     return { stato: v.stato, scadenza, orario: v.orario, locale: null, luogo: v.luogo, proposta_mia: v.proposta_mia,
       proposta_scade: v.stato === "proposto" ? new Date(Math.min(v.proposta_il + ORE_48, mondo.seraIl + GIORNI_10)).toISOString() : null,
       controproposte_rimaste: v.rimaste,
-      azioni: v.stato === "da_fissare" ? ["proponi"] : ricevuta ? (v.rimaste > 0 ? ["accetto", "altra_data", "annulla"] : ["accetto", "annulla"]) : [],
-      ritardo_minuti: null, esito: v.esito };
+      azioni: v.stato === "da_fissare" ? ["proponi"] : ricevuta ? (v.rimaste > 0 ? ["accetto", "altra_data", "annulla"] : ["accetto", "annulla"])
+        : oraDelCheckin ? ["sono_qui"] : [],
+      ritardo_minuti: null, esito: v.esito,
+      checkin_mio: v.checkin_mio, checkin_altro: v.checkin_altro,
+      checkin_da: finestra ? new Date(da).toISOString() : null, checkin_fino: finestra ? new Date(fino).toISOString() : null,
+      segnale: v.checkin_mio && v.checkin_altro ? v.segnale : null };
   };
   const orarioValido = (orario) => orariProposta(new Date(mondo.seraIl + GIORNI_10).toISOString(), new Date(adesso()))
     .some((g) => g.orari.some((o) => o.valore === orario));
@@ -520,6 +533,7 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     const v = datiIncontro(corpo.porta);
     if (!v) return risposta(404, { ok: false, motivo: "non_trovato" });
     if (method !== "POST") return risposta(200, { ok: true, incontro: vistaDati(v) });
+    if (corpo.azione === "checkin") return risposta(200, sonoQui(corpo.porta, v));
     if (v.stato === "confermato" || v.stato === "concluso") return risposta(200, { ok: false, motivo: v.stato === "confermato" ? "gia_confermato" : "incontro_chiuso" });
     const ricevuta = v.stato === "proposto" && !v.proposta_mia;
     if (corpo.azione === "proponi") {
@@ -539,6 +553,27 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     }
     return risposta(200, { ok: false, motivo: ricevuta ? "riprova" : "nessuna_proposta" });
   }
+  // «Sono qui» (stesso ordine dei controlli di checkin_incontro); la persona finta arriva «rispostaMs» dopo di te.
+  const avvenuto = (v) => Object.assign(v, { stato: "concluso", esito: "avvenuto",
+    segnale: SEGNALI_PROVA[Math.floor(Math.random() * SEGNALI_PROVA.length)] });
+  function sonoQui(porta, v) {
+    if (v.esito === "avvenuto") return { ok: true, esito: "avvenuto" };
+    if (v.esito) return { ok: false, motivo: "incontro_chiuso" };
+    if (v.stato !== "confermato") return { ok: false, motivo: "non_confermato" };
+    if (v.checkin_mio) return { ok: false, motivo: "gia_fatto" };
+    const ora = Date.parse(v.orario);
+    if (adesso() < ora - CHECKIN_MS) return { ok: false, motivo: "troppo_presto" };
+    if (adesso() >= ora + CHECKIN_MS) return { ok: false, motivo: "troppo_tardi" };
+    v.checkin_mio = true;
+    if (v.checkin_altro) { avvenuto(v); return { ok: true, esito: "avvenuto" }; }
+    setTimeout(() => {
+      if (v.esito) return;
+      v.checkin_altro = true;
+      avvenuto(v);
+      if (incontro && incontro.modello().porta === porta) incontro.riprova();
+    }, rispostaMs)?.unref?.();
+    return { ok: true, esito: "sono_qui" };
+  }
   incontro = creaIncontro({ token: () => "prova", fetch: fetchIncontro, attesa: 8000, aggiorna: () => aggiorna.incontro(), adesso: () => new Date(adesso()) });
   // «L'altra persona propone»: dopodomani alle 19:00 al «Bar finto della piazza» (se l'orario è fuori dalla scadenza,
   // il primo orario valido).
@@ -554,11 +589,21 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     return true;
   };
 
+  // «È l'ora dell'incontro»: nella prova l'incontro confermato si sposta a fra 10 minuti, così «Sono qui» si può
+  // provare subito (nell'app vera si apre 30 minuti prima dell'ora scelta).
+  regista.oraDellIncontro = (porta) => {
+    const v = datiIncontro(porta);
+    if (!v || v.stato !== "confermato" || v.esito) return false;
+    v.orario = new Date(adesso() + 10 * 60 * 1000).toISOString();
+    return true;
+  };
+
   const porta = creaPortaSvelamento({ svelamento: svelamentoServer, aggiorna: () => aggiorna.porta(), adesso: () => new Date(adesso()), sala });
   const avvisiPorte = creaAvvisiPorte({ svelamento: svelamentoServer, aggiorna: () => aggiorna.avvisi(), pagina, adesso: () => new Date(adesso()) });
   appunti = creaAppuntiStanza({ diario, aggiorna: () => aggiorna.appunti() });
   const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(),
     svelamentoServer, porta, avvisiPorte, segnala, blocca, storico, esiti, sanzioni, aiuto, appunti, incontro,
+    incontroApi: fetchIncontro, // la /app/api/incontro finta (per il futuro checkin() di incontro.js e per i test)
     compagniServer: compagni, diarioServer: diario, regista };
   // «Domenica sera: apri le porte»: le chiavi si chiudono, la stanza diventa «Chiusa» e un modulo delle chiavi nuovo
   // legge la sera (la pagina poi riparte dalla home, come all'apertura dell'app dopo le 21).
