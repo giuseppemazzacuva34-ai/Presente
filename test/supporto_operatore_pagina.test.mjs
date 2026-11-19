@@ -29,3 +29,10 @@ test("avvio: usa il modulo, testi solo con textContent, niente salvataggi né lo
 test("stile: campo della risposta leggibile e in fondo al file", () => {
   assert.match(css, /#supporto textarea \{[^}]*color: var\(--avorio\)/);
 });
+
+test("D140 A: dopo il salvataggio, indirizzo ben visibile e pulsanti «Copia risposta» e «Copia indirizzo»", () => {
+  assert.match(avvio, /copiaTesto/);
+  assert.match(avvio, /testo: "Copia risposta"/);
+  assert.match(avvio, /testo: "Copia indirizzo"/);
+  assert.match(avvio, /class: "email-risposta"/);
+});

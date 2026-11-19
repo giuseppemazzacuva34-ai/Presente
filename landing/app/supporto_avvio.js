@@ -3,7 +3,7 @@
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML. La risposta
 // salvata compare all'utente in «I miei messaggi».
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaSupportoOperatore, vociSupporto, testoErroreOperatore, MASSIMO_RISPOSTA } from "/app/moduli/supporto_operatore.js";
+import { creaSupportoOperatore, vociSupporto, testoErroreOperatore, MASSIMO_RISPOSTA, copiaTesto } from "/app/moduli/supporto_operatore.js";
 
 const radice = document.getElementById("supporto");
 const stato = document.getElementById("stato");
@@ -56,10 +56,29 @@ function moduloRisposta(p, v, i) {
     const esito = await p.rispondi(v.id, campo.value);
     invia.disabled = false;
     if (!esito.ok) { errore.textContent = testoErroreOperatore(esito.motivo); return; }
-    await mostraCoda(p);
-    avvisa("Risposta salvata: la persona la vede in «I miei messaggi».");
+    mostraDaCopiare(p, v.email, campo.value);
   } },
   h("label", { for: `risposta-${i}`, testo: `Risposta a ${v.email || "questa persona"}` }), campo, conto, errore, invia);
+}
+
+// D140 A: dopo il salvataggio la risposta va copiata in un'email dalla casella di Presente all'indirizzo mostrato.
+function mostraDaCopiare(p, email, risposta) {
+  const esito = h("p", { class: "nota", role: "status" });
+  const copia = (testo, fatto) => async () => {
+    const r = await copiaTesto(navigator.clipboard, testo);
+    esito.textContent = r.ok ? fatto : testoErroreOperatore(r.motivo);
+  };
+  mostra(
+    h("h1", { testo: "Risposta salvata" }),
+    h("p", { testo: "La persona la vede in «I miei messaggi». Ora mandala anche per email dalla casella di Presente a:" }),
+    h("p", { class: "email-risposta", testo: email || "indirizzo non disponibile" }),
+    h("p", { class: "racconto", testo: risposta }),
+    h("div", { class: "azioni" },
+      email ? h("button", { type: "button", class: "bottone-secondario", onclick: copia(email, "Indirizzo copiato."), testo: "Copia indirizzo" }) : null,
+      h("button", { type: "button", class: "bottone", onclick: copia(risposta, "Risposta copiata."), testo: "Copia risposta" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna ai messaggi" })),
+    esito,
+  );
 }
 
 async function mostraCoda(p) {
