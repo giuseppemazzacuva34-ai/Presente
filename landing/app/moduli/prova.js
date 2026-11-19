@@ -8,12 +8,15 @@
 // «Entra nella stanza». Passo 2: stanza di 12 (tu + 11 persone finte) e chiamate simulate con il «telefono» vero
 // (telefono.js, sentinella.js): squillo, timer di 15 minuti, carte, «La richiameresti?», diario. Niente microfono,
 // niente audio. Passo 3: chiavi (chiavi_stanza.js vero, regole di api/chiavi.js) e sera delle porte con il comando
-// «Domenica sera: apri le porte». I passi successivi aggiungono porta, svelamento, segnala/blocca, Aiuto.
+// «Domenica sera: apri le porte». Passo 4: porta e svelamento (svelamento.js e avvisi_porte.js veri) fino alla sala
+// d'attesa; la persona finta blocca la caparra e si dice pronta subito. Poi: segnala/blocca, Aiuto.
 
 import { creaTelefono } from "./telefono.js";
 import { creaSentinella } from "./sentinella.js";
 import { DOMANDE, TEMI } from "./domande.js";
 import { creaChiaviStanza } from "./chiavi_stanza.js";
+import { creaPortaSvelamento } from "./svelamento.js";
+import { creaAvvisiPorte } from "./avvisi_porte.js";
 
 export const UTENTE_PROVA = "00000000-0000-4000-8000-000000000001";
 const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -96,10 +99,11 @@ const prossimaDomenica = (adesso) => prossimo(adesso, "Sun", 21);
 // per fermare la sentinella quando la scheda non si vede.
 // aggiorna: { chiavi, conto } della pagina (flusso.js › chiaviCambiate e il conto alla rovescia delle 20:00).
 // animazioneMs: durata delle porte che si aprono la sera (0 = niente animazione).
-export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0 } = {}) {
-  const aggiorna = { chiavi: () => {}, conto: () => {}, ...daFuori };
+// sala: (passaAlleFoto, aggiorna) → sala d'attesa (sala_attesa.js) creata dalla pagina, che ha fotocamera e schermo.
+export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0, sala = null } = {}) {
+  const aggiorna = { chiavi: () => {}, conto: () => {}, porta: () => {}, avvisi: () => {}, ...daFuori };
   // Tutto il «database» della prova: vive solo in questa pagina.
-  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false };
+  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false, seraIl: 0 };
   // Un attimo di attesa come una rete vera, così si vedono «Invio…» e «Un attimo…».
   const pausa = () => new Promise((fatto) => setTimeout(fatto, attesaMs));
   const ok = async (extra = {}) => { await pausa(); return { ok: true, ...extra }; };
@@ -313,10 +317,60 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     async sera() {
       await pausa();
       if (!mondo.sera) return { ok: true, stato: "prima" };
-      const porte = date.map((d) => ({ d, i: PERSONE_PROVA.findIndex((p) => p.id === d.a) }))
-        .filter(({ i }) => RICAMBIANO.has(i))
-        .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, frase_per_te: RICAMBIANO.get(i) || null }));
-      return { ok: true, stato: "pronta", porte };
+      return { ok: true, stato: "pronta", porte: porteDellaSera() };
+    },
+  };
+  // Una porta per ogni chiave data a chi, nella prova, la ricambia.
+  const porteDellaSera = () => date.map((d) => ({ d, i: PERSONE_PROVA.findIndex((p) => p.id === d.a) }))
+    .filter(({ i }) => RICAMBIANO.has(i))
+    .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, eta: PERSONE_PROVA[i].eta, frase_per_te: RICAMBIANO.get(i) || null }));
+
+  // ---- Passo 4: porta e svelamento (stesse regole di api/svelamento.js) -------------------------------------------
+  // Crediti di prova: 15. La persona finta blocca la sua caparra e si dice pronta insieme a te.
+  const svelamenti = new Map(); // porta → { mia_caparra, mia_scelta, mie_fasce, pronto_il }
+  const ORE_48 = 48 * 3600 * 1000;
+  let saldo = 15;
+  const statoSvelamento = () => {
+    const porte = mondo.sera ? porteDellaSera().map((x) => {
+      const v = svelamenti.get(x.id) || {};
+      const scade = mondo.seraIl + ORE_48;
+      const pronto = Number.isFinite(v.pronto_il) && v.pronto_il + 5 * 60 * 1000 > adesso();
+      const fissata = Array.isArray(v.mie_fasce) && v.mie_fasce.length ? v.mie_fasce[0] : null;
+      const nellaFascia = fissata && adesso() >= Date.parse(fissata) && adesso() < Date.parse(fissata) + 30 * 60 * 1000;
+      const momento = v.mia_caparra === true && (pronto || nellaFascia);
+      return { porta: x.id, nome: x.nome, eta: x.eta, scade_il: new Date(scade).toISOString(),
+        mia_caparra: v.mia_caparra === true, sua_caparra: v.mia_caparra === true,
+        mia_scelta: v.mia_scelta || "video", mie_fasce: v.mie_fasce || [], fascia_fissata: fissata,
+        mio_pronto: pronto, pronto_scade_il: pronto ? new Date(v.pronto_il + 5 * 60 * 1000).toISOString() : null, suo_pronto: pronto,
+        momento, ...(momento ? { tipo: v.mia_scelta || "video" } : {}) };
+    }) : [];
+    return { saldo, porte };
+  };
+  const conPorta = (porta, fai) => {
+    const x = statoSvelamento().porte.find((q) => q.porta === porta);
+    if (!x) return no("non_trovata", "Questa porta si è chiusa.");
+    const v = svelamenti.get(porta) || {};
+    svelamenti.set(porta, v);
+    const r = fai(v, x);
+    return r || ok({ esito: "ok", stato: statoSvelamento() });
+  };
+  const svelamentoServer = {
+    async leggi() { await pausa(); return { ok: true, stato: statoSvelamento() }; },
+    async blocca(porta) {
+      return conPorta(porta, (v) => {
+        if (v.mia_caparra) return null;
+        if (saldo < 10) return no("crediti_insufficienti", `Ti mancano ${10 - saldo} crediti`);
+        saldo -= 10;
+        v.mia_caparra = true;
+        return null;
+      });
+    },
+    async scegli(porta, scelta) { return conPorta(porta, (v) => { v.mia_scelta = scelta === "foto" ? "foto" : "video"; return null; }); },
+    async pronto(porta) {
+      return conPorta(porta, (v) => (v.mia_caparra ? ((v.pronto_il = adesso()), null) : no("manca_caparra", "Serve prima la caparra di tutti e due.")));
+    },
+    async fasce(porta, fasce) {
+      return conPorta(porta, (v) => (v.mia_caparra ? ((v.mie_fasce = [...fasce].sort().slice(0, 3)), null) : no("manca_caparra", "Serve prima la caparra di tutti e due.")));
     },
   };
   const nuoveChiavi = () => creaChiaviStanza({ chiavi: chiaviServer, aggiorna: () => aggiorna.chiavi(), conto: (t) => aggiorna.conto(t),
@@ -358,12 +412,16 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     },
   };
 
-  const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(), regista };
+  const porta = creaPortaSvelamento({ svelamento: svelamentoServer, aggiorna: () => aggiorna.porta(), adesso: () => new Date(adesso()), sala });
+  const avvisiPorte = creaAvvisiPorte({ svelamento: svelamentoServer, aggiorna: () => aggiorna.avvisi(), pagina, adesso: () => new Date(adesso()) });
+  const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(),
+    svelamentoServer, porta, avvisiPorte, regista };
   // «Domenica sera: apri le porte»: le chiavi si chiudono, la stanza diventa «Chiusa» e un modulo delle chiavi nuovo
   // legge la sera (la pagina poi riparte dalla home, come all'apertura dell'app dopo le 21).
   regista.apriPorte = () => {
     if (mondo.sera || !mondo.sessione) return false;
     mondo.sera = true;
+    mondo.seraIl = adesso();
     prova.chiavi = nuoveChiavi();
     return true;
   };
