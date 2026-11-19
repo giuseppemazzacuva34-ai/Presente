@@ -74,6 +74,7 @@ const ERRORI = Object.freeze({
   vuoto: "Scrivi la risposta prima di inviarla.",
   lunga: `La risposta può avere al massimo ${MASSIMO_RISPOSTA} caratteri.`,
   dati: "Controlla la risposta e riprova.",
+  copia: "Il telefono non ha copiato il testo. Copia a mano dal riquadro.",
 });
 export const testoErroreOperatore = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Qualcosa non ha funzionato. Riprova tra poco.");
 
@@ -123,4 +124,17 @@ export function creaSupportoOperatore({ token, fetch: f = globalThis.fetch, atte
       return { ok: false, motivo };
     },
   };
+}
+
+// D140 A (beta): la risposta salvata si copia negli appunti e si incolla in un'email dalla casella di Presente.
+// Niente invii dal Worker, niente servizi esterni: il testo passa solo dagli appunti del telefono.
+export async function copiaTesto(appunti, testo) {
+  if (typeof testo !== "string" || testo.trim() === "") return { ok: false, motivo: "vuoto" };
+  if (!appunti || typeof appunti.writeText !== "function") return { ok: false, motivo: "copia" };
+  try {
+    await appunti.writeText(testo);
+    return { ok: true };
+  } catch {
+    return { ok: false, motivo: "copia" };
+  }
 }

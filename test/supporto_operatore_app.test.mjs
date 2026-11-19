@@ -3,7 +3,7 @@
 // «supporto» lo decide il database. Rete finta, dati inventati.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { vociSupporto, corpoRisposta, testoErroreOperatore, creaSupportoOperatore, MASSIMO_RISPOSTA }
+import { vociSupporto, corpoRisposta, testoErroreOperatore, creaSupportoOperatore, MASSIMO_RISPOSTA, copiaTesto }
   from "../landing/app/moduli/supporto_operatore.js";
 import { CATEGORIE_SCRIVICI } from "../landing/app/moduli/aiuto.js";
 import { MAX_RISPOSTA } from "../api/supporto_operatore.js";
@@ -130,4 +130,15 @@ test("rispondi: invia id e risposta; «già risposto» e «vuoto» dal server ar
 test("rispondi: risposta vuota non chiama la rete", async () => {
   const p = creaSupportoOperatore({ token: () => "tok", fetch: async () => { throw new Error("non chiamare"); } });
   assert.deepEqual(await p.rispondi(A, " "), { ok: false, motivo: "vuoto" });
+});
+
+// D140 A (beta): la risposta salvata si copia in un'email dalla casella di Presente, a mano.
+test("copia: testo negli appunti del telefono; senza appunti o con errore dice «copia»", async () => {
+  const copiati = [];
+  assert.deepEqual(await copiaTesto({ writeText: async (t) => { copiati.push(t); } }, "Ciao, ecco come fare."), { ok: true });
+  assert.deepEqual(copiati, ["Ciao, ecco come fare."]);
+  assert.deepEqual(await copiaTesto(undefined, "x"), { ok: false, motivo: "copia" });
+  assert.deepEqual(await copiaTesto({ writeText: async () => { throw new Error("negato"); } }, "x"), { ok: false, motivo: "copia" });
+  assert.deepEqual(await copiaTesto({ writeText: async () => {} }, " "), { ok: false, motivo: "vuoto" });
+  assert.match(testoErroreOperatore("copia"), /Copia a mano/);
 });

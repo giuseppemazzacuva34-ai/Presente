@@ -176,3 +176,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .sala-attesa .bottone, .sala-attesa .bottone-secondario { min-height: 44px; }
 .anteprima-sfocata { overflow: hidden; border-radius: 0.75rem; background: #000; aspect-ratio: 3 / 4; max-height: 50vh; }
 .anteprima-sfocata video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: blur(24px); }
+
+/* D140 A: indirizzo a cui mandare la risposta per email, ben visibile (pagina interna /app/supporto.html). */
+#supporto .email-risposta { font-size: 1.25rem; font-weight: 700; color: var(--avorio); word-break: break-all; }
