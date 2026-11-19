@@ -50,7 +50,8 @@ export function appunto(riga) {
   return { chiamataIl: riga.chiamata_il, data: GIORNO.format(new Date(riga.chiamata_il)), durata: `${minuti} min`, testo: riga.testo };
 }
 
-export function creaDiario({ supabaseUrl, supabaseAnonKey, token, fetch: f = globalThis.fetch }) {
+// dopoSalva: chiamata dopo una nota salvata davvero (la scheda rilegge «I tuoi appunti»).
+export function creaDiario({ supabaseUrl, supabaseAnonKey, token, fetch: f = globalThis.fetch, dopoSalva = () => {} }) {
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl || "") && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(supabaseUrl || "")) {
     throw new Error("Indirizzo Supabase non valido");
   }
@@ -114,7 +115,9 @@ export function creaDiario({ supabaseUrl, supabaseAnonKey, token, fetch: f = glo
       }
       const c = controllaTesto(testo);
       if (!c.ok) return c;
-      return esito(await richiesta(base, "POST", { con, chiamata_il: chiamataIl, durata, testo: c.testo }));
+      const r = esito(await richiesta(base, "POST", { con, chiamata_il: chiamataIl, durata, testo: c.testo }));
+      if (r.ok) { try { dopoSalva(); } catch { /* la scheda non deve fermare il diario */ } }
+      return r;
     },
     async modifica(chiamataIl, testo) {
       if (!dataValida(chiamataIl)) return { ok: false, motivo: "non_valida" };
