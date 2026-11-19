@@ -151,6 +151,7 @@ const STATO = {
   stato: "proposto", scadenza: "2026-11-28T18:00:00+00:00", orario: "2026-11-20T18:00:00+00:00", locale: "bar-1", luogo: null,
   proposta_mia: false, proposta_scade: "2026-11-20T10:00:00+00:00", controproposte_rimaste: 3,
   azioni: ["accetto", "altra_data", "annulla"], ritardo_minuti: 0, esito: null,
+  checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null, segnale: null,
 };
 const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
 
@@ -230,4 +231,11 @@ test("checkin: porta non sua → 404; porta malformata non arriva al database; g
   for (const rotto of [new Response("{}", { status: 500 }), "boh"]) {
     assert.equal((await incontroApi(checkin(), ENV, supabaseFinto({ rpc: { checkin_incontro: rotto } }).f)).status, 503);
   }
+});
+
+test("stato: dopo i due check-in il segnale arriva al telefono (passo 2h)", async () => {
+  const dopo = { ...STATO, stato: "concluso", azioni: [], esito: "avvenuto", checkin_mio: true, checkin_altro: true,
+    checkin_da: "2026-11-20T17:30:00+00:00", checkin_fino: "2026-11-20T18:30:00+00:00", segnale: "Lampone" };
+  const corpo = await (await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: dopo } }).f)).json();
+  assert.deepEqual(corpo, { ok: true, incontro: dopo });
 });
