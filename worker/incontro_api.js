@@ -7,7 +7,8 @@
 //        «Sono qui»: esito «sono_qui» (si aspetta l'altro) o «avvenuto» (segnale pronto, caparre sbloccate) (passo 2g)
 //   GET  /app/api/incontro?porta=<id>                                                → stato_incontro
 //        { ok: true, incontro: { stato, scadenza, orario, locale, luogo, proposta_mia, proposta_scade,
-//          controproposte_rimaste, azioni, ritardo_minuti, esito } }  (passo 2d)
+//          controproposte_rimaste, azioni, ritardo_minuti, esito,
+//          checkin_mio, checkin_altro, checkin_da, checkin_fino, segnale } }  (passi 2d e 2h)
 // Chi propone o risponde lo dice SOLO il token, mai il corpo. Le regole (orari 10:00–23:00 di Roma ogni 30 minuti da
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
@@ -33,7 +34,9 @@ const RIFIUTI = {
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
 const CAMPI_STATO = ["stato", "scadenza", "orario", "locale", "luogo", "proposta_mia", "proposta_scade",
-  "controproposte_rimaste", "azioni", "ritardo_minuti", "esito"];
+  "controproposte_rimaste", "azioni", "ritardo_minuti", "esito",
+  // Passo 2h: check-in «Sono qui» (solo sì/no, mai orari esatti dell'altro), finestra e segnale dopo i due check-in.
+  "checkin_mio", "checkin_altro", "checkin_da", "checkin_fino", "segnale"];
 const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
 const dati = () => risposta(400, { ok: false, motivo: "dati" });
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
