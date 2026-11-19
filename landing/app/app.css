@@ -185,3 +185,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .comandi-prova { margin: 0; padding: 0.5rem 1rem; border-bottom: 1px solid var(--linea); }
 .comandi-prova summary { cursor: pointer; font-size: 0.85rem; }
 .comandi-prova .azioni { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; position: static; padding: 0; background: none; justify-content: flex-start; }
+/* «Il vostro incontro» (#6, passo 2i): «Sono qui» grande e facile da toccare, il segnale ben leggibile. */
+.bottone.grande { display: block; width: 100%; margin: 1rem 0; min-height: 4rem; font-size: 1.3rem; }
+.segnale { font-family: var(--serif); font-style: italic; font-size: 1.8rem; color: var(--avorio); text-align: center; margin: 1rem 0; }

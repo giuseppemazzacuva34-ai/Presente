@@ -6,6 +6,8 @@
 // (il test lo controlla). Per ora «Dove» è solo «Un altro luogo pubblico» scritto: i locali consigliati arrivano quando
 // la lista dei locali pilota sarà nel database. Niente posizione, niente salvataggi locali, niente dati nei log.
 // Il modulo non tocca la pagina: riceve fetch, token e h dall'esterno, così si prova con node --test.
+// Passo 2i: «Sono qui» (POST { azione: "checkin", porta }) e segnale (passi 6 e 8 della spec). La finestra, chi ha già
+// fatto il check-in e la parola del segnale li dice solo il server (stato_incontro); qui non si inventa nulla.
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
@@ -15,7 +17,7 @@ const ULTIMA_ORA = 23 * 60; // 23:00 compreso
 const LUOGO_MASSIMO = 80;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
-const AZIONI = ["proponi", "accetto", "altra_data", "annulla"];
+const AZIONI = ["proponi", "accetto", "altra_data", "annulla", "sono_qui"];
 const RISPOSTE = ["accetto", "annulla"];
 
 export const TESTI_INCONTRO = Object.freeze({
@@ -56,6 +58,17 @@ export const TESTI_INCONTRO = Object.freeze({
   orarioPassato: "L'orario proposto è già passato.",
   nonDisponibile: "Questo incontro non è più disponibile.",
   attimo: "Un attimo…",
+  // Check-in e segnale (passi 6 e 8 della spec).
+  sonoQui: "Sono qui",
+  segnale: "Il vostro segnale: <parola>",
+  creditiLiberi: "I tuoi 10 crediti sono di nuovo disponibili.",
+  // Provvisori, da rivedere con «contenuti» (la spec usa il nome dell'altra persona, che lo stato non manda ancora).
+  aspettaAltro: "L'altra persona non ha ancora fatto il check-in.",
+  finestraCheckin: "Potrai dire «Sono qui» <giorno> dalle <da> alle <fino>.",
+  troppoPresto: "È ancora presto: «Sono qui» si può dire da 30 minuti prima dell'incontro.",
+  troppoTardi: "Il tempo per dire «Sono qui» è finito.",
+  giaFatto: "Hai già detto «Sono qui».",
+  nonConfermato: "L'incontro non è ancora confermato.",
 });
 
 const GIORNO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" });
@@ -91,17 +104,31 @@ function quando(i) {
 }
 const proposta = (i) => { const q = quando(i); return q ? `${q.giorno} alle ${q.ora} · ${dove(i)}` : ""; };
 
+// Accanto a «Ci vediamo…»: quando si potrà dire «Sono qui», o che si aspetta l'altra persona.
+function testoCheckin(i, adesso) {
+  if (i.checkin_mio === true) return i.checkin_altro === true ? null : TESTI_INCONTRO.aspettaAltro;
+  const da = valida(i.checkin_da);
+  const fino = valida(i.checkin_fino);
+  if (!da || !fino || adesso >= da) return null;
+  return TESTI_INCONTRO.finestraCheckin.replace("<giorno>", GIORNO.format(da)).replace("<da>", ORARIO.format(da)).replace("<fino>", ORARIO.format(fino));
+}
+
 // Cosa mostra la schermata (spec, passi 1-4). null = stato non ancora letto o di forma sconosciuta.
 export function schermataIncontro(i, adesso = new Date()) {
   if (!i || typeof i !== "object" || !STATI.includes(i.stato)) return null;
   const azioni = Array.isArray(i.azioni) ? i.azioni.filter((a) => AZIONI.includes(a)) : [];
+  if (i.esito === "avvenuto") {
+    const parola = typeof i.segnale === "string" && i.segnale.trim() ? i.segnale.trim() : null;
+    return { tipo: "avvenuto", azioni: [], testo: TESTI_INCONTRO.creditiLiberi,
+      segnale: parola ? TESTI_INCONTRO.segnale.replace("<parola>", parola) : null };
+  }
   if (i.stato === "concluso" || i.esito) {
     const testo = i.esito === "scaduto" ? TESTI_INCONTRO.scaduto : i.esito === "annullato" ? TESTI_INCONTRO.annullato : TESTI_INCONTRO.chiuso;
     return { tipo: "concluso", testo, azioni: [] };
   }
   if (i.stato === "confermato") {
     const q = quando(i);
-    return { tipo: "confermato", azioni: [], testo: TESTI_INCONTRO.caparra,
+    return { tipo: "confermato", azioni, testo: TESTI_INCONTRO.caparra, checkin: testoCheckin(i, adesso),
       titolo: q ? TESTI_INCONTRO.confermato.replace("<giorno>", q.giorno).replace("<ora>", q.ora).replace("<luogo>", dove(i)) : TESTI_INCONTRO.titolo };
   }
   if (i.stato === "proposto" && i.proposta_mia === true) return { tipo: "attesa", proposta: proposta(i), testo: TESTI_INCONTRO.aspetta, azioni: [] };
@@ -136,6 +163,10 @@ const ERRORI = Object.freeze({
   nessuna_proposta: TESTI_INCONTRO.propostaScaduta,
   proposta_scaduta: TESTI_INCONTRO.propostaScaduta,
   orario_passato: TESTI_INCONTRO.orarioPassato,
+  troppo_presto: TESTI_INCONTRO.troppoPresto,
+  troppo_tardi: TESTI_INCONTRO.troppoTardi,
+  gia_fatto: TESTI_INCONTRO.giaFatto,
+  non_confermato: TESTI_INCONTRO.nonConfermato,
 });
 export const testoErroreIncontro = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 
@@ -290,6 +321,12 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
       }
       return invia({ azione: "rispondi", risposta: scelta });
     },
+    // «Sono qui»: solo se il server ha messo «sono_qui» tra le azioni (dentro la finestra e non ancora fatto).
+    async checkin() {
+      const s = schermataIncontro(incontro, adesso());
+      if (!s || !s.azioni.includes("sono_qui")) return false;
+      return invia({ azione: "checkin" });
+    },
     nonAnnullare() {
       conferma = null;
       avvisa();
@@ -309,11 +346,14 @@ export function vistaIncontro(h, inc) {
   if (m.carica && !s) parti.push(h("p", { classe: "nota", role: "status" }, T.attimo));
   if (s && s.titolo) parti.push(h("p", { role: "status" }, s.titolo));
   if (s && s.proposta) parti.push(h("p", null, s.tipo === "ricevuta" ? `${T.ricevuta} ${s.proposta}` : s.proposta));
+  if (s && s.segnale) parti.push(h("p", { classe: "segnale", role: "status" }, s.segnale));
   if (s && s.testo) parti.push(h("p", { classe: s.tipo === "confermato" ? "nota" : null }, s.testo));
+  if (s && s.checkin) parti.push(h("p", { classe: "nota", role: "status" }, s.checkin));
   if (s && s.scade) parti.push(h("p", { classe: "nota" }, s.scade));
   if (s && s.controproposte) parti.push(h("p", { classe: "nota" }, s.controproposte));
   const bloccato = m.inCorso || m.carica;
   if (s && !m.proposta && m.conferma !== "annulla") {
+    if (s.azioni.includes("sono_qui")) parti.push(h("button", { classe: "bottone grande", type: "button", disabled: bloccato, onclick: () => inc.checkin() }, T.sonoQui));
     if (s.azioni.includes("proponi")) parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.apriProposta() }, T.proponi));
     if (s.azioni.includes("accetto")) parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.rispondi("accetto") }, T.accetto));
     if (s.azioni.includes("altra_data")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.apriProposta() }, T.altraData));
