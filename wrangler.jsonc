@@ -32,12 +32,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "CHIAMATA", "class_name": "Chiamata" },
-      { "name": "CENTRALINO", "class_name": "Centralino" }
+      { "name": "CENTRALINO", "class_name": "Centralino" },
+      { "name": "SVELAMENTO", "class_name": "Svelamento" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Chiamata"] },
-    { "tag": "v2", "new_sqlite_classes": ["Centralino"] }
+    { "tag": "v2", "new_sqlite_classes": ["Centralino"] },
+    { "tag": "v3", "new_sqlite_classes": ["Svelamento"] }
   ],
   "d1_databases": [
     {
