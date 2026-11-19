@@ -112,6 +112,9 @@ test("pagina della prova: comandi per farsi chiamare e saltare all'ultimo minuto
   assert.match(avvio, /regista\.chiamaMe/);
   assert.match(html, /id="comando-profilo">Salta l'iscrizione</);
   assert.match(avvio, /regista\.profiloPronto/);
+  assert.match(html, /id="comando-porte">Domenica sera: apri le porte</);
+  assert.match(avvio, /regista\.apriPorte/);
+  assert.match(avvio, /chiaviCambiate/);
 });
 
 test("comando «Salta l'iscrizione»: profilo finto completo, si entra già nella home", async () => {
