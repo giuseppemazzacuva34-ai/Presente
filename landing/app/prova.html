@@ -13,6 +13,18 @@
 </head>
 <body>
   <p class="banner-prova" role="note">Prova: persone e dati finti</p>
+  <details class="comandi-prova">
+    <summary>Comandi della prova</summary>
+    <div class="azioni">
+      <button type="button" class="bottone-secondario" id="comando-profilo">Salta l'iscrizione</button>
+    </div>
+    <p class="nota">Dopo l'iscrizione, nella tua stanza:</p>
+    <div class="azioni">
+      <button type="button" class="bottone-secondario" id="comando-chiamata">Fatti chiamare</button>
+      <button type="button" class="bottone-secondario" id="comando-minuto">Salta all'ultimo minuto</button>
+    </div>
+    <p class="nota" id="esito-comando" role="status" aria-live="polite"></p>
+  </details>
   <div class="pagina app">
     <header class="testata">
       <a class="logo" href="/app/prova.html" aria-label="Presente, ricomincia la prova">
