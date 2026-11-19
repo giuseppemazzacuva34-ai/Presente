@@ -1,7 +1,7 @@
 // Prova finta dell'app (D141 A, linea «sviluppatore-c»): le schermate vere di flusso.js con il «server finto» di
 // prova.js al posto del database e del Worker. Niente rete, niente salvataggi sul telefono: ricaricando la pagina
 // si ricomincia da capo. Pagina non linkata e non indicizzata: /app/prova.html.
-import { avvia, telefonoCambiato, chiaviCambiate, portaCambiata, avvisiCambiati } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, portaCambiata, avvisiCambiati, appuntiCambiati } from "/app/moduli/flusso.js";
 import { creaProva } from "/app/moduli/prova.js";
 import { creaSalaAttesa } from "/app/moduli/sala_attesa.js";
 
@@ -18,7 +18,7 @@ const sala = (passaAlleFoto, aggiorna) => creaSalaAttesa({ getUserMedia: md && m
 
 const prova = creaProva({ cambiato: () => telefonoCambiato(), pagina: document,
   sala,
-  aggiorna: { chiavi: () => chiaviCambiate(), porta: () => portaCambiata(), avvisi: () => avvisiCambiati(), conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; } },
+  aggiorna: { chiavi: () => chiaviCambiate(), porta: () => portaCambiata(), avvisi: () => avvisiCambiati(), appunti: () => appuntiCambiati(), conto: (testo) => { const el = document.getElementById("chiavi-conto"); if (el) el.textContent = testo; } },
   // Sera delle chiavi: porte che si aprono per 3 secondi, saltabili; niente animazione per chi chiede meno movimento.
   animazioneMs: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 3000 });
 

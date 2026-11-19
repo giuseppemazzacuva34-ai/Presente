@@ -82,6 +82,15 @@ test("prepara: legge una volta sola per le stesse persone, di nuovo se la stanza
   assert.equal(diario.chiamate.length, 2);
 });
 
+test("rileggi: dopo una nota nuova del diario la prossima prepara rilegge (stesse persone)", async () => {
+  const diario = diarioFinto();
+  const a = creaAppuntiStanza({ diario });
+  await a.prepara([LEI, LUI]);
+  a.rileggi();
+  await a.prepara([LEI, LUI]);
+  assert.equal(diario.chiamate.length, 2);
+});
+
 test("vista: senza note nessuna sezione; con note «I tuoi appunti» con data, durata e testo", async () => {
   const a = creaAppuntiStanza({ diario: diarioFinto() });
   assert.equal(vistaAppunti(h, a, LEI, "Giulia"), null, "prima di leggere niente");
