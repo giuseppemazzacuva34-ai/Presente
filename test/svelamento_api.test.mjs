@@ -165,7 +165,7 @@ test("POST con risposta sconosciuta del database: 503 riprova", async () => {
 
 test("corpo troppo grande: 413", async () => {
   const s = supabaseFinto();
-  const r = await svelamentoApi(richiesta({ metodo: "POST", corpo: JSON.stringify({ azione: "caparra", porta: PORTA, x: "a".repeat(5000) }) }), ENV, s.f);
+  const r = await svelamentoApi(richiesta({ metodo: "POST", corpo: JSON.stringify({ azione: "caparra", porta: PORTA, x: "a".repeat(50 * 1024) }) }), ENV, s.f);
   assert.equal(r.status, 413);
 });
 

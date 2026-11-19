@@ -12,6 +12,12 @@
 //   POST /app/api/svelamento  { azione: "entra", porta }                                           (passo 6c)
 //                             → { ok: true, esito: "in_attesa" } | { ok: true, esito: "iniziato", tipo: "video" | "foto" }
 //                             | { ok: false, motivo, testo? }   (richiamarla mentre si aspetta dice se l'altra persona è arrivata)
+//   POST /app/api/svelamento  { azione: "pubblica", porta, offerta }  → { ok, descrizione (risposta di Cloudflare), vista }
+//   POST /app/api/svelamento  { azione: "ricevi", porta }             → { ok, descrizione (offerta di Cloudflare), vista }
+//   POST /app/api/svelamento  { azione: "conferma", porta, risposta } → { ok, vista }
+//   POST /app/api/svelamento  { azione: "vista", porta }              → { ok, vista: { fase, inizio?, nitidoDal?, fine? } }
+//                             (passo 7c: solo con entra_svelamento → «iniziato_video» per la persona del token;
+//                              prima { ok: false, motivo: "non_iniziato" }, con le foto { ok: false, motivo: "foto" })
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
@@ -22,9 +28,11 @@
 // nessun pagamento (Stripe in Fase 4). Nei log solo codici e nomi di errore. Spento finché ACCESSO_APP non vale «si».
 import { SVELAMENTO, TESTI_SVELAMENTO } from "../api/svelamento.js";
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
+import { pubblicaVideo, riceviVideo, confermaVideo, vistaVideo } from "../api/video_svelamento.js";
+import { nuovaSessione, pubblicaSvelamento, riceviSvelamento, confermaSvelamento, chiudiVoce } from "../api/realtime.js";
 
 export const PERCORSO_SVELAMENTO = "/app/api/svelamento";
-const CORPO_MASSIMO = 1024;
+const CORPO_MASSIMO = 48 * 1024; // passo 7c: un'offerta voce + video sta sotto i 20 mila caratteri (api/realtime.js)
 const ATTESA_SUPABASE_MS = 1500;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
@@ -124,6 +132,7 @@ export async function svelamentoApi(request, env, f = fetch) {
   if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
   if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
   if (azione === "entra") return entra(s, chi.id, idPorta, f);
+  if (Object.hasOwn(VIDEO, azione)) return video(env, s, chi.id, idPorta, azione, corpo.dati, f);
   if (azione === "pronto") return quando(s, chi.id, idPorta, "pronto_svelamento", {}, ["pronto", "entrambi_pronti"], f);
   if (azione === "fasce") {
     const pulite = formaFasce(fasce);
@@ -199,6 +208,43 @@ async function entra(s, id, idPorta, f) {
   if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
   if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
   return riprova();
+}
+
+// Passo 7c: richieste video dei 10 secondi. Prima di tutto il database: solo con «iniziato_video» per la persona del
+// token (entra_svelamento non cambia nulla a svelamento iniziato: dice solo che si è dentro). Poi Realtime e il Durable
+// Object della porta (uno per porta: SVELAMENTO.idFromName(porta)). Senza l'inizio nessuna chiamata a Realtime.
+const VIDEO = { pubblica: pubblicaVideo, ricevi: riceviVideo, conferma: confermaVideo, vista: vistaVideo };
+const DATI_VIDEO = ["svelamento", "dati"];
+async function video(env, s, id, idPorta, azione, dati, f) {
+  const e = await rpc(s, "entra_svelamento", { p_porta: idPorta, p_persona: id }, f);
+  if (e === "iniziato_foto") return risposta(200, { ok: false, motivo: "foto" });
+  if (e !== "iniziato_video") {
+    if (["in_attesa", "non_ancora", "non_arrivato", "manca_caparra", "gia_iniziato"].includes(e)) return risposta(200, { ok: false, motivo: "non_iniziato" });
+    if (e === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+    if (e === "porta_scaduta") return risposta(200, { ok: false, motivo: e, testo: TESTI_SVELAMENTO.scaduta });
+    if (e === "porta_chiusa") return risposta(200, { ok: false, motivo: e, testo: TESTI_SVELAMENTO.portaChiusa });
+    return riprova();
+  }
+  if (!env.SVELAMENTO) return riprova();
+  const d = {
+    svelamento: env.SVELAMENTO.get(env.SVELAMENTO.idFromName(idPorta)),
+    nuovaSessione: () => nuovaSessione(env, f),
+    pubblicaSvelamento: (sessione, offerta) => pubblicaSvelamento(env, sessione, offerta, f),
+    riceviSvelamento: (mia, altra) => riceviSvelamento(env, mia, altra, f),
+    confermaSvelamento: (mia, r) => confermaSvelamento(env, mia, r, f),
+    chiudiSessione: (sessione, mids) => chiudiVoce(env, sessione, mids, f),
+  };
+  try {
+    const r = await VIDEO[azione]({ per: id, offerta: dati.offerta, risposta: dati.risposta }, d);
+    if (r && r.ok) return risposta(200, r);
+    const motivo = String((r && r.motivo) || "riprova");
+    if (DATI_VIDEO.includes(motivo)) return risposta(400, { ok: false, motivo });
+    if (["spento", "realtime", "sessione", "riprova"].includes(motivo)) return riprova();
+    return risposta(200, { ok: false, motivo });
+  } catch (e) {
+    console.error("svelamento: video", e && e.name);
+    return riprova();
+  }
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve

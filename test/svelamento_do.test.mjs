@@ -193,3 +193,86 @@ test("la vista non contiene mai id di sessione né mids", async () => {
   for (const x of ["sessioneA123", "sessioneB123", "mids"]) assert.equal(testo.includes(x), false, x);
   assert.equal((await g.vista("c")).motivo, "non_tocca_a_te");
 });
+
+// ── Passo 7c: il Worker chiede le due sessioni, segna le tracce «in arrivo» e le conferma dopo la risposta del telefono.
+
+test("sessioni: per il Worker la mia e quella dell'altra persona, solo quando ci sono tutti e due", async () => {
+  const { g } = prepara();
+  assert.equal((await g.sessioni("a")).motivo, "nessuna");
+  await g.pubblica(PUB_A);
+  assert.equal((await g.sessioni("a")).motivo, "in_attesa");
+  await g.pubblica(PUB_B);
+  assert.deepEqual(await g.sessioni("a"), { ok: true, mia: "sessioneA123", altra: "sessioneB123" });
+  assert.deepEqual(await g.sessioni("b"), { ok: true, mia: "sessioneB123", altra: "sessioneA123" });
+  assert.equal((await g.sessioni("c")).motivo, "non_tocca_a_te");
+});
+
+test("inArrivo + ricevuto senza mids: i 10 secondi partono solo dopo la conferma di tutti e due", async () => {
+  const { g, vai, storage } = prepara();
+  await g.pubblica(PUB_A);
+  await g.pubblica(PUB_B);
+  assert.equal((await g.inArrivo({ da: "a", mids: ["2", "3"] })).vista.fase, "attesa");
+  assert.equal((await g.inArrivo({ da: "b", mids: ["2", "3"] })).vista.fase, "attesa");
+  assert.equal((await g.ricevuto({ da: "a" })).vista.fase, "attesa");
+  vai(2000);
+  const r = await g.ricevuto({ da: "b" });
+  assert.equal(r.vista.fase, "in_corso");
+  assert.equal(r.vista.inizio, T0 + 2000);
+  assert.equal(storage.allarme, T0 + 2000 + DURATA);
+});
+
+test("ricevuto senza mids e senza tracce in arrivo: rifiutato", async () => {
+  const { g } = prepara();
+  await g.pubblica(PUB_A);
+  await g.pubblica(PUB_B);
+  assert.equal((await g.ricevuto({ da: "a" })).motivo, "dati");
+  assert.equal((await g.inArrivo({ da: "a", mids: ["2"] })).motivo, "dati");
+});
+
+test("inArrivo: prima dell'altra persona, da terzi o dopo la fine è rifiutato", async () => {
+  const { g, vai } = prepara();
+  assert.equal((await g.inArrivo({ da: "a", mids: ["2", "3"] })).motivo, "nessuna");
+  await g.pubblica(PUB_A);
+  assert.equal((await g.inArrivo({ da: "a", mids: ["2", "3"] })).motivo, "in_attesa");
+  await g.pubblica(PUB_B);
+  assert.equal((await g.inArrivo({ da: "c", mids: ["2", "3"] })).motivo, "nessuna");
+  await entrambiRicevono(g);
+  vai(DURATA);
+  await g.allarme();
+  assert.equal((await g.inArrivo({ da: "a", mids: ["4", "5"] })).motivo, "finito");
+});
+
+test("ricevere di nuovo chiude subito le tracce vecchie (mai più di 4 tracce per sessione)", async () => {
+  const { g, chiuse } = prepara();
+  await g.pubblica(PUB_A);
+  await g.pubblica(PUB_B);
+  await g.inArrivo({ da: "a", mids: ["2", "3"] });
+  await g.inArrivo({ da: "a", mids: ["4", "5"] });
+  assert.deepEqual(chiuse, [{ sessione: "sessioneA123", mids: ["2", "3"] }]);
+  await g.ricevuto({ da: "a" });
+  await g.inArrivo({ da: "a", mids: ["6", "7"] });
+  assert.deepEqual(chiuse[1], { sessione: "sessioneA123", mids: ["4", "5"] });
+});
+
+test("alla fine si chiudono anche le tracce in arrivo mai confermate", async () => {
+  const { g, vai, chiuse } = prepara();
+  await g.pubblica(PUB_A);
+  await g.pubblica(PUB_B);
+  await g.inArrivo({ da: "a", mids: ["2", "3"] });
+  vai(SCADENZA_MS);
+  await g.allarme();
+  assert.deepEqual(chiuse.find((c) => c.sessione === "sessioneA123").mids, ["0", "1", "2", "3"]);
+});
+
+test("Riprova dell'altra persona chiude anche le tracce che stavo per ricevere", async () => {
+  const { g, chiuse } = prepara();
+  await g.pubblica(PUB_A);
+  await g.pubblica(PUB_B);
+  await g.inArrivo({ da: "b", mids: ["2", "3"] });
+  await g.pubblica({ da: "a", sessione: "sessioneA999", mids: ["0", "1"] });
+  assert.deepEqual(chiuse, [
+    { sessione: "sessioneA123", mids: ["0", "1"] },
+    { sessione: "sessioneB123", mids: ["2", "3"] },
+  ]);
+  assert.equal((await g.ricevuto({ da: "b" })).motivo, "dati");
+});

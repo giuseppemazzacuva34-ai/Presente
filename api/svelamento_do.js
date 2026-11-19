@@ -44,8 +44,9 @@ function vistaPer(stato, da) {
 }
 
 const altraDi = (stato, da) => Object.keys(stato.persone).find((p) => p !== da);
-// Tutte le tracce di una sessione: le mie due (voce, video) più le due che ricevo.
-const tracce = (p) => [...p.mids, ...(p.ricevo || [])];
+// Tutte le tracce di una sessione: le mie due (voce, video) più le due che ricevo o sto per ricevere (passo 7c).
+// «ricevo» e «arrivo» non sono mai pieni insieme: così una sessione non supera mai 4 tracce (limite di chiudiVoce).
+const tracce = (p) => [...p.mids, ...(p.ricevo || []), ...(p.arrivo || [])];
 
 export class GestoreSvelamento {
   constructor({ storage, adesso = () => new Date(), chiudiSessione }) {
@@ -67,13 +68,15 @@ export class GestoreSvelamento {
       // «Riprova»: la sessione vecchia si chiude tutta; l'altra persona chiude ciò che riceveva da lì e richiede.
       chiusure.push({ sessione: prima.sessione, mids: tracce(prima) });
       const altra = stato.persone[altraDi(stato, da)];
-      if (altra && altra.ricevo) {
-        chiusure.push({ sessione: altra.sessione, mids: altra.ricevo });
-        altra.ricevo = null;
+      for (const campo of ["ricevo", "arrivo"]) {
+        if (altra && altra[campo]) {
+          chiusure.push({ sessione: altra.sessione, mids: altra[campo] });
+          altra[campo] = null;
+        }
       }
       stato.inizio = null;
     }
-    stato.persone[da] = { sessione, mids: [...mids], ricevo: null };
+    stato.persone[da] = { sessione, mids: [...mids], ricevo: null, arrivo: null };
     await this.#salva(stato, chiusure);
     await this.#esegui();
     await this.#allarme();
@@ -90,16 +93,48 @@ export class GestoreSvelamento {
     return altra ? { ok: true, sessione: altra.sessione } : no("in_attesa");
   }
 
-  // Il telefono ha confermato la ricezione di voce e video dell'altra persona: con tutti e due partono i 10 secondi.
-  async ricevuto({ da, mids }) {
+  // Passo 7c, solo per il Worker (mai per il telefono): la mia sessione e quella dell'altra persona.
+  async sessioni(da) {
+    const a = await this.altra(da);
+    if (!a.ok) return a;
+    const stato = await this.storage.get("stato");
+    return { ok: true, mia: stato.persone[da].sessione, altra: a.sessione };
+  }
+
+  // Passo 7c: il Worker ha chiesto a Realtime voce e video dell'altra persona; il telefono deve ancora rispondere.
+  // Ricevere di nuovo chiude subito le tracce vecchie (in arrivo o già ricevute): mai più di 4 tracce per sessione.
+  async inArrivo({ da, mids }) {
     const stato = await this.storage.get("stato");
     if (!stato || !stato.persone[da]) return no("nessuna");
     if (stato.finitoIl) return no("finito");
     if (!altraDi(stato, da)) return no("in_attesa");
     if (!dueMids(mids)) return no("dati");
-    stato.persone[da].ricevo = [...mids];
-    if (!stato.inizio && Object.values(stato.persone).every((p) => p.ricevo)) stato.inizio = this.adesso().getTime();
-    await this.#salva(stato, []);
+    const p = stato.persone[da];
+    const chiusure = [p.arrivo, p.ricevo].filter(Boolean).map((m) => ({ sessione: p.sessione, mids: m }));
+    p.ricevo = null;
+    p.arrivo = [...mids];
+    await this.#salva(stato, chiusure);
+    await this.#esegui();
+    await this.#allarme();
+    return { ok: true, vista: vistaPer(stato, da) };
+  }
+
+  // Il telefono ha confermato la ricezione di voce e video dell'altra persona: con tutti e due partono i 10 secondi.
+  // Senza mids (passo 7c) valgono le tracce «in arrivo» segnate da inArrivo.
+  async ricevuto({ da, mids }) {
+    const stato = await this.storage.get("stato");
+    if (!stato || !stato.persone[da]) return no("nessuna");
+    if (stato.finitoIl) return no("finito");
+    if (!altraDi(stato, da)) return no("in_attesa");
+    const p = stato.persone[da];
+    const nuovi = mids === undefined ? p.arrivo : mids;
+    if (!dueMids(nuovi)) return no("dati");
+    const chiusure = p.ricevo && p.ricevo.join() !== nuovi.join() ? [{ sessione: p.sessione, mids: p.ricevo }] : [];
+    p.ricevo = [...nuovi];
+    p.arrivo = null;
+    if (!stato.inizio && Object.values(stato.persone).every((x) => x.ricevo)) stato.inizio = this.adesso().getTime();
+    await this.#salva(stato, chiusure);
+    if (chiusure.length) await this.#esegui();
     await this.#allarme();
     return { ok: true, vista: vistaPer(stato, da) };
   }
