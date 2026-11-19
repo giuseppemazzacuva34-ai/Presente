@@ -1,0 +1,361 @@
+// Schermata «Il vostro incontro» nella web app (issue #6, spec v1 del CPO del 3/11, passi 1-4 e regola sulla scadenza;
+// D17 A). Passo 2e della linea «sviluppatore-b».
+// Stato, proposta e risposta passano da /app/api/incontro (worker/incontro_api.js): chi propone o risponde lo dice solo
+// il token, le regole (orari, luogo, controproposte, 48 ore, scadenza, crediti) le decide il server. Qui si mostra lo
+// stato e si aiuta a scegliere un orario valido; gli orari si calcolano con la stessa regola di api/incontro.js
+// (il test lo controlla). Per ora «Dove» è solo «Un altro luogo pubblico» scritto: i locali consigliati arrivano quando
+// la lista dei locali pilota sarà nel database. Niente posizione, niente salvataggi locali, niente dati nei log.
+// Il modulo non tocca la pagina: riceve fetch, token e h dall'esterno, così si prova con node --test.
+
+const PERCORSO = "/app/api/incontro";
+const ATTESA_MS = 8000;
+const MEZZORA = 30 * 60 * 1000;
+const PRIMA_ORA = 10 * 60; // 10:00, in minuti del giorno di Roma
+const ULTIMA_ORA = 23 * 60; // 23:00 compreso
+const LUOGO_MASSIMO = 80;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
+const AZIONI = ["proponi", "accetto", "altra_data", "annulla"];
+const RISPOSTE = ["accetto", "annulla"];
+
+export const TESTI_INCONTRO = Object.freeze({
+  // Testi della spec (passi 1-4 e regole).
+  viIncontrate: "Vi incontrate! Avete fino al <data> per vedervi.",
+  proponi: "Proponi quando e dove",
+  pubblico: "Scegliete sempre un posto pubblico e frequentato.",
+  altroLuogo: "Un altro luogo pubblico",
+  accetto: "Accetto",
+  altraData: "Propongo un'altra data",
+  annulla: "Annulla l'incontro",
+  confermato: "Ci vediamo <giorno> alle <ora> · <luogo>",
+  caparra: "Se uno dei due non si presenta, i suoi 10 crediti vanno: 7 a chi ha aspettato, 3 a Presente.",
+  scaduto: "Non siete riusciti a fissare l'incontro. I tuoi 10 crediti sono di nuovo disponibili.",
+  // Provvisori, da rivedere con «contenuti».
+  titolo: "Il vostro incontro",
+  aspetta: "Hai fatto la tua proposta. Aspettiamo la risposta.",
+  ricevuta: "Ti propone:",
+  scadeProposta: "Rispondi entro <quando>.",
+  controproposte: "Puoi proporre ancora <n>.",
+  annullato: "L'incontro è annullato. I crediti tornano a entrambi.",
+  chiuso: "Questo incontro è chiuso.",
+  confermaAnnulla: "Annullare l'incontro? I crediti tornano a entrambi.",
+  siAnnulla: "Sì, annulla",
+  no: "No, torna indietro",
+  giorno: "Giorno",
+  ora: "Ora",
+  luogo: "Nome e indirizzo del posto",
+  invia: "Invia la proposta",
+  lascia: "Lascia stare",
+  localeConsigliato: "il locale consigliato",
+  orarioNonVa: "Questo orario non va bene. Scegline un altro.",
+  luogoNonVa: "Scrivi il nome e l'indirizzo di un posto pubblico (massimo 80 caratteri).",
+  aspettaRisposta: "Aspetta la risposta alla tua proposta.",
+  controproposteFinite: "Non puoi proporre altre date: puoi accettare o annullare.",
+  giaConfermato: "L'incontro è già confermato.",
+  propostaScaduta: "Questa proposta è scaduta.",
+  orarioPassato: "L'orario proposto è già passato.",
+  nonDisponibile: "Questo incontro non è più disponibile.",
+  attimo: "Un attimo…",
+});
+
+const GIORNO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" });
+const ORARIO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const valida = (x) => { const d = new Date(x); return x !== null && x !== undefined && Number.isFinite(d.getTime()) ? d : null; };
+const minutiRoma = (d) => { const [o, m] = ORARIO.format(d).split(":").map(Number); return o * 60 + m; };
+
+// Gli orari che si possono proporre, per giorno di Roma: da domani alle 10:00 fino alla scadenza, ogni 30 minuti, solo
+// tra 10:00 e 23:00 (stessa regola di controllaOrario in api/incontro.js; il server resta l'unico a decidere).
+export function orariProposta(scadenza, adesso = new Date()) {
+  const fine = valida(scadenza);
+  const ora = valida(adesso);
+  if (!fine || !ora) return [];
+  const oggi = GIORNO.format(ora);
+  const giorni = [];
+  for (let x = Math.ceil(ora.getTime() / MEZZORA) * MEZZORA; x <= fine.getTime(); x += MEZZORA) {
+    const d = new Date(x);
+    const giorno = GIORNO.format(d);
+    const m = minutiRoma(d);
+    if (giorno === oggi || m < PRIMA_ORA || m > ULTIMA_ORA) continue;
+    let g = giorni.at(-1);
+    if (!g || g.giorno !== giorno) giorni.push(g = { giorno, orari: [] });
+    g.orari.push({ valore: d.toISOString(), testo: ORARIO.format(d) });
+  }
+  return giorni;
+}
+
+const dove = (i) => (typeof i.luogo === "string" && i.luogo.trim() ? i.luogo.trim()
+  : typeof i.locale === "string" && i.locale.trim() ? TESTI_INCONTRO.localeConsigliato : "");
+function quando(i) {
+  const d = valida(i.orario);
+  return d ? { giorno: GIORNO.format(d), ora: ORARIO.format(d) } : null;
+}
+const proposta = (i) => { const q = quando(i); return q ? `${q.giorno} alle ${q.ora} · ${dove(i)}` : ""; };
+
+// Cosa mostra la schermata (spec, passi 1-4). null = stato non ancora letto o di forma sconosciuta.
+export function schermataIncontro(i, adesso = new Date()) {
+  if (!i || typeof i !== "object" || !STATI.includes(i.stato)) return null;
+  const azioni = Array.isArray(i.azioni) ? i.azioni.filter((a) => AZIONI.includes(a)) : [];
+  if (i.stato === "concluso" || i.esito) {
+    const testo = i.esito === "scaduto" ? TESTI_INCONTRO.scaduto : i.esito === "annullato" ? TESTI_INCONTRO.annullato : TESTI_INCONTRO.chiuso;
+    return { tipo: "concluso", testo, azioni: [] };
+  }
+  if (i.stato === "confermato") {
+    const q = quando(i);
+    return { tipo: "confermato", azioni: [], testo: TESTI_INCONTRO.caparra,
+      titolo: q ? TESTI_INCONTRO.confermato.replace("<giorno>", q.giorno).replace("<ora>", q.ora).replace("<luogo>", dove(i)) : TESTI_INCONTRO.titolo };
+  }
+  if (i.stato === "proposto" && i.proposta_mia === true) return { tipo: "attesa", proposta: proposta(i), testo: TESTI_INCONTRO.aspetta, azioni: [] };
+  if (i.stato === "proposto") {
+    const scade = valida(i.proposta_scade);
+    const rimaste = Number.isInteger(i.controproposte_rimaste) ? i.controproposte_rimaste : 0;
+    return { tipo: "ricevuta", proposta: proposta(i), azioni,
+      scade: scade && scade > adesso ? TESTI_INCONTRO.scadeProposta.replace("<quando>", `${GIORNO.format(scade)} alle ${ORARIO.format(scade)}`) : null,
+      controproposte: azioni.includes("altra_data") ? TESTI_INCONTRO.controproposte.replace("<n>", rimaste === 1 ? "1 volta" : `${rimaste} volte`) : null };
+  }
+  const s = valida(i.scadenza);
+  return { tipo: "da_fissare", azioni,
+    titolo: s ? TESTI_INCONTRO.viIncontrate.replace("<data>", GIORNO.format(s)) : TESTI_INCONTRO.titolo };
+}
+
+const ERRORI = Object.freeze({
+  rete: "Sei senza connessione. Riprova tra poco.",
+  accesso: "Accedi di nuovo per continuare.",
+  troppe: "Troppi tentativi. Aspetta un minuto.",
+  non_trovato: TESTI_INCONTRO.nonDisponibile,
+  incontro_chiuso: TESTI_INCONTRO.nonDisponibile,
+  incontro_scaduto: TESTI_INCONTRO.nonDisponibile,
+  orario_non_valido: TESTI_INCONTRO.orarioNonVa,
+  prima_di_domani: TESTI_INCONTRO.orarioNonVa,
+  fuori_orario: TESTI_INCONTRO.orarioNonVa,
+  non_sul_passo: TESTI_INCONTRO.orarioNonVa,
+  dopo_la_scadenza: TESTI_INCONTRO.orarioNonVa,
+  luogo_non_valido: TESTI_INCONTRO.luogoNonVa,
+  attendi_risposta: TESTI_INCONTRO.aspettaRisposta,
+  controproposte_finite: TESTI_INCONTRO.controproposteFinite,
+  gia_confermato: TESTI_INCONTRO.giaConfermato,
+  nessuna_proposta: TESTI_INCONTRO.propostaScaduta,
+  proposta_scaduta: TESTI_INCONTRO.propostaScaduta,
+  orario_passato: TESTI_INCONTRO.orarioPassato,
+});
+export const testoErroreIncontro = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
+
+// Il controllo della schermata: un incontro alla volta, una richiesta alla volta.
+export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTESA_MS, aggiorna = () => {}, adesso = () => new Date() }) {
+  let porta = null;
+  let incontro = null;
+  let carica = false;
+  let inCorso = false;
+  let errore = null;
+  let aperta = false; // modulo della proposta
+  let conferma = null; // «annulla» in attesa di conferma
+  let bozza = { orario: "", luogo: "" };
+  const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
+
+  async function chiedi(corpo = null) {
+    const t = await Promise.resolve().then(token).catch(() => null);
+    if (!t) return { ok: false, motivo: "accesso" };
+    const ferma = new AbortController();
+    const timer = setTimeout(() => ferma.abort(), attesa);
+    try {
+      let r;
+      try {
+        const headers = { authorization: `Bearer ${t}` };
+        if (corpo) headers["content-type"] = "application/json";
+        r = await f(corpo ? PERCORSO : `${PERCORSO}?porta=${porta}`, { method: corpo ? "POST" : "GET", signal: ferma.signal, headers,
+          body: corpo ? JSON.stringify(corpo) : undefined });
+      } catch {
+        return { ok: false, motivo: "rete" };
+      }
+      if (r.status === 401) return { ok: false, motivo: "accesso" };
+      if (r.status === 429) return { ok: false, motivo: "troppe" };
+      if (r.status === 404) return { ok: false, motivo: "non_trovato" };
+      let dati;
+      try { dati = await r.json(); } catch { return { ok: false, motivo: "riprova" }; }
+      if (!dati || typeof dati !== "object") return { ok: false, motivo: "riprova" };
+      if (dati.ok !== true) return { ok: false, motivo: String(dati.motivo || "riprova") };
+      return { ok: true, dati };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function leggi() {
+    const id = porta;
+    carica = true;
+    errore = null;
+    avvisa();
+    const r = await chiedi();
+    if (porta !== id) return;
+    carica = false;
+    if (r.ok && r.dati.incontro && STATI.includes(r.dati.incontro.stato)) incontro = r.dati.incontro;
+    else {
+      errore = testoErroreIncontro(r.ok ? "riprova" : r.motivo);
+      if (!r.ok && r.motivo === "non_trovato") incontro = null;
+    }
+    avvisa();
+  }
+
+  async function invia(corpo) {
+    if (inCorso || !porta) return false;
+    inCorso = true;
+    errore = null;
+    avvisa();
+    const id = porta;
+    const r = await chiedi({ ...corpo, porta: id });
+    inCorso = false;
+    if (porta !== id) return false;
+    if (r.ok) {
+      aperta = false;
+      conferma = null;
+      bozza = { orario: "", luogo: "" };
+      await leggi();
+      return true;
+    }
+    // Lo stato può essere cambiato (proposta scaduta, controproposte finite, incontro chiuso): si rilegge.
+    if (!["rete", "accesso", "troppe", "riprova"].includes(r.motivo)) await leggi();
+    errore = testoErroreIncontro(r.motivo);
+    avvisa();
+    return false;
+  }
+
+  return {
+    async apri(id) {
+      porta = UUID.test(String(id || "")) ? String(id) : null;
+      incontro = null;
+      aperta = false;
+      conferma = null;
+      inCorso = false;
+      bozza = { orario: "", luogo: "" };
+      if (!porta) {
+        errore = TESTI_INCONTRO.nonDisponibile;
+        avvisa();
+        return;
+      }
+      await leggi();
+    },
+    chiudi() {
+      porta = null;
+      incontro = null;
+      errore = null;
+      aperta = false;
+      conferma = null;
+      carica = false;
+      avvisa();
+    },
+    riprova: () => (porta ? leggi() : undefined),
+    // «Proponi quando e dove» e «Propongo un'altra data» aprono lo stesso modulo.
+    apriProposta() {
+      const s = schermataIncontro(incontro, adesso());
+      if (!s || !(s.azioni.includes("proponi") || s.azioni.includes("altra_data"))) return;
+      aperta = true;
+      conferma = null;
+      errore = null;
+      avvisa();
+    },
+    lasciaProposta() {
+      aperta = false;
+      errore = null;
+      avvisa();
+    },
+    // Il luogo si scrive senza ridisegnare (il campo non perde il cursore); il cambio di giorno ridisegna le ore.
+    imposta(campo, valore, ridisegna = false) {
+      if (campo !== "orario" && campo !== "luogo") return;
+      bozza = { ...bozza, [campo]: String(valore ?? "") };
+      if (ridisegna) avvisa();
+    },
+    async proponi({ orario, luogo } = bozza) {
+      if (!aperta) return false;
+      const testo = typeof luogo === "string" ? luogo.trim() : "";
+      if (!testo || testo.length > LUOGO_MASSIMO) {
+        errore = TESTI_INCONTRO.luogoNonVa;
+        avvisa();
+        return false;
+      }
+      if (!valida(orario)) {
+        errore = TESTI_INCONTRO.orarioNonVa;
+        avvisa();
+        return false;
+      }
+      return invia({ azione: "proponi", orario: new Date(orario).toISOString(), luogo: testo });
+    },
+    // «Accetto» subito; «Annulla l'incontro» al secondo tocco, dopo la domanda di conferma.
+    async rispondi(scelta) {
+      const s = schermataIncontro(incontro, adesso());
+      if (!RISPOSTE.includes(scelta) || !s || !s.azioni.includes(scelta)) return false;
+      if (scelta === "annulla" && conferma !== "annulla") {
+        conferma = "annulla";
+        aperta = false;
+        avvisa();
+        return false;
+      }
+      return invia({ azione: "rispondi", risposta: scelta });
+    },
+    nonAnnullare() {
+      conferma = null;
+      avvisa();
+    },
+    modello: () => ({ porta, incontro, carica, inCorso, errore, proposta: aperta, conferma, bozza: { ...bozza } }),
+    adesso,
+  };
+}
+
+// La vista (h come in flusso.js). null se la schermata non è aperta.
+export function vistaIncontro(h, inc) {
+  const m = inc.modello();
+  if (!m.porta && !m.errore) return null;
+  const T = TESTI_INCONTRO;
+  const s = schermataIncontro(m.incontro, inc.adesso());
+  const parti = [];
+  if (m.carica && !s) parti.push(h("p", { classe: "nota", role: "status" }, T.attimo));
+  if (s && s.titolo) parti.push(h("p", { role: "status" }, s.titolo));
+  if (s && s.proposta) parti.push(h("p", null, s.tipo === "ricevuta" ? `${T.ricevuta} ${s.proposta}` : s.proposta));
+  if (s && s.testo) parti.push(h("p", { classe: s.tipo === "confermato" ? "nota" : null }, s.testo));
+  if (s && s.scade) parti.push(h("p", { classe: "nota" }, s.scade));
+  if (s && s.controproposte) parti.push(h("p", { classe: "nota" }, s.controproposte));
+  const bloccato = m.inCorso || m.carica;
+  if (s && !m.proposta && m.conferma !== "annulla") {
+    if (s.azioni.includes("proponi")) parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.apriProposta() }, T.proponi));
+    if (s.azioni.includes("accetto")) parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.rispondi("accetto") }, T.accetto));
+    if (s.azioni.includes("altra_data")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.apriProposta() }, T.altraData));
+    if (s.azioni.includes("annulla")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.rispondi("annulla") }, T.annulla));
+  }
+  if (s && m.conferma === "annulla") {
+    parti.push(h("p", { id: "incontro-conferma", role: "alert" }, T.confermaAnnulla),
+      h("button", { classe: "bottone", type: "button", disabled: bloccato, "aria-describedby": "incontro-conferma", onclick: () => inc.rispondi("annulla") }, T.siAnnulla),
+      h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.nonAnnullare() }, T.no));
+  }
+  if (s && m.proposta) parti.push(vistaProposta(h, inc, m, s));
+  if (m.errore) parti.push(h("p", { classe: "errore", role: "alert" }, m.errore));
+  return h("section", { classe: "incontro", "aria-labelledby": "incontro-titolo" }, h("h2", { id: "incontro-titolo" }, T.titolo), parti);
+}
+
+// Modulo della proposta: un solo menu con gli orari raggruppati per giorno, e il posto scritto.
+function vistaProposta(h, inc, m, s) {
+  const T = TESTI_INCONTRO;
+  const giorni = orariProposta(m.incontro && m.incontro.scadenza, inc.adesso());
+  const scelto = m.bozza.orario;
+  const giorno = giorni.find((g) => g.orari.some((o) => o.valore === scelto)) || giorni[0] || null;
+  if (giorno && !giorno.orari.some((o) => o.valore === scelto)) inc.imposta("orario", giorno.orari[0].valore);
+  const attuale = inc.modello().bozza.orario;
+  return h("div", { classe: "proposta-incontro", role: "group", "aria-labelledby": "proposta-titolo" },
+    h("h3", { id: "proposta-titolo" }, s.tipo === "ricevuta" ? T.altraData : T.proponi),
+    h("div", { classe: "campo" },
+      h("label", { for: "incontro-giorno" }, T.giorno),
+      h("select", { id: "incontro-giorno", disabled: m.inCorso, onchange: (e) => {
+        const g = giorni.find((x) => x.giorno === e.target.value);
+        if (g) inc.imposta("orario", g.orari[0].valore, true);
+      } }, giorni.map((g) => h("option", { value: g.giorno, selected: g === giorno }, g.giorno)))),
+    h("div", { classe: "campo" },
+      h("label", { for: "incontro-ora" }, T.ora),
+      h("select", { id: "incontro-ora", disabled: m.inCorso, onchange: (e) => inc.imposta("orario", e.target.value) },
+        (giorno ? giorno.orari : []).map((o) => h("option", { value: o.valore, selected: o.valore === attuale }, o.testo)))),
+    h("p", { classe: "nota" }, T.altroLuogo),
+    h("div", { classe: "campo" },
+      h("label", { for: "incontro-luogo" }, T.luogo),
+      h("input", { id: "incontro-luogo", type: "text", maxlength: LUOGO_MASSIMO, autocomplete: "off", value: m.bozza.luogo,
+        "aria-describedby": "incontro-pubblico", disabled: m.inCorso, oninput: (e) => inc.imposta("luogo", e.target.value) })),
+    h("p", { id: "incontro-pubblico", classe: "nota", role: "note" }, T.pubblico),
+    h("button", { classe: "bottone", type: "button", disabled: m.inCorso || !giorni.length, onclick: () => inc.proponi(inc.modello().bozza) },
+      m.inCorso ? T.attimo : T.invia),
+    h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso, onclick: () => inc.lasciaProposta() }, T.lascia));
+}
