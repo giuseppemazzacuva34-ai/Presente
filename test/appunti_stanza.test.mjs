@@ -166,6 +166,9 @@ test("flusso, avvio e service worker: aggiunte minime", () => {
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /creaAppuntiStanza\(/);
   assert.match(avvio, /appuntiCambiati\(\)/);
+  // Dopo una nota nuova del diario (fine chiamata) la scheda rilegge gli appunti.
+  assert.match(avvio, /quandoNotaNuova = \(\) => appunti && appunti\.rileggi\(\)/);
+  assert.match(avvio, /dopoSalva: \(\) => quandoNotaNuova\(\)/);
   const sw = leggi("../landing/app/sw.js");
   assert.ok(sw.includes('"/app/moduli/appunti_stanza.js"'));
   assert.ok(!sw.includes('"presente-app-25"'), "versione della cache aumentata");

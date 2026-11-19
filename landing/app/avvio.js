@@ -88,6 +88,7 @@ async function preparaAccesso() {
       appunti = creaAppuntiStanza({ diario: creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
         token: () => accesso.token(), fetch: window.fetch.bind(window) }), aggiorna: () => appuntiCambiati() });
     } catch { appunti = null; }
+    quandoNotaNuova = () => appunti && appunti.rileggi();
     // Esito per chi segnala (#7 passo 4): solo le proprie segnalazioni chiuse, con il proprio token.
     const esiti = creaEsiti({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey,
       token: () => accesso.token(), fetch: window.fetch.bind(window) });
@@ -117,6 +118,9 @@ async function preparaAccesso() {
   }
 }
 
+// Dopo una nota nuova del diario la scheda rilegge «I tuoi appunti» (#5): si collega quando gli appunti esistono.
+let quandoNotaNuova = () => {};
+
 function preparaTelefono(config, accesso) {
   const token = () => accesso.token();
   const fetch = window.fetch.bind(window);
@@ -139,7 +143,8 @@ function preparaTelefono(config, accesso) {
   let sentinella = null;
   // Diario privato (#5): la nota va dritta su Supabase col proprio token; senza configurazione il passo si salta.
   let diario = null;
-  try { diario = creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, token, fetch }); } catch { diario = null; }
+  try { diario = creaDiario({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, token, fetch,
+    dopoSalva: () => quandoNotaNuova() }); } catch { diario = null; }
   telefono = creaTelefono({ compagni, linea: collegaVoce({ chiamata, voce }), chiamata, voce, diario,
     subito: () => sentinella && sentinella.subito(), cambiato: () => telefonoCambiato() });
   sentinella = creaSentinella({ leggi: () => chiamata.stato(), quando: (r) => telefono.aggiorna(r), pagina: document });

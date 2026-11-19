@@ -123,3 +123,16 @@ test("il modulo non salva nulla sul telefono, non scrive nei log e non passa dal
   assert.doesNotMatch(codice, /localStorage|sessionStorage|indexedDB|caches\.|console\./);
   assert.doesNotMatch(codice, /\/app\/api\//);
 });
+
+test("dopoSalva: avvisa solo quando la nota è salvata davvero", async () => {
+  const { creaDiario: crea } = await import("../landing/app/moduli/diario.js");
+  let avvisi = 0;
+  const risposte = [new Response(null, { status: 201 }), new Response(null, { status: 400 })];
+  const d = crea({ supabaseUrl: "https://abcdefghijklmnop.supabase.co", supabaseAnonKey: "x", token: () => "t",
+    fetch: async () => risposte.shift(), dopoSalva: () => { avvisi += 1; } });
+  const nota = { con: "11111111-2222-4333-8444-555555555555", chiamataIl: "2026-11-12T19:30:00.000Z", durata: 120, testo: "Ciao" };
+  assert.equal((await d.salva(nota)).ok, true);
+  assert.equal(avvisi, 1);
+  assert.equal((await d.salva(nota)).ok, false);
+  assert.equal(avvisi, 1);
+});
