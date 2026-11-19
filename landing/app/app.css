@@ -179,3 +179,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 
 /* D140 A: indirizzo a cui mandare la risposta per email, ben visibile (pagina interna /app/supporto.html). */
 #supporto .email-risposta { font-size: 1.25rem; font-weight: 700; color: var(--avorio); word-break: break-all; }
+
+/* Prova finta dell'app (D141 A, /app/prova.html): banner fisso sempre visibile in cima. */
+.banner-prova { position: sticky; top: 0; z-index: 10; margin: 0; padding: 0.5rem 1rem; text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--nero); background: var(--avorio); }
