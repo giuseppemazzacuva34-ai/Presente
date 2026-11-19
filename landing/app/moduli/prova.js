@@ -7,11 +7,13 @@
 // Passo 1: accesso con email, iscrizione salvata in memoria, provincia della lista, contatore della zona,
 // «Entra nella stanza». Passo 2: stanza di 12 (tu + 11 persone finte) e chiamate simulate con il «telefono» vero
 // (telefono.js, sentinella.js): squillo, timer di 15 minuti, carte, «La richiameresti?», diario. Niente microfono,
-// niente audio. I passi successivi aggiungono chiavi, sera delle porte, porta, svelamento, segnala/blocca, Aiuto.
+// niente audio. Passo 3: chiavi (chiavi_stanza.js vero, regole di api/chiavi.js) e sera delle porte con il comando
+// «Domenica sera: apri le porte». I passi successivi aggiungono porta, svelamento, segnala/blocca, Aiuto.
 
 import { creaTelefono } from "./telefono.js";
 import { creaSentinella } from "./sentinella.js";
 import { DOMANDE, TEMI } from "./domande.js";
+import { creaChiaviStanza } from "./chiavi_stanza.js";
 
 export const UTENTE_PROVA = "00000000-0000-4000-8000-000000000001";
 const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -34,6 +36,21 @@ const MAZZO = Object.freeze([
   "Una piccola abitudine a cui non rinunci?",
   "Che cosa ordini sempre al bar?",
 ]);
+// Testi delle chiavi: gli stessi del server (api/chiavi.js).
+const TESTI_CHIAVI = Object.freeze({
+  chiuse: "Le chiavi sono chiuse. Tra poco le porte.",
+  contatti: "La frase non può contenere contatti. Ve li scambierete dopo esservi visti.",
+  troppoLunga: "La frase può avere al massimo 140 caratteri.",
+  finite: "Hai già dato le tue 2 chiavi. Puoi riprenderne una.",
+  nonChiamato: "Puoi dare una chiave solo a chi hai già chiamato in questa stanza.",
+});
+const CONTATTI = [
+  /(?:\d[\s.\-/]*){6,}/, /@/, /https?:/i, /\bwww\b/i, /\.(?:com|it|net|org|eu|me|ly|link)\b/i,
+  /\b(?:instagram|insta|ig|facebook|fb|tiktok|telegram|whatsapp|wa|snapchat|snap|twitter|threads|onlyfans|signal|linkedin)\b/i,
+];
+// Nella prova ricambiano la chiave solo alcune persone finte, sempre le stesse, con una frase inventata.
+const RICAMBIANO = new Map([[0, "La tua risata mi è rimasta in testa."], [1, "Mi è piaciuto come racconti le cose."],
+  [4, "Avrei parlato ancora un'ora."], [5, ""], [8, "Ci prendiamo quel caffè?"], [9, "Voce calma, idee chiare: mi piace."]]);
 const TESTO_BREVE = "La chiamata è durata poco e non conta nei limiti.";
 const TESTO_TRE = "Avete già parlato 3 volte. Ora tocca alle chiavi";
 
@@ -59,24 +76,30 @@ function ora(ms) {
   return { anno: Number(parti.year), mese: Number(parti.month), giorno: Number(parti.day), ora: Number(parti.hour) % 24, dow: parti.weekday };
 }
 
-// Il prossimo lunedì alle 9:00 di Roma dopo «adesso», in ISO.
-export function prossimoLunedi(adesso) {
+// Il prossimo giorno «dow» (Mon, Sun…) alle «ore» di Roma dopo «adesso», in ISO.
+function prossimo(adesso, dow, ore) {
   const oggi = ora(adesso);
   for (let g = 0; g <= 7; g += 1) {
     for (const scarto of [1, 2]) {
-      const ms = Date.UTC(oggi.anno, oggi.mese - 1, oggi.giorno + g, 9 - scarto);
+      const ms = Date.UTC(oggi.anno, oggi.mese - 1, oggi.giorno + g, ore - scarto);
       const r = ora(ms);
-      if (r.dow === "Mon" && r.ora === 9 && ms > adesso) return new Date(ms).toISOString();
+      if (r.dow === dow && r.ora === ore && ms > adesso) return new Date(ms).toISOString();
     }
   }
   return null;
 }
+export const prossimoLunedi = (adesso) => prossimo(adesso, "Mon", 9);
+// Chiusura della stanza: domenica alle 21:00 di Roma (le chiavi chiudono un minuto prima).
+const prossimaDomenica = (adesso) => prossimo(adesso, "Sun", 21);
 
 // cambiato: chi ridisegna la pagina quando il telefono cambia (flusso.js › telefonoCambiato); pagina: il documento,
 // per fermare la sentinella quando la scheda non si vede.
-export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina } = {}) {
+// aggiorna: { chiavi, conto } della pagina (flusso.js › chiaviCambiate e il conto alla rovescia delle 20:00).
+// animazioneMs: durata delle porte che si aprono la sera (0 = niente animazione).
+export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato = () => {}, pagina, aggiorna: daFuori = {}, animazioneMs = 0 } = {}) {
+  const aggiorna = { chiavi: () => {}, conto: () => {}, ...daFuori };
   // Tutto il «database» della prova: vive solo in questa pagina.
-  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null };
+  const mondo = { sessione: false, profilo: null, filtri: null, questionario: null, file: new Map(), conferma: null, sera: false };
   // Un attimo di attesa come una rete vera, così si vedono «Invio…» e «Un attimo…».
   const pausa = () => new Promise((fatto) => setTimeout(fatto, attesaMs));
   const ok = async (extra = {}) => { await pausa(); return { ok: true, ...extra }; };
@@ -241,7 +264,63 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
   const diario = {
     async salva({ con, chiamataIl, durata, testo }) { linea.diario.push({ con, chiamataIl, durata, testo }); return ok(); },
   };
-  const compagni = { async leggi() { await pausa(); return { ok: true, persone: PERSONE_PROVA.map((p) => ({ ...p })) }; } };
+  const compagni = { async leggi() {
+    await pausa();
+    return { ok: true, ...(mondo.sera ? { chiusa: true } : {}), persone: PERSONE_PROVA.map((p) => ({ ...p })) };
+  } };
+
+  // ---- Passo 3: chiavi e sera delle porte (stesse regole di api/chiavi.js) ---------------------------------------
+  const chiudeIl = prossimaDomenica(adesso());
+  const date = []; // { a, frase }
+  const statoChiavi = () => ({ stanza: true, chiude_il: chiudeIl, chiuse: mondo.sera, restanti: 2 - date.length, date: date.map((d) => ({ ...d })) });
+  const no = (motivo, testo) => ({ ok: false, motivo, testo });
+  const frase = (f) => {
+    const testo = String(f ?? "").replace(/\s+/g, " ").trim();
+    if ([...testo].length > 140) return no("troppo_lunga", TESTI_CHIAVI.troppoLunga);
+    if (CONTATTI.some((r) => r.test(testo))) return no("contatti", TESTI_CHIAVI.contatti);
+    return { ok: true, frase: testo || null };
+  };
+  const inStanza = (a) => PERSONE_PROVA.some((p) => p.id === a);
+  const chiaviServer = {
+    async leggi() { await pausa(); return { ok: true, stato: statoChiavi() }; },
+    async dai(a, f) {
+      if (mondo.sera) return no("chiuse", TESTI_CHIAVI.chiuse);
+      if (!inStanza(a)) return no("dati", "Non è più nella stanza.");
+      if (conLei(a) < 1) return no("non_chiamato", TESTI_CHIAVI.nonChiamato);
+      if (date.some((d) => d.a === a)) return ok({ stato: statoChiavi() });
+      if (date.length >= 2) return no("finite", TESTI_CHIAVI.finite);
+      const c = frase(f);
+      if (!c.ok) return c;
+      date.push({ a, frase: c.frase });
+      return ok({ stato: statoChiavi() });
+    },
+    async riprendi(a) {
+      if (mondo.sera) return no("chiuse", TESTI_CHIAVI.chiuse);
+      const i = date.findIndex((d) => d.a === a);
+      if (i >= 0) date.splice(i, 1);
+      return ok({ stato: statoChiavi() });
+    },
+    async cambiaFrase(a, f) {
+      if (mondo.sera) return no("chiuse", TESTI_CHIAVI.chiuse);
+      const d = date.find((x) => x.a === a);
+      if (!d) return no("dati", "Non è più nella stanza.");
+      const c = frase(f);
+      if (!c.ok) return c;
+      d.frase = c.frase;
+      return ok({ stato: statoChiavi() });
+    },
+    // La sera: prima delle 21 niente; dopo, una porta per ogni chiave reciproca.
+    async sera() {
+      await pausa();
+      if (!mondo.sera) return { ok: true, stato: "prima" };
+      const porte = date.map((d) => ({ d, i: PERSONE_PROVA.findIndex((p) => p.id === d.a) }))
+        .filter(({ i }) => RICAMBIANO.has(i))
+        .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, frase_per_te: RICAMBIANO.get(i) || null }));
+      return { ok: true, stato: "pronta", porte };
+    },
+  };
+  const nuoveChiavi = () => creaChiaviStanza({ chiavi: chiaviServer, aggiorna: () => aggiorna.chiavi(), conto: (t) => aggiorna.conto(t),
+    adesso: () => new Date(adesso()), animazioneMs });
 
   let sentinella = null;
   const telefono = creaTelefono({ compagni, linea: lineaFinta, chiamata, voce, diario, adesso,
@@ -279,5 +358,14 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     },
   };
 
-  return { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, regista };
+  const prova = { accesso, archivio, lista, zona, stanza, telefono, sentinella, chiamata, chiaviServer, chiavi: nuoveChiavi(), regista };
+  // «Domenica sera: apri le porte»: le chiavi si chiudono, la stanza diventa «Chiusa» e un modulo delle chiavi nuovo
+  // legge la sera (la pagina poi riparte dalla home, come all'apertura dell'app dopo le 21).
+  regista.apriPorte = () => {
+    if (mondo.sera || !mondo.sessione) return false;
+    mondo.sera = true;
+    prova.chiavi = nuoveChiavi();
+    return true;
+  };
+  return prova;
 }
