@@ -3,6 +3,8 @@
 //        «Proponi quando e dove» e «Propongo un'altra data»: esito «proposto» o «controproposto»
 //   POST /app/api/incontro  { azione: "rispondi", porta, risposta: "accetto" | "annulla" } → rispondi_incontro
 //        esito «confermato» o «annullato»
+//   POST /app/api/incontro  { azione: "checkin", porta }                              → checkin_incontro
+//        «Sono qui»: esito «sono_qui» (si aspetta l'altro) o «avvenuto» (segnale pronto, caparre sbloccate) (passo 2g)
 //   GET  /app/api/incontro?porta=<id>                                                → stato_incontro
 //        { ok: true, incontro: { stato, scadenza, orario, locale, luogo, proposta_mia, proposta_scade,
 //          controproposte_rimaste, azioni, ritardo_minuti, esito } }  (passo 2d)
@@ -19,12 +21,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const RISPOSTE = ["accetto", "annulla"];
-const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_incontro: ["confermato", "annullato"] };
+const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_incontro: ["confermato", "annullato"],
+  checkin_incontro: ["sono_qui", "avvenuto"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
   rispondi_incontro: ["nessuna_proposta", "proposta_scaduta", "non_puoi_rispondere", "orario_passato", "incontro_chiuso",
     "incontro_scaduto"],
+  checkin_incontro: ["troppo_presto", "troppo_tardi", "non_confermato", "gia_fatto", "incontro_chiuso"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -111,6 +115,7 @@ export async function incontroApi(request, env, f = fetch) {
     if (!RISPOSTE.includes(scelta)) return dati();
     return esegui(s, "rispondi_incontro", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
   }
+  if (azione === "checkin") return esegui(s, "checkin_incontro", { p_porta: porta, p_persona: chi.id }, f);
   return dati();
 }
 

@@ -195,3 +195,39 @@ test("stato: porta non sua o senza incontro → 404 senza dire perché; guasto �
     assert.equal(r.status, 503);
   }
 });
+
+// ── «Sono qui» (passo 2g): POST { azione: "checkin", porta } → checkin_incontro. ──
+const checkin = (extra = {}) => richiesta({ corpo: { azione: "checkin", porta: PORTA, ...extra } });
+
+test("checkin: la persona è quella del token, mai quella del corpo", async () => {
+  const s = supabaseFinto({ rpc: { checkin_incontro: "sono_qui" } });
+  const r = await incontroApi(checkin({ persona: ALTRO, p_persona: ALTRO }), ENV, s.f);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, esito: "sono_qui" });
+  assert.deepEqual(s.rpc("checkin_incontro")[0].corpo, { p_porta: PORTA, p_persona: ID });
+});
+
+test("checkin: secondo check-in → «avvenuto»", async () => {
+  const r = await incontroApi(checkin(), ENV, supabaseFinto({ rpc: { checkin_incontro: "avvenuto" } }).f);
+  assert.deepEqual(await r.json(), { ok: true, esito: "avvenuto" });
+});
+
+test("checkin: fuori finestra o non confermato → rifiuto con il motivo del database", async () => {
+  for (const motivo of ["troppo_presto", "troppo_tardi", "non_confermato", "gia_fatto", "incontro_chiuso"]) {
+    const r = await incontroApi(checkin(), ENV, supabaseFinto({ rpc: { checkin_incontro: motivo } }).f);
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: false, motivo });
+  }
+});
+
+test("checkin: porta non sua → 404; porta malformata non arriva al database; guasto → 503", async () => {
+  for (const errore of ["non_nella_porta", "nessun_incontro"]) {
+    assert.equal((await incontroApi(checkin(), ENV, supabaseFinto({ rpc: { checkin_incontro: errore } }).f)).status, 404);
+  }
+  const s = supabaseFinto({ rpc: { checkin_incontro: "sono_qui" } });
+  assert.equal((await incontroApi(checkin({ porta: "x" }), ENV, s.f)).status, 400);
+  assert.equal(s.rpc("checkin_incontro").length, 0);
+  for (const rotto of [new Response("{}", { status: 500 }), "boh"]) {
+    assert.equal((await incontroApi(checkin(), ENV, supabaseFinto({ rpc: { checkin_incontro: rotto } }).f)).status, 503);
+  }
+});
