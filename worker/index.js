@@ -17,6 +17,7 @@ import { app, eApp } from "./app.js";
 import { metaWebhook, PERCORSO_META } from "./meta.js";
 import { apriPorteDellaSera } from "./sera_porte.js";
 import { spedisciAvvisiSicurezza, CRON_AVVISI } from "./avvisi_sicurezza.js";
+import { chiudiIncontriFiniti } from "./incontri_finiti.js";
 
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
@@ -29,7 +30,8 @@ export default {
       return;
     }
     // Sera delle porte (#5): anche domenica alle 21:00 di Roma (cron a parte in wrangler.jsonc); spenta senza ACCESSO_APP.
-    const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env), apriPorteDellaSera(env)]);
+    // Incontri finiti (#6, buca): anche ogni ora, per chi non riapre l'app; spento senza ACCESSO_APP.
+    const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env), apriPorteDellaSera(env), chiudiIncontriFiniti(env)]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);
     else await lavoro;
   },
