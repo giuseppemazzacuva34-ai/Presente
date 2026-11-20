@@ -71,3 +71,22 @@ test("disdici: porta non valida → 400, nessuna chiamata al database", async ()
   assert.equal(r.status, 400);
   assert.equal(s.rpc("disdici_incontro").length, 0);
 });
+
+// ── «Annulla l'incontro» (passo 2o): POST { azione: "annulla", porta } → annulla_incontro. ──
+const annulla = (extra = {}) => richiesta({ corpo: { azione: "annulla", porta: PORTA, ...extra } });
+
+test("annulla: la persona è quella del token; esito «annullato»", async () => {
+  const s = supabaseFinto({ rpc: { annulla_incontro: "annullato" } });
+  const r = await incontroApi(annulla({ persona: ALTRO }), ENV, s.f);
+  assert.deepEqual(await r.json(), { ok: true, esito: "annullato" });
+  assert.deepEqual(s.rpc("annulla_incontro")[0].corpo, { p_porta: PORTA, p_persona: ID });
+});
+
+test("annulla: confermato, chiuso o scaduto → rifiuto con il motivo; porta di altri → 404", async () => {
+  for (const motivo of ["gia_confermato", "incontro_chiuso", "incontro_scaduto"]) {
+    const r = await incontroApi(annulla(), ENV, supabaseFinto({ rpc: { annulla_incontro: motivo } }).f);
+    assert.deepEqual(await r.json(), { ok: false, motivo });
+  }
+  const r = await incontroApi(annulla(), ENV, supabaseFinto({ rpc: { annulla_incontro: "non_nella_porta" } }).f);
+  assert.equal(r.status, 404);
+});
