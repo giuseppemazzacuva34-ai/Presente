@@ -15,7 +15,8 @@ const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js",
   "/app/moduli/svelamento.js",
   "/app/moduli/in_attesa.js",
   "/app/moduli/avvisi_porte.js",
-  "/app/moduli/sala_attesa.js"];
+  "/app/moduli/sala_attesa.js",
+  "/app/moduli/regole_community.js"];
 
 self.addEventListener("install", (evento) => {
   evento.waitUntil(caches.open(VERSIONE).then((cache) => cache.addAll(FILE)).then(() => self.skipWaiting()));

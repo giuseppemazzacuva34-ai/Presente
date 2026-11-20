@@ -11,6 +11,8 @@
 // della richiesta e codici di risposta. Nei log solo nomi di errore e codici, mai token, nomi o racconti.
 // Spento finché ACCESSO_APP non vale «si».
 
+import { ID_REGOLE } from "../landing/app/moduli/regole_community.js";
+
 export const PERCORSO_PANNELLO = "/app/api/pannello";
 export const AZIONI = Object.freeze(["archivia", "avviso", "sospensione_7", "sospensione_30", "esclusione", "togli_cautelare"]);
 export const ESITI_RICORSO = Object.freeze(["accolto", "respinto"]);
@@ -147,8 +149,10 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
     const { azione } = corpo.dati;
     const testo = typeof corpo.dati.testo === "string" ? corpo.dati.testo.trim() : "";
     const regola = typeof corpo.dati.regola === "string" ? corpo.dati.regola.trim() : "";
-    if (!AZIONI.includes(azione) || !testo || testo.length > 2000 || regola.length > 100) return risposta(400, { ok: false, motivo: "dati" });
-    if (!SENZA_REGOLA.has(azione) && !regola) return risposta(400, { ok: false, motivo: "dati" });
+    // Spec #7 v1.2: motivo libero di 100 caratteri al massimo; la regola è uno dei 10 id ufficiali (vuota solo per
+    // «Archivia» e «Togli sospensione cautelare»).
+    if (!AZIONI.includes(azione) || !testo || testo.length > 100) return risposta(400, { ok: false, motivo: "dati" });
+    if (regola ? !ID_REGOLE.includes(regola) : !SENZA_REGOLA.has(azione)) return risposta(400, { ok: false, motivo: "dati" });
     const esito = await op.decidi({ moderatore: chi.id, segnalazione: id, azione, regola: regola || null, testo });
     if (!esito) return risposta(503, { ok: false, motivo: "riprova" });
     return risposta(200, esito.ok ? { ok: true, sanzione: esito.sanzione ?? null } : { ok: false, motivo: String(esito.motivo || "rifiutata") });

@@ -2,7 +2,7 @@
 // Si entra con lo stesso accesso dell'app (/app/). Chi decide lo controlla il Worker (tabella moderatori): qui la
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML.
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, vociRicorsi, ESITI_RICORSO_PANNELLO }
+import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO }
   from "/app/moduli/pannello.js";
 
 const radice = document.getElementById("pannello");
@@ -131,8 +131,9 @@ async function mostraScheda(p, id) {
   const azioni = s.sanzionabile ? AZIONI_PANNELLO : AZIONI_PANNELLO.filter(([a]) => a === "archivia" || a === "togli_cautelare");
   const scelta = h("select", { id: "azione", name: "azione" }, azioni.map(([v, t]) => h("option", { value: v, testo: t })));
   const regola = h("select", { id: "regola", name: "regola" }, h("option", { value: "", testo: "Scegli la regola…" }),
-    REGOLE_PANNELLO.map((t) => h("option", { value: t, testo: t })));
-  const motivo = h("textarea", { id: "motivo", name: "motivo", rows: "4", maxlength: "2000", required: true });
+    REGOLE_PANNELLO.map(([id, t]) => h("option", { value: id, testo: t })));
+  regola.value = s.regolaProposta; // spec #7 v1.2: solo un suggerimento, chi decide può cambiarla
+  const motivo = h("textarea", { id: "motivo", name: "motivo", rows: "3", maxlength: String(MASSIMO_MOTIVO_DECISIONE), required: true });
   const errore = h("p", { class: "errore", role: "alert" });
   const invia = h("button", { type: "submit", class: "bottone", testo: "Conferma la decisione" });
   const modulo = h("form", { class: "corpo", onsubmit: async (e) => {
@@ -146,7 +147,7 @@ async function mostraScheda(p, id) {
   } },
   h("label", { for: "azione", testo: "Decisione" }), scelta,
   h("label", { for: "regola", testo: "Regola violata (non serve per «Archivia» e «Togli sospensione cautelare»)" }), regola,
-  h("label", { for: "motivo", testo: "Motivo (obbligatorio, resta nel registro)" }), motivo,
+  h("label", { for: "motivo", testo: "Motivo (obbligatorio, max 100 caratteri, resta nel registro; chi è sanzionato non lo vede)" }), motivo,
   errore,
   h("div", { class: "azioni" },
     h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna all'elenco" }), invia));
