@@ -598,10 +598,12 @@ select pg_temp.ok(not public.salva_richiameresti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b
 select pg_temp.ok(not public.salva_richiameresti('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
   (select inizio from public.chiamate where durata = 900), 'si'), 'richiameresti: Mia non risponde su una chiamata in cui non c''era');
 select pg_temp.ok(not public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
-  (select inizio from public.chiamate where durata = 30), 'si')
-  and not public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b',
+  (select inizio from public.chiamate where durata = 30), 'si'),
+  'richiameresti: niente domanda dopo una chiamata sotto i 60 secondi');
+-- Spec v1.4 (20/11): la caduta senza rientro dopo almeno 60 secondi ha la domanda come una chiamata normale.
+select pg_temp.ok(public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b',
   (select inizio from public.chiamate where durata = 600), 'si'),
-  'richiameresti: niente domanda dopo una chiamata sotto i 60 secondi o caduta senza rientro');
+  'richiameresti: caduta lunga senza rientro, la risposta si salva (v1.4)');
 select pg_temp.ok(pg_temp.rifiutato($$select public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
   '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', (select inizio from public.chiamate where durata = 900), 'forse')$$),
   'richiameresti: solo sì, no o salta');
@@ -613,6 +615,9 @@ select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3a3a
   'richiameresti: ricompare una volta sola');
 select pg_temp.ok(public.salva_richiameresti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a',
   (select inizio from public.chiamate where durata = 900), 'salta'), 'richiameresti: dopo la riproposta Ida può ancora rispondere');
+select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b')
+  where chi = '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b' and con = '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 1,
+  'richiameresti: a Leo torna la domanda sulla caduta lunga a cui non ha risposto (v1.4)');
 select pg_temp.ok((select count(*) from public.richiameresti_da_riproporre('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b')) = 0
   and (select count(*) from public.richiameresti_da_riproporre('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c')) = 0,
   'richiameresti: niente da riproporre a chi ha già risposto o non ha chiamato');
@@ -635,7 +640,7 @@ select pg_temp.ok(public.pulisci_carte_viste() = 1, 'carte viste: alla chiusura 
 reset role;
 select pg_temp.ok(not exists (select 1 from public.carte_viste), 'carte viste: dopo la chiusura non resta nessuna riga');
 set local role service_role;
-select pg_temp.ok((public.pulisci_stanze_chiuse() ->> 'richiameresti')::int = 2, 'richiameresti: alla chiusura della stanza si cancellano');
+select pg_temp.ok((public.pulisci_stanze_chiuse() ->> 'richiameresti')::int = 4, 'richiameresti: alla chiusura della stanza si cancellano (4 righe: anche la caduta lunga, v1.4)');
 reset role;
 select pg_temp.ok(not exists (select 1 from public.richiameresti), 'richiameresti: dopo la chiusura non resta nessuna riga');
 rollback;

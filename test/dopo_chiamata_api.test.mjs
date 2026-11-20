@@ -77,11 +77,28 @@ test("dopo: chiamata appena finita sotto i 60 s → testo «durata poco», Segna
   } });
 });
 
-test("dopo: caduta lunga senza rientro → solo Segnala e Torna, senza il testo «durata poco»", async () => {
+test("v1.4 dopo: caduta lunga appena finita → testo con la durata, «La richiameresti?» e diario dalla proposta", async () => {
+  const d = dati({ proposta: { chi: IO, con: LEI, inizio: "2026-11-13T19:10:00+00:00", durata: 61, esito: "caduta" } });
+  const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
+  assert.equal(r.dopo.tipo, "richiameresti");
+  assert.deepEqual(r.dopo.passi, ["richiameresti", "diario", "fine"]);
+  assert.equal(r.dopo.testo, "La chiamata si è interrotta dopo 1:01. Conta nei limiti di oggi.");
+  assert.deepEqual(r.dopo.diario, { con: LEI, chiamataIl: "2026-11-13T19:10:00+00:00", durata: 61 });
+});
+
+test("v1.4 dopo: proposta di una chiamata finita bene → nessun testo in alto (come prima)", async () => {
+  const d = dati({ proposta: { chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00", durata: 900, esito: "tempo_scaduto" } });
+  const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
+  assert.equal(r.dopo.tipo, "richiameresti");
+  assert.equal(r.dopo.testo, null);
+});
+
+test("v1.4 dopo: caduta lunga già proposta → solo il testo vero con Segnala e Torna (mai «durata poco»)", async () => {
   const d = dati({ ultima: { chi: IO, con: LEI, inizio: "2026-11-13T19:10:00Z", durata: 500, esito: "caduta" } });
   const r = await dopoChiamata({ per: IO, appena: true, adesso: ADESSO }, d);
   assert.equal(r.dopo.tipo, "breve");
-  assert.equal(r.dopo.testo, null);
+  assert.deepEqual(r.dopo.passi, ["fine"]);
+  assert.equal(r.dopo.testo, "La chiamata si è interrotta dopo 8:20. Conta nei limiti di oggi.");
 });
 
 test("dopo: chi NON ha premuto «Chiudi e segnala» non lo scopre (mai il modulo #7 aperto da solo, mai la domanda)", async () => {
@@ -159,13 +176,13 @@ test("riproponiDb: legge anche la durata della chiamata (solo quella colonna), c
   const inizio = "2026-11-13T19:00:00.123456+00:00";
   const { f, chieste } = supabase([
     ["rpc/richiameresti_da_riproporre", [{ chi: LEI, con: IO, inizio }]],
-    ["/chiamate?", [{ durata: 845 }]],
+    ["/chiamate?", [{ durata: 845, esito: "caduta" }]],
   ]);
   const grezze = [];
   const g = (url, init) => { grezze.push(url); return f(url, init); };
-  assert.deepEqual(await riproponiDb(ENV, IO, g), { chi: LEI, con: IO, inizio, durata: 845 });
+  assert.deepEqual(await riproponiDb(ENV, IO, g), { chi: LEI, con: IO, inizio, durata: 845, esito: "caduta" });
   const u = chieste[1].url;
-  assert.ok(u.startsWith(ENV.SUPABASE_URL + "/rest/v1/chiamate?select=durata&"));
+  assert.ok(u.startsWith(ENV.SUPABASE_URL + "/rest/v1/chiamate?select=durata,esito&"));
   assert.ok(u.includes(`chi=eq.${LEI}`) && u.includes(`inizio=eq.${inizio}`));
   // Il «+» dell'orario va codificato, altrimenti PostgREST lo legge come spazio.
   assert.ok(grezze[1].includes("%2B00%3A00"));
@@ -176,12 +193,12 @@ test("riproponiDb: se la durata non si legge la domanda resta (durata null): la 
     ["rpc/richiameresti_da_riproporre", [{ chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00" }]],
     ["/chiamate?", { stato: 503, corpo: {} }],
   ]);
-  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00", durata: null });
+  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: LEI, con: IO, inizio: "2026-11-13T19:00:00+00:00", durata: null, esito: null });
 });
 
 test("riproponiDb: funzione del server con la persona del token; nessuna riga → null; errore → undefined", async () => {
   const { f, chieste } = supabase([["rpc/richiameresti_da_riproporre", [{ chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00" }]]]);
-  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00", durata: null });
+  assert.deepEqual(await riproponiDb(ENV, IO, f), { chi: IO, con: LEI, inizio: "2026-11-13T19:00:00+00:00", durata: null, esito: null });
   assert.equal(chieste[0].url, ENV.SUPABASE_URL + "/rest/v1/rpc/richiameresti_da_riproporre");
   assert.equal(chieste[0].init.method, "POST");
   assert.deepEqual(JSON.parse(chieste[0].init.body), { p_utente: IO });

@@ -1,7 +1,7 @@
 // Dopo la chiamata (issue #4 spec v1.3 § 3, passo 3c-4a): cosa si mostra e cosa si salva. Solo dati inventati.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { schermataDopo, TESTI_DOPO, RISPOSTE, leggiRisposta, notaSegreta } from "../api/dopo_chiamata.js";
+import { schermataDopo, TESTI_DOPO, RISPOSTE, leggiRisposta, notaSegreta, testoInterrotta } from "../api/dopo_chiamata.js";
 
 test("chiamata ≥ 60 s chiusa per tempo o con «Chiudi»: La richiameresti?, poi diario, poi la fine", () => {
   for (const esito of ["tempo_scaduto", "chiusa"]) {
@@ -27,12 +27,26 @@ test("chiamata < 60 s: niente domanda né diario, solo il testo breve con Segnal
   }
 });
 
-test("caduta senza rientro ≥ 60 s: niente domanda né diario; il testo «durata poco» non si usa perché sarebbe falso", () => {
-  const s = schermataDopo({ esito: "caduta", durata: 300 });
-  assert.equal(s.tipo, "breve");
-  assert.deepEqual(s.passi, ["fine"]);
-  assert.equal(s.testo, null);
+test("v1.4: caduta senza rientro dopo più di 60 s → testo con la durata vera, poi domanda, diario e fine", () => {
+  const s = schermataDopo({ esito: "caduta", durata: 61 });
+  assert.equal(s.tipo, "richiameresti");
+  assert.deepEqual(s.passi, ["richiameresti", "diario", "fine"]);
+  assert.equal(s.testo, "La chiamata si è interrotta dopo 1:01. Conta nei limiti di oggi.");
   assert.equal(s.segnala, true);
+  assert.equal(schermataDopo({ esito: "caduta", durata: 60 }).testo, "La chiamata si è interrotta dopo 1:00. Conta nei limiti di oggi.");
+  assert.equal(schermataDopo({ esito: "caduta", durata: 845 }).testo, "La chiamata si è interrotta dopo 14:05. Conta nei limiti di oggi.");
+});
+
+test("v1.4: caduta a 59 s → resta il testo «durata poco» della v1.3, niente domanda", () => {
+  const s = schermataDopo({ esito: "caduta", durata: 59 });
+  assert.equal(s.tipo, "breve");
+  assert.equal(s.testo, "La chiamata è durata poco e non conta nei limiti.");
+});
+
+test("v1.4: testoInterrotta scrive minuti e secondi a due cifre", () => {
+  assert.equal(testoInterrotta(61), "La chiamata si è interrotta dopo 1:01. Conta nei limiti di oggi.");
+  assert.equal(testoInterrotta(600), "La chiamata si è interrotta dopo 10:00. Conta nei limiti di oggi.");
+  assert.equal(testoInterrotta(899), "La chiamata si è interrotta dopo 14:59. Conta nei limiti di oggi.");
 });
 
 test("«Chiudi e segnala»: si apre subito il modulo #7 con la persona collegata, a qualunque durata", () => {

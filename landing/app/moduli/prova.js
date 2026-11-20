@@ -67,6 +67,7 @@ const ORE_SEGNALAZIONE = Object.freeze({ contatti_prima_porta: 72, insulti: 24, 
 // Nella prova «Scrivici» segna come urgente un messaggio con una di queste parole (nell'app vera lo decide il database).
 const PAROLE_PERICOLO = /\b(paura|pericolo|minacc\w*|aggredit\w*|segui\w*|112)\b/i;
 const TESTO_BREVE = "La chiamata è durata poco e non conta nei limiti.";
+const testoInterrotta = (d) => `La chiamata si è interrotta dopo ${Math.floor(d / 60)}:${String(d % 60).padStart(2, "0")}. Conta nei limiti di oggi.`;
 const TESTO_TRE = "Avete già parlato 3 volte. Ora tocca alle chiavi";
 
 // La stanza della prova: 11 persone inventate (con te fanno 12). La città dice sempre che è una persona finta.
@@ -261,7 +262,8 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
       r.chiesta = true;
       if (r.esito === "chiudi_e_segnala") return ok({ dopo: null });
       if (r.durata >= CHIAMATA.minimo) {
-        return ok({ dopo: { tipo: "richiameresti", passi: ["richiameresti", "diario", "fine"], testo: null, altra: r.altra,
+        const testo = r.esito === "caduta" ? testoInterrotta(r.durata) : null; // spec v1.4
+        return ok({ dopo: { tipo: "richiameresti", passi: ["richiameresti", "diario", "fine"], testo, altra: r.altra,
           chiamata: { chi: r.chi, inizio: r.inizio }, diario: { con: r.altra, chiamataIl: r.inizio, durata: r.durata } } });
       }
       return ok({ dopo: { tipo: "breve", passi: ["fine"], testo: r.durata > 0 ? TESTO_BREVE : null, altra: r.altra, chiamata: null, diario: null } });

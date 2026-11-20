@@ -69,6 +69,16 @@ test("schermataDopo: sotto i 60 s solo il testo, «Segnala un problema» e «Tor
   assert.equal(schermataDopo(null).tipo, "nessuna");
 });
 
+test("v1.4 schermataDopo: caduta lunga → il testo con la durata sta in alto sopra «La richiameresti?»", () => {
+  const testo = "La chiamata si è interrotta dopo 1:01. Conta nei limiti di oggi.";
+  const s = schermataDopo({ ...DOPO_SI, testo }, { nomeAltra: "Giulia" });
+  assert.equal(s.tipo, "richiameresti");
+  assert.equal(s.testo, testo);
+  assert.equal(s.titolo, "La richiameresti?");
+  // chiamata finita bene: nessun testo in alto
+  assert.equal(schermataDopo(DOPO_SI).testo, null);
+});
+
 function ambiente({ dopo = async () => ({ ok: true, dopo: DOPO_SI }), richiameresti = async () => ({ ok: true, salvata: true }) } = {}) {
   const fatti = [];
   const t = creaTelefono({
