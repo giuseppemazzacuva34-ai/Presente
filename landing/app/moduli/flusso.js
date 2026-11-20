@@ -551,7 +551,8 @@ function schermoChiamata(m) {
     ];
   } else if (sc.tipo === "richiameresti") {
     // Spec v1.3 § 3: Sì / No / Salta, nota segreta sotto, «Segnala un problema» in fondo. Nessuna risposta obbligata.
-    parti = [h("h1", { id: "domanda-dopo" }, sc.titolo),
+    parti = [sc.testo ? h("p", { classe: "sottotitolo", role: "status" }, sc.testo) : null,
+      h("h1", { id: "domanda-dopo" }, sc.titolo),
       h("div", { classe: "azioni-chiamata", role: "group", "aria-labelledby": "domanda-dopo" },
         sc.risposte.map(([valore, testo]) => bottone(testo, () => t.richiameresti(valore), { classe: valore === "salta" ? "link" : "bottone-secondario" }))),
       h("p", { classe: "nota" }, sc.nota),

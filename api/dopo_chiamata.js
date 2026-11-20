@@ -16,6 +16,11 @@ export const TESTI_DOPO = Object.freeze({
   torna: "Torna alla stanza",
 });
 
+// Spec v1.4 (CPO, 20/11): caduta senza rientro dopo almeno 60 secondi. Dice la durata vera e che conta nei limiti
+// (i limiti contano ogni chiamata da 60 s in su, qualunque sia l'esito: contaNeiLimiti in chiamate.js).
+export const testoInterrotta = (durata) =>
+  `La chiamata si è interrotta dopo ${Math.floor(durata / 60)}:${String(durata % 60).padStart(2, "0")}. Conta nei limiti di oggi.`;
+
 export const notaSegreta = (nome) =>
   `Resta tra te e Presente. ${String(nome || "").trim() || "L'altra persona"} non lo saprà mai.`;
 
@@ -28,10 +33,12 @@ export function schermataDopo(chiamata) {
   const { esito, durata } = chiamata || {};
   if (esito === "chiudi_e_segnala") return { tipo: "segnala", passi: ["segnala"], origine: "chiudi_e_segnala", segnala: true, testo: null };
   const valida = durataValida(durata);
-  if (valida && durata >= CHIAMATA.minimoPerContare && (esito === "tempo_scaduto" || esito === "chiusa")) {
-    return { tipo: "richiameresti", passi: ["richiameresti", "diario", "fine"], segnala: true, testo: null };
+  if (valida && durata >= CHIAMATA.minimoPerContare && (esito === "tempo_scaduto" || esito === "chiusa" || esito === "caduta")) {
+    // v1.4: la caduta lunga ha lo stesso finale di una chiamata normale, con in alto il testo della durata vera.
+    const testo = esito === "caduta" ? testoInterrotta(durata) : null;
+    return { tipo: "richiameresti", passi: ["richiameresti", "diario", "fine"], segnala: true, testo };
   }
-  // Sotto i 60 secondi: il testo della spec. Caduta lunga senza rientro: niente testo «durata poco» (sarebbe falso).
+  // Sotto i 60 secondi: il testo della spec v1.3.
   const breve = valida && durata < CHIAMATA.minimoPerContare;
   return { tipo: "breve", passi: ["fine"], segnala: true, testo: breve ? TESTI_DOPO.breve : null };
 }
@@ -77,7 +84,9 @@ export async function dopoChiamata({ per, appena, adesso }, d) {
     const altra = altraDi(proposta, per);
     const inizio = istante(proposta.inizio);
     if (!altra || !inizio) return { ok: true, dopo: null };
-    const s = schermataDopo({ esito: "chiusa", durata: CHIAMATA.minimoPerContare });
+    // Il testo in alto (v1.4) solo se la proposta è una caduta lunga con durata letta; altrimenti come prima.
+    const caduta = proposta.esito === "caduta" && durataValida(proposta.durata) && proposta.durata >= CHIAMATA.minimoPerContare;
+    const s = schermataDopo(caduta ? { esito: "caduta", durata: proposta.durata } : { esito: "chiusa", durata: CHIAMATA.minimoPerContare });
     // Passo «diario» (#5): persona, inizio ESATTO come lo dà il database (la tabella lo confronta con chiamate.inizio)
     // e durata vera; null se la durata non c'è o non conta, e l'app salta il passo.
     const conta = Number.isInteger(proposta.durata) && proposta.durata >= CHIAMATA.minimoPerContare && durataValida(proposta.durata);
@@ -96,6 +105,11 @@ export async function dopoChiamata({ per, appena, adesso }, d) {
   // una chiamata chiusa o caduta, così non scopre di essere stata segnalata.
   const esito = ultima.esito === "chiudi_e_segnala" ? (ultima.durata < CHIAMATA.minimoPerContare ? "chiusa" : "caduta") : ultima.esito;
   const s = schermataDopo({ esito, durata: ultima.durata });
+  // Una caduta lunga senza proposta (domanda già fatta, o «Chiudi e segnala» premuto dall'altra persona): solo il
+  // testo vero con Segnala e Torna (v1.4), mai «durata poco».
+  if (s.tipo === "richiameresti" && esito === "caduta") {
+    return { ok: true, dopo: { tipo: "breve", passi: ["fine"], testo: s.testo, altra, chiamata: null, diario: null } };
+  }
   // Una chiamata che conta senza proposta ha già avuto la domanda (risposta o riproposta): non si chiede di nuovo.
   if (s.tipo !== "breve") return { ok: true, dopo: null };
   return { ok: true, dopo: { tipo: s.tipo, passi: s.passi, testo: s.testo, altra, chiamata: null, diario: null } };

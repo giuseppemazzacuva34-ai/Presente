@@ -191,6 +191,8 @@ export function schermataDopo(dopo, { nomeAltra = "", risposto = false } = {}) {
   if (dopo.tipo === "richiameresti" && !risposto && dopo.chiamata) {
     return {
       tipo: "richiameresti",
+      // Spec v1.4: dopo una caduta lunga il server manda in alto «La chiamata si è interrotta dopo m:ss…».
+      testo: typeof dopo.testo === "string" && dopo.testo ? dopo.testo : null,
       titolo: TESTI_DOPO.domanda,
       nota: notaSegreta(nomeAltra),
       risposte: [["si", "Sì"], ["no", "No"], ["salta", "Salta"]],
