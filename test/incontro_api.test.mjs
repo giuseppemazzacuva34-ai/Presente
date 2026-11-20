@@ -152,6 +152,7 @@ const STATO = {
   proposta_mia: false, proposta_scade: "2026-11-20T10:00:00+00:00", controproposte_rimaste: 3,
   azioni: ["accetto", "altra_data", "annulla"], ritardo_minuti: 0, esito: null,
   checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null, segnale: null,
+  disdetta: null, // passo 2q
 };
 const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
 

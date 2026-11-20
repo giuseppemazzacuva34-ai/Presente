@@ -90,3 +90,26 @@ test("annulla: confermato, chiuso o scaduto → rifiuto con il motivo; porta di 
   const r = await incontroApi(annulla(), ENV, supabaseFinto({ rpc: { annulla_incontro: "non_nella_porta" } }).f);
   assert.equal(r.status, 404);
 });
+
+// ── Passo 2q: la disdetta nello stato (GET /app/api/incontro?porta=<id>). ──
+const STATO_DISDETTO = {
+  stato: "da_fissare", scadenza: "2026-11-28T18:00:00+00:00", orario: null, locale: null, luogo: null,
+  proposta_mia: false, proposta_scade: null, controproposte_rimaste: 3, azioni: ["proponi", "annulla_incontro"],
+  ritardo_minuti: 0, esito: null, checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null,
+  segnale: null, disdetta: { mia: false, il: "2026-11-20T09:00:00+00:00", orario: "2026-11-21T18:00:00+00:00" },
+};
+const leggiStato = () => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${PORTA}` });
+
+test("stato: la disdetta arriva al telefono con solo mia, il e orario", async () => {
+  const conAltro = { ...STATO_DISDETTO, disdetta: { ...STATO_DISDETTO.disdetta, disdetto_da: ALTRO, persona: ALTRO } };
+  const r = await incontroApi(leggiStato(), ENV, supabaseFinto({ rpc: { stato_incontro: conAltro } }).f);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, incontro: STATO_DISDETTO });
+});
+
+test("stato: disdetta di forma strana → null (mai testo o oggetti del database al telefono)", async () => {
+  for (const strana of ["Anna", 3, [1], { mia: "si", il: "x", orario: null }, { mia: true, il: { a: 1 }, orario: null }]) {
+    const r = await incontroApi(leggiStato(), ENV, supabaseFinto({ rpc: { stato_incontro: { ...STATO_DISDETTO, disdetta: strana } } }).f);
+    assert.equal((await r.json()).incontro.disdetta, null, JSON.stringify(strana));
+  }
+});
