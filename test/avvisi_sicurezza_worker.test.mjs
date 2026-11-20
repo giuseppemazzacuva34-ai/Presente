@@ -99,6 +99,15 @@ test("il testo dice solo tipi e numeri, con le sospensioni da rivedere", () => {
   assert.match(t.testo, /presenteincontri\.app\/app\/pannello\.html/);
 });
 
+test("i messaggi «Scrivici» con bandiera contano nell'email, senza il loro testo (#10 v1.1)", () => {
+  const t = testoAvviso([{ perche: "supporto" }, { perche: "supporto" }, { perche: "nuova" }]);
+  assert.match(t.oggetto, /\(3\)/);
+  assert.match(t.testo, /2 messaggi «Scrivici» da guardare/);
+  assert.match(t.testo, /1 segnalazione nuova/);
+  const uno = testoAvviso([{ perche: "supporto" }]);
+  assert.match(uno.testo, /1 messaggio «Scrivici» da guardare/);
+});
+
 test("ogni minuto parte solo il lavoro degli avvisi, e il cron è in wrangler.jsonc", async () => {
   const wr = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
   assert.ok(wr.includes(`"${CRON_AVVISI}"`), "manca il cron ogni minuto in wrangler.jsonc");
