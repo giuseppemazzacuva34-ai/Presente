@@ -52,6 +52,14 @@ test("scheda: regola proposta dal motivo (solo un suggerimento)", () => {
   assert.equal(schedaLeggibile({ segnalazione: { ...base, motivo: "minacce_pericolo" } }).regolaProposta, "sicurezza");
 });
 
+test("scheda: frase della chiave solo quando il database la manda (spec v1.2, punto 2)", () => {
+  const base = { id: SEG, motivo: "insulti", origine: "scheda", testo: "", creata_il: "2026-11-16T14:00:00Z", contro: SEG };
+  assert.equal(schedaLeggibile({ segnalazione: { ...base, frase_chiave: " Scrivimi qui " } }).fraseChiave, "Scrivimi qui");
+  assert.equal(schedaLeggibile({ segnalazione: { ...base, frase_chiave: null } }).fraseChiave, "");
+  assert.equal(schedaLeggibile({ segnalazione: base }).fraseChiave, "");
+  assert.equal(schedaLeggibile({ segnalazione: { ...base, frase_chiave: 7 } }).fraseChiave, "");
+});
+
 test("scheda: racconto, chiamate, porte e storico in frasi; mai campi non previsti", () => {
   const s = schedaLeggibile({
     segnalazione: { id: SEG, motivo: "altro", origine: "scheda", testo: "racconto", creata_il: "2026-11-16T14:00:00Z", nome_da: "Anna", nome_contro: "Bruno", contro: SEG },
