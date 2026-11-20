@@ -60,10 +60,12 @@ const ORA_INCONTRO = oraDiRoma(2026, 11, 20, 20); // venerdì 20:00
 const min = (n) => n * 60000;
 const alle = (ms) => new Date(ORA_INCONTRO.getTime() + ms);
 
-test("disdetta a 6 h 01 min: gratis, crediti restituiti a entrambi", () => {
+test("disdetta a 6 h 01 min (v1.1): torna «da fissare», caparre ancora bloccate, nessuna penale", () => {
   const r = disdetta({ orario: ORA_INCONTRO, adesso: alle(-min(361)), chi: "a", a: "a", b: "b" });
   assert.equal(r.esito, "disdetto");
-  assert.deepEqual(r.restituisci, ["a", "b"]);
+  assert.equal(r.stato, "da_fissare");
+  assert.deepEqual(r.restituisci, []);
+  assert.deepEqual(r.movimenti, []);
   assert.equal(r.penale, 0);
 });
 
