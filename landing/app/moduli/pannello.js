@@ -116,6 +116,8 @@ export function schedaLeggibile(scheda) {
     storico,
     sanzionabile: typeof s.contro === "string" && s.contro.length > 0,
     regolaProposta: regolaProposta(s.motivo),
+    // Spec #7 v1.2, punto 2: il database la manda solo con una porta tra i due e un motivo che riguarda la frase.
+    fraseChiave: nome(s.frase_chiave),
   };
 }
 
