@@ -297,6 +297,7 @@ export function collegaVideo({ svelamento, video, porta }) {
       const r = await svelamento.vistaVideo(porta);
       return r.ok ? { ok: true, vista: segui(r.vista) } : no(r);
     },
+    muto(spento) { video.muto(spento); },
     chiudi() { video.chiudi(); },
   };
 }

@@ -176,6 +176,20 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .sala-attesa .bottone, .sala-attesa .bottone-secondario { min-height: 44px; }
 .anteprima-sfocata { overflow: hidden; border-radius: 0.75rem; background: #000; aspect-ratio: 3 / 4; max-height: 50vh; }
 .anteprima-sfocata video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); filter: blur(24px); }
+/* Video dello svelamento (#65, passo 7d-2): video dell'altra persona (lo sfocato lo applica chi trasmette), filigrana con
+   il nome di chi guarda, semitrasparente e in movimento lento; timer grande; microfono e «Chiudi e segnala» rosso. */
+.svelamento-video { display: grid; gap: 0.5rem; margin: 1rem 0; }
+.svelamento-video h2 { font-size: 1.1rem; margin: 0; }
+.schermo-svelamento { position: relative; overflow: hidden; border-radius: 0.75rem; background: #000; aspect-ratio: 3 / 4; max-height: 60vh; }
+.schermo-svelamento video { width: 100%; height: 100%; object-fit: cover; }
+.filigrana { position: absolute; left: 8%; top: 12%; color: rgba(242, 237, 228, 0.45); font-size: 1rem; font-weight: 600;
+  pointer-events: none; user-select: none; white-space: nowrap; text-shadow: 0 0 2px rgba(0, 0, 0, 0.6); animation: filigrana 14s ease-in-out infinite alternate; }
+@keyframes filigrana { 0% { transform: translate(0, 0) rotate(-12deg); } 50% { transform: translate(28%, 260%) rotate(-12deg); } 100% { transform: translate(6%, 520%) rotate(-12deg); } }
+.timer-svelamento { font-family: var(--serif); font-style: italic; font-size: 2rem; text-align: center; margin: 0; }
+.pulsanti-svelamento { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pulsanti-svelamento button, .svelamento-video .bottone { min-height: 44px; }
+.bottone-rosso { margin-left: 0; }
+.svelamento-video .ecco { font-family: var(--serif); font-style: italic; font-size: 1.6rem; text-align: center; }
 
 /* D140 A: indirizzo a cui mandare la risposta per email, ben visibile (pagina interna /app/supporto.html). */
 #supporto .email-risposta { font-size: 1.25rem; font-weight: 700; color: var(--avorio); word-break: break-all; }
