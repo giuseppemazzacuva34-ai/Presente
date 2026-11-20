@@ -3,7 +3,7 @@
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML. La risposta
 // salvata compare all'utente in «I miei messaggi».
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaSupportoOperatore, vociSupporto, testoErroreOperatore, MASSIMO_RISPOSTA, copiaTesto } from "/app/moduli/supporto_operatore.js";
+import { creaSupportoOperatore, vociSupporto, unisciBozze, testoErroreOperatore, MASSIMO_RISPOSTA, copiaTesto } from "/app/moduli/supporto_operatore.js";
 
 const radice = document.getElementById("supporto");
 const stato = document.getElementById("stato");
@@ -49,7 +49,8 @@ function moduloRisposta(p, v, i) {
   campo.addEventListener("input", () => { conto.textContent = `${[...campo.value].length}/${MASSIMO_RISPOSTA}`; });
   const errore = h("p", { class: "errore", role: "alert" });
   const invia = h("button", { type: "submit", class: "bottone", testo: "Invia la risposta" });
-  return h("form", { class: "corpo", onsubmit: async (e) => {
+  const scrivi = (testo) => { campo.value = testo; campo.dispatchEvent(new Event("input")); };
+  const modulo = h("form", { class: "corpo", onsubmit: async (e) => {
     e.preventDefault();
     errore.textContent = "";
     invia.disabled = true;
@@ -59,6 +60,38 @@ function moduloRisposta(p, v, i) {
     mostraDaCopiare(p, v.email, campo.value);
   } },
   h("label", { for: `risposta-${i}`, testo: `Risposta a ${v.email || "questa persona"}` }), campo, conto, errore, invia);
+  return h("div", {}, v.bozza ? riquadroBozza(p, v, i, { scrivi, campo, modulo, errore }) : null, modulo);
+}
+
+// Parte B (D122 B): la bozza dell'agente. Nessuna risposta parte senza un tocco qui. «Da gestire da Giuseppe» è una
+// nota interna: niente «Invia così» né «Modifica e invia», solo «Scarta e scrivo io».
+function riquadroBozza(p, v, i, { scrivi, campo, modulo, errore }) {
+  const { bozza } = v;
+  const riquadro = h("section", { class: "bozza", "aria-labelledby": `bozza-${i}` },
+    h("h3", { id: `bozza-${i}`, testo: bozza.daGestire ? "Nota dell'agente (non inviare)" : "Bozza dell'agente" }),
+    h("p", { class: "nota", testo: `Fonte: ${bozza.fonte}` }),
+    bozza.istruzioni ? h("p", { testo: "Attenzione: testo con istruzioni all'agente. Controlla bene la bozza." }) : null,
+    bozza.ferma ? h("p", { testo: "Bozza in attesa da più di 36 ore: la promessa è 48 ore." }) : null,
+    h("p", { class: "racconto", testo: bozza.testo }));
+  const azioni = h("div", { class: "azioni" },
+    bozza.daGestire ? null : h("button", { type: "button", class: "bottone", testo: "Invia così", onclick: () => {
+      scrivi(bozza.testo);
+      modulo.requestSubmit();
+    } }),
+    bozza.daGestire ? null : h("button", { type: "button", class: "bottone-secondario", testo: "Modifica e invia", onclick: () => {
+      scrivi(bozza.testo);
+      campo.focus();
+    } }),
+    h("button", { type: "button", class: "bottone-secondario", testo: "Scarta e scrivo io", onclick: async () => {
+      errore.textContent = "";
+      const esito = await p.scarta(v.id);
+      if (!esito.ok && esito.motivo !== "gia_tolta") { errore.textContent = testoErroreOperatore(esito.motivo); return; }
+      riquadro.remove();
+      scrivi("");
+      campo.focus();
+    } }));
+  riquadro.append(azioni);
+  return riquadro;
 }
 
 // D140 A: dopo il salvataggio la risposta va copiata in un'email dalla casella di Presente all'indirizzo mostrato.
@@ -89,7 +122,9 @@ async function mostraCoda(p) {
       r.motivo === "accesso" ? h("p", {}, h("a", { href: "/app/", testo: "Vai all'app" })) : null);
     return;
   }
-  const voci = vociSupporto(r.messaggi, new Date());
+  // Le bozze sono un aiuto: se non arrivano, la coda si mostra lo stesso e si risponde a mano.
+  const b = await p.bozze();
+  const voci = unisciBozze(vociSupporto(r.messaggi, new Date()), b.ok ? b.bozze : [], new Date());
   const aperti = voci.filter((v) => !v.risposto).length;
   mostra(
     h("h1", { testo: TITOLO }),

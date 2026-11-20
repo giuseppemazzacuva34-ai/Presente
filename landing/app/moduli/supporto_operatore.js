@@ -1,5 +1,5 @@
 // Pagina di chi risponde a «Scrivici» (issue #10, spec v1 del CPO, parte A; passo 5a della linea «sviluppatore-c»).
-// Parla SOLO con /app/api/supporto/coda e /app/api/supporto/risposta (worker/supporto_operatore_api.js) col token di
+// Parla SOLO con /app/api/supporto/coda, /risposta, /bozze e /scarta (worker/supporto_operatore_api.js) col token di
 // chi risponde: il ruolo «supporto» lo decide il database (operatori_supporto). Qui solo testi e forma dei dati,
 // niente pagina (così si prova con node --test). Niente salvataggi sul telefono, niente log: email e testi restano
 // sullo schermo. La pagina è interna (in beta la usa solo Giuseppe): nessun testo pubblico nuovo.
@@ -8,6 +8,9 @@ import { CATEGORIE_SCRIVICI } from "./aiuto.js";
 
 const CODA = "/app/api/supporto/coda";
 const RISPOSTA = "/app/api/supporto/risposta";
+const BOZZE = "/app/api/supporto/bozze";
+const SCARTA = "/app/api/supporto/scarta";
+const FERMA_MS = 36 * 3600 * 1000; // parte B v1: bozza non toccata dopo 36 ore → nuovo avviso nel pannello
 const ATTESA_MS = 10000;
 const PROMESSA_MS = 48 * 3600 * 1000; // «Ti rispondiamo per email entro 48 ore»
 const ROSSA_MS = 12 * 3600 * 1000;
@@ -55,6 +58,32 @@ export function vociSupporto(messaggi, adesso = new Date()) {
     .map(({ _ordine, ...v }) => v);
 }
 
+// Parte B (D122 B): accanto a ogni messaggio senza risposta la bozza dell'agente, se c'è.
+// bozza = { testo, fonte, istruzioni, daGestire, ferma } | null. «Da gestire da Giuseppe» è una nota interna, mai
+// da inviare così; «ferma» = bozza non toccata da più di 36 ore.
+export function unisciBozze(voci, bozze, adesso = new Date()) {
+  const perId = new Map();
+  for (const b of Array.isArray(bozze) ? bozze : []) {
+    if (b && typeof b === "object" && UUID.test(String(b.id || "")) && typeof b.testo === "string" && b.testo.trim()) perId.set(b.id, b);
+  }
+  const ora = adesso.getTime();
+  return (Array.isArray(voci) ? voci : []).map((v) => {
+    const b = v.risposto ? null : perId.get(v.id);
+    if (!b) return { ...v, bozza: null };
+    const creata = new Date(b.creataIl || "").getTime();
+    return {
+      ...v,
+      bozza: {
+        testo: b.testo,
+        fonte: typeof b.fonte === "string" ? b.fonte : "nessuna",
+        istruzioni: b.conIstruzioni === true,
+        daGestire: /^Da gestire da Giuseppe/.test(b.testo),
+        ferma: !Number.isNaN(creata) && ora - creata > FERMA_MS,
+      },
+    };
+  });
+}
+
 // Prima di inviare: id valido, testo non vuoto, entro il tetto del server.
 export function corpoRisposta(id, risposta) {
   if (!UUID.test(String(id || ""))) return { ok: false, motivo: "dati" };
@@ -71,6 +100,7 @@ const ERRORI = Object.freeze({
   rete: "Connessione assente. Riprova tra poco.",
   troppe: "Troppi tentativi. Aspetta un minuto.",
   gia_risposto: "Questo messaggio ha già una risposta.",
+  gia_tolta: "La bozza non c'è più: scrivi tu la risposta.",
   vuoto: "Scrivi la risposta prima di inviarla.",
   lunga: `La risposta può avere al massimo ${MASSIMO_RISPOSTA} caratteri.`,
   dati: "Controlla la risposta e riprova.",
@@ -113,6 +143,20 @@ export function creaSupportoOperatore({ token, fetch: f = globalThis.fetch, atte
       if (errore) return { ok: false, motivo: errore };
       if (dati.ok !== true || !Array.isArray(dati.messaggi)) return { ok: false, motivo: "riprova" };
       return { ok: true, messaggi: dati.messaggi };
+    },
+    async bozze() {
+      const { dati, errore } = await chiedi(BOZZE, "GET");
+      if (errore) return { ok: false, motivo: errore };
+      if (dati.ok !== true || !Array.isArray(dati.bozze)) return { ok: false, motivo: "riprova" };
+      return { ok: true, bozze: dati.bozze };
+    },
+    async scarta(id) {
+      if (!UUID.test(String(id || ""))) return { ok: false, motivo: "dati" };
+      const { dati, errore } = await chiedi(SCARTA, "POST", { id });
+      if (errore) return { ok: false, motivo: errore };
+      if (dati.ok === true) return { ok: true };
+      const motivo = typeof dati.motivo === "string" && Object.hasOwn(ERRORI, dati.motivo) ? dati.motivo : "riprova";
+      return { ok: false, motivo };
     },
     async rispondi(id, risposta) {
       const c = corpoRisposta(id, risposta);

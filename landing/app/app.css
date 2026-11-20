@@ -188,3 +188,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 /* «Il vostro incontro» (#6, passo 2i): «Sono qui» grande e facile da toccare, il segnale ben leggibile. */
 .bottone.grande { display: block; width: 100%; margin: 1rem 0; min-height: 4rem; font-size: 1.3rem; }
 .segnale { font-family: var(--serif); font-style: italic; font-size: 1.8rem; color: var(--avorio); text-align: center; margin: 1rem 0; }
+/* Bozza dell'agente nel pannello «Scrivici» (#10 parte B, linea C): riquadro tratteggiato, testi in avorio. */
+#supporto .bozza { border: 1px dashed var(--linea); border-radius: 0.5rem; padding: 0.6rem; margin: 0.5rem 0; color: var(--avorio); }
+#supporto .bozza h3 { font-size: 1rem; margin: 0 0 0.3rem; }
