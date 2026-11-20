@@ -35,10 +35,11 @@ function fase(stato) {
   return stato.inizio ? "in_corso" : "attesa";
 }
 
-function vistaPer(stato, da) {
+// «ora» è l'ora del server (passo 7d-1): il telefono calcola timer e sfocatura senza fidarsi del proprio orologio.
+function vistaPer(stato, da, ora) {
   if (!stato.persone[da] && Object.keys(stato.persone).length >= 2) return null;
   const f = fase(stato);
-  const v = { fase: f };
+  const v = { fase: f, ora };
   if (stato.inizio) Object.assign(v, { inizio: stato.inizio, nitidoDal: stato.inizio + SFOCATO_MS, fine: stato.inizio + DURATA_MS });
   return v;
 }
@@ -80,7 +81,7 @@ export class GestoreSvelamento {
     await this.#salva(stato, chiusure);
     await this.#esegui();
     await this.#allarme();
-    return { ok: true, vista: vistaPer(stato, da) };
+    return { ok: true, vista: vistaPer(stato, da, this.adesso().getTime()) };
   }
 
   // Solo per il Worker (mai per il telefono): la sessione dell'altra persona, da cui ricevere voce e video.
@@ -116,7 +117,7 @@ export class GestoreSvelamento {
     await this.#salva(stato, chiusure);
     await this.#esegui();
     await this.#allarme();
-    return { ok: true, vista: vistaPer(stato, da) };
+    return { ok: true, vista: vistaPer(stato, da, this.adesso().getTime()) };
   }
 
   // Il telefono ha confermato la ricezione di voce e video dell'altra persona: con tutti e due partono i 10 secondi.
@@ -136,13 +137,13 @@ export class GestoreSvelamento {
     await this.#salva(stato, chiusure);
     if (chiusure.length) await this.#esegui();
     await this.#allarme();
-    return { ok: true, vista: vistaPer(stato, da) };
+    return { ok: true, vista: vistaPer(stato, da, this.adesso().getTime()) };
   }
 
   async vista(da) {
     const stato = await this.storage.get("stato");
     if (!stato) return no("nessuna");
-    const vista = vistaPer(stato, da);
+    const vista = vistaPer(stato, da, this.adesso().getTime());
     return vista ? { ok: true, vista } : no("non_tocca_a_te");
   }
 

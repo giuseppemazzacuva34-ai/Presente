@@ -276,3 +276,13 @@ test("Riprova dell'altra persona chiude anche le tracce che stavo per ricevere",
   ]);
   assert.equal((await g.ricevuto({ da: "b" })).motivo, "dati");
 });
+
+// Passo 7d-1: la vista porta l'ora del server («ora»), così il telefono calcola timer e sfocatura senza fidarsi del
+// proprio orologio.
+test("la vista porta l'ora del server", async () => {
+  const { g, vai } = prepara();
+  const r = await g.pubblica(PUB_A);
+  assert.equal(r.vista.ora, T0);
+  vai(4200);
+  assert.equal((await g.vista("a")).vista.ora, T0 + 4200);
+});
