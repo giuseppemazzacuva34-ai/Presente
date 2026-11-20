@@ -67,7 +67,7 @@ set local role service_role;
 create temp table s (chi text, j jsonb) on commit drop;
 -- Confermato ma fuori finestra (tra 2 ore): finestra indicata, nessun pulsante.
 insert into s select 'b0', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000bd', '5b5b5b5b-0000-4000-8000-00000000005b');
-select pg_temp.ok((select j->'azioni' = '[]'::jsonb and not (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean
+select pg_temp.ok((select j->'azioni' = '["disdici"]'::jsonb and not (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean
   and (j->>'checkin_da')::timestamptz = now() + interval '90 minutes'
   and (j->>'checkin_fino')::timestamptz = now() + interval '150 minutes' and j->'segnale' = 'null'::jsonb
   from s where chi = 'b0'), 'stato: finestra del check-in indicata, «Sono qui» non ancora');
@@ -79,19 +79,19 @@ select pg_temp.ok((select (j->>'checkin_fino')::timestamptz = now() + interval '
   'stato: con «Arrivo in ritardo» la fine della finestra si sposta');
 -- Da fissare: nessuna finestra.
 insert into s select 'ad', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ad', '5a5a5a5a-0000-4000-8000-00000000005a');
-select pg_temp.ok((select j->'checkin_da' = 'null'::jsonb and j->'checkin_fino' = 'null'::jsonb and j->'azioni' = '["proponi"]'::jsonb
+select pg_temp.ok((select j->'checkin_da' = 'null'::jsonb and j->'checkin_fino' = 'null'::jsonb and j->'azioni' = '["proponi", "annulla_incontro"]'::jsonb
   from s where chi = 'ad'), 'stato: da fissare, nessuna finestra del check-in');
 
 -- Dentro la finestra (tra 10 minuti): «Sono qui» per tutti e due.
 insert into s select 'a0', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5a5a5a5a-0000-4000-8000-00000000005a');
-select pg_temp.ok((select j->'azioni' = '["sono_qui"]'::jsonb from s where chi = 'a0'), 'stato: nella finestra c''è «Sono qui»');
+select pg_temp.ok((select j->'azioni' = '["sono_qui", "disdici"]'::jsonb from s where chi = 'a0'), 'stato: nella finestra c''è «Sono qui»');
 -- Anna fa il check-in: per lei niente pulsante e «aspetti l'altro»; per Ciro «Sono qui» e «l'altra persona è qui».
 select public.checkin_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5a5a5a5a-0000-4000-8000-00000000005a');
 insert into s select 'a1', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5a5a5a5a-0000-4000-8000-00000000005a');
 insert into s select 'c1', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5c5c5c5c-0000-4000-8000-00000000005c');
-select pg_temp.ok((select (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean and j->'azioni' = '[]'::jsonb
+select pg_temp.ok((select (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean and j->'azioni' = '["disdici"]'::jsonb
   and j->'segnale' = 'null'::jsonb from s where chi = 'a1'), 'stato: Anna ha fatto il check-in, aspetta Ciro, nessun segnale');
-select pg_temp.ok((select not (j->>'checkin_mio')::boolean and (j->>'checkin_altro')::boolean and j->'azioni' = '["sono_qui"]'::jsonb
+select pg_temp.ok((select not (j->>'checkin_mio')::boolean and (j->>'checkin_altro')::boolean and j->'azioni' = '["sono_qui", "disdici"]'::jsonb
   and j->'segnale' = 'null'::jsonb from s where chi = 'c1'), 'stato: Ciro vede che Anna è arrivata e ha «Sono qui»');
 -- Ciro fa il check-in: stessa parola per tutti e due, incontro avvenuto.
 select public.checkin_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5c5c5c5c-0000-4000-8000-00000000005c');

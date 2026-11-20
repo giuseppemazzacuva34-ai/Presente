@@ -74,7 +74,7 @@ select pg_temp.ok(public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ae', 
 -- Da fissare: l'incontro si apre alla prima lettura, con la scadenza; si può solo proporre.
 insert into s select 'a0', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a');
 select pg_temp.ok((select j->>'stato' = 'da_fissare' and (j->>'scadenza')::timestamptz > now() + interval '9 days'
-  and j->'orario' = 'null'::jsonb and j->'azioni' = '["proponi"]'::jsonb and (j->>'controproposte_rimaste')::int = 3
+  and j->'orario' = 'null'::jsonb and j->'azioni' = '["proponi", "annulla_incontro"]'::jsonb and (j->>'controproposte_rimaste')::int = 3
   from s where chi = 'a0'), 'stato: da fissare, con scadenza, solo «Proponi»');
 
 -- Ada propone: per lei «aspetta», per Bruno i tre pulsanti.
@@ -82,7 +82,7 @@ select public.proponi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a
   pg_temp.roma(2, 19), 'bar-1', null);
 insert into s select 'a1', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a');
 insert into s select 'b1', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b');
-select pg_temp.ok((select j->>'stato' = 'proposto' and (j->>'proposta_mia')::boolean and j->'azioni' = '[]'::jsonb
+select pg_temp.ok((select j->>'stato' = 'proposto' and (j->>'proposta_mia')::boolean and j->'azioni' = '["annulla_incontro"]'::jsonb
   and (j->>'orario')::timestamptz = pg_temp.roma(2, 19) and j->>'locale' = 'bar-1' and j->'luogo' = 'null'::jsonb
   from s where chi = 'a1'), 'stato: chi ha proposto aspetta la risposta');
 select pg_temp.ok((select not (j->>'proposta_mia')::boolean and j->'azioni' = '["accetto", "altra_data", "annulla"]'::jsonb
@@ -104,10 +104,10 @@ select pg_temp.ok((select (j->>'controproposte_rimaste')::int = 0 and j->'azioni
   and j->>'luogo' = 'Caffè in piazza' and j->'locale' = 'null'::jsonb from s where chi = 'a2'),
   'stato: finite le controproposte, solo «Accetto» e «Annulla»');
 
--- Confermato: niente pulsanti di proposta per nessuno dei due.
+-- Confermato: niente pulsanti di proposta per nessuno dei due, solo «Disdici» (passo 2p).
 select public.rispondi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a', 'accetto');
 insert into s select 'b3', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b');
-select pg_temp.ok((select j->>'stato' = 'confermato' and j->'azioni' = '[]'::jsonb and j->'esito' = 'null'::jsonb
+select pg_temp.ok((select j->>'stato' = 'confermato' and j->'azioni' = '["disdici"]'::jsonb and j->'esito' = 'null'::jsonb
   and (j->>'orario')::timestamptz = pg_temp.roma(5, 19) from s where chi = 'b3'), 'stato: confermato, con giorno e ora');
 
 -- Incontro scaduto senza conferma: la lettura lo chiude e restituisce i crediti.
