@@ -4,6 +4,7 @@
 // (così si prova con node --test). Niente salvataggi locali, niente log: nomi e racconti restano sullo schermo.
 
 import { MOTIVI_MODULO } from "./segnala.js";
+import { REGOLE_COMMUNITY, ID_REGOLE, testoRegola, regolaProposta } from "./regole_community.js";
 
 const PERCORSO = "/app/api/pannello";
 const ATTESA_MS = 10000;
@@ -26,19 +27,10 @@ export const AZIONI_PANNELLO = Object.freeze([
 ].map(Object.freeze));
 const SENZA_REGOLA = new Set(["archivia", "togli_cautelare"]);
 
-// Regola violata: la vede anche chi riceve la sanzione («Regola violata: …»). Elenco provvisorio, ricavato dai motivi
-// della segnalazione: i nomi ufficiali delle Regole della community li conferma il CPO.
-export const REGOLE_PANNELLO = Object.freeze([
-  "Niente contatti prima della porta",
-  "Rispetto",
-  "Niente contenuti sessuali",
-  "Sicurezza delle persone",
-  "Solo maggiorenni",
-  "Identità vera",
-  "Niente soldi né vendite",
-  "Niente diffusione di immagini",
-  "Altre regole della community",
-]);
+// Regola violata: la vede anche chi riceve la sanzione («Regola violata: …»). Spec #7 v1.2: le 10 Regole della
+// community ufficiali ([id, titolo]), niente «Altre regole»; al Worker si manda l'id. Motivo libero: 100 caratteri.
+export const REGOLE_PANNELLO = REGOLE_COMMUNITY;
+export const MASSIMO_MOTIVO_DECISIONE = 100;
 
 const LIVELLI = Object.freeze({ avviso: "Avviso", sospensione_7: "Sospensione 7 giorni", sospensione_30: "Sospensione 30 giorni", esclusione: "Esclusione definitiva" });
 const ESITI_CHIAMATA = Object.freeze({ tempo_scaduto: "finita allo scadere dei 15 minuti", chiusa: "chiusa", chiudi_e_segnala: "chiusa con «Chiudi e segnala»", caduta: "caduta" });
@@ -111,7 +103,7 @@ export function schedaLeggibile(scheda) {
     ...(Array.isArray(st.segnalazioni) ? st.segnalazioni : []).map((x) =>
       `Segnalazione «${ETICHETTE_MOTIVI[x.motivo] || "?"}» del ${quando(x.creata_il)} · ${x.esito === "archiviata" ? "archiviata" : x.esito === "provvedimenti" ? "con provvedimenti" : "aperta"}`),
     ...(Array.isArray(st.sanzioni) ? st.sanzioni : []).map((z) =>
-      `Sanzione «${LIVELLI[z.livello] || "?"}» (${nome(z.regola) || "regola non indicata"}) del ${quando(z.decisa_il)}`),
+      `Sanzione «${LIVELLI[z.livello] || "?"}» (${testoRegola(z.regola) || "regola non indicata"}) del ${quando(z.decisa_il)}`),
   ];
   return {
     id: s.id,
@@ -123,6 +115,7 @@ export function schedaLeggibile(scheda) {
     porte,
     storico,
     sanzionabile: typeof s.contro === "string" && s.contro.length > 0,
+    regolaProposta: regolaProposta(s.motivo),
   };
 }
 
@@ -138,7 +131,7 @@ export function vociRicorsi(righe, adesso = new Date()) {
   if (!Array.isArray(righe)) return [];
   return righe.filter((r) => r && UUID.test(r.id || "")).map((r) => ({
     id: r.id,
-    titolo: `${nome(r.nome) || "Senza nome"} contesta «${LIVELLI[r.livello] || "?"}» (${nome(r.regola) || "regola non indicata"})`,
+    titolo: `${nome(r.nome) || "Senza nome"} contesta «${LIVELLI[r.livello] || "?"}» (${testoRegola(r.regola) || "regola non indicata"})`,
     motivoSanzione: typeof r.motivo_sanzione === "string" ? r.motivo_sanzione : "",
     perche: typeof r.testo === "string" && r.testo.trim() ? r.testo : "Nessun motivo scritto.",
     inviato: quando(r.inviato_il),
@@ -189,8 +182,8 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       if (!AZIONI_PANNELLO.some(([a]) => a === azione)) return { ok: false, motivo: "azione" };
       const t = typeof testo === "string" ? testo.trim() : "";
       const r = typeof regola === "string" ? regola.trim() : "";
-      if (!SENZA_REGOLA.has(azione) && !r) return { ok: false, motivo: "regola" };
-      if (!t || t.length > 2000) return { ok: false, motivo: "testo" };
+      if (r ? !ID_REGOLE.includes(r) : !SENZA_REGOLA.has(azione)) return { ok: false, motivo: "regola" };
+      if (!t || t.length > MASSIMO_MOTIVO_DECISIONE) return { ok: false, motivo: "testo" };
       const d = await chiama("/decidi", { id, azione, regola: r, testo: t });
       return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
     },

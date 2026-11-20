@@ -10,14 +10,19 @@ const BASE = "https://abcdefghijklmnopqrst.supabase.co";
 const ADESSO = new Date("2026-11-16T10:00:00Z");
 
 test("voce: livello, regola, fine in italiano e «Contesta» solo se si può", () => {
-  const v = voceSanzione({ id: ID, livello: "sospensione_7", regola: "Rispetto", decisa_il: "2026-11-16T09:00:00Z",
+  const v = voceSanzione({ id: ID, livello: "sospensione_7", regola: "rispetto", decisa_il: "2026-11-16T09:00:00Z",
     fine_il: "2026-11-23T09:00:00Z", ricorso_entro: "2026-11-30T09:00:00Z", contestabile: true, ricorso_stato: null, risposta_entro: null });
   assert.equal(v.id, ID);
   assert.equal(v.titolo, "Sospensione di 7 giorni");
-  assert.equal(v.regola, "Regola violata: Rispetto");
+  assert.equal(v.regola, "Regola violata: Rispetto, sempre"); // spec #7 v1.2: si salva l'id, si mostra il titolo
   assert.equal(v.fine, "Fino al 23 novembre 2026");
   assert.equal(v.contesta, true);
   assert.equal(v.stato, "");
+});
+
+test("voce: regola vecchia scritta a mano si mostra com'è; tutti i 10 titoli ufficiali", () => {
+  assert.equal(voceSanzione({ id: ID, livello: "avviso", regola: " Identità ", contestabile: true }).regola, "Regola violata: Identità");
+  assert.equal(voceSanzione({ id: ID, livello: "avviso", regola: "al_buio", contestabile: true }).regola, "Regola violata: Al Buio resta al buio");
 });
 
 test("voce: avviso ed esclusione senza data di fine; ricorso in attesa con la data della risposta", () => {

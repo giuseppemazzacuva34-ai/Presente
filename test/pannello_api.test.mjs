@@ -89,17 +89,19 @@ test("scheda: POST con l'id della segnalazione; id sbagliato → 400", async () 
 test("decidi: azioni della spec, motivo obbligatorio, regola per le sanzioni", async () => {
   assert.deepEqual([...AZIONI], ["archivia", "avviso", "sospensione_7", "sospensione_30", "esclusione", "togli_cautelare"]);
   const op = finta();
-  const buona = { id: SEG, azione: "sospensione_7", regola: "soldi", testo: "chiedeva regali", moderatore: SEG };
+  const buona = { id: SEG, azione: "sospensione_7", regola: "affari", testo: "chiedeva regali", moderatore: SEG };
   const r = await pannelloApi(richiesta("/decidi", { corpo: buona }), ENV, supabaseFinto().f, op);
   assert.equal(r.status, 200);
   // Chi decide è sempre quello del token, mai un campo del corpo.
-  assert.deepEqual(op.chiamate[1], ["decidi", { moderatore: ID, segnalazione: SEG, azione: "sospensione_7", regola: "soldi", testo: "chiedeva regali" }]);
+  assert.deepEqual(op.chiamate[1], ["decidi", { moderatore: ID, segnalazione: SEG, azione: "sospensione_7", regola: "affari", testo: "chiedeva regali" }]);
   for (const sbagliata of [
     { ...buona, azione: "banna" },
     { ...buona, testo: "   " },
-    { ...buona, testo: "a".repeat(2001) },
+    { ...buona, testo: "a".repeat(101) }, // spec v1.2: motivo libero di 100 caratteri al massimo
     { ...buona, regola: "" },
     { ...buona, regola: "r".repeat(101) },
+    { ...buona, regola: "Rispetto" }, // spec v1.2: solo uno dei 10 id ufficiali
+    { ...buona, regola: "altre_regole" },
   ]) {
     assert.equal((await pannelloApi(richiesta("/decidi", { corpo: sbagliata }), ENV, supabaseFinto().f, finta())).status, 400, JSON.stringify(sbagliata).slice(0, 60));
   }

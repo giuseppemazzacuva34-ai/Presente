@@ -29,7 +29,7 @@ function supabase(rispostaDecidi) {
 
 test("seconda volta in 6 mesi: il Worker risponde «seconda_volta_contatti»", async () => {
   const f = supabase(() => Response.json({ code: "23514", message: "seconda_volta_contatti", hint: "Serve la sospensione di 7 giorni." }, { status: 400 }));
-  const r = await pannelloApi(richiesta({ id: SEG, azione: "avviso", regola: "Niente contatti prima della porta", testo: "numero" }), ENV, f);
+  const r = await pannelloApi(richiesta({ id: SEG, azione: "avviso", regola: "al_buio", testo: "numero" }), ENV, f);
   assert.deepEqual(await r.json(), { ok: false, motivo: "seconda_volta_contatti" });
 });
 

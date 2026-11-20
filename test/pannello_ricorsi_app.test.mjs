@@ -15,7 +15,7 @@ test("esiti del ricorso: stessi del server, con etichette", () => {
 
 test("ricorsi: voci leggibili; chi ha sanzionato non può decidere; scaduti in rosso", () => {
   const [v, w] = vociRicorsi([
-    { id: RIC, livello: "sospensione_7", regola: "Rispetto", motivo_sanzione: "insulti in chiamata", nome: "Bruno",
+    { id: RIC, livello: "sospensione_7", regola: "rispetto", motivo_sanzione: "insulti in chiamata", nome: "Bruno",
       testo: "non ero io", inviato_il: "2026-11-15T10:00:00Z", risposta_entro: "2026-11-18T10:00:00Z", decisa_da_te: false },
     { id: RIC, livello: "esclusione", regola: null, motivo_sanzione: "", nome: "  ", testo: "",
       inviato_il: "2026-11-10T10:00:00Z", risposta_entro: "2026-11-16T14:00:00Z", decisa_da_te: true },
@@ -23,7 +23,7 @@ test("ricorsi: voci leggibili; chi ha sanzionato non può decidere; scaduti in r
     null,
   ], ADESSO);
   assert.equal(v.id, RIC);
-  assert.equal(v.titolo, "Bruno contesta «Sospensione 7 giorni» (Rispetto)");
+  assert.equal(v.titolo, "Bruno contesta «Sospensione 7 giorni» (Rispetto, sempre)");
   assert.equal(v.motivoSanzione, "insulti in chiamata");
   assert.equal(v.perche, "non ero io");
   assert.equal(v.resta, "Restano 1 g 19 h");

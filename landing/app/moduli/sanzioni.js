@@ -4,6 +4,8 @@
 // date e stato del ricorso delle proprie sanzioni. Mai chi ha segnalato, racconto o motivo scritto da chi decide.
 // Il corpo non dice chi chiede. Niente salvataggi locali, niente log. Il modulo non tocca la pagina (node --test).
 
+import { testoRegola } from "./regole_community.js";
+
 const LEGGI = "/rest/v1/rpc/mie_sanzioni";
 const RICORSO = "/rest/v1/rpc/nuovo_ricorso";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -32,7 +34,8 @@ function data(iso) {
 export function voceSanzione(riga) {
   if (!riga || typeof riga !== "object" || !UUID.test(riga.id || "")) return null;
   if (!Object.hasOwn(TESTI_SANZIONE.livelli, riga.livello)) return null;
-  const regola = typeof riga.regola === "string" && riga.regola.trim() ? `Regola violata: ${riga.regola.trim()}` : "";
+  // Spec #7 v1.2: nel database c'è l'id della regola, qui il titolo ufficiale.
+  const regola = testoRegola(riga.regola) ? `Regola violata: ${testoRegola(riga.regola)}` : "";
   const fine = riga.fine_il && data(riga.fine_il) ? `Fino al ${data(riga.fine_il)}` : "";
   let stato = "";
   if (riga.ricorso_stato === "in_attesa") stato = `Ricorso inviato: risposta entro il ${data(riga.risposta_entro)}.`;
