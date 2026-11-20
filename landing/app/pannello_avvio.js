@@ -155,6 +155,7 @@ async function mostraScheda(p, id) {
     h("h1", { testo: s.titolo }),
     h("p", { class: "sottotitolo", testo: `${s.chi} · ${s.quando}` }),
     h("h2", { testo: "Racconto" }), h("p", { class: "racconto", testo: s.testo || "Nessun racconto." }),
+    ...(s.fraseChiave ? [h("h2", { testo: "Frase della chiave lasciata dalla persona segnalata" }), h("p", { class: "racconto", testo: s.fraseChiave })] : []),
     ...elenco("Chiamate tra i due", s.chiamate, "Nessuna chiamata negli ultimi 6 mesi."),
     ...elenco("Porte e svelamento", s.porte, "Nessuna porta tra i due."),
     ...elenco("Storico della persona segnalata (6 mesi)", s.storico, "Nessuna segnalazione o sanzione precedente."),
