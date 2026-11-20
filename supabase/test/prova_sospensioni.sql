@@ -110,7 +110,7 @@ select pg_temp.ok(not public.sospeso('8b8b8b8b-8b8b-4b8b-8b8b-8b8b8b8b8b8b')
 -- 5. Gli avvisi non contengono dati personali: solo riferimenti.
 select pg_temp.ok((select array_agg(column_name::text order by column_name::text) from information_schema.columns
   where table_schema = 'public' and table_name = 'avvisi_sicurezza') is not distinct from
-  array['creato_il', 'id', 'inviato_il', 'perche', 'segnalazione_id', 'sospensione_id'],
+  array['creato_il', 'id', 'inviato_il', 'perche', 'segnalazione_id', 'sospensione_id', 'supporto_id'],
   'sospensioni: l''avviso porta solo riferimenti, mai nomi, email o racconti');
 reset role;
 rollback;

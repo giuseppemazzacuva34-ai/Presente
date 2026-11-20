@@ -1,4 +1,4 @@
-// Avvisi al responsabile della sicurezza (Fase 2, issue #7 spec v1.1; D51 A, D139 A). Linea «sviluppatore-b».
+// Avvisi al responsabile della sicurezza (Fase 2, issue #7 spec v1.1; D51 A, D139 A; #10 v1.1 per «Scrivici»). Linea «sviluppatore-b».
 // Ogni minuto (cron CRON_AVVISI in wrangler.jsonc, gratuito) il Worker:
 //  1. chiede al database gli avvisi da ripetere (public.avvisi_da_ripetere: segnalazioni da 1 ora non aperte dopo
 //     30 minuti, sospensioni non riviste dopo 48 ore ogni 12 ore) e li mette in coda in public.avvisi_sicurezza;
@@ -22,11 +22,13 @@ export function testoAvviso(avvisi) {
   const nuove = conta("nuova");
   const nonAperte = conta("non_aperta");
   const sospensioni = conta("revisione_scaduta");
+  const supporto = conta("supporto"); // messaggi «Scrivici» con bandiera «sicurezza» o «possibile minore» (#10 v1.1)
   const righe = [];
   if (nuove) righe.push(`- ${plurale(nuove, "segnalazione nuova", "segnalazioni nuove")} con priorità 1 ora`);
   if (nonAperte) righe.push(`- ${plurale(nonAperte, "segnalazione non ancora aperta", "segnalazioni non ancora aperte")} dopo 30 minuti`);
   if (sospensioni) righe.push(`- ${plurale(sospensioni, "sospensione da rivedere", "sospensioni da rivedere")} (48 ore passate)`);
-  const totale = nuove + nonAperte + sospensioni;
+  if (supporto) righe.push(`- ${plurale(supporto, "messaggio «Scrivici» da guardare", "messaggi «Scrivici» da guardare")} subito (pericolo o possibile minore)`);
+  const totale = nuove + nonAperte + sospensioni + supporto;
   return {
     oggetto: `Presente · avviso di sicurezza (${totale})`,
     testo: [
