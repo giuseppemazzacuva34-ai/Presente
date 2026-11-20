@@ -86,11 +86,9 @@ select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000bd'
 update public.incontri set orario = now() + interval '31 minutes' where porta_id = '7f7f7f7f-0000-4000-8000-0000000000bd';
 select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000bd', '7b7b7b7b-0000-4000-8000-00000000007b')
   = 'troppo_presto', 'check-in: 31 minuti prima è troppo presto');
--- Troppo tardi: 30 minuti dopo l'ora (fine esclusa); con il ritardo di 15 minuti la finestra si allunga.
-update public.incontri set orario = now() - interval '30 minutes' where porta_id = '7f7f7f7f-0000-4000-8000-0000000000bd';
-select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000bd', '7b7b7b7b-0000-4000-8000-00000000007b')
-  = 'troppo_tardi', 'check-in: 30 minuti dopo è troppo tardi');
-update public.incontri set ritardo_minuti = 15, ritardo_di = '7d7d7d7d-0000-4000-8000-00000000007d'
+-- Con il ritardo di 15 minuti la finestra si allunga: 30 minuti dopo l'ora si può ancora. (Senza ritardo, 30 minuti
+-- dopo è troppo tardi e l'incontro si chiude: lo prova prova_buca_incontro.sql, passo 2j.)
+update public.incontri set orario = now() - interval '30 minutes', ritardo_minuti = 15, ritardo_di = '7d7d7d7d-0000-4000-8000-00000000007d'
   where porta_id = '7f7f7f7f-0000-4000-8000-0000000000bd';
 select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000bd', '7b7b7b7b-0000-4000-8000-00000000007b')
   = 'sono_qui', 'check-in: con «Arrivo in ritardo» +15 la finestra si allunga');
