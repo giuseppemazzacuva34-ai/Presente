@@ -223,6 +223,34 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "fasce", porta, fasce });
       return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
     },
+    // Passo 7d-1: ingresso dalla sala d'attesa e richieste video (worker/svelamento_api.js, passi 6c e 7c).
+    // Chi entra lo dice solo il token; al telefono non arriva mai un id di sessione.
+    async entra(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "entra", porta });
+      if (!r.ok) return r;
+      return SCELTE.includes(r.dati.tipo) ? { ok: true, esito: r.dati.esito, tipo: r.dati.tipo } : { ok: true, esito: r.dati.esito };
+    },
+    async pubblica(porta, offerta) {
+      if (!UUID.test(String(porta || "")) || !offerta || offerta.type !== "offer") return errore("riprova");
+      const r = await chiedi({ azione: "pubblica", porta, offerta });
+      return r.ok ? { ok: true, descrizione: r.dati.descrizione, vista: r.dati.vista ?? null } : r;
+    },
+    async ricevi(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "ricevi", porta });
+      return r.ok ? { ok: true, descrizione: r.dati.descrizione, vista: r.dati.vista ?? null } : r;
+    },
+    async conferma(porta, risposta) {
+      if (!UUID.test(String(porta || "")) || !risposta || risposta.type !== "answer") return errore("riprova");
+      const r = await chiedi({ azione: "conferma", porta, risposta });
+      return r.ok ? { ok: true, vista: r.dati.vista ?? null } : r;
+    },
+    async vistaVideo(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "vista", porta });
+      return r.ok ? { ok: true, vista: r.dati.vista ?? null } : r;
+    },
   };
 }
 
