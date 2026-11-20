@@ -9,6 +9,8 @@
 //        { ok: true, incontro: { stato, scadenza, orario, locale, luogo, proposta_mia, proposta_scade,
 //          controproposte_rimaste, azioni, ritardo_minuti, esito,
 //          checkin_mio, checkin_altro, checkin_da, checkin_fino, segnale } }  (passi 2d e 2h)
+//   POST /app/api/incontro  { azione: "disdici", porta }                              → disdici_incontro
+//        «Disdici» (spec v1.1, passo 2m): esito «disdetto» (da fissare) o «disdetto_tardi» (buca di chi disdice)
 // Chi propone o risponde lo dice SOLO il token, mai il corpo. Le regole (orari 10:00–23:00 di Roma ogni 30 minuti da
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
@@ -23,13 +25,16 @@ const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const RISPOSTE = ["accetto", "annulla"];
 const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_incontro: ["confermato", "annullato"],
-  checkin_incontro: ["sono_qui", "avvenuto"] };
+  checkin_incontro: ["sono_qui", "avvenuto"],
+  // Passo 2m (spec v1.1): «Disdici» → «disdetto» (torna da fissare) o «disdetto_tardi» (buca di chi disdice).
+  disdici_incontro: ["disdetto", "disdetto_tardi"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
   rispondi_incontro: ["nessuna_proposta", "proposta_scaduta", "non_puoi_rispondere", "orario_passato", "incontro_chiuso",
     "incontro_scaduto"],
   checkin_incontro: ["troppo_presto", "troppo_tardi", "non_confermato", "gia_fatto", "incontro_chiuso"],
+  disdici_incontro: ["non_confermato", "troppo_tardi", "incontro_chiuso", "incontro_scaduto"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -119,6 +124,7 @@ export async function incontroApi(request, env, f = fetch) {
     return esegui(s, "rispondi_incontro", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
   }
   if (azione === "checkin") return esegui(s, "checkin_incontro", { p_porta: porta, p_persona: chi.id }, f);
+  if (azione === "disdici") return esegui(s, "disdici_incontro", { p_porta: porta, p_persona: chi.id }, f);
   return dati();
 }
 
