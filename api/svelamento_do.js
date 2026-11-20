@@ -31,6 +31,7 @@ const persona = (x) => typeof x === "string" && x.length > 0 && x.length <= 64;
 const dueMids = (m) => Array.isArray(m) && m.length === 2 && m.every((x) => typeof x === "string" && MID.test(x)) && m[0] !== m[1];
 
 function fase(stato) {
+  if (stato.interrotto) return "interrotto";
   if (stato.finitoIl) return "finito";
   return stato.inizio ? "in_corso" : "attesa";
 }
@@ -40,10 +41,12 @@ function vistaPer(stato, da, ora) {
   if (!stato.persone[da] && Object.keys(stato.persone).length >= 2) return null;
   const f = fase(stato);
   const v = { fase: f, ora };
-  if (stato.inizio) Object.assign(v, { inizio: stato.inizio, nitidoDal: stato.inizio + SFOCATO_MS, fine: stato.inizio + DURATA_MS });
+  if (stato.inizio && f !== "interrotto") Object.assign(v, { inizio: stato.inizio, nitidoDal: stato.inizio + SFOCATO_MS, fine: stato.inizio + DURATA_MS });
   return v;
 }
 
+// Svelamento finito: «interrotto» se chiuso con «Chiudi e segnala» (passo 7d-3a), sennò «finito».
+const finito = (stato) => no(stato.interrotto ? "interrotto" : "finito");
 const altraDi = (stato, da) => Object.keys(stato.persone).find((p) => p !== da);
 // Tutte le tracce di una sessione: le mie due (voce, video) più le due che ricevo o sto per ricevere (passo 7c).
 // «ricevo» e «arrivo» non sono mai pieni insieme: così una sessione non supera mai 4 tracce (limite di chiudiVoce).
@@ -61,7 +64,7 @@ export class GestoreSvelamento {
     if (!persona(da) || typeof sessione !== "string" || !SESSIONE.test(sessione) || !dueMids(mids)) return no("dati");
     const adesso = this.adesso().getTime();
     const stato = (await this.storage.get("stato")) || { persone: {}, inizio: null, finitoIl: null, creato: adesso };
-    if (stato.finitoIl) return no("finito");
+    if (stato.finitoIl) return finito(stato);
     const prima = stato.persone[da];
     if (!prima && Object.keys(stato.persone).length >= 2) return no("non_tocca_a_te");
     const chiusure = [];
@@ -89,7 +92,7 @@ export class GestoreSvelamento {
     const stato = await this.storage.get("stato");
     if (!stato) return no("nessuna");
     if (!stato.persone[da]) return Object.keys(stato.persone).length >= 2 ? no("non_tocca_a_te") : no("nessuna");
-    if (stato.finitoIl) return no("finito");
+    if (stato.finitoIl) return finito(stato);
     const altra = stato.persone[altraDi(stato, da)];
     return altra ? { ok: true, sessione: altra.sessione } : no("in_attesa");
   }
@@ -107,7 +110,7 @@ export class GestoreSvelamento {
   async inArrivo({ da, mids }) {
     const stato = await this.storage.get("stato");
     if (!stato || !stato.persone[da]) return no("nessuna");
-    if (stato.finitoIl) return no("finito");
+    if (stato.finitoIl) return finito(stato);
     if (!altraDi(stato, da)) return no("in_attesa");
     if (!dueMids(mids)) return no("dati");
     const p = stato.persone[da];
@@ -125,7 +128,7 @@ export class GestoreSvelamento {
   async ricevuto({ da, mids }) {
     const stato = await this.storage.get("stato");
     if (!stato || !stato.persone[da]) return no("nessuna");
-    if (stato.finitoIl) return no("finito");
+    if (stato.finitoIl) return finito(stato);
     if (!altraDi(stato, da)) return no("in_attesa");
     const p = stato.persone[da];
     const nuovi = mids === undefined ? p.arrivo : mids;
@@ -138,6 +141,23 @@ export class GestoreSvelamento {
     if (chiusure.length) await this.#esegui();
     await this.#allarme();
     return { ok: true, vista: vistaPer(stato, da, this.adesso().getTime()) };
+  }
+
+  // Passo 7d-3a, solo per il Worker dopo il sì del database (chiudi_e_segnala_svelamento): «Chiudi e segnala».
+  // Chiude SUBITO tutte le tracce delle due sessioni, senza aspettare i 10 secondi; poi la vista dice «interrotto» a
+  // entrambi (mai «Ecco <nome>.») e non si riapre nulla. Se lo svelamento era già finito non cambia niente.
+  async chiudi({ da }) {
+    if (!persona(da)) return no("dati");
+    const stato = await this.storage.get("stato");
+    if (!stato) return { ok: true };
+    if (!stato.persone[da] && Object.keys(stato.persone).length >= 2) return no("non_tocca_a_te");
+    if (stato.finitoIl) return { ok: true };
+    stato.finitoIl = this.adesso().getTime();
+    stato.interrotto = true;
+    await this.#salva(stato, Object.values(stato.persone).map((p) => ({ sessione: p.sessione, mids: tracce(p) })));
+    await this.#esegui();
+    await this.#allarme();
+    return { ok: true };
   }
 
   async vista(da) {

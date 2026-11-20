@@ -286,3 +286,58 @@ test("la vista porta l'ora del server", async () => {
   vai(4200);
   assert.equal((await g.vista("a")).vista.ora, T0 + 4200);
 });
+
+// Passo 7d-3a: «Chiudi e segnala». Il Worker lo chiama dopo il sì del database: tutte le tracce delle due sessioni si
+// chiudono SUBITO (senza aspettare i 10 secondi), e l'altra persona vede «interrotto», mai «Ecco <nome>.».
+test("chiudi: chiude subito tutte le tracce delle due sessioni, a metà dei 10 secondi", async () => {
+  const { g, chiuse, vai } = prepara();
+  await entrambiRicevono(g);
+  vai(4000);
+  const r = await g.chiudi({ da: "b" });
+  assert.equal(r.ok, true);
+  const sessioni = chiuse.map((c) => c.sessione).sort();
+  assert.deepEqual(sessioni, ["sessioneA123", "sessioneB123"]);
+  for (const c of chiuse) assert.deepEqual([...c.mids].sort(), ["0", "1", "2", "3"]);
+  assert.equal(JSON.stringify(r).includes("sessione"), false);
+});
+
+test("chiudi: dopo, la vista dice «interrotto» a entrambi e niente si riapre", async () => {
+  const { g, vai } = prepara();
+  await entrambiRicevono(g);
+  vai(4000);
+  await g.chiudi({ da: "b" });
+  assert.equal((await g.vista("a")).vista.fase, "interrotto");
+  assert.equal((await g.vista("b")).vista.fase, "interrotto");
+  assert.equal((await g.vista("a")).vista.fine, undefined);
+  assert.deepEqual(await g.pubblica(PUB_A), { ok: false, motivo: "interrotto" });
+  assert.deepEqual(await g.sessioni("a"), { ok: false, motivo: "interrotto" });
+});
+
+test("chiudi: chi non è nella porta non chiude nulla", async () => {
+  const { g, chiuse } = prepara();
+  await entrambiRicevono(g);
+  const prima = chiuse.length;
+  assert.deepEqual(await g.chiudi({ da: "c" }), { ok: false, motivo: "non_tocca_a_te" });
+  assert.equal(chiuse.length, prima);
+  assert.equal((await g.vista("a")).vista.fase, "in_corso");
+});
+
+test("chiudi: senza nessuno dentro va bene lo stesso (il database ha già chiuso la porta)", async () => {
+  const { g } = prepara();
+  assert.deepEqual(await g.chiudi({ da: "a" }), { ok: true });
+});
+
+test("chiudi: con una sola persona dentro chiude la sua sessione", async () => {
+  const { g, chiuse } = prepara();
+  await g.pubblica(PUB_A);
+  assert.equal((await g.chiudi({ da: "a" })).ok, true);
+  assert.deepEqual(chiuse.map((c) => c.sessione), ["sessioneA123"]);
+});
+
+test("chiudi: le chiusure fallite restano da riprovare con l'allarme", async () => {
+  const { g, storage } = prepara({ chiusuraOk: false });
+  await entrambiRicevono(g);
+  await g.chiudi({ da: "a" });
+  assert.ok((await storage.get("attesa")).chiusure.length > 0);
+  assert.ok(storage.allarme <= T0 + RIPROVA_MS);
+});

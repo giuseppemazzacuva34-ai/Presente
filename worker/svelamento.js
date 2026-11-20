@@ -22,6 +22,7 @@ export class Svelamento extends DurableObject {
   inArrivo(dati) { return this.gestore.inArrivo(dati); }
   ricevuto(dati) { return this.gestore.ricevuto(dati); }
   vista(da) { return this.gestore.vista(da); }
+  chiudi(dati) { return this.gestore.chiudi(dati); }
 
   async alarm() {
     await this.gestore.allarme();
