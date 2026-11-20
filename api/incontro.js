@@ -14,7 +14,7 @@ export const INCONTRO = Object.freeze({
   passoMinuti: 30,
   controproposte: 3, // in tutto, poi solo «Accetto» o «Annulla» (da confermare con Giuseppe, valore in configurazione)
   propostaOre: 48, // una proposta senza risposta scade dopo 48 ore (o alla scadenza dell'incontro, se prima)
-  disdettaGratisOre: 6, // fino a 6 ore prima la disdetta non costa nulla; dopo è una buca (salvo «Sono in difficoltà»)
+  disdettaGratisOre: 6, // fino a 6 ore prima la disdetta non costa nulla (torna «da fissare»); dopo è una buca (salvo «Sono in difficoltà»)
   checkinPrimaMinuti: 30, // «Sono qui» da 30 minuti prima…
   checkinDopoMinuti: 30, // …a 30 minuti dopo l'ora (da confermare con Giuseppe, valore in configurazione)
   ritardi: Object.freeze([15, 30]), // «Arrivo in ritardo», una volta sola
@@ -83,12 +83,13 @@ function buca(assente, a, b) {
 }
 const restituzione = (a, b) => [a, b].map((persona) => ({ persona, tipo: "caparra_restituita", crediti: INCONTRO.caparra }));
 
-// «Disdici». Fino a 6 ore prima: crediti a entrambi. Dopo: buca di chi disdice, tranne con «Sono in difficoltà» (#7),
-// che non toglie crediti e passa alla revisione di una persona (D51 A).
+// «Disdici». Fino a 6 ore prima (spec v1.1): l'incontro torna «da fissare», le caparre restano bloccate e i crediti
+// tornano a entrambi solo alla scadenza senza nuovo appuntamento o con «Annulla l'incontro» (public.disdici_incontro).
+// Dopo: buca di chi disdice, tranne con «Sono in difficoltà» (#7), che non toglie crediti e passa alla revisione (D51 A).
 export function disdetta({ orario, adesso, chi, a, b, difficolta = false }) {
   const mancano = new Date(orario).getTime() - new Date(adesso).getTime();
   if (mancano >= INCONTRO.disdettaGratisOre * 60 * MINUTO) {
-    return { esito: "disdetto", restituisci: [a, b], movimenti: restituzione(a, b), presente: 0, penale: 0 };
+    return { esito: "disdetto", stato: "da_fissare", restituisci: [], movimenti: [], presente: 0, penale: 0 };
   }
   if (difficolta) return { esito: "in_revisione", restituisci: [], movimenti: [], presente: 0, penale: 0 };
   return { ...buca(chi, a, b), penale: INCONTRO.caparra };
