@@ -8,7 +8,7 @@
 //   GET  /app/api/incontro?porta=<id>                                                → stato_incontro
 //        { ok: true, incontro: { stato, scadenza, orario, locale, luogo, proposta_mia, proposta_scade,
 //          controproposte_rimaste, azioni, ritardo_minuti, esito,
-//          checkin_mio, checkin_altro, checkin_da, checkin_fino, segnale } }  (passi 2d e 2h)
+//          checkin_mio, checkin_altro, checkin_da, checkin_fino, segnale, disdetta } }  (passi 2d, 2h e 2q)
 //   POST /app/api/incontro  { azione: "disdici", porta }                              → disdici_incontro
 //        «Disdici» (spec v1.1, passo 2m): esito «disdetto» (da fissare) o «disdetto_tardi» (buca di chi disdice)
 //   POST /app/api/incontro  { azione: "annulla", porta }                              → annulla_incontro
@@ -46,7 +46,9 @@ const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 const CAMPI_STATO = ["stato", "scadenza", "orario", "locale", "luogo", "proposta_mia", "proposta_scade",
   "controproposte_rimaste", "azioni", "ritardo_minuti", "esito",
   // Passo 2h: check-in «Sono qui» (solo sì/no, mai orari esatti dell'altro), finestra e segnale dopo i due check-in.
-  "checkin_mio", "checkin_altro", "checkin_da", "checkin_fino", "segnale"];
+  "checkin_mio", "checkin_altro", "checkin_da", "checkin_fino", "segnale",
+  // Passo 2q (spec v1.1): disdetta in tempo { mia, il, orario }, ripulita da soloDisdetta.
+  "disdetta"];
 const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
 const dati = () => risposta(400, { ok: false, motivo: "dati" });
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
@@ -134,6 +136,16 @@ export async function incontroApi(request, env, f = fetch) {
   return dati();
 }
 
+// Disdetta nello stato (passo 2q): solo «mia» sì/no e due orari, mai chi ha disdetto. Forma diversa → null.
+const orarioONull = (v) => v === null || (typeof v === "string" && v.length <= 40 && !Number.isNaN(Date.parse(v)));
+function soloDisdetta(d) {
+  if (!d || typeof d !== "object" || Array.isArray(d) || typeof d.mia !== "boolean") return null;
+  const il = d.il ?? null;
+  const orario = d.orario ?? null;
+  if (!orarioONull(il) || !orarioONull(orario)) return null;
+  return { mia: d.mia, il, orario };
+}
+
 // Stato dell'incontro per la persona del token. Un errore noto → 404 senza dire perché; una risposta di forma
 // sconosciuta è un guasto → «riprova».
 async function stato(s, request, chi, f) {
@@ -145,7 +157,9 @@ async function stato(s, request, chi, f) {
     if (r !== undefined) console.error("incontro: stato_incontro forma sconosciuta");
     return riprova();
   }
-  return risposta(200, { ok: true, incontro: Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null])) });
+  const incontro = Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null]));
+  incontro.disdetta = soloDisdetta(r.disdetta);
+  return risposta(200, { ok: true, incontro });
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve
