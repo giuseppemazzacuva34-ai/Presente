@@ -132,6 +132,21 @@ test("il server dice «finito»: si chiude anche se il telefono conta ancora", a
   assert.deepEqual(t.eventi, ["finito"]);
 });
 
+// Passo 7d-3a: l'altra persona ha toccato «Chiudi e segnala». Il server dice «interrotto»: mai «Ecco <nome>.».
+test("il server dice «interrotto» a metà video: si esce, mai «Ecco <nome>.»", async () => {
+  const t = schermata();
+  await t.s.apri();
+  t.f.code.ricevi.push({ ok: true, vista: inCorso(t.ora()) });
+  await t.passa(1000);
+  assert.equal(t.s.modello().stato, "in_corso");
+  t.f.fissa.vista = { ok: true, vista: { fase: "interrotto", ora: t.ora() } };
+  await t.passa(1000);
+  assert.equal(t.s.modello().stato, "uscita");
+  assert.deepEqual(t.eventi, ["esci:interrotto"]);
+  assert.ok(t.f.chiamate.includes("chiudi"));
+  assert.equal(testi(vistaSchermata(h, t.s)).some((x) => x.startsWith("Ecco")), false);
+});
+
 test("filigrana: nome di chi guarda (non dell'altra persona) + data, su tutto il video", async () => {
   const t = schermata();
   await t.s.apri();

@@ -9,7 +9,7 @@
 // - Sul video dell'altra persona, in filigrana: il nome di CHI GUARDA + data (testo, mai HTML), in movimento lento.
 // - Pulsanti: microfono on/off e «Chiudi e segnala» (rosso). Niente cambio fotocamera, niente pulsante per allungare.
 // - «Chiudi e segnala» chiude fotocamera, microfono e connessione SUBITO (senza attendere nulla), poi apre la
-//   segnalazione (quandoSegnala, #7). Blocco e caparre li fa il server (passo successivo).
+//   segnalazione (quandoSegnala, #7). Blocco e caparre li fa il server (passo 7d-3a: azione «chiudi_e_segnala»).
 // - Caduta prima dei 10 secondi: «La connessione è caduta.» + «Riprova» per 2 minuti, al massimo 3 volte; il timer
 //   riparte da 10 con lo sfocato iniziale (lo azzera il server). Poi si torna a scegliere quando (quandoEsci).
 //   Caduta dopo i 10 secondi: lo svelamento è valido (come la fine).
@@ -109,6 +109,8 @@ export function creaSchermataSvelamento({
   }
 
   function risposta(r) {
+    // L'altra persona ha chiuso con «Chiudi e segnala» (passo 7d-3a): si esce, mai «Ecco <nome>.».
+    if (r && r.ok && r.vista && r.vista.fase === "interrotto") { esci("interrotto"); return false; }
     if (r && r.ok) { segui(r.vista); return true; }
     const motivo = String((r && r.motivo) || "riprova");
     if (PASSEGGERI.has(motivo)) return false;

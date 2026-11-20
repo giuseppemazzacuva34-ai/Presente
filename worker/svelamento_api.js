@@ -16,6 +16,7 @@
 //   POST /app/api/svelamento  { azione: "ricevi", porta }             → { ok, descrizione (offerta di Cloudflare), vista }
 //   POST /app/api/svelamento  { azione: "conferma", porta, risposta } → { ok, vista }
 //   POST /app/api/svelamento  { azione: "vista", porta }              → { ok, vista: { fase, inizio?, nitidoDal?, fine? } }
+//   POST /app/api/svelamento  { azione: "chiudi_e_segnala", porta }   → { ok, esito: "chiusa" }       (passo 7d-3a)
 //                             (passo 7c: solo con entra_svelamento → «iniziato_video» per la persona del token;
 //                              prima { ok: false, motivo: "non_iniziato" }, con le foto { ok: false, motivo: "foto" })
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
@@ -132,6 +133,7 @@ export async function svelamentoApi(request, env, f = fetch) {
   if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
   if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
   if (azione === "entra") return entra(s, chi.id, idPorta, f);
+  if (azione === "chiudi_e_segnala") return chiudiESegnala(env, s, chi.id, idPorta, f);
   if (Object.hasOwn(VIDEO, azione)) return video(env, s, chi.id, idPorta, azione, corpo.dati, f);
   if (azione === "pronto") return quando(s, chi.id, idPorta, "pronto_svelamento", {}, ["pronto", "entrambi_pronti"], f);
   if (azione === "fasce") {
@@ -245,6 +247,29 @@ async function video(env, s, id, idPorta, azione, dati, f) {
     console.error("svelamento: video", e && e.name);
     return riprova();
   }
+}
+
+// Passo 7d-3a: «Chiudi e segnala» durante il video, solo per la persona del token. Prima il database
+// (chiudi_e_segnala_svelamento: porta chiusa, blocco immediato, caparre restituite a entrambi, mai una penale), poi il
+// Durable Object della porta chiude SUBITO le tracce di tutti e due. Se il Durable Object non risponde la porta resta
+// chiusa lo stesso: le tracce le chiude il suo allarme a fine svelamento. La segnalazione con il motivo la scrive poi il
+// modulo della #7 (/app/api/segnala, origine «chiudi_e_segnala»). All'altra persona arriva solo «porta chiusa».
+async function chiudiESegnala(env, s, id, idPorta, f) {
+  const esito = await rpc(s, "chiudi_e_segnala_svelamento", { p_porta: idPorta, p_persona: id }, f);
+  if (esito === "chiusa") {
+    if (env.SVELAMENTO) {
+      try {
+        await env.SVELAMENTO.get(env.SVELAMENTO.idFromName(idPorta)).chiudi({ da: id });
+      } catch (e) {
+        console.error("svelamento: chiudi e segnala", e && e.name);
+      }
+    }
+    return risposta(200, { ok: true, esito });
+  }
+  if (esito === "non_iniziato" || esito === "finito") return risposta(200, { ok: false, motivo: esito });
+  if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+  if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
+  return riprova();
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve
