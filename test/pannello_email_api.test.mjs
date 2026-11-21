@@ -31,7 +31,7 @@ test("email: chiesta col moderatore del token, mai con uno del corpo", async () 
   const r = await pannelloApi(richiesta({ id: ZID, moderatore: ZID, p_moderatore: ZID }), ENV, supabase({ viste }));
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("cache-control"), "no-store");
-  assert.deepEqual(await r.json(), { ok: true, email: EMAIL });
+  assert.deepEqual(await r.json(), { ok: true, email: EMAIL, mandata_il: null });
   assert.deepEqual(viste.find((v) => v[0] === "/rest/v1/rpc/email_sanzione")[1], { p_moderatore: ID, p_sanzione: ZID });
 });
 
@@ -51,7 +51,7 @@ test("email: id malformato → 400; il database dice null → 404", async () => 
 
 test("email: passano solo i campi previsti e di forma giusta", async () => {
   const r = await pannelloApi(richiesta({ id: ZID }), ENV, supabase({ email: { ...EMAIL, motivo: "segreto", segnalato_da: ID } }));
-  assert.deepEqual(await r.json(), { ok: true, email: EMAIL });
+  assert.deepEqual(await r.json(), { ok: true, email: EMAIL, mandata_il: null });
   for (const strana of [{ ...EMAIL, a: "non-un-indirizzo" }, { ...EMAIL, livello: "multa" }, { ...EMAIL, regola: 3 }, "x"]) {
     const s = await pannelloApi(richiesta({ id: ZID }), ENV, supabase({ email: strana }));
     assert.equal(s.status, 503, JSON.stringify(strana));
