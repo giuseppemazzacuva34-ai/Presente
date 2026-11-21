@@ -12,11 +12,14 @@ const file = readdirSync(cartella).find((n) => /^\d{14}_momento_svelamento\.sql$
 const sql = file ? readFileSync(new URL(file, cartella), "utf8") : "";
 const codice = sql.replace(/--.*$/gm, "");
 
-test("la migrazione del «momento» esiste ed è l'ultima che ridefinisce svelamento_di", () => {
+test("la migrazione del «momento» esiste e l'ultima che ridefinisce svelamento_di tiene «momento» e «tipo»", () => {
   assert.ok(file);
   const tutte = readdirSync(cartella).filter((n) => n.endsWith(".sql")).sort();
   const ultima = tutte.filter((n) => /create or replace function public\.svelamento_di/.test(readFileSync(new URL(n, cartella), "utf8"))).pop();
-  assert.equal(ultima, file);
+  assert.ok(ultima >= file);
+  const dopo = readFileSync(new URL(ultima, cartella), "utf8").replace(/--.*$/gm, "");
+  assert.match(dopo, /'momento', public\.momento_svelamento\(s\)/);
+  assert.match(dopo, /'tipo', case when public\.momento_svelamento\(s\)/);
 });
 
 test("funzioni solo per il server, mai per il telefono", () => {
