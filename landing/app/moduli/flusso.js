@@ -1037,9 +1037,9 @@ function registratoreVoce(esistente, massimo, onFatto) {
   };
   const mostra = (stato) => {
     box.replaceChildren();
-    if (stato.errore) box.append(errore(messaggi[stato.errore] || messaggi.altro));
+    if (stato.errore) aggiungi(box, errore(messaggi[stato.errore] || messaggi.altro));
     if (esistente && !stato.registrando) {
-      box.append(h("audio", { controls: true, src: esistente.url }),
+      aggiungi(box, h("audio", { controls: true, src: esistente.url }),
         esistente.secondi ? h("p", { classe: "nota" }, `${esistente.secondi.toFixed(0)} secondi`) : null,
         h("button", { classe: "bottone-secondario", type: "button", onclick: inizia }, "Rifai"));
       return;
@@ -1047,12 +1047,12 @@ function registratoreVoce(esistente, massimo, onFatto) {
     if (stato.registrando) {
       const riempimento = h("span");
       riempimento.style.width = `${Math.min(100, (stato.secondi / massimo) * 100)}%`;
-      box.append(h("p", { classe: "timer", "aria-live": "off" }, `${Math.floor(stato.secondi)} / ${massimo} s`),
+      aggiungi(box, h("p", { classe: "timer", "aria-live": "off" }, `${Math.floor(stato.secondi)} / ${massimo} s`),
         h("div", { classe: "avanzamento-barra" }, riempimento),
         h("button", { classe: "bottone bottone-rec", type: "button", onclick: () => registrazioneInCorso && registrazioneInCorso.ferma() }, "Ferma"));
       return;
     }
-    box.append(h("button", { classe: "bottone bottone-rec", type: "button", disabled: !registrazioneSupportata(), onclick: inizia }, "● Registra"),
+    aggiungi(box, h("button", { classe: "bottone bottone-rec", type: "button", disabled: !registrazioneSupportata(), onclick: inizia }, "● Registra"),
       registrazioneSupportata() ? null : errore(messaggi.non_supportato));
   };
   async function inizia() {
@@ -1460,4 +1460,9 @@ function schermoAiuto() {
       h("p", {}, x.testo),
       x.risposta ? h("p", { classe: "nota" }, x.risposta) : null))) : null,
     h("button", { classe: "bottone-secondario", type: "button", disabled: a.invio, onclick: chiudiAiuto }, "Chiudi"));
+}
+
+// Come h(): salta null, undefined e false (Element.append(null) scriverebbe «null» sullo schermo).
+function aggiungi(el, ...figli) {
+  el.append(...figli.filter((f) => f !== null && f !== undefined && f !== false));
 }
