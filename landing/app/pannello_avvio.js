@@ -142,6 +142,7 @@ async function mostraScheda(p, id) {
     const esito = await p.decidi({ id: s.id, azione: scelta.value, regola: regola.value, testo: motivo.value });
     invia.disabled = false;
     if (!esito.ok) { errore.textContent = MESSAGGI[esito.motivo] || MESSAGGI.riprova; return; }
+    if (esito.sanzione) { await mostraEmail(p, esito.sanzione); return; }
     await mostraCoda(p);
     avvisa("Decisione salvata e scritta nel registro.");
   } },
@@ -160,6 +161,42 @@ async function mostraScheda(p, id) {
     ...elenco("Porte e svelamento", s.porte, "Nessuna porta tra i due."),
     ...elenco("Storico della persona segnalata (6 mesi)", s.storico, "Nessuna segnalazione o sanzione precedente."),
     h("h2", { testo: "Decidi" }), modulo,
+  );
+}
+
+// D144 A (passo 15c): dopo una sanzione, l'indirizzo e il testo pronto per l'email che si manda a mano dalla casella di
+// Presente. Da qui non parte nessuna email; l'indirizzo resta solo sullo schermo.
+async function mostraEmail(p, sanzione) {
+  const e = await p.emailSanzione(sanzione);
+  avvisa("Decisione salvata e scritta nel registro.");
+  if (!e.ok) {
+    mostra(h("h1", { testo: "Email a chi ha ricevuto la sanzione" }),
+      h("p", { class: "errore", role: "alert", testo: "Non riesco a preparare l'email. La sanzione è salvata e si vede nell'app." }),
+      h("div", { class: "azioni" }, h("button", { type: "button", class: "bottone", onclick: () => mostraCoda(p), testo: "Torna all'elenco" })));
+    return;
+  }
+  const esito = h("p", { role: "status" });
+  const corpo = h("textarea", { id: "email-corpo", rows: "6", readonly: true });
+  corpo.value = e.corpo;
+  const copia = async (testo) => {
+    try {
+      await navigator.clipboard.writeText(testo);
+      esito.textContent = "Copiato.";
+    } catch {
+      esito.textContent = "Non copiato: seleziona il testo e copialo a mano.";
+    }
+  };
+  mostra(
+    h("h1", { testo: "Email a chi ha ricevuto la sanzione" }),
+    h("p", { testo: "Mandala tu dalla casella di Presente: da qui non parte nessuna email." }),
+    h("h2", { testo: "A" }), h("p", { class: "racconto", testo: e.a }),
+    h("button", { type: "button", class: "bottone-secondario", onclick: () => copia(e.a), testo: "Copia l'indirizzo" }),
+    h("h2", { testo: "Oggetto" }), h("p", { class: "racconto", testo: e.oggetto }),
+    h("label", { for: "email-corpo", testo: "Testo" }), corpo,
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => copia(`${e.oggetto}\n\n${e.corpo}`), testo: "Copia oggetto e testo" }),
+      h("button", { type: "button", class: "bottone", onclick: () => mostraCoda(p), testo: "Fatto, torna all'elenco" })),
+    esito,
   );
 }
 

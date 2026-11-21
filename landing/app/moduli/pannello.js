@@ -5,6 +5,7 @@
 
 import { MOTIVI_MODULO } from "./segnala.js";
 import { REGOLE_COMMUNITY, ID_REGOLE, testoRegola, regolaProposta } from "./regole_community.js";
+import { TESTI_SANZIONE } from "./sanzioni.js";
 
 const PERCORSO = "/app/api/pannello";
 const ATTESA_MS = 10000;
@@ -143,6 +144,21 @@ export function vociRicorsi(righe, adesso = new Date()) {
   }));
 }
 
+// D144 A (passo 15c): testo pronto per l'email a chi riceve una sanzione, con gli stessi testi del messaggio in app
+// (sanzioni.js). Lo manda Giuseppe a mano dalla casella di Presente: da qui non parte nessuna email.
+export const LINK_CONTESTA = "https://presenteincontri.app/app/";
+const GIORNO_ANNO = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+export function testoEmailSanzione(e) {
+  if (!e || typeof e !== "object" || !Object.hasOwn(TESTI_SANZIONE.livelli, e.livello)) return null;
+  const livello = TESTI_SANZIONE.livelli[e.livello];
+  const fine = new Date(e.fine_il || "");
+  const righe = [livello];
+  if (testoRegola(e.regola)) righe.push(`Regola violata: ${testoRegola(e.regola)}`);
+  if (e.fine_il && !Number.isNaN(fine.getTime())) righe.push(`Fino al ${GIORNO_ANNO.format(fine)}`);
+  righe.push(`${TESTI_SANZIONE.contesta}: ${LINK_CONTESTA}`);
+  return { oggetto: `Presente! · ${livello}`, corpo: righe.join("\n") };
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -187,7 +203,17 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       if (r ? !ID_REGOLE.includes(r) : !SENZA_REGOLA.has(azione)) return { ok: false, motivo: "regola" };
       if (!t || t.length > MASSIMO_MOTIVO_DECISIONE) return { ok: false, motivo: "testo" };
       const d = await chiama("/decidi", { id, azione, regola: r, testo: t });
-      return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
+      if (!d.ok) return { ok: false, motivo: d.motivo || "riprova" };
+      return UUID.test(d.sanzione || "") ? { ok: true, sanzione: d.sanzione } : { ok: true };
+    },
+    // D144 A: indirizzo e testo pronto dell'email per una sanzione appena decisa. Nessun salvataggio, nessun log.
+    async emailSanzione(id) {
+      if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
+      const d = await chiama("/email", { id });
+      if (!d.ok) return { ok: false, motivo: d.motivo || "riprova" };
+      const a = d.email && typeof d.email.a === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.a) ? d.email.a : null;
+      const t = testoEmailSanzione(d.email);
+      return a && t ? { ok: true, a, ...t } : { ok: false, motivo: "riprova" };
     },
     async ricorsi() {
       const d = await chiama("/ricorsi");
