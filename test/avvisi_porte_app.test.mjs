@@ -1,5 +1,5 @@
 // Issue #65 (spec v1 del CPO, passo 4 «Quando»; D48 A): gli avvisi delle porte nella home, linea del CTO.
-// Senza notifiche push (vengono con D24) gli avvisi si vedono con l'app aperta: «<nome> è pronta per lo svelamento»,
+// Senza notifiche push (vengono con D24) gli avvisi si vedono con l'app aperta: «<nome> ti aspetta per lo svelamento»,
 // 10 minuti prima della fascia fissata e all'inizio. La porta resta raggiungibile anche dopo lunedì 9:00, fino alla
 // scadenza delle 48 ore. h finto, svelamento finto, timer finti, nessun dato reale.
 import { test } from "node:test";
@@ -44,22 +44,22 @@ test("porta scaduta o con id non valido: non compare", () => {
 });
 
 test("l'altra persona è pronta: il testo del server, urgente", () => {
-  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento" })]), ADESSO);
-  assert.equal(a.testo, "Giulia è pronta per lo svelamento");
+  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento" })]), ADESSO);
+  assert.equal(a.testo, "Giulia ti aspetta per lo svelamento");
   assert.equal(a.urgente, true);
 });
 
-test("pronti tutti e due (il mio «pronto» ancora valido): «Siete pronti tutti e due.»", () => {
-  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento", mio_pronto: true,
+test("pronti tutti e due (il mio «pronto» ancora valido): «Potete entrare adesso.»", () => {
+  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento", mio_pronto: true,
     pronto_scade_il: "2026-11-17T19:03:00Z" })]), ADESSO);
   assert.equal(a.testo, TESTI_AVVISI.entrambiPronti);
   assert.equal(a.urgente, true);
 });
 
 test("il mio «pronto» scaduto conta come non pronto: torna l'avviso dell'altra persona", () => {
-  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento", mio_pronto: true,
+  const [a] = avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento", mio_pronto: true,
     pronto_scade_il: "2026-11-17T18:59:00Z" })]), ADESSO);
-  assert.equal(a.testo, "Giulia è pronta per lo svelamento");
+  assert.equal(a.testo, "Giulia ti aspetta per lo svelamento");
 });
 
 test("fascia fissata tra 10 minuti o meno: «inizia tra N minuti», urgente; 1 minuto al singolare", () => {
@@ -90,11 +90,11 @@ test("dentro la mezz'ora fissata: «inizia ora», urgente; finita la mezz'ora to
 
 test("«pronta» vale più della fascia; due porte, due avvisi; nome mancante con il testo neutro", () => {
   const due = avvisiPorte(stato([
-    porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento", fascia_fissata: "2026-11-17T19:05:00Z" }),
+    porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento", fascia_fissata: "2026-11-17T19:05:00Z" }),
     porta({ porta: PORTA2, nome: "  " }),
   ]), ADESSO);
   assert.equal(due.length, 2);
-  assert.equal(due[0].testo, "Giulia è pronta per lo svelamento");
+  assert.equal(due[0].testo, "Giulia ti aspetta per lo svelamento");
   assert.equal(due[1].testo, "Una porta si è aperta: una persona della stanza.");
 });
 
@@ -123,7 +123,7 @@ const pausa = () => new Promise((r) => setImmediate(r));
 
 test("controllo: legge all'avvio, rilegge dopo un minuto, avvisa solo se gli avvisi cambiano", async () => {
   const { ap, timer, svelamento, cambi } = finti({ ok: true, stato: stato() }, { ok: true, stato: stato() },
-    { ok: true, stato: stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento" })]) });
+    { ok: true, stato: stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento" })]) });
   ap.avvia();
   await pausa();
   assert.equal(svelamento.letture, 1);
@@ -169,14 +169,14 @@ test("vista: niente avvisi → null; urgente con role=status; pulsante con etich
   const vuoto = { modello: () => ({ avvisi: [] }) };
   assert.equal(vistaAvvisiPorte(h, vuoto, { apri: () => {} }), null);
   const aperte = [];
-  const ap = { modello: () => ({ avvisi: avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento" }),
+  const ap = { modello: () => ({ avvisi: avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento" }),
     porta({ porta: PORTA2, nome: "Marta", fascia_fissata: "2026-11-17T19:30:00Z" })]), ADESSO) }) };
   const v = vistaAvvisiPorte(h, ap, { apri: (id) => aperte.push(id) });
-  assert.match(testo(v), /Giulia è pronta per lo svelamento/);
+  assert.match(testo(v), /Giulia ti aspetta per lo svelamento/);
   assert.match(testo(v), /Lo svelamento è fissato: martedì 17 novembre, 20:30/);
   const stati = tutti(v, (x) => x.a.role === "status");
   assert.equal(stati.length, 1);
-  assert.match(testo(stati[0]), /Giulia è pronta/);
+  assert.match(testo(stati[0]), /Giulia ti aspetta/);
   const bottoni = tutti(v, (x) => x.tag === "button");
   assert.deepEqual(bottoni.map((b) => b.a["aria-label"]), ["Vai allo svelamento con Giulia", "Vai allo svelamento con Marta"]);
   bottoni[1].a.onclick();
@@ -184,7 +184,7 @@ test("vista: niente avvisi → null; urgente con role=status; pulsante con etich
 });
 
 test("vista: «soloUrgenti» (la sera delle chiavi mostra già le porte) lascia solo gli avvisi urgenti", () => {
-  const ap = { modello: () => ({ avvisi: avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento" }),
+  const ap = { modello: () => ({ avvisi: avvisiPorte(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento" }),
     porta({ porta: PORTA2, nome: "Marta" })]), ADESSO) }) };
   const v = vistaAvvisiPorte(h, ap, { apri: () => {}, soloUrgenti: true });
   assert.doesNotMatch(testo(v), /Marta/);

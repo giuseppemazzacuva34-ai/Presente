@@ -442,10 +442,10 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     },
     async scegli(porta, scelta) { return conPorta(porta, (v) => { v.mia_scelta = scelta === "foto" ? "foto" : "video"; return null; }); },
     async pronto(porta) {
-      return conPorta(porta, (v) => (v.mia_caparra ? ((v.pronto_il = adesso()), null) : no("manca_caparra", "Serve prima la caparra di tutti e due.")));
+      return conPorta(porta, (v) => (v.mia_caparra ? ((v.pronto_il = adesso()), null) : no("manca_caparra", "Servono prima le due caparre.")));
     },
     async fasce(porta, fasce) {
-      return conPorta(porta, (v) => (v.mia_caparra ? ((v.mie_fasce = [...fasce].sort().slice(0, 3)), null) : no("manca_caparra", "Serve prima la caparra di tutti e due.")));
+      return conPorta(porta, (v) => (v.mia_caparra ? ((v.mie_fasce = [...fasce].sort().slice(0, 3)), null) : no("manca_caparra", "Servono prima le due caparre.")));
     },
   };
   const nuoveChiavi = () => creaChiaviStanza({ chiavi: chiaviServer, aggiorna: () => aggiorna.chiavi(), conto: (t) => aggiorna.conto(t),

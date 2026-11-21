@@ -1,5 +1,5 @@
 // Issue #65, passo 5b (spec v1 del CPO, passo 4 «Quando»; D48 A): nella schermata della porta, quando tutti e due
-// hanno bloccato la caparra, «Sono pronto ora» (5 minuti per l'altra persona) e «Scegli un orario» (fino a 3 mezz'ore
+// hanno bloccato la caparra, «Ci sono adesso» (5 minuti per l'altra persona) e «Scegli un orario» (fino a 3 mezz'ore
 // dentro le 48 ore; l'app fissa la prima comune). Le regole le applica il server (passo 5a, /app/api/svelamento
 // { azione: "pronto" | "fasce" }); le fasce dell'altra persona non arrivano mai al telefono. h finto, rete finta,
 // nessun dato reale.
@@ -76,7 +76,7 @@ test("schermata: «Quando» solo con la caparra di tutti e due", () => {
   assert.equal(schermataPorta(stato([porta({ mia_caparra: false, sua_caparra: false })], 20), PORTA, ADESSO).quando, null);
   const q = schermataPorta(stato(), PORTA, ADESSO).quando;
   assert.equal(q.titolo, TESTI.quandoTitolo);
-  assert.equal(q.ora, "Sono pronto ora");
+  assert.equal(q.ora, "Ci sono adesso");
   assert.equal(q.orario, "Scegli un orario");
   assert.equal(q.opzioni.length, 68);
   assert.deepEqual(q.opzioni[0], { valore: "2026-11-16T10:00:00.000Z", testo: "lunedì 16 novembre, 11:00" });
@@ -91,8 +91,8 @@ test("schermata: «sono pronto» con i minuti rimasti, l'altra pronta, entrambi 
   assert.equal(q.mioPronto, "Giulia ha ancora 1 minuto per entrare.");
   q = schermataPorta(stato([porta({ mio_pronto: true, pronto_scade_il: "2026-11-16T09:39:00Z" })]), PORTA, ADESSO).quando;
   assert.equal(q.mioPronto, null, "finestra dei 5 minuti finita");
-  q = schermataPorta(stato([porta({ suo_pronto: true, pronta: "Giulia è pronta per lo svelamento" })]), PORTA, ADESSO).quando;
-  assert.equal(q.pronta, "Giulia è pronta per lo svelamento");
+  q = schermataPorta(stato([porta({ suo_pronto: true, pronta: "Giulia ti aspetta per lo svelamento" })]), PORTA, ADESSO).quando;
+  assert.equal(q.pronta, "Giulia ti aspetta per lo svelamento");
   q = schermataPorta(stato([porta({ mio_pronto: true, suo_pronto: true, pronto_scade_il: "2026-11-16T09:44:00Z", pronta: "x" })]), PORTA, ADESSO).quando;
   assert.equal(q.entrambi, TESTI.entrambiPronti);
   assert.equal(q.mioPronto, null);
@@ -132,7 +132,7 @@ test("rete: rifiuti del server «manca_caparra» e «fasce_non_valide» diventan
   assert.equal((await s.fasce(PORTA, ["2026-11-17T18:00:00.000Z"])).testo, TESTI.fasceNonValide);
 });
 
-test("controllo: «Sono pronto ora» una volta sola, la schermata segue il server", async () => {
+test("controllo: «Ci sono adesso» una volta sola, la schermata segue il server", async () => {
   const sv = svelamentoFinto({ ok: true, stato: stato() });
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => ADESSO });
   await ps.apri(PORTA);
@@ -199,7 +199,7 @@ test("vista: «Quando?» con i due pulsanti; gli orari in 3 menu con etichetta; 
   assert.ok(gruppo);
   assert.ok(testo(gruppo).includes(TESTI.quandoTitolo));
   sv.risposte.pronto = { ok: true, esito: "pronto", stato: stato([porta({ mio_pronto: true, pronto_scade_il: "2026-11-16T09:45:00Z" })]) };
-  await bottone(v, "Sono pronto ora").a.onclick();
+  await bottone(v, "Ci sono adesso").a.onclick();
   v = vistaPorta(h, ps);
   assert.ok(tutti(v, (x) => x.a.role === "status" && testo(x) === "Giulia ha ancora 5 minuti per entrare.").length === 1);
   bottone(v, "Scegli un orario").a.onclick();
@@ -222,7 +222,7 @@ test("vista prima delle due caparre: niente «Quando?»", async () => {
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => ADESSO });
   await ps.apri(PORTA);
   const v = vistaPorta(h, ps);
-  assert.equal(bottone(v, "Sono pronto ora"), undefined);
+  assert.equal(bottone(v, "Ci sono adesso"), undefined);
   assert.equal(bottone(v, "Scegli un orario"), undefined);
 });
 

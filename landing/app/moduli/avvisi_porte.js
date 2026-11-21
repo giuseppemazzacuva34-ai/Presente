@@ -1,6 +1,6 @@
 // Avvisi delle porte nella home (issue #65, spec v1 del CPO, passo 4 «Quando»; D48 A). Linea del CTO.
 // Le notifiche push arrivano con D24: finché non ci sono, gli avvisi si vedono con l'app aperta e visibile.
-// - «<nome> è pronta per lo svelamento» (testo del server), «Siete pronti tutti e due.»;
+// - «<nome> ti aspetta per lo svelamento» (testo del server), «Potete entrare adesso.»;
 // - 10 minuti prima della fascia fissata («inizia tra N minuti») e per la mezz'ora fissata («inizia ora»);
 // - ogni porta aperta resta raggiungibile con «Vai allo svelamento» fino alla scadenza delle 48 ore (martedì 21:00),
 //   anche dopo lunedì 9:00, quando la sera delle chiavi non si vede più.

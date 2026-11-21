@@ -2,7 +2,7 @@
 // Nella schermata della porta: dopo l'anteprima, «Entra» chiede entra_svelamento al server; finché manca l'altra
 // persona «Aspettiamo <nome>…» e si richiede ogni pochi secondi (una richiesta alla volta); con «iniziato» + «video»
 // l'anteprima si spegne e si apre la schermata del video (schermata_svelamento.js). 10 minuti senza l'altra persona:
-// «<nome> non è arrivata. Proponi un altro momento.» e si torna a scegliere quando. «Chiudi e segnala» chiede subito
+// «<nome> non c'è. Proponi un altro momento.» e si torna a scegliere quando. «Chiudi e segnala» chiede subito
 // al server di chiudere la porta (azione «chiudi_e_segnala») e prepara il modulo della #7 contro l'altra persona.
 // h finto, server finto, fotocamera finta, orologio manuale: nessun dato reale.
 import { test } from "node:test";
@@ -148,7 +148,7 @@ test("iniziato con le foto: nessun video, la fotocamera si spegne e si rilegge l
   assert.equal(t.ps.sala().modello().stato, "foto");
 });
 
-test("10 minuti senza l'altra persona: «<nome> non è arrivata. Proponi un altro momento.», sala chiusa, giro fermo", async () => {
+test("10 minuti senza l'altra persona: «<nome> non c'è. Proponi un altro momento.», sala chiusa, giro fermo", async () => {
   const t = prepara({ entra: [{ ok: true, esito: "in_attesa" }, { ok: false, motivo: "non_arrivato" }] });
   await inAnteprima(t);
   await t.ps.entra();
@@ -157,7 +157,7 @@ test("10 minuti senza l'altra persona: «<nome> non è arrivata. Proponi un altr
   assert.equal(t.ps.sala().modello().stato, "chiusa");
   assert.ok(t.cam.tracce.every((x) => x.ferma));
   const v = vistaPorta(h, t.ps);
-  assert.match(testo(v), /Giulia non è arrivata\. Proponi un altro momento\./);
+  assert.match(testo(v), /Giulia non c'è\. Proponi un altro momento\./);
   assert.ok(bottone(v, TESTI.prontoOra), "si torna a scegliere quando");
 });
 
