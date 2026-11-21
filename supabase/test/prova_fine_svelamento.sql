@@ -142,8 +142,11 @@ select pg_temp.ok((select (v->>'ho_risposto')::boolean from jsonb_array_elements
 
 -- Svelamento con le foto: la fine si segna subito, durata 0.
 reset role;
+-- (Dal passo 8b-1 una risposta data non si cambia: per riusare la stessa porta qui il controllo si spegne un momento.)
+alter table public.svelamenti disable trigger svelamenti_risposta_ferma;
 update public.svelamenti set iniziato_il = now(), finito_il = null, durata_secondi = null, tipo = 'foto', risposta_a = null,
   risposta_a_il = null where porta_id = '8f8f8f8f-0000-4000-8000-0000000003ab';
+alter table public.svelamenti enable trigger svelamenti_risposta_ferma;
 set local role service_role;
 select pg_temp.ok(pg_temp.fine('7b7b7b7b-0000-4000-8000-00000000037b') = 'finito', 'fine: con le foto → finito subito');
 select pg_temp.ok((pg_temp.riga()).durata_secondi = 0, 'fine: con le foto durata 0');

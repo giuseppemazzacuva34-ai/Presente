@@ -136,28 +136,44 @@ test("doppio sì: «Vi incontrate!», caparre ancora bloccate, si apre la propos
   assert.equal(r.esito, "doppio_si");
   assert.equal(r.caparre, "bloccate");
   assert.equal(r.giorni, 10);
-  assert.equal(r.testo, "Vi incontrate! Avete 10 giorni per vedervi");
+  assert.equal(r.testo, "Vi siete detti sì. Ora fissate l'incontro.");
   assert.equal(esitoRisposte({ rispostaA: "si", rispostaB: "si", fineSvelamento: fine, adesso: dopo(ore(7)), stessaArea: false }).giorni, 30);
 });
 
-test("un no o il silenzio: crediti restituiti a entrambi, stesso testo, nessuna indicazione di chi", () => {
+test("regola CPO 21/11: un no, due no o il silenzio danno l'esito solo a fine 48 ore, stesso testo, caparre a entrambi", () => {
   const fine = dopo(ore(6));
-  const conNo = esitoRisposte({ rispostaA: "si", rispostaB: "no", fineSvelamento: fine, adesso: dopo(ore(8)) });
-  const silenzio = esitoRisposte({ rispostaA: "si", rispostaB: null, fineSvelamento: fine, adesso: new Date(fine.getTime() + ore(48)) });
-  for (const r of [conNo, silenzio]) {
+  const fine48 = new Date(fine.getTime() + ore(48));
+  const prima = new Date(fine48.getTime() - 1000);
+  for (const [rispostaA, rispostaB] of [["si", "no"], ["no", "si"], ["no", "no"], ["si", null], [null, null]]) {
+    const r = esitoRisposte({ rispostaA, rispostaB, fineSvelamento: fine, adesso: prima });
+    assert.equal(r.esito, "in_attesa", `${rispostaA}/${rispostaB} prima delle 48 ore`);
+    assert.equal(r.esitoIl.getTime(), fine48.getTime());
+  }
+  const risultati = [["si", "no"], ["no", "no"], ["si", null], [null, null]].map(([rispostaA, rispostaB]) =>
+    esitoRisposte({ rispostaA, rispostaB, fineSvelamento: fine, adesso: fine48 }));
+  for (const r of risultati) {
     assert.equal(r.esito, "chiusa");
     assert.deepEqual(r.restituisci, ["a", "b"]);
-    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 10 crediti sono di nuovo disponibili.");
+    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 10 crediti sono tornati nel tuo saldo.");
+    assert.deepEqual(r, risultati[0]);
   }
-  assert.deepEqual(conNo, silenzio);
 });
 
-test("in attesa: chi ha risposto non vede la risposta dell'altro", () => {
+test("in attesa: «Hai risposto. Saprai com'è andata entro <giorno e ora>», mai la risposta dell'altro", () => {
   const fine = dopo(ore(6));
   const r = esitoRisposte({ rispostaA: "no", rispostaB: null, fineSvelamento: fine, adesso: dopo(ore(7)) });
   assert.equal(r.esito, "in_attesa");
-  assert.equal(r.testo, "Hai risposto. Ti avvisiamo quando sapremo.");
+  assert.equal(r.testo, "Hai risposto. Saprai com'è andata entro <quando>.");
   assert.equal("rispostaA" in r || "rispostaB" in r, false);
+  // Che l'altro abbia risposto o no, chi aspetta riceve esattamente lo stesso oggetto.
+  assert.deepEqual(esitoRisposte({ rispostaA: "no", rispostaB: "si", fineSvelamento: fine, adesso: dopo(ore(7)) }), r);
+});
+
+test("risposta: conferma prima, poi non si cambia (testi della spec)", () => {
+  assert.equal(TESTI_SVELAMENTO.confermaSi, "Rispondi sì? Non potrai cambiarla.");
+  assert.equal(TESTI_SVELAMENTO.confermaNo, "Rispondi no? Non potrai cambiarla.");
+  assert.equal(TESTI_SVELAMENTO.conferma, "Conferma");
+  assert.equal(TESTI_SVELAMENTO.annulla, "Annulla");
 });
 
 test("porta scaduta senza svelamento: crediti restituiti a chi li aveva bloccati, nessuna penale", () => {
