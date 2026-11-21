@@ -18,9 +18,9 @@ export const INCONTRO = Object.freeze({
   checkinPrimaMinuti: 30, // «Sono qui» da 30 minuti prima…
   checkinDopoMinuti: 30, // …a 30 minuti dopo l'ora (da confermare con Giuseppe, valore in configurazione)
   ritardi: Object.freeze([15, 30]), // «Arrivo in ritardo», una volta sola
-  caparra: 10, // la stessa caparra bloccata per lo svelamento (#65)
-  bucaAChiAspetta: 7, // D12 A
-  bucaAPresente: 3,
+  caparra: 100, // Coin: la stessa caparra bloccata per lo svelamento (#65; #331)
+  bucaAChiAspetta: 70, // D12 A, in Coin (#331)
+  bucaAPresente: 30,
 });
 
 const MINUTO = 60000;
@@ -68,8 +68,8 @@ export const risposteProposta = (controproposteFatte) =>
 
 // ── Disdetta, check-in e buca. ──
 
-// Movimenti di crediti della buca di «assente»: a chi ha aspettato tornano i suoi 10 più 7; a Presente 3.
-// A chi manca non torna nulla. La somma (10 + 7 + 3) è uguale alle due caparre bloccate: nessun credito si crea o si perde.
+// Movimenti di crediti della buca di «assente»: a chi ha aspettato tornano i suoi 100 più 70; a Presente 30 (Coin, #331).
+// A chi manca non torna nulla. La somma (100 + 70 + 30) è uguale alle due caparre bloccate: nessun credito si crea o si perde.
 function buca(assente, a, b) {
   const presente = assente === a ? b : a;
   return {

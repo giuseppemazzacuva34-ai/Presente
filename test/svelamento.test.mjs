@@ -16,8 +16,8 @@ const dopo = (ms) => new Date(APERTA.getTime() + ms);
 
 const porta = (extra = {}) => ({ a: "a", b: "b", aperta: APERTA, caparre: { a: false, b: false }, svelata: null, chiusa: false, ...extra });
 
-test("costanti della spec: 10 crediti, 48 + 48 ore, 10 secondi di cui 3 sfocati, 3 fasce da 30 minuti", () => {
-  assert.equal(SVELAMENTO.caparra, 10);
+test("costanti della spec: 100 Coin, 48 + 48 ore, 10 secondi di cui 3 sfocati, 3 fasce da 30 minuti", () => {
+  assert.equal(SVELAMENTO.caparra, 100);
   assert.equal(SVELAMENTO.finestraOre, 48);
   assert.equal(SVELAMENTO.rispostaOre, 48);
   assert.equal(SVELAMENTO.durata, 10);
@@ -31,17 +31,17 @@ test("la porta di domenica 21:00 scade martedì 21:00 di Roma", () => {
   assert.equal(scadenzaPorta(APERTA).getTime(), oraDiRoma(2026, 11, 17, 21).getTime());
 });
 
-test("caparra: con meno di 10 crediti «Ti mancano N crediti» e non si blocca nulla", () => {
-  const r = bloccaCaparra({ porta: porta(), chi: "a", crediti: 7, adesso: dopo(min(5)) });
+test("caparra: con meno di 100 Coin «Ti mancano N Coin» e non si blocca nulla", () => {
+  const r = bloccaCaparra({ porta: porta(), chi: "a", crediti: 70, adesso: dopo(min(5)) });
   assert.equal(r.ok, false);
   assert.equal(r.motivo, "crediti_insufficienti");
-  assert.equal(r.mancano, 3);
-  assert.equal(r.testo, "Ti mancano 3 crediti");
+  assert.equal(r.mancano, 30);
+  assert.equal(r.testo, "Ti mancano 30 Coin");
   assert.equal(r.blocca, undefined);
 });
 
-test("caparra: con 10 crediti si bloccano 10; non due volte, non fuori tempo, non da chi non è nella porta", () => {
-  assert.deepEqual(bloccaCaparra({ porta: porta(), chi: "a", crediti: 10, adesso: dopo(min(5)) }), { ok: true, blocca: 10 });
+test("caparra: con 100 Coin se ne bloccano 100; non due volte, non fuori tempo, non da chi non è nella porta", () => {
+  assert.deepEqual(bloccaCaparra({ porta: porta(), chi: "a", crediti: 100, adesso: dopo(min(5)) }), { ok: true, blocca: 100 });
   assert.equal(bloccaCaparra({ porta: porta({ caparre: { a: true, b: false } }), chi: "a", crediti: 30, adesso: dopo(min(5)) }).motivo, "gia_bloccata");
   assert.equal(bloccaCaparra({ porta: porta(), chi: "a", crediti: 30, adesso: dopo(ore(48)) }).motivo, "porta_scaduta");
   assert.equal(bloccaCaparra({ porta: porta(), chi: "z", crediti: 30, adesso: dopo(min(5)) }).motivo, "non_nella_porta");
@@ -154,7 +154,7 @@ test("regola CPO 21/11: un no, due no o il silenzio danno l'esito solo a fine 48
   for (const r of risultati) {
     assert.equal(r.esito, "chiusa");
     assert.deepEqual(r.restituisci, ["a", "b"]);
-    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 10 crediti sono tornati nel tuo saldo.");
+    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 100 Coin sono tornati nel tuo saldo.");
     assert.deepEqual(r, risultati[0]);
   }
 });

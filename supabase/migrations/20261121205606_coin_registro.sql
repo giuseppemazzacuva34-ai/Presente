@@ -29,6 +29,8 @@ alter table public.crediti_movimenti add constraint crediti_movimenti_tipo_check
   check (tipo in ('assegnati_beta', 'caparra_bloccata', 'caparra_restituita', 'stanza', 'buca_ricevuta', 'conversione_coin'));
 alter table public.crediti_movimenti drop constraint importi_previsti;
 -- La conversione entra solo in questa migrazione (vincolo aggiunto dopo, sotto).
+-- ATTENZIONE per le migrazioni future: importi_previsti va sempre ri-aggiunto «not valid» (le righe vecchie in crediti
+-- e le righe conversione_coin non lo rispettano) e mai con «validate constraint».
 insert into public.crediti_movimenti (persona, tipo, crediti)
   select persona, 'conversione_coin', 9 * sum(crediti)::integer from public.crediti_movimenti
   group by persona having sum(crediti) > 0;

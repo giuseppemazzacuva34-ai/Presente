@@ -21,13 +21,13 @@ async function conPorta() {
   return { p, porta: sera.porte[0].id, adesso: () => new Date(ora), avanti: (s) => { ora += s * 1000; } };
 }
 
-test("prima della sera nessuna porta, crediti di prova 15", async () => {
+test("prima della sera nessuna porta, Coin di prova 200 (spec #331 A.4)", async () => {
   const p = creaProva({ attesaMs: 0 });
   const r = await p.svelamentoServer.leggi();
-  assert.deepEqual(r, { ok: true, stato: { saldo: 15, porte: [] } });
+  assert.deepEqual(r, { ok: true, stato: { saldo: 200, porte: [] } });
 });
 
-test("porta aperta: 48 ore, caparra di 10 crediti, la persona finta blocca anche lei", async () => {
+test("porta aperta: 48 ore, caparra di 100 Coin, la persona finta blocca anche lei", async () => {
   const { p, porta, adesso } = await conPorta();
   let s = schermataPorta((await p.svelamentoServer.leggi()).stato, porta, adesso());
   assert.equal(s.tipo, "porta");
@@ -37,11 +37,11 @@ test("porta aperta: 48 ore, caparra di 10 crediti, la persona finta blocca anche
   const r = await p.svelamentoServer.blocca(porta);
   assert.equal(r.ok, true);
   s = schermataPorta(r.stato, porta, adesso());
-  assert.equal(s.saldo, "I tuoi crediti: 5");
+  assert.equal(s.saldo, "I tuoi Coin: 100");
   assert.equal(s.caparra.tipo, "entrambe");
   assert.equal(s.scelta.attuale, "video");
   assert.ok(s.quando.opzioni.length > 0);
-  assert.equal((await p.svelamentoServer.blocca(porta)).stato.saldo, 5, "una caparra sola per porta");
+  assert.equal((await p.svelamentoServer.blocca(porta)).stato.saldo, 100, "una caparra sola per porta");
 });
 
 test("scelta, «Ci sono adesso» e orari: il momento arriva subito, con il tipo scelto", async () => {

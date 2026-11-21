@@ -8,7 +8,7 @@ export const CATEGORIE = Object.freeze({
   account: "Account e accesso",
   stanza_chiamate: "Stanza e chiamate",
   chiavi_porte: "Chiavi e porte",
-  crediti: "Crediti",
+  crediti: "Coin",
   incontro: "Incontro",
   test: "Test",
   altro: "Altro",

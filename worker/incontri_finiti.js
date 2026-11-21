@@ -1,7 +1,7 @@
 // Incontri finiti (Fase 2, issue #6 spec v1 del CPO, «Regole» › buca e «nessun check-in»; D12 A). Linea «sviluppatore-b».
 // Ogni ora (cron «23 * * * *» già in wrangler.jsonc, gratuito) il Worker chiede al database di chiudere gli incontri
 // finiti che nessuno ha aperto: public.chiudi_incontri_finiti() (migrazione *_buca_incontro.sql, solo ruolo di
-// servizio) applica la buca (10 + 7 a chi ha aspettato, 3 a Presente) o restituisce i crediti a entrambi. Ogni lettura
+// servizio) applica la buca (100 + 70 Coin a chi ha aspettato, 30 a Presente) o restituisce i crediti a entrambi. Ogni lettura
 // dell'incontro lo chiude già da sola: questo lavoro serve solo per chi non riapre l'app.
 // Spento finché ACCESSO_APP non vale «si». Nei log solo numeri, mai persone.
 

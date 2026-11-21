@@ -40,8 +40,8 @@ test("testi della spec, parola per parola", () => {
   assert.equal(TESTI_INCONTRO.altraData, "Propongo un'altra data");
   assert.equal(TESTI_INCONTRO.annulla, "Annulla l'incontro");
   assert.equal(TESTI_INCONTRO.confermato, "Ci vediamo <giorno> alle <ora> · <luogo>");
-  assert.equal(TESTI_INCONTRO.caparra, "Se uno dei due non si presenta, i suoi 10 crediti vanno: 7 a chi ha aspettato, 3 a Presente.");
-  assert.equal(TESTI_INCONTRO.scaduto, "Non siete riusciti a fissare l'incontro. I tuoi 10 crediti sono di nuovo disponibili.");
+  assert.equal(TESTI_INCONTRO.caparra, "Se uno dei due non si presenta, i suoi 100 Coin vanno: 70 a chi ha aspettato, 30 a Presente.");
+  assert.equal(TESTI_INCONTRO.scaduto, "Non siete riusciti a fissare l'incontro. I tuoi 100 Coin sono di nuovo disponibili.");
 });
 
 test("orari proponibili: da domani 10:00 alla scadenza, ogni 30 minuti, 10:00-23:00 di Roma, tutti accettati dal server", () => {

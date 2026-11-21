@@ -115,9 +115,9 @@ test("apre lunedì 9:00 e chiude domenica 21:00 ora di Roma, anche col cambio d'
   assert.equal(oraDiRoma(2026, 7, 1, 9).toISOString(), "2026-07-01T07:00:00.000Z");
 });
 
-test("crediti: prima stanza gratis, poi 9 solo se la stanza si forma", () => {
+test("Coin: prima stanza gratis, poi 80 solo se la stanza si forma", () => {
   assert.equal(costoStanza(0, true), 0);
-  assert.equal(costoStanza(1, true), 9);
+  assert.equal(costoStanza(1, true), 80);
   assert.equal(costoStanza(3, false), 0);
 });
 

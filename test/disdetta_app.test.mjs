@@ -33,9 +33,9 @@ const stato = (i) => ({ dati: { ok: true, incontro: i } });
 
 test("testi della spec v1.1 per «Disdici» e «Annulla l'incontro»", () => {
   assert.equal(TESTI_INCONTRO.disdici, "Disdici");
-  assert.equal(TESTI_INCONTRO.confermaDisdici, "Disdici questo appuntamento? Potete fissarne un altro entro il <data>. Se non lo fissate, i crediti tornano a entrambi.");
+  assert.equal(TESTI_INCONTRO.confermaDisdici, "Disdici questo appuntamento? Potete fissarne un altro entro il <data>. Se non lo fissate, i Coin tornano a entrambi.");
   assert.equal(TESTI_INCONTRO.disdettoAltro, "<nome> ha disdetto l'appuntamento di <giorno>. Potete fissarne un altro entro il <data>.");
-  assert.equal(TESTI_INCONTRO.confermaAnnulla, "Annulli l'incontro? Non potrete più fissarlo. I crediti tornano a entrambi.");
+  assert.equal(TESTI_INCONTRO.confermaAnnulla, "Annulli l'incontro? Non potrete più fissarlo. I Coin tornano a entrambi.");
 });
 
 test("confermato con «disdici» tra le azioni: c'è il pulsante «Disdici»", () => {
@@ -55,7 +55,7 @@ test("«Disdici» in tempo: prima chiede conferma con la data, poi manda { azion
   assert.equal(await inc.disdici(), false, "il primo tocco chiede conferma");
   assert.equal(r.chiamate.length, 1);
   const v = vistaIncontro(h, inc);
-  assert.match(testo(v), /Disdici questo appuntamento\? Potete fissarne un altro entro il 29 novembre\. Se non lo fissate, i crediti tornano a entrambi\./);
+  assert.match(testo(v), /Disdici questo appuntamento\? Potete fissarne un altro entro il 29 novembre\. Se non lo fissate, i Coin tornano a entrambi\./);
   assert.ok(bottone(v, TESTI_INCONTRO.siDisdici));
   assert.equal(bottone(v, "Disdici"), undefined, "durante la conferma non c'è di nuovo «Disdici»");
   assert.equal(await inc.disdici(), true);

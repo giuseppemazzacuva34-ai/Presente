@@ -32,7 +32,7 @@ function rete(risposte) {
 test("testi della spec per check-in e segnale", () => {
   assert.equal(TESTI_INCONTRO.sonoQui, "Sono qui");
   assert.equal(TESTI_INCONTRO.segnale, "Il vostro segnale: <parola>");
-  assert.equal(TESTI_INCONTRO.creditiLiberi, "I tuoi 10 crediti sono di nuovo disponibili.");
+  assert.equal(TESTI_INCONTRO.creditiLiberi, "I tuoi 100 Coin sono di nuovo disponibili.");
 });
 
 test("confermato, dentro la finestra: c'è «Sono qui»; fuori: quando si potrà fare", () => {
@@ -116,5 +116,5 @@ test("vista: pulsante grande «Sono qui», poi attesa, poi il segnale in evidenz
   const segnale = tutti(v, (x) => x.a.classe === "segnale")[0];
   assert.equal(testo(segnale), "Il vostro segnale: Lampone");
   assert.equal(segnale.a.role, "status");
-  assert.match(testo(v), /I tuoi 10 crediti sono di nuovo disponibili\./);
+  assert.match(testo(v), /I tuoi 100 Coin sono di nuovo disponibili\./);
 });

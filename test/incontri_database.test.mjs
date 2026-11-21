@@ -17,8 +17,17 @@ test("valori uguali a api/incontro.js: giorni, controproposte, ritardi, buca", (
   assert.match(sql, new RegExp(`interval '${INCONTRO.giorniAreeDiverse} days'`));
   assert.match(sql, new RegExp(`controproposte between 0 and ${INCONTRO.controproposte}`));
   assert.match(sql, new RegExp(`ritardo_minuti in \\(0, ${INCONTRO.ritardi.join(", ")}\\)`));
-  assert.match(sql, new RegExp(`tipo = 'buca_ricevuta' and crediti = ${INCONTRO.bucaAChiAspetta}`));
-  assert.match(sql, new RegExp(`crediti_presente = ${INCONTRO.bucaAPresente}`));
+});
+
+// Dal 21/11 (#331, linea «sviluppatore-c») gli importi della buca sono in Coin nella migrazione coin_registro.
+const coin = readdirSync(cartella).find((n) => /^\d{14}_coin_registro\.sql$/.test(n));
+const sqlCoin = coin ? readFileSync(new URL(coin, cartella), "utf8") : "";
+test("buca in Coin uguale a api/incontro.js", () => {
+  assert.match(sqlCoin, new RegExp(`coin_buca_ricevuta\\(\\) returns integer[^;]*select ${INCONTRO.bucaAChiAspetta} `));
+  assert.match(sqlCoin, new RegExp(`coin_buca_presente\\(\\) returns integer[^;]*select ${INCONTRO.bucaAPresente} `));
+  assert.match(sqlCoin, new RegExp(`coin_caparra\\(\\) returns integer[^;]*select ${INCONTRO.caparra} `));
+  assert.match(sqlCoin, new RegExp(`tipo = 'buca_ricevuta' and crediti = ${INCONTRO.bucaAChiAspetta}\\b`));
+  assert.match(sqlCoin, new RegExp(`crediti_presente = ${INCONTRO.bucaAPresente}\\)`));
 });
 
 test("regole per riga attive e incontri chiusi al telefono", () => {

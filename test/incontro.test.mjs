@@ -105,30 +105,30 @@ test("check-in di entrambi: incontro avvenuto, caparre sbloccate subito, valutaz
   const r = esitoIncontro({ orario: ORA_INCONTRO, checkin: { a: alle(-min(5)), b: alle(min(2)) }, adesso: alle(min(2)), a: "a", b: "b" });
   assert.equal(r.esito, "avvenuto");
   assert.deepEqual(r.movimenti, [
-    { persona: "a", tipo: "caparra_restituita", crediti: 10 },
-    { persona: "b", tipo: "caparra_restituita", crediti: 10 },
+    { persona: "a", tipo: "caparra_restituita", crediti: 100 },
+    { persona: "b", tipo: "caparra_restituita", crediti: 100 },
   ]);
   assert.equal(r.valutazione, true);
 });
 
-test("buca: check-in di A, niente da B a +30 min → B −10, A +7, Presente +3, e la somma torna", () => {
+test("buca: check-in di A, niente da B a +30 min → B −100, A +70, Presente +30, e la somma torna", () => {
   const prima = esitoIncontro({ orario: ORA_INCONTRO, checkin: { a: alle(0), b: null }, adesso: alle(min(29)), a: "a", b: "b" });
   assert.equal(prima.esito, "in_corso");
   const r = esitoIncontro({ orario: ORA_INCONTRO, checkin: { a: alle(0), b: null }, adesso: alle(min(30)), a: "a", b: "b" });
   assert.equal(r.esito, "buca_b");
   assert.deepEqual(r.movimenti, [
-    { persona: "a", tipo: "caparra_restituita", crediti: 10 },
-    { persona: "a", tipo: "buca_ricevuta", crediti: 7 },
+    { persona: "a", tipo: "caparra_restituita", crediti: 100 },
+    { persona: "a", tipo: "buca_ricevuta", crediti: 70 },
   ]);
-  assert.equal(r.presente, 3);
-  assert.equal(somma(r.movimenti) + r.presente, 20); // le due caparre bloccate, né un credito in più né uno in meno
+  assert.equal(r.presente, 30);
+  assert.equal(somma(r.movimenti) + r.presente, 200); // le due caparre bloccate, né un credito in più né uno in meno
   assert.equal(r.valutazione, false);
 });
 
 test("nessuno dei due fa il check-in: crediti a entrambi, niente valutazione", () => {
   const r = esitoIncontro({ orario: ORA_INCONTRO, checkin: { a: null, b: null }, adesso: alle(min(30)), a: "a", b: "b" });
   assert.equal(r.esito, "nessun_checkin");
-  assert.equal(somma(r.movimenti), 20);
+  assert.equal(somma(r.movimenti), 200);
   assert.equal(r.presente, 0);
   assert.equal(r.valutazione, false);
 });
