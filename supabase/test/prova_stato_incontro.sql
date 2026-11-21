@@ -46,9 +46,9 @@ insert into public.porte (id, stanza_id, a, b, aperta_il) values
    '9a9a9a9a-0000-4000-8000-00000000009a', '9e9e9e9e-0000-4000-8000-00000000009e', now() - interval '1 hour');
 
 set local role service_role;
-select public.assegna_crediti_beta('9a9a9a9a-0000-4000-8000-00000000009a', 20);
-select public.assegna_crediti_beta('9b9b9b9b-0000-4000-8000-00000000009b', 10);
-select public.assegna_crediti_beta('9c9c9c9c-0000-4000-8000-00000000009c', 10);
+select public.assegna_crediti_beta('9a9a9a9a-0000-4000-8000-00000000009a', 200);
+select public.assegna_crediti_beta('9b9b9b9b-0000-4000-8000-00000000009b', 100);
+select public.assegna_crediti_beta('9c9c9c9c-0000-4000-8000-00000000009c', 100);
 select public.blocca_caparra('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a');
 select public.blocca_caparra('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b');
 select public.blocca_caparra('9f9f9f9f-0000-4000-8000-0000000000ac', '9a9a9a9a-0000-4000-8000-00000000009a');
@@ -118,7 +118,7 @@ select pg_temp.ok((select j->>'stato' = 'confermato' and j->'azioni' = '["disdic
 insert into s select 'c', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ac', '9c9c9c9c-0000-4000-8000-00000000009c');
 select pg_temp.ok((select j->>'esito' = 'scaduto' and j->'azioni' = '[]'::jsonb from s where chi = 'c'),
   'stato: incontro scaduto, nessun pulsante');
-select pg_temp.ok(public.saldo_crediti('9c9c9c9c-0000-4000-8000-00000000009c') = 10, 'stato: alla scadenza i crediti tornano');
+select pg_temp.ok(public.saldo_crediti('9c9c9c9c-0000-4000-8000-00000000009c') = 100, 'stato: alla scadenza i crediti tornano');
 reset role;
 
 rollback;

@@ -30,7 +30,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il)
   from generate_series(1, 4) n;
 
 set local role service_role;
-select public.assegna_crediti_beta(pg_temp.p(n), 30) from generate_series(1, 8) n;
+select public.assegna_crediti_beta(pg_temp.p(n), 300) from generate_series(1, 8) n;
 select public.blocca_caparra(pg_temp.porta((n + 1) / 2), pg_temp.p(n)) from generate_series(1, 8) n;
 update public.svelamenti set iniziato_il = now() - interval '1 day 20 minutes', tentativi = 1, tipo = 'video', durata_secondi = 10,
   finito_il = now() - interval '1 day 19 minutes', esito = 'doppio_si', esito_il = now() - interval '1 day'
@@ -53,7 +53,7 @@ select pg_temp.ok(public.disdici_incontro(pg_temp.porta(1), pg_temp.p(2)) = 'dis
 select pg_temp.ok((select stato = 'da_fissare' and esito is null and orario is null and luogo_libero is null and proposto_da is null
     and confermato_il is null and controproposte = 1 and disdetto_da = pg_temp.p(2) and disdetto_il is not null
   from public.incontri where porta_id = pg_temp.porta(1)), 'disdetta in tempo: torna «da fissare» e ricorda chi ha disdetto');
-select pg_temp.ok(pg_temp.saldo(1) = 20 and pg_temp.saldo(2) = 20, 'disdetta in tempo: le caparre restano bloccate');
+select pg_temp.ok(pg_temp.saldo(1) = 200 and pg_temp.saldo(2) = 200, 'disdetta in tempo: le caparre restano bloccate');
 select pg_temp.ok(public.disdici_incontro(pg_temp.porta(1), pg_temp.p(1)) = 'non_confermato', 'disdetta in tempo: due volte no');
 -- Si può riproporre.
 select pg_temp.ok(public.proponi_incontro(pg_temp.porta(1), pg_temp.p(1),
@@ -62,18 +62,18 @@ select pg_temp.ok(public.proponi_incontro(pg_temp.porta(1), pg_temp.p(1),
 -- Alla scadenza senza nuovo appuntamento confermato: crediti a entrambi.
 update public.incontri set scadenza = now() - interval '1 minute' where porta_id = pg_temp.porta(1);
 select pg_temp.ok((public.incontro_aggiornato(pg_temp.porta(1))).esito = 'scaduto', 'disdetta in tempo: alla scadenza l''incontro scade');
-select pg_temp.ok(pg_temp.saldo(1) = 30 and pg_temp.saldo(2) = 30, 'disdetta in tempo: alla scadenza crediti restituiti a entrambi');
+select pg_temp.ok(pg_temp.saldo(1) = 300 and pg_temp.saldo(2) = 300, 'disdetta in tempo: alla scadenza crediti restituiti a entrambi');
 
 -- 2. Meno di 6 ore prima: buca di chi disdice (p4): p3 riprende 10 + 7, Presente 3.
 select pg_temp.ok(public.disdici_incontro(pg_temp.porta(2), pg_temp.p(4)) = 'disdetto_tardi', 'disdetta tardi: esito «disdetto_tardi»');
-select pg_temp.ok((select stato = 'concluso' and esito = 'buca_b' and crediti_presente = 3 and disdetto_da = pg_temp.p(4)
-  from public.incontri where porta_id = pg_temp.porta(2)), 'disdetta tardi: buca di chi disdice, 3 crediti a Presente');
-select pg_temp.ok(pg_temp.saldo(3) = 37 and pg_temp.saldo(4) = 20, 'disdetta tardi: chi resta riprende 10 più 7');
+select pg_temp.ok((select stato = 'concluso' and esito = 'buca_b' and crediti_presente = 30 and disdetto_da = pg_temp.p(4)
+  from public.incontri where porta_id = pg_temp.porta(2)), 'disdetta tardi: buca di chi disdice, 30 Coin a Presente');
+select pg_temp.ok(pg_temp.saldo(3) = 370 and pg_temp.saldo(4) = 200, 'disdetta tardi: chi resta riprende 100 più 70');
 select pg_temp.ok(public.disdici_incontro(pg_temp.porta(2), pg_temp.p(3)) = 'incontro_chiuso', 'disdetta tardi: incontro chiuso');
 
 -- 3. Dopo l'ora dell'incontro la disdetta non c'è più: decide il check-in.
 select pg_temp.ok(public.disdici_incontro(pg_temp.porta(3), pg_temp.p(5)) = 'troppo_tardi', 'disdetta: dopo l''ora decide il check-in');
-select pg_temp.ok(pg_temp.saldo(5) = 20 and pg_temp.saldo(6) = 20, 'disdetta: dopo l''ora nessun credito si muove');
+select pg_temp.ok(pg_temp.saldo(5) = 200 and pg_temp.saldo(6) = 200, 'disdetta: dopo l''ora nessun credito si muove');
 
 -- 4. Il telefono non chiama la funzione.
 reset role;

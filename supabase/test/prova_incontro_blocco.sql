@@ -32,7 +32,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il)
   from generate_series(1, 4) n;
 
 set local role service_role;
-select public.assegna_crediti_beta(pg_temp.p(n), 30) from generate_series(1, 8) n;
+select public.assegna_crediti_beta(pg_temp.p(n), 300) from generate_series(1, 8) n;
 select public.blocca_caparra(pg_temp.porta((n + 1) / 2), pg_temp.p(n)) from generate_series(1, 8) n;
 update public.svelamenti set iniziato_il = now() - interval '1 day 20 minutes', tentativi = 1, tipo = 'video', durata_secondi = 10,
   finito_il = now() - interval '1 day 19 minutes', esito = 'doppio_si', esito_il = now() - interval '1 day'
@@ -50,14 +50,14 @@ insert into public.incontri (porta_id, scadenza) values (pg_temp.porta(4), now()
 reset role;
 insert into public.blocchi (chi, bloccato) values (pg_temp.p(2), pg_temp.p(1));
 set local role service_role;
-select pg_temp.ok(pg_temp.saldo(1) = 20 and pg_temp.saldo(2) = 20, 'blocco: prima le caparre sono bloccate');
+select pg_temp.ok(pg_temp.saldo(1) = 200 and pg_temp.saldo(2) = 200, 'blocco: prima le caparre sono bloccate');
 select public.incontro_aggiornato(pg_temp.porta(1));
 select pg_temp.ok(pg_temp.esito(1) = 'annullato', 'blocco: l''appuntamento confermato si chiude «annullato»');
-select pg_temp.ok(pg_temp.saldo(1) = 30 and pg_temp.saldo(2) = 30, 'blocco: crediti restituiti a entrambi');
+select pg_temp.ok(pg_temp.saldo(1) = 300 and pg_temp.saldo(2) = 300, 'blocco: crediti restituiti a entrambi');
 select pg_temp.ok(public.checkin_incontro(pg_temp.porta(1), pg_temp.p(1)) <> 'fatto'
   and (select checkin_a_il is null from public.incontri where porta_id = pg_temp.porta(1)), 'blocco: niente check-in dopo');
 select public.incontro_aggiornato(pg_temp.porta(1));
-select pg_temp.ok(pg_temp.saldo(1) = 30 and pg_temp.saldo(2) = 30, 'blocco: due volte non crea crediti');
+select pg_temp.ok(pg_temp.saldo(1) = 300 and pg_temp.saldo(2) = 300, 'blocco: due volte non crea crediti');
 
 -- 2. Sospensione (cautelare) di una delle due persone: «da fissare» annullato, crediti a entrambi.
 select public.nuova_segnalazione(pg_temp.p(3), pg_temp.p(4), 'minacce_pericolo', 'scheda', null, false);
@@ -66,7 +66,7 @@ select pg_temp.ok(public.proponi_incontro(pg_temp.porta(2), pg_temp.p(3),
     ((((now() at time zone 'Europe/Rome')::date + 2) + time '19:00') at time zone 'Europe/Rome'), null, 'Caffè del corso') = 'incontro_chiuso',
   'sospensione: nessuna nuova proposta');
 select pg_temp.ok(pg_temp.esito(2) = 'annullato', 'sospensione: incontro «annullato»');
-select pg_temp.ok(pg_temp.saldo(3) = 30 and pg_temp.saldo(4) = 30, 'sospensione: nessuna penale, crediti a entrambi');
+select pg_temp.ok(pg_temp.saldo(3) = 300 and pg_temp.saldo(4) = 300, 'sospensione: nessuna penale, crediti a entrambi');
 
 -- 3. Buca già avvenuta prima del blocco: resta una buca (chi ha aspettato non perde i 7 crediti).
 reset role;
@@ -74,9 +74,9 @@ insert into public.blocchi (chi, bloccato) values (pg_temp.p(5), pg_temp.p(6));
 set local role service_role;
 select public.incontro_aggiornato(pg_temp.porta(3));
 select pg_temp.ok(pg_temp.esito(3) = 'buca_b', 'buca prima del blocco: resta «buca»');
-select pg_temp.ok(pg_temp.saldo(5) = 37 and pg_temp.saldo(6) = 20, 'buca prima del blocco: 10 + 7 a chi ha aspettato');
+select pg_temp.ok(pg_temp.saldo(5) = 370 and pg_temp.saldo(6) = 200, 'buca prima del blocco: 100 + 70 a chi ha aspettato');
 
 -- 4. Nessun blocco né sospensione: l'incontro resta aperto.
 select public.incontro_aggiornato(pg_temp.porta(4));
-select pg_temp.ok(pg_temp.esito(4) is null and pg_temp.saldo(7) = 20, 'senza problemi: l''incontro resta aperto');
+select pg_temp.ok(pg_temp.esito(4) is null and pg_temp.saldo(7) = 200, 'senza problemi: l''incontro resta aperto');
 rollback;

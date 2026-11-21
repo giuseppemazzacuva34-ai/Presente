@@ -31,8 +31,8 @@ select pg_temp.ok((select p ? 'momento' and not (p ->> 'momento')::boolean and p
   from pg_temp.porta_di('6a6a6a6a-0000-4000-8000-00000000016a') p),
   'momento: senza caparre → false, tipo null');
 
-select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000016a', 10);
-select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000016b', 10);
+select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000016a', 100);
+select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000016b', 100);
 select public.caparra_svelamento('8e8e8e8e-0000-4000-8000-0000000001ab', '6a6a6a6a-0000-4000-8000-00000000016a');
 select public.caparra_svelamento('8e8e8e8e-0000-4000-8000-0000000001ab', '6b6b6b6b-0000-4000-8000-00000000016b');
 

@@ -60,8 +60,8 @@ select pg_temp.ok(pg_temp.fine('7a7a7a7a-0000-4000-8000-00000000037a') = 'non_in
 select pg_temp.ok(pg_temp.torna('7a7a7a7a-0000-4000-8000-00000000037a') = 'non_iniziato', 'torna_a_quando: senza svelamento → non_iniziato');
 
 -- Caparre, tutti e due pronti, tutti e due dentro: il video inizia.
-select public.assegna_crediti_beta('7a7a7a7a-0000-4000-8000-00000000037a', 10);
-select public.assegna_crediti_beta('7b7b7b7b-0000-4000-8000-00000000037b', 10);
+select public.assegna_crediti_beta('7a7a7a7a-0000-4000-8000-00000000037a', 100);
+select public.assegna_crediti_beta('7b7b7b7b-0000-4000-8000-00000000037b', 100);
 select public.caparra_svelamento('8f8f8f8f-0000-4000-8000-0000000003ab', '7a7a7a7a-0000-4000-8000-00000000037a');
 select public.caparra_svelamento('8f8f8f8f-0000-4000-8000-0000000003ab', '7b7b7b7b-0000-4000-8000-00000000037b');
 select public.fasce_svelamento('8f8f8f8f-0000-4000-8000-0000000003ab', '7a7a7a7a-0000-4000-8000-00000000037a',
@@ -184,7 +184,7 @@ set local role service_role;
 select pg_temp.ok(jsonb_array_length(public.svelamento_di('7a7a7a7a-0000-4000-8000-00000000037a')->'porte') = 0,
   'scadenza: svelamento fermo dopo le 48 ore → porta non più in attesa');
 select pg_temp.ok((pg_temp.riga()).esito = 'scaduta', 'scadenza: esito «scaduta»');
-select pg_temp.ok(pg_temp.saldo('7a7a7a7a-0000-4000-8000-00000000037a') = 10 and pg_temp.saldo('7b7b7b7b-0000-4000-8000-00000000037b') = 10,
+select pg_temp.ok(pg_temp.saldo('7a7a7a7a-0000-4000-8000-00000000037a') = 100 and pg_temp.saldo('7b7b7b7b-0000-4000-8000-00000000037b') = 100,
   'scadenza: crediti restituiti a entrambi, nessuna penale');
 select pg_temp.ok(pg_temp.fine('7a7a7a7a-0000-4000-8000-00000000037a') = 'porta_chiusa', 'fine: porta chiusa → porta_chiusa');
 select pg_temp.ok(pg_temp.torna('7a7a7a7a-0000-4000-8000-00000000037a') = 'porta_chiusa', 'torna_a_quando: porta chiusa → porta_chiusa');

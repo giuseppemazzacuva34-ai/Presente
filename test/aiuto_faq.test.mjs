@@ -13,7 +13,7 @@ const TITOLI = [
   "Cosa succede quando si apre la porta",
   "Cos'è la caparra",
   "Cosa succede se qualcuno dà buca",
-  "Come uso i crediti",
+  "Come uso i Coin",
   "Come cambio provincia o raggio",
   "Come blocco o segnalo qualcuno",
   "Come cancello l'account",
@@ -44,7 +44,7 @@ test("i fatti che contano sono quelli decisi", () => {
   assert.match(per["Le mie foto chi le vede"], /restano nascoste/);
   assert.match(per["Come funzionano le chiavi"], /2 chiavi/);
   assert.match(per["Come funzionano le chiavi"], /solo se la chiave è reciproca/);
-  assert.match(per["Cosa succede se qualcuno dà buca"], /7 a chi ha aspettato, 3 a Presente/);
+  assert.match(per["Cosa succede se qualcuno dà buca"], /100 Coin vanno così: 70 a chi ha aspettato, 30 a Presente/);
   assert.match(per["Come blocco o segnalo qualcuno"], /112/);
 });
 

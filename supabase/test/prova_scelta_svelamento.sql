@@ -77,8 +77,8 @@ select pg_temp.ok((select esito = 'scaduta' and scelta_a = 'video' from public.s
   'scelta_svelamento: la porta scaduta si chiude e la scelta non cambia');
 
 -- Dopo l'inizio dello svelamento la scelta resta ferma.
-select public.assegna_crediti_beta('5a5a5a5a-0000-4000-8000-00000000005a', 10);
-select public.assegna_crediti_beta('5b5b5b5b-0000-4000-8000-00000000005b', 10);
+select public.assegna_crediti_beta('5a5a5a5a-0000-4000-8000-00000000005a', 100);
+select public.assegna_crediti_beta('5b5b5b5b-0000-4000-8000-00000000005b', 100);
 select public.caparra_svelamento('8d8d8d8d-0000-4000-8000-0000000000ab', '5a5a5a5a-0000-4000-8000-00000000005a');
 select public.caparra_svelamento('8d8d8d8d-0000-4000-8000-0000000000ab', '5b5b5b5b-0000-4000-8000-00000000005b');
 reset role;
@@ -96,7 +96,7 @@ set local role service_role;
 select pg_temp.ok(public.scelta_svelamento('8d8d8d8d-0000-4000-8000-0000000000ab', '5a5a5a5a-0000-4000-8000-00000000005a', 'foto') = 'porta_chiusa',
   'scelta_svelamento: porta con un blocco → porta_chiusa');
 select pg_temp.ok((select esito = 'blocco' from public.svelamenti where porta_id = '8d8d8d8d-0000-4000-8000-0000000000ab')
-  and public.saldo_crediti('5a5a5a5a-0000-4000-8000-00000000005a') = 10 and public.saldo_crediti('5b5b5b5b-0000-4000-8000-00000000005b') = 10,
+  and public.saldo_crediti('5a5a5a5a-0000-4000-8000-00000000005a') = 100 and public.saldo_crediti('5b5b5b5b-0000-4000-8000-00000000005b') = 100,
   'scelta_svelamento: porta chiusa e crediti restituiti a entrambi');
 
 reset role;

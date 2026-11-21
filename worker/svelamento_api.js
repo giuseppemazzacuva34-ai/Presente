@@ -22,10 +22,10 @@
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
-// (10 crediti, una caparra per persona e porta, mai sotto zero, chiusura per scadenza, blocco o sospensione con le
+// (100 Coin, una caparra per persona e porta, mai sotto zero, chiusura per scadenza, blocco o sospensione con le
 // caparre restituite a entrambi) le applica il database (migrazioni 20261116220000 e 20261116230000); qui solo
 // accesso, forma della richiesta e testi. Una porta chiusa da un blocco o da una sospensione dà solo «Questa porta si
-// è chiusa.», mai il motivo; una porta di altri risponde come una che non esiste. In beta i crediti sono di prova:
+// è chiusa.», mai il motivo; una porta di altri risponde come una che non esiste. In beta i Coin sono di prova:
 // nessun pagamento (Stripe in Fase 4). Nei log solo codici e nomi di errore. Spento finché ACCESSO_APP non vale «si».
 import { SVELAMENTO, TESTI_SVELAMENTO } from "../api/svelamento.js";
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
@@ -153,7 +153,7 @@ export async function svelamentoApi(request, env, f = fetch) {
     const mancano = st ? Math.max(1, SVELAMENTO.caparra - st.saldo) : SVELAMENTO.caparra;
     return risposta(200, {
       ok: false, motivo: esito, mancano,
-      testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} ${mancano === 1 ? "credito" : "crediti"}`,
+      testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} Coin`,
       ricarica: TESTI_SVELAMENTO.ricarica, beta: TESTI_SVELAMENTO.beta,
     });
   }

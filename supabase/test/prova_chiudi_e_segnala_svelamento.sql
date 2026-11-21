@@ -40,9 +40,9 @@ select pg_temp.ok(pg_temp.rifiutato($$select public.chiudi_e_segnala_svelamento(
 reset role;
 set local role service_role;
 
-select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000006a', 20);
-select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000006b', 10);
-select public.assegna_crediti_beta('6c6c6c6c-0000-4000-8000-00000000006c', 10);
+select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000006a', 200);
+select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000006b', 100);
+select public.assegna_crediti_beta('6c6c6c6c-0000-4000-8000-00000000006c', 100);
 select public.caparra_svelamento('9a9a9a9a-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a');
 select public.caparra_svelamento('9a9a9a9a-0000-4000-8000-0000000000ab', '6b6b6b6b-0000-4000-8000-00000000006b');
 select public.caparra_svelamento('9a9a9a9a-0000-4000-8000-0000000000ac', '6a6a6a6a-0000-4000-8000-00000000006a');
@@ -82,19 +82,19 @@ select pg_temp.ok((select esito = 'chiudi_e_segnala' and esito_il is not null an
 select pg_temp.ok(public.bloccati_tra('6a6a6a6a-0000-4000-8000-00000000006a', '6b6b6b6b-0000-4000-8000-00000000006b')
   and exists (select 1 from public.blocchi where chi = '6b6b6b6b-0000-4000-8000-00000000006b' and bloccato = '6a6a6a6a-0000-4000-8000-00000000006a'),
   'chiudi_e_segnala_svelamento: blocco immediato di chi segnala verso l''altra persona');
-select pg_temp.ok(public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 10
-  and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 10,
+select pg_temp.ok(public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 100
+  and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 100,
   'chiudi_e_segnala_svelamento: caparre restituite a entrambi, nessuna penale');
 select pg_temp.ok(not exists (select 1 from public.segnalazioni where da = '6b6b6b6b-0000-4000-8000-00000000006b'),
   'chiudi_e_segnala_svelamento: la segnalazione la scrive il modulo della #7, non questa funzione');
 
 -- Ripetere non cambia nulla (doppio tocco, rete lenta): stesso esito, nessun credito in più.
 select pg_temp.ok(public.chiudi_e_segnala_svelamento('9a9a9a9a-0000-4000-8000-0000000000ab', '6b6b6b6b-0000-4000-8000-00000000006b') = 'chiusa'
-  and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 10,
+  and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 100,
   'chiudi_e_segnala_svelamento: idempotente per chi ha chiuso');
 -- L'altra persona non sa perché: per lei la porta è solo chiusa.
 select pg_temp.ok(public.chiudi_e_segnala_svelamento('9a9a9a9a-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a') = 'porta_chiusa'
-  and public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 10
+  and public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 100
   and public.entra_svelamento('9a9a9a9a-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a') = 'porta_chiusa',
   'chiudi_e_segnala_svelamento: per l''altra persona solo «porta_chiusa»');
 

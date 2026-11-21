@@ -401,10 +401,10 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, eta: PERSONE_PROVA[i].eta, frase_per_te: RICAMBIANO.get(i) || null }));
 
   // ---- Passo 4: porta e svelamento (stesse regole di api/svelamento.js) -------------------------------------------
-  // Crediti di prova: 15. La persona finta blocca la sua caparra e si dice pronta insieme a te.
+  // Coin di prova: 200 (spec #331 A.4). La persona finta blocca la sua caparra e si dice pronta insieme a te.
   const svelamenti = new Map(); // porta → { mia_caparra, mia_scelta, mie_fasce, pronto_il }
   const ORE_48 = 48 * 3600 * 1000;
-  let saldo = 15;
+  let saldo = 200;
   const statoSvelamento = () => {
     const porte = mondo.sera ? porteDellaSera().map((x) => {
       const v = svelamenti.get(x.id) || {};
@@ -434,8 +434,8 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     async blocca(porta) {
       return conPorta(porta, (v) => {
         if (v.mia_caparra) return null;
-        if (saldo < 10) return no("crediti_insufficienti", `Ti mancano ${10 - saldo} crediti`);
-        saldo -= 10;
+        if (saldo < 100) return no("crediti_insufficienti", `Ti mancano ${100 - saldo} Coin`);
+        saldo -= 100;
         v.mia_caparra = true;
         return null;
       });

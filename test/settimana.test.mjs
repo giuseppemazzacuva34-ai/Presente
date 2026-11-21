@@ -122,7 +122,7 @@ test("120 profili inventati: filtri reciproci rispettati, almeno 4 compatibili, 
       assert.ok(altri.every((a) => ammessiInsieme(io, a)), "mai nessuno fuori dai filtri reciproci");
       assert.ok(altri.filter((a) => compatibili(io, a)).length >= 4, "almeno 4 compatibili");
       assert.equal(m.gratis, !precedenti.get(m.utente_id));
-      assert.equal(m.crediti, precedenti.get(m.utente_id) ? 9 : 0);
+      assert.equal(m.crediti, precedenti.get(m.utente_id) ? 80 : 0);
     }
   }
   assert.equal(visti.size + esito.attesa.length, 120, "ognuno è in una stanza o in attesa con un motivo");

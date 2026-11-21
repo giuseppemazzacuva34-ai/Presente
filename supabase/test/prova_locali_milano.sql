@@ -81,7 +81,7 @@ select pg_temp.ok((select bool_and(not (x->>'da_verificare')::boolean and x->>'n
   public.locali_per_persona('7c7c7c7c-0000-4000-8000-00000000007c')) x), 'fuori Milano mai locali da verificare');
 
 -- La proposta accetta solo un locale che chi propone può vedere.
-select public.assegna_crediti_beta(x, 30) from unnest(array['7a7a7a7a-0000-4000-8000-00000000007a',
+select public.assegna_crediti_beta(x, 300) from unnest(array['7a7a7a7a-0000-4000-8000-00000000007a',
   '7b7b7b7b-0000-4000-8000-00000000007b', '7c7c7c7c-0000-4000-8000-00000000007c']::uuid[]) x;
 select public.blocca_caparra('7d7d7d7d-0000-4000-8000-0000000000ab', '7a7a7a7a-0000-4000-8000-00000000007a');
 select public.blocca_caparra('7d7d7d7d-0000-4000-8000-0000000000ab', '7b7b7b7b-0000-4000-8000-00000000007b');

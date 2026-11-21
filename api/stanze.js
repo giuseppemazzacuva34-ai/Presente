@@ -12,7 +12,7 @@
 import { affinita as affinitaQuestionario } from "./questionario.js";
 import { accesa } from "./aree.js";
 
-export const STANZA = Object.freeze({ massimo: 12, minimo: 6, compatibiliMinimi: 4, cittaApreA: 36, settimaneSenzaRipetere: 4, costoCrediti: 9 });
+export const STANZA = Object.freeze({ massimo: 12, minimo: 6, compatibiliMinimi: 4, cittaApreA: 36, settimaneSenzaRipetere: 4, costoCrediti: 80 });
 export const FUSO = "Europe/Rome";
 
 // ── Filtri reciproci rigidi: A con B solo se B rientra nei filtri di A E A in quelli di B. Mai eccezioni. ──
@@ -191,7 +191,7 @@ export function settimanaStanza(adesso = new Date()) {
   return { apre: apre(l), chiude: chiude(l), aperta: adesso >= apre(l) && adesso < chiude(l) };
 }
 
-// ── Crediti (D18, spec v1): la prima stanza è gratis; dalla seconda 9 crediti, scalati solo se la stanza si forma. ──
+// ── Crediti (D18, spec v1): la prima stanza è gratis; dalla seconda 80 Coin (#331), scalati solo se la stanza si forma. ──
 export function costoStanza(stanzePrecedenti, formata) {
   if (!formata) return 0;
   return stanzePrecedenti > 0 ? STANZA.costoCrediti : 0;

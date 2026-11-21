@@ -1,10 +1,10 @@
 // Schermata della porta nella web app (issue #65, spec v1 del CPO, passi 1-4; D48 A, D12 A, D18 A). Passi 4c, 3b e 5b,
 // linea del CTO. Passo 5b: con le due caparre, «Ci sono adesso» e «Scegli un orario» (fino a 3 mezz'ore dentro le 48
-// ore; la prima comune la fissa il server). Le fasce dell'altra persona non arrivano mai al telefono. Dopo «Vai allo svelamento»: nome, età, conto alla rovescia delle 48 ore e caparra («Blocca 10 crediti»).
-// Le regole (10 crediti, una caparra per persona e porta, mai sotto zero, porte chiuse o scadute) le decide il server
+// ore; la prima comune la fissa il server). Le fasce dell'altra persona non arrivano mai al telefono. Dopo «Vai allo svelamento»: nome, età, conto alla rovescia delle 48 ore e caparra («Blocca 100 Coin»).
+// Le regole (100 Coin, una caparra per persona e porta, mai sotto zero, porte chiuse o scadute) le decide il server
 // (/app/api/svelamento, worker/svelamento_api.js): qui si mostrano le sue risposte.
 // Il corpo non dice mai chi blocca: lo dice solo il token. Una porta chiusa da un blocco o da una sospensione dà solo
-// «Questa porta si è chiusa.», mai il motivo. In beta i crediti sono di prova: «Ricarica» mostra solo il testo della
+// «Questa porta si è chiusa.», mai il motivo. In beta i Coin sono di prova: «Ricarica» mostra solo il testo della
 // beta, nessun pagamento (Stripe in Fase 4). Niente salvataggi locali.
 // Il modulo non tocca la pagina: riceve fetch, token e h dall'esterno, così si prova con node --test.
 // I testi sono gli stessi di api/svelamento.js (TESTI_SVELAMENTO): il test lo controlla.
@@ -21,15 +21,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const TESTI = Object.freeze({
   aperta: "Una porta si è aperta. Hai 48 ore per lo svelamento.",
-  blocca: "Blocca 10 crediti",
-  spiegazioneCaparra: "I tuoi 10 crediti restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
+  blocca: "Blocca 100 Coin",
+  spiegazioneCaparra: "I tuoi 100 Coin restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
   aspettaCaparra: "Aspettiamo che anche <nome> blocchi la caparra.",
   ricarica: "Ricarica",
-  beta: "In beta i crediti sono di prova",
+  beta: "In beta i Coin sono di prova",
   portaChiusa: "Questa porta si è chiusa.",
-  scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
+  scaduta: "Il tempo per lo svelamento è finito. I tuoi Coin sono di nuovo disponibili.",
   // Provvisorio, da rivedere con «contenuti»: il passo 3 della spec (video o foto, quando) arriva con il passo 5.
-  entrambe: "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
+  entrambe: "Avete bloccato entrambi i Coin. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
   torna: "Torna alla stanza",
   // Passo 3 della spec: «Come vuoi lo svelamento». Si cambia fino all'inizio; la scelta dell'altra persona non si vede.
   sceltaTitolo: "Come vuoi lo svelamento?",
@@ -138,7 +138,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   } else if (saldo >= CAPARRA) caparra = { tipo: "blocca", bottone: TESTI.blocca, spiegazione: TESTI.spiegazioneCaparra };
   else {
     const mancano = CAPARRA - saldo;
-    caparra = { tipo: "ricarica", testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${plurale(mancano, "credito", "crediti")}`,
+    caparra = { tipo: "ricarica", testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} Coin`,
       bottone: TESTI.ricarica, beta: TESTI.beta, spiegazione: TESTI.spiegazioneCaparra };
   }
   // Passo 3: dopo la propria caparra. «video» è la predefinita; un valore non previsto vale come «video».
@@ -149,7 +149,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   return {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
-    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
+    conto, saldo: `I tuoi Coin: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
     // Passo 6b: «momento» e «tipo» solo come li dà il server (passo 6a); un tipo sconosciuto non accende la fotocamera.
     momento: p.momento === true,
     tipoSvelamento: p.momento === true && SCELTE.includes(p.tipo) ? p.tipo : null,

@@ -37,9 +37,9 @@ insert into public.porte (id, stanza_id, a, b, aperta_il) values
    '7a7a7a7a-0000-4000-8000-00000000007a', '7d7d7d7d-0000-4000-8000-00000000007d', now() - interval '1 hour');
 
 set local role service_role;
-select public.assegna_crediti_beta('7a7a7a7a-0000-4000-8000-00000000007a', 30);
-select public.assegna_crediti_beta('7b7b7b7b-0000-4000-8000-00000000007b', 10);
-select public.assegna_crediti_beta('7c7c7c7c-0000-4000-8000-00000000007c', 10);
+select public.assegna_crediti_beta('7a7a7a7a-0000-4000-8000-00000000007a', 300);
+select public.assegna_crediti_beta('7b7b7b7b-0000-4000-8000-00000000007b', 100);
+select public.assegna_crediti_beta('7c7c7c7c-0000-4000-8000-00000000007c', 100);
 select public.blocca_caparra('9e9e9e9e-0000-4000-8000-0000000000ab', '7a7a7a7a-0000-4000-8000-00000000007a');
 select public.blocca_caparra('9e9e9e9e-0000-4000-8000-0000000000ab', '7b7b7b7b-0000-4000-8000-00000000007b');
 select public.blocca_caparra('9e9e9e9e-0000-4000-8000-0000000000ac', '7a7a7a7a-0000-4000-8000-00000000007a');
@@ -95,8 +95,8 @@ select pg_temp.ok(not pg_temp.rifiutato($$update public.incontri set segnale = '
 select pg_temp.ok(pg_temp.rifiutato($$update public.incontri set esito = 'avvenuto' where porta_id = '9e9e9e9e-0000-4000-8000-0000000000ac'$$),
   'incontri: esito sempre con il suo orario');
 select pg_temp.ok(pg_temp.rifiutato($$update public.incontri set esito = 'buca_a', esito_il = now(), crediti_presente = 0 where porta_id = '9e9e9e9e-0000-4000-8000-0000000000ac'$$),
-  'incontri: una buca dà sempre 3 crediti a Presente');
-select pg_temp.ok(pg_temp.rifiutato($$update public.incontri set esito = 'avvenuto', esito_il = now(), crediti_presente = 3 where porta_id = '9e9e9e9e-0000-4000-8000-0000000000ac'$$),
+  'incontri: una buca dà sempre 30 Coin a Presente');
+select pg_temp.ok(pg_temp.rifiutato($$update public.incontri set esito = 'avvenuto', esito_il = now(), crediti_presente = 30 where porta_id = '9e9e9e9e-0000-4000-8000-0000000000ac'$$),
   'incontri: senza buca Presente non prende crediti');
 
 -- Nessuna posizione GPS nello schema (criterio di accettazione).
@@ -105,19 +105,19 @@ select pg_temp.ok(not exists (select 1 from information_schema.columns where tab
 
 -- Buca nel registro dei crediti: +7 a chi ha aspettato, una volta sola per porta, legato alla porta.
 insert into public.crediti_movimenti (persona, tipo, crediti, porta_id)
-  values ('7c7c7c7c-0000-4000-8000-00000000007c', 'buca_ricevuta', 7, '9e9e9e9e-0000-4000-8000-0000000000ac');
-select pg_temp.ok(public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 7, 'crediti: +7 della buca registrati');
+  values ('7c7c7c7c-0000-4000-8000-00000000007c', 'buca_ricevuta', 70, '9e9e9e9e-0000-4000-8000-0000000000ac');
+select pg_temp.ok(public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 70, 'crediti: +70 Coin della buca registrati');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti, porta_id)
-  values ('7c7c7c7c-0000-4000-8000-00000000007c', 'buca_ricevuta', 7, '9e9e9e9e-0000-4000-8000-0000000000ac')$$),
+  values ('7c7c7c7c-0000-4000-8000-00000000007c', 'buca_ricevuta', 70, '9e9e9e9e-0000-4000-8000-0000000000ac')$$),
   'crediti: la buca si riceve una volta sola per porta');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti, porta_id)
-  values ('7a7a7a7a-0000-4000-8000-00000000007a', 'buca_ricevuta', 8, '9e9e9e9e-0000-4000-8000-0000000000ab')$$),
-  'crediti: la buca vale sempre 7');
+  values ('7a7a7a7a-0000-4000-8000-00000000007a', 'buca_ricevuta', 80, '9e9e9e9e-0000-4000-8000-0000000000ab')$$),
+  'crediti: la buca vale sempre 70 Coin');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti)
-  values ('7a7a7a7a-0000-4000-8000-00000000007a', 'buca_ricevuta', 7)$$),
+  values ('7a7a7a7a-0000-4000-8000-00000000007a', 'buca_ricevuta', 70)$$),
   'crediti: la buca è sempre legata a una porta');
 -- I tipi di prima funzionano come prima.
-select pg_temp.ok(public.assegna_crediti_beta('7d7d7d7d-0000-4000-8000-00000000007d', 9) = 9, 'crediti: assegnati_beta come prima');
+select pg_temp.ok(public.assegna_crediti_beta('7d7d7d7d-0000-4000-8000-00000000007d', 90) = 90, 'crediti: assegnati_beta come prima (in Coin)');
 reset role;
 
 rollback;

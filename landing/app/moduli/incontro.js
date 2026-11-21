@@ -38,17 +38,17 @@ export const TESTI_INCONTRO = Object.freeze({
   altraData: "Propongo un'altra data",
   annulla: "Annulla l'incontro",
   confermato: "Ci vediamo <giorno> alle <ora> · <luogo>",
-  caparra: "Se uno dei due non si presenta, i suoi 10 crediti vanno: 7 a chi ha aspettato, 3 a Presente.",
-  scaduto: "Non siete riusciti a fissare l'incontro. I tuoi 10 crediti sono di nuovo disponibili.",
+  caparra: "Se uno dei due non si presenta, i suoi 100 Coin vanno: 70 a chi ha aspettato, 30 a Presente.",
+  scaduto: "Non siete riusciti a fissare l'incontro. I tuoi 100 Coin sono di nuovo disponibili.",
   // Provvisori, da rivedere con «contenuti».
   titolo: "Il vostro incontro",
   aspetta: "Hai fatto la tua proposta. Aspettiamo la risposta.",
   ricevuta: "Ti propone:",
   scadeProposta: "Rispondi entro <quando>.",
   controproposte: "Puoi proporre ancora <n>.",
-  annullato: "L'incontro è annullato. I crediti tornano a entrambi.",
+  annullato: "L'incontro è annullato. I Coin tornano a entrambi.",
   chiuso: "Questo incontro è chiuso.",
-  confermaAnnulla: "Annulli l'incontro? Non potrete più fissarlo. I crediti tornano a entrambi.",
+  confermaAnnulla: "Annulli l'incontro? Non potrete più fissarlo. I Coin tornano a entrambi.",
   siAnnulla: "Sì, annulla",
   no: "No, torna indietro",
   giorno: "Giorno",
@@ -69,7 +69,7 @@ export const TESTI_INCONTRO = Object.freeze({
   // Check-in e segnale (passi 6 e 8 della spec).
   sonoQui: "Sono qui",
   segnale: "Il vostro segnale: <parola>",
-  creditiLiberi: "I tuoi 10 crediti sono di nuovo disponibili.",
+  creditiLiberi: "I tuoi 100 Coin sono di nuovo disponibili.",
   // Provvisori, da rivedere con «contenuti» (la spec usa il nome dell'altra persona, che lo stato non manda ancora).
   aspettaAltro: "L'altra persona non ha ancora fatto il check-in.",
   finestraCheckin: "Potrai dire «Sono qui» <giorno> dalle <da> alle <fino>.",
@@ -79,10 +79,10 @@ export const TESTI_INCONTRO = Object.freeze({
   nonConfermato: "L'incontro non è ancora confermato.",
   // Disdetta e annullamento (spec v1.1 del 20/11, punto 2).
   disdici: "Disdici",
-  confermaDisdici: "Disdici questo appuntamento? Potete fissarne un altro entro il <data>. Se non lo fissate, i crediti tornano a entrambi.",
+  confermaDisdici: "Disdici questo appuntamento? Potete fissarne un altro entro il <data>. Se non lo fissate, i Coin tornano a entrambi.",
   disdettoAltro: "<nome> ha disdetto l'appuntamento di <giorno>. Potete fissarne un altro entro il <data>.",
   // Provvisori, da rivedere con «contenuti» (chiesti al CPO).
-  confermaDisdiciTardi: "Mancano meno di 6 ore: se disdici ora è come non presentarsi, e i tuoi 10 crediti vanno: 7 all'altra persona, 3 a Presente. Disdici lo stesso?",
+  confermaDisdiciTardi: "Mancano meno di 6 ore: se disdici ora è come non presentarsi, e i tuoi 100 Coin vanno: 70 all'altra persona, 30 a Presente. Disdici lo stesso?",
   siDisdici: "Sì, disdici",
   disdettoMio: "Hai disdetto l'appuntamento di <giorno>. Potete fissarne un altro entro il <data>.",
   altraPersona: "L'altra persona",
