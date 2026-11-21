@@ -5,6 +5,8 @@
 //   POST /app/api/pannello/decidi { id, azione, regola?, testo } → { ok: true, sanzione } | { ok: false, motivo }
 //   GET  /app/api/pannello/ricorsi                              → { ok: true, ricorsi: [...] }          (passo 13e)
 //   POST /app/api/pannello/ricorso { id, esito, testo }         → { ok: true } | { ok: false, motivo } (passo 13e)
+//   POST /app/api/pannello/email { id: sanzione }               → { ok: true, email: { a, livello, regola, fine_il } }
+//        (passo 15b, D144 A: testo pronto e indirizzo per l'email che Giuseppe manda a mano; nessun invio da qui)
 //
 // Chi decide lo dicono SOLO il token di Supabase e la tabella «moderatori» (in beta Giuseppe): un campo nel corpo
 // non conta. Le regole stanno nel database (migrazioni 20261116094039 e 20261116144014): qui solo accesso, forma
@@ -63,6 +65,17 @@ async function rpc(s, nome, parametri, f) {
   }
 }
 
+// Forma dell'email della sanzione: solo questi quattro campi. Forma diversa → guasto (undefined), mai nei log.
+const LIVELLI = ["avviso", "sospensione_7", "sospensione_30", "esclusione"];
+function soloEmail(d) {
+  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+  const { a, livello, regola, fine_il: fine = null } = d;
+  if (typeof a !== "string" || a.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a)) return null;
+  if (!LIVELLI.includes(livello) || typeof regola !== "string" || !regola || regola.length > 100) return null;
+  if (fine !== null && (typeof fine !== "string" || fine.length > 40 || Number.isNaN(Date.parse(fine)))) return null;
+  return { a, livello, regola, fine_il: fine };
+}
+
 function operazioniVere(env, f) {
   const s = server(env);
   return {
@@ -95,6 +108,13 @@ function operazioniVere(env, f) {
       return r && r.stato === 200 && Array.isArray(r.dati) ? r.dati : null;
     },
     // Persona diversa da chi ha sanzionato, una sola volta: lo controlla decidi_ricorso() nel database.
+    // D144 A: indirizzo, livello, regola e fine di una sanzione decisa da chi chiede (lo controlla il database).
+    emailSanzione: async ({ moderatore, sanzione }) => {
+      const r = s && (await rpc(s, "email_sanzione", { p_moderatore: moderatore, p_sanzione: sanzione }, f));
+      if (!r || r.stato !== 200) return undefined;
+      if (r.dati === null) return null;
+      return soloEmail(r.dati) || undefined;
+    },
     decidiRicorso: async ({ moderatore, ricorso, esito, testo }) => {
       const r = s && (await rpc(s, "decidi_ricorso", { p_moderatore: moderatore, p_ricorso: ricorso, p_esito: esito, p_testo: testo }, f));
       if (!r) return null;
@@ -108,7 +128,7 @@ function operazioniVere(env, f) {
 export async function pannelloApi(request, env, f = fetch, operazioni = null) {
   const percorso = new URL(request.url).pathname.slice(PERCORSO_PANNELLO.length);
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
-  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST" };
+  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST", "/email": "POST" };
   if (!Object.hasOwn(metodi, percorso)) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (request.method !== metodi[percorso]) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodi[percorso] });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
@@ -141,6 +161,11 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
       const fatto = await op.decidiRicorso({ moderatore: chi.id, ricorso: id, esito, testo: motivo });
       if (!fatto) return risposta(503, { ok: false, motivo: "riprova" });
       return risposta(200, fatto.ok ? { ok: true } : { ok: false, motivo: String(fatto.motivo || "rifiutata") });
+    }
+    if (percorso === "/email") {
+      const email = await op.emailSanzione({ moderatore: chi.id, sanzione: id });
+      if (email === null) return risposta(404, { ok: false, motivo: "non_trovato" });
+      return email ? risposta(200, { ok: true, email }) : risposta(503, { ok: false, motivo: "riprova" });
     }
     if (percorso === "/scheda") {
       const scheda = await op.scheda({ moderatore: chi.id, segnalazione: id });
