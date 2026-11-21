@@ -24,7 +24,7 @@ import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
-import { vistaPorta } from "./svelamento.js";
+import { vistaPorta, segnalaDaPorta } from "./svelamento.js";
 import { vistaAvvisiPorte } from "./avvisi_porte.js";
 import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore as contatoreAiuto, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
@@ -633,6 +633,7 @@ function disegna() {
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
+  if (portaSvelamento && segnalaDaPorta(portaSvelamento.modello().segnala)) { radice.replaceChildren(schermoSegnalaPorta()); return; }
   if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
@@ -1196,6 +1197,22 @@ function schermoSegnalaScheda() {
   };
   return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" }, schermoSegnala(m, torna));
 }
+
+// «Chiudi e segnala» dal video dello svelamento (#65 passo 7d-3b-2): lo stesso modulo della #7, origine
+// «chiudi_e_segnala» (blocco già fatto dal server, casella ferma). Al ritorno la porta, ormai chiusa, si chiude.
+function schermoSegnalaPorta() {
+  const m = segnalaDaPorta(portaSvelamento.modello().segnala);
+  const torna = () => {
+    portaSvelamento.fineSegnala();
+    portaSvelamento.chiudi();
+    ricaricaStanzaDopoBlocco();
+    disegna();
+  };
+  return h("section", { classe: "schermata chiamata", "aria-label": "Segnala" }, schermoSegnala(m, torna));
+}
+
+// Nome di chi usa l'app, per la filigrana dello svelamento (#65): solo in memoria, mai inviato.
+export const nomeMio = () => (typeof stato.nome === "string" ? stato.nome.trim() : "");
 
 // Chiavi (#5): il modulo avvisa a ogni cambio; si ridisegna solo nella home. Con una finestra aperta il fuoco va
 // al suo primo campo o pulsante, così chi usa la tastiera o il lettore di schermo non lo perde.

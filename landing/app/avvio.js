@@ -1,7 +1,7 @@
 // Avvio della web app (Fase 2): registra il service worker (app installabile) e apre l'iscrizione.
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
-import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati, nomeMio } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -25,6 +25,7 @@ import { creaAiuto } from "/app/moduli/aiuto.js";
 import { creaSvelamento, creaPortaSvelamento } from "/app/moduli/svelamento.js";
 import { creaAvvisiPorte } from "/app/moduli/avvisi_porte.js";
 import { creaSalaAttesa } from "/app/moduli/sala_attesa.js";
+import { fabbricaSchermata } from "/app/moduli/schermata_svelamento.js";
 import { conAttesa } from "/app/moduli/in_attesa.js";
 
 const stato = document.getElementById("stato");
@@ -107,9 +108,23 @@ async function preparaAccesso() {
     schermo.setAttribute("playsinline", "");
     schermo.setAttribute("aria-hidden", "true");
     const md = navigator.mediaDevices;
+    // Video dello svelamento (#65 passo 7d-3b-2): solo dopo «iniziato» + «video» dal server. La fotocamera gira in una
+    // sorgente muta e nascosta fuori da #app; l'altra persona si vede e si sente nello schermo (sempre lo stesso <video>).
+    const sorgente = document.createElement("video");
+    sorgente.muted = true;
+    sorgente.setAttribute("playsinline", "");
+    sorgente.hidden = true;
+    document.body.append(sorgente);
+    const schermoVideo = document.createElement("video");
+    schermoVideo.autoplay = true;
+    schermoVideo.setAttribute("playsinline", "");
     const porta = creaPortaSvelamento({ svelamento: sv, aggiorna: () => portaCambiata(),
       sala: (passaAlleFoto, aggiorna) => creaSalaAttesa({ getUserMedia: md && md.getUserMedia ? md.getUserMedia.bind(md) : undefined,
-        schermo, passaAlleFoto, aggiorna }) });
+        schermo, passaAlleFoto, aggiorna }),
+      video: fabbricaSchermata({ svelamento: sv, getUserMedia: md && md.getUserMedia ? md.getUserMedia.bind(md) : undefined,
+        RTCPeerConnection: window.RTCPeerConnection, MediaStream: window.MediaStream,
+        creaTela: () => document.createElement("canvas"), sorgente, schermo: schermoVideo,
+        nomeMio: () => nomeMio(), aggiorna: () => portaCambiata() }) });
     // Avvisi delle porte nella home (#65 passo 4, senza push finché non c'è D24): una lettura al minuto, solo con porte aperte.
     const avvisiPorte = creaAvvisiPorte({ svelamento: sv, aggiorna: () => avvisiCambiati(), pagina: document });
     return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte };

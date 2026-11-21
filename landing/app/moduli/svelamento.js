@@ -268,6 +268,12 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
   };
 }
 
+// Passo 7d-3b-2: i dati per il modulo della segnalazione (#7, flusso.js) dopo «Chiudi e segnala» dal video.
+export function segnalaDaPorta(sg) {
+  if (!sg || sg.origine !== "chiudi_e_segnala" || !UUID.test(String(sg.contro || ""))) return null;
+  return { segnala: { contro: sg.contro, origine: "chiudi_e_segnala", chiamataIl: null }, nome: nome(sg.nome), schermo: { titolo: "Segnala" } };
+}
+
 // Il controllo della schermata: una porta aperta alla volta, una richiesta alla volta.
 // sala(passaAlleFoto, aggiorna) crea la sala d'attesa (sala_attesa.js, passo 6b); senza, la sala non compare.
 // video(porta, { nome, quandoFinito, quandoSegnala, quandoEsci }) crea la schermata del video (schermata_svelamento.js,
