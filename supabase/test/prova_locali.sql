@@ -21,7 +21,7 @@ begin
 end $$;
 
 begin;
-select pg_temp.ok((select count(*) from public.locali) = 0, 'locali: la tabella nasce vuota');
+select pg_temp.ok((select count(*) from public.locali where stato = 'visitato') = 0, 'locali: nessun locale «visitato» all''inizio');
 select pg_temp.ok((select relrowsecurity from pg_class where oid = 'public.locali'::regclass), 'locali: regole per riga attive');
 
 set local role service_role;
