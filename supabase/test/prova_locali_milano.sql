@@ -103,5 +103,20 @@ select pg_temp.ok(public.proponi_incontro('7d7d7d7d-0000-4000-8000-0000000000ab'
   'proposta: chi è a Milano propone un locale di Milano da verificare');
 select pg_temp.ok((select locale from public.incontri where porta_id = '7d7d7d7d-0000-4000-8000-0000000000ab')
   = (select id::text from public.locali where nome = 'Cru Isola'), 'proposta: salvato l''id del locale');
+
+-- Passo 2u: locali_incontro(porta, persona) per il Worker: i locali di chi legge e il locale scelto.
+select pg_temp.ok(jsonb_array_length(public.locali_incontro('7d7d7d7d-0000-4000-8000-0000000000ab',
+  '7a7a7a7a-0000-4000-8000-00000000007a') -> 'locali') = 29, 'locali_incontro: i locali di chi legge');
+select pg_temp.ok(public.locali_incontro('7d7d7d7d-0000-4000-8000-0000000000ab', '7b7b7b7b-0000-4000-8000-00000000007b')
+  -> 'scelto' = '{"nome": "Cru Isola", "indirizzo": "Via Ugo Bassi 24", "da_verificare": true}'::jsonb,
+  'locali_incontro: il locale scelto con nome, indirizzo e «da verificare», anche per l''altra persona');
+select pg_temp.ok(public.locali_incontro('7d7d7d7d-0000-4000-8000-0000000000ac', '7c7c7c7c-0000-4000-8000-00000000007c')
+  -> 'scelto' = 'null'::jsonb, 'locali_incontro: senza un locale proposto, scelto è null');
+select pg_temp.ok(public.locali_incontro('7d7d7d7d-0000-4000-8000-0000000000ab', '7c7c7c7c-0000-4000-8000-00000000007c')
+  is null, 'locali_incontro: chi non è nella porta non legge nulla');
+reset role;
+set local role authenticated;
+select pg_temp.ok(pg_temp.rifiutato($$select public.locali_incontro('7d7d7d7d-0000-4000-8000-0000000000ab',
+  '7a7a7a7a-0000-4000-8000-00000000007a')$$), 'locali_incontro: il telefono non la chiama');
 reset role;
 rollback;

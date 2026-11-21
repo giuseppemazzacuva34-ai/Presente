@@ -161,14 +161,14 @@ test("stato: la persona è quella del token, mai quella scritta nell'indirizzo",
   const r = await incontroApi(leggi(PORTA, `&persona=${ALTRO}&p_persona=${ALTRO}`), ENV, s.f);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("cache-control"), "no-store");
-  assert.deepEqual(await r.json(), { ok: true, incontro: STATO });
+  assert.deepEqual(await r.json(), { ok: true, incontro: { ...STATO, locali: [], locale_scelto: null } });
   assert.deepEqual(s.rpc("stato_incontro")[0].corpo, { p_porta: PORTA, p_persona: ID });
 });
 
 test("stato: passano al telefono solo i campi previsti", async () => {
   const s = supabaseFinto({ rpc: { stato_incontro: { ...STATO, a: ALTRO, proposto_da: ALTRO, segreto: "x" } } });
   const corpo = await (await incontroApi(leggi(), ENV, s.f)).json();
-  assert.deepEqual(corpo, { ok: true, incontro: STATO });
+  assert.deepEqual(corpo, { ok: true, incontro: { ...STATO, locali: [], locale_scelto: null } });
 });
 
 test("stato: porta mancante o malformata non arriva al database (400)", async () => {
@@ -238,5 +238,5 @@ test("stato: dopo i due check-in il segnale arriva al telefono (passo 2h)", asyn
   const dopo = { ...STATO, stato: "concluso", azioni: [], esito: "avvenuto", checkin_mio: true, checkin_altro: true,
     checkin_da: "2026-11-20T17:30:00+00:00", checkin_fino: "2026-11-20T18:30:00+00:00", segnale: "Lampone" };
   const corpo = await (await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: dopo } }).f)).json();
-  assert.deepEqual(corpo, { ok: true, incontro: dopo });
+  assert.deepEqual(corpo, { ok: true, incontro: { ...dopo, locali: [], locale_scelto: null } });
 });
