@@ -11,6 +11,8 @@
 // Passo 2r (spec v1.1 del 20/11): «Disdici» (POST { azione: "disdici", porta }) e «Annulla l'incontro» (POST { azione:
 // "annulla", porta }), ognuno dopo una domanda di conferma, e la disdetta detta all'altra persona. Il nome dell'altra
 // persona lo passa chi apre la schermata (apri(id, { nome })): resta in memoria, non va mai al server.
+// Passo 2v (D143 B): se lo stato porta dei locali (a Milano i 30 del tab «Locali pilota»), «Dove» è un menu con i locali
+// e «Un altro luogo pubblico»; i non visitati dicono «da verificare». Si manda solo l'id di un locale dell'elenco.
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
@@ -30,6 +32,8 @@ export const TESTI_INCONTRO = Object.freeze({
   proponi: "Proponi quando e dove",
   pubblico: "Scegliete sempre un posto pubblico e frequentato.",
   altroLuogo: "Un altro luogo pubblico",
+  daVerificare: "da verificare", // D143 B
+  dove: "Dove", // etichetta del menu, provvisoria
   accetto: "Accetto",
   altraData: "Propongo un'altra data",
   annulla: "Annulla l'incontro",
@@ -111,8 +115,15 @@ export function orariProposta(scadenza, adesso = new Date()) {
   return giorni;
 }
 
+const breve = (v) => typeof v === "string" && v.trim() !== "";
+const nomeLocale = (l) => `${l.nome.trim()} · ${l.indirizzo.trim()}${l.da_verificare === true ? ` · ${TESTI_INCONTRO.daVerificare}` : ""}`;
+// I locali che si possono proporre, come li manda lo stato (passo 2u); voci di forma strana scartate.
+export const localiIncontro = (i) => (i && Array.isArray(i.locali) ? i.locali.filter((l) => l && typeof l === "object"
+  && UUID.test(String(l.id)) && breve(l.nome) && breve(l.indirizzo)) : []);
 const dove = (i) => (typeof i.luogo === "string" && i.luogo.trim() ? i.luogo.trim()
-  : typeof i.locale === "string" && i.locale.trim() ? TESTI_INCONTRO.localeConsigliato : "");
+  : typeof i.locale === "string" && i.locale.trim()
+    ? (i.locale_scelto && breve(i.locale_scelto.nome) && breve(i.locale_scelto.indirizzo) ? nomeLocale(i.locale_scelto) : TESTI_INCONTRO.localeConsigliato)
+    : "");
 function quando(i) {
   const d = valida(i.orario);
   return d ? { giorno: GIORNO.format(d), ora: ORARIO.format(d) } : null;
@@ -224,7 +235,7 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
   let aperta = false; // modulo della proposta
   let conferma = null; // «annulla», «disdici» o «annulla_incontro» in attesa di conferma
   let nome = null; // nome dell'altra persona, solo per i testi (mai mandato al server)
-  let bozza = { orario: "", luogo: "" };
+  let bozza = { orario: "", luogo: "", locale: "" };
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
 
   async function chiedi(corpo = null) {
@@ -283,7 +294,7 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
     if (r.ok) {
       aperta = false;
       conferma = null;
-      bozza = { orario: "", luogo: "" };
+      bozza = { orario: "", luogo: "", locale: "" };
       await leggi();
       return true;
     }
@@ -315,7 +326,7 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
       aperta = false;
       conferma = null;
       inCorso = false;
-      bozza = { orario: "", luogo: "" };
+      bozza = { orario: "", luogo: "", locale: "" };
       if (!porta) {
         errore = TESTI_INCONTRO.nonDisponibile;
         avvisa();
@@ -341,6 +352,11 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
       aperta = true;
       conferma = null;
       errore = null;
+      // D143 B: con dei locali si parte dal primo; senza, dal luogo scritto.
+      if (!bozza.locale || !localiIncontro(incontro).some((l) => l.id === bozza.locale)) {
+        const primo = localiIncontro(incontro)[0];
+        bozza = { ...bozza, locale: primo ? primo.id : "" };
+      }
       avvisa();
     },
     lasciaProposta() {
@@ -350,12 +366,25 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
     },
     // Il luogo si scrive senza ridisegnare (il campo non perde il cursore); il cambio di giorno ridisegna le ore.
     imposta(campo, valore, ridisegna = false) {
-      if (campo !== "orario" && campo !== "luogo") return;
+      if (campo !== "orario" && campo !== "luogo" && campo !== "locale") return;
       bozza = { ...bozza, [campo]: String(valore ?? "") };
       if (ridisegna) avvisa();
     },
-    async proponi({ orario, luogo } = bozza) {
+    async proponi({ orario, luogo, locale = "" } = bozza) {
       if (!aperta) return false;
+      if (typeof locale === "string" && locale !== "") {
+        if (!localiIncontro(incontro).some((l) => l.id === locale)) {
+          errore = TESTI_INCONTRO.luogoNonVa;
+          avvisa();
+          return false;
+        }
+        if (!valida(orario)) {
+          errore = TESTI_INCONTRO.orarioNonVa;
+          avvisa();
+          return false;
+        }
+        return invia({ azione: "proponi", orario: new Date(orario).toISOString(), locale });
+      }
       const testo = typeof luogo === "string" ? luogo.trim() : "";
       if (!testo || testo.length > LUOGO_MASSIMO) {
         errore = TESTI_INCONTRO.luogoNonVa;
@@ -450,6 +479,7 @@ function vistaProposta(h, inc, m, s) {
   const giorno = giorni.find((g) => g.orari.some((o) => o.valore === scelto)) || giorni[0] || null;
   if (giorno && !giorno.orari.some((o) => o.valore === scelto)) inc.imposta("orario", giorno.orari[0].valore);
   const attuale = inc.modello().bozza.orario;
+  const locali = localiIncontro(m.incontro);
   return h("div", { classe: "proposta-incontro", role: "group", "aria-labelledby": "proposta-titolo" },
     h("h3", { id: "proposta-titolo" }, s.tipo === "ricevuta" ? T.altraData : T.proponi),
     h("div", { classe: "campo" },
@@ -462,8 +492,13 @@ function vistaProposta(h, inc, m, s) {
       h("label", { for: "incontro-ora" }, T.ora),
       h("select", { id: "incontro-ora", disabled: m.inCorso, onchange: (e) => inc.imposta("orario", e.target.value) },
         (giorno ? giorno.orari : []).map((o) => h("option", { value: o.valore, selected: o.valore === attuale }, o.testo)))),
-    h("p", { classe: "nota" }, T.altroLuogo),
-    h("div", { classe: "campo" },
+    locali.length ? h("div", { classe: "campo" },
+      h("label", { for: "incontro-dove" }, T.dove),
+      h("select", { id: "incontro-dove", disabled: m.inCorso, "aria-describedby": "incontro-pubblico",
+        onchange: (e) => inc.imposta("locale", e.target.value, true) },
+        locali.map((l) => h("option", { value: l.id, selected: l.id === m.bozza.locale }, nomeLocale(l))),
+        h("option", { value: "", selected: m.bozza.locale === "" }, T.altroLuogo))) : h("p", { classe: "nota" }, T.altroLuogo),
+    locali.length && m.bozza.locale !== "" ? null : h("div", { classe: "campo" },
       h("label", { for: "incontro-luogo" }, T.luogo),
       h("input", { id: "incontro-luogo", type: "text", maxlength: LUOGO_MASSIMO, autocomplete: "off", value: m.bozza.luogo,
         "aria-describedby": "incontro-pubblico", disabled: m.inCorso, oninput: (e) => inc.imposta("luogo", e.target.value) })),
