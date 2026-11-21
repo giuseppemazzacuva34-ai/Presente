@@ -13,6 +13,8 @@
 //        «Disdici» (spec v1.1, passo 2m): esito «disdetto» (da fissare) o «disdetto_tardi» (buca di chi disdice)
 //   POST /app/api/incontro  { azione: "annulla", porta }                              → annulla_incontro
 //        «Annulla l'incontro» (passo 2o): esito «annullato», crediti a entrambi, poi nessuna proposta
+//   POST /app/api/incontro  { azione: "valuta", porta, presentato, foto_sue, come_in_chiamata, sicuro } → valuta_incontro
+//        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
 //   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
 //   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
 //   lettura non va, l'incontro si legge lo stesso, senza locali.
@@ -20,6 +22,7 @@
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
+import { controllaRisposte } from "../api/valutazione.js";
 
 export const PERCORSO_INCONTRO = "/app/api/incontro";
 const CORPO_MASSIMO = 1024;
@@ -34,7 +37,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Passo 2m (spec v1.1): «Disdici» → «disdetto» (torna da fissare) o «disdetto_tardi» (buca di chi disdice).
   disdici_incontro: ["disdetto", "disdetto_tardi"],
   // Passo 2o (spec v1.1): «Annulla l'incontro» da «da fissare» o con una proposta in corso → crediti a entrambi.
-  annulla_incontro: ["annullato"] };
+  annulla_incontro: ["annullato"],
+  // Passo 3c (D20): valutazione dopo l'incontro avvenuto.
+  valuta_incontro: ["grazie", "racconta"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -43,6 +48,7 @@ const RIFIUTI = {
   checkin_incontro: ["troppo_presto", "troppo_tardi", "non_confermato", "gia_fatto", "incontro_chiuso"],
   disdici_incontro: ["non_confermato", "troppo_tardi", "incontro_chiuso", "incontro_scaduto"],
   annulla_incontro: ["gia_confermato", "incontro_chiuso", "incontro_scaduto"],
+  valuta_incontro: ["non_avvenuto", "chiusa", "gia_fatta", "risposta_non_valida"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -136,6 +142,12 @@ export async function incontroApi(request, env, f = fetch) {
   if (azione === "checkin") return esegui(s, "checkin_incontro", { p_porta: porta, p_persona: chi.id }, f);
   if (azione === "disdici") return esegui(s, "disdici_incontro", { p_porta: porta, p_persona: chi.id }, f);
   if (azione === "annulla") return esegui(s, "annulla_incontro", { p_porta: porta, p_persona: chi.id }, f);
+  if (azione === "valuta") {
+    const v = controllaRisposte(corpo.dati);
+    if (!v.ok) return dati();
+    return esegui(s, "valuta_incontro", { p_porta: porta, p_persona: chi.id, p_presentato: v.risposte.presentato,
+      p_foto_sue: v.risposte.foto_sue, p_come_in_chiamata: v.risposte.come_in_chiamata, p_sicuro: v.risposte.sicuro }, f);
+  }
   return dati();
 }
 
