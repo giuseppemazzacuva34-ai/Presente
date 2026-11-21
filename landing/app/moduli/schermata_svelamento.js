@@ -16,7 +16,7 @@
 // Niente registrazioni, niente immagini, niente salvataggi: la schermata tiene solo stato in memoria.
 // Le dipendenze arrivano da fuori (orologio, giro, video), così si prova tutto con node --test.
 
-import { TESTI_VIDEO, tempoSvelamento, filigrana } from "./video_svelamento.js";
+import { TESTI_VIDEO, tempoSvelamento, filigrana, creaSfocatore, creaVideoSvelamento, collegaVideo } from "./video_svelamento.js";
 
 export const TESTI_SCHERMATA = Object.freeze({
   ...TESTI_VIDEO,
@@ -277,4 +277,26 @@ export function vistaSchermata(h, s) {
   if (m.stato === "uscita") parti.push(h("p", { classe: "errore", role: "alert" }, m.testo || TESTI_SCHERMATA.interrotto));
   return h("div", { classe: "svelamento-video", role: "group", "aria-labelledby": "svelamento-titolo" },
     h("h2", { id: "svelamento-titolo" }, TESTI_SCHERMATA.titolo), parti);
+}
+
+// Passo 7d-3b-2: la fabbrica che la porta (creaPortaSvelamento, opzione «video») chiama solo dopo «iniziato» + «video».
+// Ogni porta ha il suo sfocatore, la sua connessione e la sua schermata; sorgente (muta, nascosta) e schermo (dove si
+// vede e si sente l'altra persona) sono sempre gli stessi elementi <video>. nomeMio() dà il nome di chi guarda per la
+// filigrana. Niente registrazioni, niente immagini salvate.
+export function fabbricaSchermata({
+  svelamento, getUserMedia, RTCPeerConnection, MediaStream = null, creaTela, sorgente = null, schermo = null,
+  nomeMio = () => "", aggiorna = () => {}, ogni, ferma,
+} = {}) {
+  const tempi = { ...(ogni ? { ogni } : {}), ...(ferma ? { ferma } : {}) };
+  return (porta, { nome = "", quandoFinito = () => {}, quandoSegnala = () => {}, quandoEsci = () => {} } = {}) => {
+    let s = null;
+    const sfocatore = creaSfocatore({ creaTela, ...tempi });
+    const video = creaVideoSvelamento({ getUserMedia, RTCPeerConnection, MediaStream, sfocatore, sorgente, schermo,
+      quandoCade: () => { if (s) s.cade(); } });
+    let mio = "";
+    try { mio = String(nomeMio() || ""); } catch { mio = ""; }
+    s = creaSchermataSvelamento({ collega: collegaVideo({ svelamento, video, porta }), nome, nomeMio: mio, schermo,
+      aggiorna, quandoFinito, quandoSegnala, quandoEsci, ...tempi });
+    return s;
+  };
 }
