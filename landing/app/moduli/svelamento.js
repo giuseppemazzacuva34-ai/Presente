@@ -10,6 +10,7 @@
 // I testi sono gli stessi di api/svelamento.js (TESTI_SVELAMENTO): il test lo controlla.
 
 import { TESTI_SALA, vistaSala } from "./sala_attesa.js";
+import { vistaSchermata } from "./schermata_svelamento.js";
 
 const PERCORSO = "/app/api/svelamento";
 const ATTESA_MS = 8000;
@@ -52,8 +53,15 @@ export const TESTI = Object.freeze({
   almenoUno: "Scegli almeno un orario.",
   mancaCaparra: "Serve prima la caparra di tutti e due.",
   fasceNonValide: "Uno degli orari non va più bene. Scegline un altro.",
+  // Passo 7d-3b (spec passo 6): dalla sala d'attesa si entra; finché manca l'altra persona si aspetta (max 10 minuti).
+  aspetta: "Aspettiamo <nome>…",
+  nonArrivato: "<nome> non è arrivata. Proponi un altro momento.",
+  // Provvisorio, da rivedere con «contenuti».
+  entra: "Entra",
 });
 const MAX_FASCE = 3;
+const ENTRA_MS = 3000; // mentre si aspetta l'altra persona si richiede «entra» ogni 3 secondi
+const VIDEO_ATTIVO = new Set(["collego", "aspetta", "in_corso", "caduta"]);
 const FASCIA_MS = 30 * MINUTO;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
 const SCELTE = ["video", "foto"];
@@ -246,6 +254,12 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "conferma", porta, risposta });
       return r.ok ? { ok: true, vista: r.dati.vista ?? null } : r;
     },
+    // Passo 7d-3b: «Chiudi e segnala» durante il video (passo 7d-3a lato server: porta chiusa, blocco, caparre a entrambi).
+    async chiudiESegnala(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "chiudi_e_segnala", porta });
+      return r.ok ? { ok: true, esito: r.dati.esito } : r;
+    },
     async vistaVideo(porta) {
       if (!UUID.test(String(porta || ""))) return errore("non_trovata");
       const r = await chiedi({ azione: "vista", porta });
@@ -256,7 +270,11 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
 
 // Il controllo della schermata: una porta aperta alla volta, una richiesta alla volta.
 // sala(passaAlleFoto, aggiorna) crea la sala d'attesa (sala_attesa.js, passo 6b); senza, la sala non compare.
-export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = () => new Date(), sala: creaSala = null }) {
+// video(porta, { nome, quandoFinito, quandoSegnala, quandoEsci }) crea la schermata del video (schermata_svelamento.js,
+// passo 7d-3b) solo quando il server dice «iniziato» con «video»; senza, «Entra» non compare.
+// ogni/ferma: il giro che richiede «entra» mentre si aspetta l'altra persona (una richiesta alla volta).
+export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = () => new Date(), sala: creaSala = null,
+  video: creaVideo = null, ogni = (fn, ms) => setInterval(fn, ms), ferma: fermaGiro = (id) => clearInterval(id), entraOgni = ENTRA_MS }) {
   let porta = null;
   let stato = null;
   let carica = false;
@@ -265,6 +283,11 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
   let ricarica = false;
   let orari = false;
   let bozza = ["", "", ""];
+  let ingresso = null; // null | "entro" | "attesa": «Entra» chiesto al server, in attesa dell'altra persona
+  let giro = null;
+  let inVoloEntra = false;
+  let schermata = null; // la schermata del video, solo dopo «iniziato» + «video»
+  let segnala = null;   // dopo «Chiudi e segnala»: { contro, origine, nome } per il modulo della #7
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
   // «Passa alle foto» dalla sala: la propria scelta diventa «foto» (vale per entrambi, lo decide il server).
   async function passaAlleFoto() {
@@ -286,6 +309,73 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
     const s = schermataPorta(stato, porta, adesso());
     sala.aggiornaTipo(s && s.tipo === "porta" && s.momento ? s.tipoSvelamento : null);
   };
+
+  const datiPorta = () => (stato && Array.isArray(stato.porte) ? stato.porte.find((x) => x && x.porta === porta) : null) || null;
+  const nomeAltra = () => nome(datiPorta()?.nome) || "l'altra persona";
+
+  function fermaIngresso() {
+    if (giro !== null) { try { fermaGiro(giro); } catch { /* già fermo */ } }
+    giro = null;
+    ingresso = null;
+    inVoloEntra = false;
+  }
+  function chiudiVideo() {
+    if (schermata) { try { schermata.chiudi(); } catch { /* già chiusa */ } }
+    schermata = null;
+  }
+
+  // Passo 7d-3b: «Chiudi e segnala» dal video. La schermata ha già spento tutto; qui si chiede al server di chiudere la
+  // porta (blocco e caparre a entrambi) e si prepara il modulo della #7 contro l'altra persona.
+  function quandoSegnala(id, p) {
+    segnala = p && UUID.test(String(p.con || "")) ? { contro: p.con, origine: "chiudi_e_segnala", nome: nome(p.nome) } : null;
+    avvisa();
+    Promise.resolve().then(() => svelamento.chiudiESegnala(id)).catch(() => null)
+      .then(() => { if (porta === id) return leggi(); }).catch(() => {});
+  }
+
+  function apriVideo(id) {
+    if (sala) sala.chiudi(); // l'anteprima si spegne: la fotocamera la riaccende il video
+    const p = datiPorta();
+    schermata = creaVideo(id, {
+      nome: nome(p && p.nome),
+      quandoFinito: () => { if (porta === id) { avvisa(); leggi(); } },
+      quandoEsci: () => { if (porta === id) leggi(); },
+      quandoSegnala: () => { if (porta === id) quandoSegnala(id, p); },
+    });
+    avvisa();
+    schermata.apri();
+  }
+
+  // Una richiesta «entra»; il giro la ripete mentre l'altra persona non c'è.
+  async function chiediEntra() {
+    const id = porta;
+    if (!id || inVoloEntra || !ingresso) return;
+    inVoloEntra = true;
+    const r = await Promise.resolve().then(() => svelamento.entra(id)).catch(() => ({ ok: false, motivo: "rete" }));
+    inVoloEntra = false;
+    if (porta !== id || !ingresso) return;
+    if (r && r.ok && r.esito === "in_attesa") {
+      ingresso = "attesa";
+      if (giro === null) giro = ogni(() => chiediEntra(), entraOgni);
+      avvisa();
+      return;
+    }
+    if (r && r.ok && r.esito === "iniziato") {
+      fermaIngresso();
+      if (r.tipo === "video" && typeof creaVideo === "function") { apriVideo(id); return; }
+      await leggi(); // «foto»: la sala lo segue e spegne la fotocamera
+      return;
+    }
+    const motivo = r && r.motivo;
+    // Senza rete o con troppe richieste, mentre si aspetta, si riprova al giro dopo.
+    if (ingresso === "attesa" && ["rete", "troppe", "riprova"].includes(motivo)) return;
+    fermaIngresso();
+    if (sala) sala.chiudi();
+    await leggi();
+    if (motivo === "non_arrivato") errore = TESTI.nonArrivato.replace("<nome>", nomeAltra());
+    else if (!["porta_chiusa", "porta_scaduta", "non_trovata"].includes(motivo)) errore = (r && r.testo) || testoErroreSvelamento(motivo);
+    avvisa();
+  }
 
   async function leggi() {
     const id = porta;
@@ -332,6 +422,9 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
 
   return {
     async apri(id) {
+      fermaIngresso();
+      chiudiVideo();
+      segnala = null;
       if (sala) sala.chiudi();
       porta = String(id || "");
       stato = null;
@@ -342,6 +435,8 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       await leggi();
     },
     chiudi() {
+      fermaIngresso();
+      chiudiVideo();
       if (sala) sala.chiudi();
       porta = null;
       stato = null;
@@ -361,6 +456,20 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       avvisa();
     },
     sala: () => sala,
+    // Passo 7d-3b: «Entra» dalla sala d'attesa, solo con l'anteprima accesa e la schermata del video disponibile.
+    async entra() {
+      if (!porta || ingresso || schermata || typeof creaVideo !== "function" || !sala || sala.modello().stato !== "anteprima") return;
+      ingresso = "entro";
+      errore = null;
+      avvisa();
+      await chiediEntra();
+    },
+    video: () => schermata,
+    // Il modulo della segnalazione è stato inviato o chiuso.
+    fineSegnala() {
+      segnala = null;
+      avvisa();
+    },
     mostraRicarica() {
       ricarica = !ricarica;
       avvisa();
@@ -454,6 +563,10 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       ricarica,
       orari,
       bozza: [...bozza],
+      ingresso,
+      puoEntrare: typeof creaVideo === "function",
+      nome: nomeAltra(),
+      segnala: segnala ? { ...segnala } : null,
       schermata: porta !== null ? schermataPorta(stato, porta, adesso()) : null,
     }),
   };
@@ -465,6 +578,17 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
   if (!m.aperta) return null;
   const s = m.schermata;
   const parti = [];
+  // Passo 7d-3b: con il video aperto la pagina mostra solo lo svelamento; finito, resta «Ecco <nome>.» con «Torna».
+  const video = ps.video ? ps.video() : null;
+  const fase = video ? video.modello().stato : "chiusa";
+  if (video && fase !== "chiusa" && fase !== "uscita") {
+    return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
+      h("h1", { id: "porta-titolo", classe: "nascosto" }, s && s.tipo === "porta" ? s.titolo : "Svelamento"),
+      vistaSchermata(h, video),
+      VIDEO_ATTIVO.has(fase) ? null
+        : h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI.torna)));
+  }
+  if (video && fase === "uscita") parti.push(vistaSchermata(h, video));
   if (m.carica && !s) parti.push(h("p", { classe: "nota", role: "status" }, "Un attimo…"));
   if (m.errore) {
     parti.push(h("p", { classe: "errore", role: "alert" }, m.errore),
@@ -502,6 +626,11 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
       parti.push(sala.modello().stato === "chiusa"
         ? h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.entraSala() }, TESTI_SALA.vai)
         : vistaSala(h, sala));
+      if (sala.modello().stato === "anteprima" && m.puoEntrare) {
+        parti.push(m.ingresso
+          ? h("p", { role: "status" }, TESTI.aspetta.replace("<nome>", m.nome))
+          : h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.entra() }, TESTI.entra));
+      }
     }
   }
   return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
