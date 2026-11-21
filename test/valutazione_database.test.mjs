@@ -44,3 +44,11 @@ test("niente voti, stelle o aspetto; nessun SQL distruttivo", () => {
   assert.doesNotMatch(codice, /\b(voto|stelle|stella|aspetto|bello|bella)\b/i);
   assert.doesNotMatch(codice, /\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\b/i);
 });
+
+// supabase-postgres-best-practices › schema-foreign-key-indexes: ogni chiave esterna ha il suo indice
+// (la cancellazione dell'account cerca per «persona» e per «valutato»).
+test("indici sulle chiavi esterne di chi risponde e di chi è valutato", () => {
+  const tutte = readdirSync(cartella).filter((n) => n.endsWith(".sql")).map((n) => readFileSync(new URL(n, cartella), "utf8")).join("\n");
+  assert.match(tutte, /create index \w+ on public\.valutazioni \(valutato\)/);
+  assert.match(tutte, /create index \w+ on public\.valutazioni \(persona\)/);
+});
