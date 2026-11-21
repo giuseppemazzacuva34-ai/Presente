@@ -22,6 +22,10 @@ create function pg_temp.roma(giorni integer, ora integer, minuti integer default
 $$;
 
 begin;
+-- Passo 2t (D143 B): la proposta accetta solo un locale che chi propone vede; due locali «visitato» a Torino.
+insert into public.locali (id, nome, indirizzo, provincia, tipo, stato) values
+  ('b1b1b1b1-0000-4000-8000-000000000001', 'Bar Uno', 'Via Prova 1', 'TO', 'bar', 'visitato'),
+  ('b1b1b1b1-0000-4000-8000-000000000002', 'Bar Due', 'Via Prova 2', 'TO', 'bar', 'visitato');
 insert into auth.users (id, email) values
   ('9a9a9a9a-0000-4000-8000-00000000009a', 'sa@example.com'), ('9b9b9b9b-0000-4000-8000-00000000009b', 'sb@example.com'),
   ('9c9c9c9c-0000-4000-8000-00000000009c', 'sc@example.com'), ('9e9e9e9e-0000-4000-8000-00000000009e', 'se@example.com');
@@ -79,11 +83,11 @@ select pg_temp.ok((select j->>'stato' = 'da_fissare' and (j->>'scadenza')::times
 
 -- Ada propone: per lei «aspetta», per Bruno i tre pulsanti.
 select public.proponi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a',
-  pg_temp.roma(2, 19), 'bar-1', null);
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null);
 insert into s select 'a1', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a');
 insert into s select 'b1', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b');
 select pg_temp.ok((select j->>'stato' = 'proposto' and (j->>'proposta_mia')::boolean and j->'azioni' = '["annulla_incontro"]'::jsonb
-  and (j->>'orario')::timestamptz = pg_temp.roma(2, 19) and j->>'locale' = 'bar-1' and j->'luogo' = 'null'::jsonb
+  and (j->>'orario')::timestamptz = pg_temp.roma(2, 19) and j->>'locale' = 'b1b1b1b1-0000-4000-8000-000000000001' and j->'luogo' = 'null'::jsonb
   from s where chi = 'a1'), 'stato: chi ha proposto aspetta la risposta');
 select pg_temp.ok((select not (j->>'proposta_mia')::boolean and j->'azioni' = '["accetto", "altra_data", "annulla"]'::jsonb
   and (j->>'proposta_scade')::timestamptz <= now() + interval '48 hours'
@@ -96,7 +100,7 @@ select pg_temp.ok((select not (j ? 'a') and not (j ? 'b') and not (j ? 'proposto
 select public.proponi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b',
   pg_temp.roma(3, 19), null, 'Caffè in piazza');
 select public.proponi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a',
-  pg_temp.roma(4, 19), 'bar-1', null);
+  pg_temp.roma(4, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null);
 select public.proponi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b',
   pg_temp.roma(5, 19), null, 'Caffè in piazza');
 insert into s select 'a2', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a');

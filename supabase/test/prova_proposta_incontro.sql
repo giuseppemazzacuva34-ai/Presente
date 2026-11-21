@@ -23,6 +23,10 @@ create function pg_temp.roma(giorni integer, ora integer, minuti integer default
 $$;
 
 begin;
+-- Passo 2t (D143 B): la proposta accetta solo un locale che chi propone vede; due locali «visitato» a Torino.
+insert into public.locali (id, nome, indirizzo, provincia, tipo, stato) values
+  ('b1b1b1b1-0000-4000-8000-000000000001', 'Bar Uno', 'Via Prova 1', 'TO', 'bar', 'visitato'),
+  ('b1b1b1b1-0000-4000-8000-000000000002', 'Bar Due', 'Via Prova 2', 'TO', 'bar', 'visitato');
 insert into auth.users (id, email) values
   ('8a8a8a8a-0000-4000-8000-00000000008a', 'pa@example.com'), ('8b8b8b8b-0000-4000-8000-00000000008b', 'pb@example.com'),
   ('8c8c8c8c-0000-4000-8000-00000000008c', 'pc@example.com'), ('8d8d8d8d-0000-4000-8000-00000000008d', 'pd@example.com'),
@@ -69,7 +73,7 @@ reset role;
 -- Il telefono non chiama le funzioni dell'incontro: passano solo dal Worker.
 set local role authenticated;
 select pg_temp.ok(pg_temp.rifiutato($$select public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab',
-  '8a8a8a8a-0000-4000-8000-00000000008a', now(), 'bar-1', null)$$), 'proponi_incontro: il telefono non la chiama');
+  '8a8a8a8a-0000-4000-8000-00000000008a', now(), 'b1b1b1b1-0000-4000-8000-000000000001', null)$$), 'proponi_incontro: il telefono non la chiama');
 select pg_temp.ok(pg_temp.rifiutato($$select public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab',
   '8b8b8b8b-0000-4000-8000-00000000008b', 'accetto')$$), 'rispondi_incontro: il telefono non la chiama');
 reset role;
@@ -77,30 +81,30 @@ reset role;
 set local role service_role;
 -- Chi può proporre: solo le due persone della porta, solo dopo il doppio sì.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8e8e8e8e-0000-4000-8000-00000000008e',
-  pg_temp.roma(2, 19), 'bar-1', null) = 'non_nella_porta', 'proposta: chi non è nella porta non propone');
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'non_nella_porta', 'proposta: chi non è nella porta non propone');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ae', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 19), 'bar-1', null) = 'nessun_incontro', 'proposta: senza doppio sì nessun incontro');
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'nessun_incontro', 'proposta: senza doppio sì nessun incontro');
 
 -- Orari rifiutati anche via API: prima di domani, fuori 10:00–23:00, non sulla mezz'ora, dopo la scadenza.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  null, 'bar-1', null) = 'orario_non_valido', 'proposta: orario mancante');
+  null, 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'orario_non_valido', 'proposta: orario mancante');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(0, 10), 'bar-1', null) = 'prima_di_domani', 'proposta: oggi no, da domani alle 10:00');
+  pg_temp.roma(0, 10), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'prima_di_domani', 'proposta: oggi no, da domani alle 10:00');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 9, 30), 'bar-1', null) = 'fuori_orario', 'proposta: prima delle 10:00 no');
+  pg_temp.roma(2, 9, 30), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'fuori_orario', 'proposta: prima delle 10:00 no');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 23, 30), 'bar-1', null) = 'fuori_orario', 'proposta: dopo le 23:00 no');
+  pg_temp.roma(2, 23, 30), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'fuori_orario', 'proposta: dopo le 23:00 no');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 18, 10), 'bar-1', null) = 'non_sul_passo', 'proposta: solo ogni 30 minuti');
+  pg_temp.roma(2, 18, 10), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'non_sul_passo', 'proposta: solo ogni 30 minuti');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 18) + interval '1 second', 'bar-1', null) = 'non_sul_passo', 'proposta: niente secondi');
+  pg_temp.roma(2, 18) + interval '1 second', 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'non_sul_passo', 'proposta: niente secondi');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(11, 12), 'bar-1', null) = 'dopo_la_scadenza', 'proposta: non dopo la scadenza (10 giorni)');
+  pg_temp.roma(11, 12), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'dopo_la_scadenza', 'proposta: non dopo la scadenza (10 giorni)');
 -- Dove: un locale consigliato oppure un altro luogo pubblico scritto (max 80 caratteri), mai tutti e due, mai nessuno.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
   pg_temp.roma(2, 19), null, null) = 'luogo_non_valido', 'proposta: serve un luogo');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 19), 'bar-1', 'Piazza Castello') = 'luogo_non_valido', 'proposta: un solo luogo');
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', 'Piazza Castello') = 'luogo_non_valido', 'proposta: un solo luogo');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
   pg_temp.roma(2, 19), null, repeat('x', 81)) = 'luogo_non_valido', 'proposta: luogo scritto al massimo 80 caratteri');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
@@ -115,7 +119,7 @@ select pg_temp.ok((select stato = 'proposto' and orario = pg_temp.roma(2, 19) an
     and locale is null and proposto_da = '8a8a8a8a-0000-4000-8000-00000000008a' and proposto_il is not null and controproposte = 0
   from public.incontri where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab'), 'proposta: salvata (luogo senza spazi ai lati)');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(3, 19), 'bar-1', null) = 'attendi_risposta', 'proposta: chi ha proposto aspetta la risposta');
+  pg_temp.roma(3, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'attendi_risposta', 'proposta: chi ha proposto aspetta la risposta');
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
   'accetto') = 'non_puoi_rispondere', 'risposta: chi ha proposto non accetta da solo');
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
@@ -123,8 +127,8 @@ select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab
 
 -- «Propongo un'altra data»: Bruno controproposta 1.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
-  pg_temp.roma(3, 20, 30), 'bar-2', null) = 'controproposto', 'controproposta: Bruno propone un''altra data');
-select pg_temp.ok((select controproposte = 1 and proposto_da = '8b8b8b8b-0000-4000-8000-00000000008b' and locale = 'bar-2'
+  pg_temp.roma(3, 20, 30), 'b1b1b1b1-0000-4000-8000-000000000002', null) = 'controproposto', 'controproposta: Bruno propone un''altra data');
+select pg_temp.ok((select controproposte = 1 and proposto_da = '8b8b8b8b-0000-4000-8000-00000000008b' and locale = 'b1b1b1b1-0000-4000-8000-000000000002'
     and luogo_libero is null from public.incontri where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab'),
   'controproposta: contata, il nuovo luogo sostituisce il vecchio');
 
@@ -135,15 +139,15 @@ select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab
 select pg_temp.ok((select stato = 'da_fissare' and orario is null and locale is null and proposto_da is null and controproposte = 1
   from public.incontri where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab'), 'proposta scaduta: si torna a «da fissare»');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(4, 19), 'bar-1', null) = 'proposto', 'proposta scaduta: si può proporre di nuovo (non è una controproposta)');
+  pg_temp.roma(4, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'proposto', 'proposta scaduta: si può proporre di nuovo (non è una controproposta)');
 
 -- Controproposte 2 e 3, poi alla quarta solo «Accetto» o «Annulla».
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
-  pg_temp.roma(4, 21), 'bar-2', null) = 'controproposto', 'controproposta 2');
+  pg_temp.roma(4, 21), 'b1b1b1b1-0000-4000-8000-000000000002', null) = 'controproposto', 'controproposta 2');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(5, 19), 'bar-1', null) = 'controproposto', 'controproposta 3');
+  pg_temp.roma(5, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'controproposto', 'controproposta 3');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
-  pg_temp.roma(5, 21), 'bar-2', null) = 'controproposte_finite', 'controproposta 4: rifiutata, restano Accetto e Annulla');
+  pg_temp.roma(5, 21), 'b1b1b1b1-0000-4000-8000-000000000002', null) = 'controproposte_finite', 'controproposta 4: rifiutata, restano Accetto e Annulla');
 select pg_temp.ok((select controproposte = 3 and orario = pg_temp.roma(5, 19) from public.incontri
   where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab'), 'controproposta 4: la proposta di Ada resta quella valida');
 
@@ -154,7 +158,7 @@ select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab
 select pg_temp.ok((select stato from public.incontri where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab') = 'da_fissare',
   'orario passato: si torna a «da fissare»');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(5, 19), 'bar-1', null) = 'proposto', 'dopo l''orario passato Ada propone di nuovo');
+  pg_temp.roma(5, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'proposto', 'dopo l''orario passato Ada propone di nuovo');
 
 -- «Accetto»: incontro confermato.
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
@@ -162,7 +166,7 @@ select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab
 select pg_temp.ok((select stato = 'confermato' and confermato_il is not null and orario = pg_temp.roma(5, 19) and esito is null
   from public.incontri where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ab'), 'confermato: giorno, ora e luogo fissati');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
-  pg_temp.roma(6, 19), 'bar-2', null) = 'gia_confermato', 'confermato: niente nuove proposte (prima si disdice)');
+  pg_temp.roma(6, 19), 'b1b1b1b1-0000-4000-8000-000000000002', null) = 'gia_confermato', 'confermato: niente nuove proposte (prima si disdice)');
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b',
   'accetto') = 'nessuna_proposta', 'confermato: nessuna proposta a cui rispondere');
 select pg_temp.ok(public.saldo_crediti('8b8b8b8b-0000-4000-8000-00000000008b') = 0,
@@ -170,18 +174,18 @@ select pg_temp.ok(public.saldo_crediti('8b8b8b8b-0000-4000-8000-00000000008b') =
 
 -- «Annulla l'incontro» (Ada-Dario): incontro chiuso, caparre restituite a entrambi, nessuna penale.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ad', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(2, 19), 'bar-1', null) = 'proposto', 'annulla: Ada propone a Dario');
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'proposto', 'annulla: Ada propone a Dario');
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ad', '8d8d8d8d-0000-4000-8000-00000000008d',
   'annulla') = 'annullato', 'annulla: Dario annulla l''incontro');
 select pg_temp.ok((select esito = 'annullato' and esito_il is not null and crediti_presente = 0 from public.incontri
   where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ad'), 'annulla: esito salvato, niente a Presente');
 select pg_temp.ok(public.saldo_crediti('8d8d8d8d-0000-4000-8000-00000000008d') = 10, 'annulla: i 10 crediti tornano a Dario');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ad', '8a8a8a8a-0000-4000-8000-00000000008a',
-  pg_temp.roma(3, 19), 'bar-1', null) = 'incontro_chiuso', 'annulla: dopo non si propone più');
+  pg_temp.roma(3, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'incontro_chiuso', 'annulla: dopo non si propone più');
 
 -- Scadenza passata senza conferma (Ada-Carlo, doppio sì di marzo): «scaduto», crediti a entrambi, nessuna penale.
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ac', '8c8c8c8c-0000-4000-8000-00000000008c',
-  pg_temp.roma(2, 19), 'bar-1', null) = 'incontro_scaduto', 'scadenza: non si propone dopo la scadenza dell''incontro');
+  pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'incontro_scaduto', 'scadenza: non si propone dopo la scadenza dell''incontro');
 select pg_temp.ok((select esito = 'scaduto' and crediti_presente = 0 from public.incontri
   where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ac'), 'scadenza: esito «scaduto»');
 select pg_temp.ok(public.saldo_crediti('8c8c8c8c-0000-4000-8000-00000000008c') = 10, 'scadenza: i 10 crediti tornano a Carlo');
