@@ -186,7 +186,7 @@ function formaFasce(fasce) {
   return inizi.sort();
 }
 
-// Passo 5a: «Sono pronto ora» e «Scegli un orario», solo per la persona del token. Le regole (caparre, porta aperta,
+// Passo 5a: «Ci sono adesso» e «Scegli un orario», solo per la persona del token. Le regole (caparre, porta aperta,
 // non iniziata, 5 minuti, prima fascia comune) le applicano pronto_svelamento() e fasce_svelamento() nel database.
 async function quando(s, id, idPorta, nome, extra, buoni, f) {
   const esito = await rpc(s, nome, { p_porta: idPorta, p_persona: id, ...extra }, f);

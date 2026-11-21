@@ -11,7 +11,7 @@ export const SVELAMENTO = Object.freeze({
   rispostaOre: 48, // dalla fine dello svelamento
   durata: 10, // secondi di video
   sfocato: 3, // secondi in cui il video torna nitido (da confermare con Giuseppe, valore in configurazione)
-  attesaOraMinuti: 5, // «Sono pronto ora»: l'altro ha 5 minuti per entrare
+  attesaOraMinuti: 5, // «Ci sono adesso»: l'altro ha 5 minuti per entrare
   attesaMinuti: 10, // nella sala: attesa massima dell'altro
   maxFasce: 3,
   fasciaMinuti: 30,
@@ -23,7 +23,7 @@ export const SVELAMENTO = Object.freeze({
 
 export const TESTI_SVELAMENTO = Object.freeze({
   aspetta: "Aspettiamo <nome>…",
-  nonArrivato: "<nome> non è arrivata. Proponi un altro momento.",
+  nonArrivato: "<nome> non c'è. Proponi un altro momento.",
   ecco: "Ecco <nome>.",
   caduta: "La connessione è caduta.",
   inAttesa: "Hai risposto. Ti avvisiamo quando sapremo.",
@@ -40,9 +40,9 @@ export const TESTI_SVELAMENTO = Object.freeze({
   sceltaVideo: "Videochiamata di 10 secondi",
   sceltaFoto: "Preferisco le foto",
   // «Quando» (spec v1, passo 4).
-  prontoOra: "Sono pronto ora",
+  prontoOra: "Ci sono adesso",
   scegliOrario: "Scegli un orario",
-  prontaAltro: "<nome> è pronta per lo svelamento",
+  prontaAltro: "<nome> ti aspetta per lo svelamento",
   fasciaFissata: "Lo svelamento è fissato",
   nessunaFascia: "Ancora nessun orario in comune.",
 });
@@ -119,7 +119,7 @@ export function fasceValide({ fasce, aperta, adesso }) {
   return { ok: true, fasce: inizi.sort((p, q) => p - q).map((x) => new Date(x).toISOString()) };
 }
 
-// «Sono pronto ora» (passo 5a): vale 5 minuti, il tempo che l'altro ha per entrare. mio / suo = quando ciascuno ha
+// «Ci sono adesso» (passo 5a): vale 5 minuti, il tempo che l'altro ha per entrare. mio / suo = quando ciascuno ha
 // toccato il pulsante (null se mai). «entrambi» = si può passare alla sala d'attesa.
 export function prontoValido({ mio, suo, adesso }) {
   const finestra = SVELAMENTO.attesaOraMinuti * 60000;

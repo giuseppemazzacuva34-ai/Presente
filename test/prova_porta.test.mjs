@@ -44,7 +44,7 @@ test("porta aperta: 48 ore, caparra di 10 crediti, la persona finta blocca anche
   assert.equal((await p.svelamentoServer.blocca(porta)).stato.saldo, 5, "una caparra sola per porta");
 });
 
-test("scelta, «Sono pronto ora» e orari: il momento arriva subito, con il tipo scelto", async () => {
+test("scelta, «Ci sono adesso» e orari: il momento arriva subito, con il tipo scelto", async () => {
   const { p, porta, adesso } = await conPorta();
   await p.svelamentoServer.blocca(porta);
   let r = await p.svelamentoServer.scegli(porta, "foto");
@@ -54,7 +54,7 @@ test("scelta, «Sono pronto ora» e orari: il momento arriva subito, con il tipo
   assert.match(schermataPorta(r.stato, porta, adesso()).quando.fissata, /^Lo svelamento è fissato: /);
   r = await p.svelamentoServer.pronto(porta);
   const s = schermataPorta(r.stato, porta, adesso());
-  assert.equal(s.quando.entrambi, "Siete pronti tutti e due.");
+  assert.equal(s.quando.entrambi, "Potete entrare adesso.");
   assert.equal(s.momento, true);
   assert.equal(s.tipoSvelamento, "foto");
 });

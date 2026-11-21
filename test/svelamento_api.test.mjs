@@ -245,12 +245,12 @@ test("POST scelta dopo l'inizio: non cambia; porta scaduta, chiusa o di altri co
   assert.equal((await svelamentoApi(scelta("foto"), ENV, s.f)).status, 503);
 });
 
-// --- Passo 5a: «Sono pronto ora» e «Scegli un orario» ----------------------------------------------------------------
+// --- Passo 5a: «Ci sono adesso» e «Scegli un orario» ----------------------------------------------------------------
 const F1 = "2026-11-16T18:00:00.000Z", F2 = "2026-11-16T18:30:00.000Z", F3 = "2026-11-17T09:00:00.000Z";
 const pronto = (extra = {}) => richiesta({ metodo: "POST", corpo: { azione: "pronto", porta: PORTA, ...extra } });
 const fasce = (valore, extra = {}) => richiesta({ metodo: "POST", corpo: { azione: "fasce", porta: PORTA, fasce: valore, ...extra } });
 
-test("GET: proprie fasce, fascia fissata e «<nome> è pronta per lo svelamento»; mai le fasce dell'altra persona", async () => {
+test("GET: proprie fasce, fascia fissata e «<nome> ti aspetta per lo svelamento»; mai le fasce dell'altra persona", async () => {
   const s = supabaseFinto({ rpc: { svelamento_di: { saldo: 25, porte: [
     { ...UNA_PORTA, mia_caparra: true, mie_fasce: [F1, F2], fascia_fissata: F1, mio_pronto: false, suo_pronto: true, pronto_scade_il: null, sue_fasce: [F3], fasce_b: [F3] },
     { ...UNA_PORTA, mie_fasce: "strano", fascia_fissata: 7, mio_pronto: "si", suo_pronto: 1, pronto_scade_il: 5 }] } } });
@@ -258,7 +258,7 @@ test("GET: proprie fasce, fascia fissata e «<nome> è pronta per lo svelamento�
   assert.deepEqual(j.porte[0].mie_fasce, [F1, F2]);
   assert.equal(j.porte[0].fascia_fissata, F1);
   assert.equal(j.porte[0].suo_pronto, true);
-  assert.equal(j.porte[0].pronta, "Giulia è pronta per lo svelamento");
+  assert.equal(j.porte[0].pronta, "Giulia ti aspetta per lo svelamento");
   for (const campo of ["sue_fasce", "fasce_a", "fasce_b"]) assert.equal(campo in j.porte[0], false, campo);
   assert.deepEqual(j.porte[1].mie_fasce, []);
   assert.equal(j.porte[1].fascia_fissata, null);
@@ -266,7 +266,7 @@ test("GET: proprie fasce, fascia fissata e «<nome> è pronta per lo svelamento�
   assert.equal(j.porte[1].suo_pronto, false);
   assert.equal(j.porte[1].pronto_scade_il, null);
   assert.equal(j.porte[1].pronta, null);
-  assert.deepEqual(j.testi.quando, { ora: "Sono pronto ora", orario: "Scegli un orario", maxFasce: 3, fasciaMinuti: 30 });
+  assert.deepEqual(j.testi.quando, { ora: "Ci sono adesso", orario: "Scegli un orario", maxFasce: 3, fasciaMinuti: 30 });
 });
 
 test("POST pronto: per la persona del token, risponde se ora siete pronti entrambi e rimanda lo stato", async () => {

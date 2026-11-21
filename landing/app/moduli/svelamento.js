@@ -1,5 +1,5 @@
 // Schermata della porta nella web app (issue #65, spec v1 del CPO, passi 1-4; D48 A, D12 A, D18 A). Passi 4c, 3b e 5b,
-// linea del CTO. Passo 5b: con le due caparre, «Sono pronto ora» e «Scegli un orario» (fino a 3 mezz'ore dentro le 48
+// linea del CTO. Passo 5b: con le due caparre, «Ci sono adesso» e «Scegli un orario» (fino a 3 mezz'ore dentro le 48
 // ore; la prima comune la fissa il server). Le fasce dell'altra persona non arrivano mai al telefono. Dopo «Vai allo svelamento»: nome, età, conto alla rovescia delle 48 ore e caparra («Blocca 10 crediti»).
 // Le regole (10 crediti, una caparra per persona e porta, mai sotto zero, porte chiuse o scadute) le decide il server
 // (/app/api/svelamento, worker/svelamento_api.js): qui si mostrano le sue risposte.
@@ -38,24 +38,24 @@ export const TESTI = Object.freeze({
   // Provvisorio, da rivedere con «contenuti».
   giaIniziato: "Lo svelamento è già iniziato: la scelta non si può più cambiare.",
   // Passo 4 della spec: «Quando». I testi dei pulsanti sono quelli del server (TESTI_SVELAMENTO).
-  prontoOra: "Sono pronto ora",
+  prontoOra: "Ci sono adesso",
   scegliOrario: "Scegli un orario",
   fasciaFissata: "Lo svelamento è fissato",
   nessunaFascia: "Ancora nessun orario in comune.",
   // Provvisori, da rivedere con «contenuti».
   quandoTitolo: "Quando?",
   mioPronto: "<nome> ha ancora <minuti> per entrare.",
-  entrambiPronti: "Siete pronti tutti e due.",
+  entrambiPronti: "Potete entrare adesso.",
   orariSpiegazione: "Segna fino a 3 mezz'ore. L'app fissa la prima che avete in comune.",
   orario: "Orario",
   nessunOrario: "Nessuno",
   salvaOrari: "Salva gli orari",
   almenoUno: "Scegli almeno un orario.",
-  mancaCaparra: "Serve prima la caparra di tutti e due.",
+  mancaCaparra: "Servono prima le due caparre.",
   fasceNonValide: "Uno degli orari non va più bene. Scegline un altro.",
   // Passo 7d-3b (spec passo 6): dalla sala d'attesa si entra; finché manca l'altra persona si aspetta (max 10 minuti).
   aspetta: "Aspettiamo <nome>…",
-  nonArrivato: "<nome> non è arrivata. Proponi un altro momento.",
+  nonArrivato: "<nome> non c'è. Proponi un altro momento.",
   // Provvisorio, da rivedere con «contenuti».
   entra: "Entra",
 });
@@ -218,7 +218,7 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "scelta", porta, scelta });
       return r.ok ? { ok: true, esito: r.dati.esito, stato: r.dati.stato ?? null } : r;
     },
-    // Passo 5b: «Sono pronto ora» (vale 5 minuti, lo decide il server).
+    // Passo 5b: «Ci sono adesso» (vale 5 minuti, lo decide il server).
     async pronto(porta) {
       if (!UUID.test(String(porta || ""))) return errore("non_trovata");
       const r = await chiedi({ azione: "pronto", porta });

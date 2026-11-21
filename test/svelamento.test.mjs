@@ -114,7 +114,7 @@ test("timer: dopo 10 minuti di attesa l'altro non è arrivato", () => {
   const arrivoA = dopo(ore(5));
   const r = timerSvelamento({ arrivoA, arrivoB: null, adesso: new Date(arrivoA.getTime() + min(10)) });
   assert.equal(r.stato, "non_arrivato");
-  assert.equal(r.testo, "<nome> non è arrivata. Proponi un altro momento.");
+  assert.equal(r.testo, "<nome> non c'è. Proponi un altro momento.");
 });
 
 test("caduta a 4 s → «Riprova» per 2 minuti e il timer riparte da 10; dopo 3 tentativi si torna a scegliere quando", () => {
@@ -206,7 +206,7 @@ test("giorni per l'appuntamento: 10 nella stessa area, 30 tra aree diverse", () 
   assert.equal(giorniAppuntamento(false), 30);
 });
 
-// Passo 5a (linea «sviluppatore»): «Scegli un orario» e «Sono pronto ora» controllati dal server prima del database.
+// Passo 5a (linea «sviluppatore»): «Scegli un orario» e «Ci sono adesso» controllati dal server prima del database.
 test("fasce valide: 1-3 inizi da 30 minuti (:00 o :30), futuri, dentro le 48 ore; ordinate e senza doppioni", () => {
   const r = fasceValide({ fasce: [dopo(ore(30)).toISOString(), dopo(ore(20)).toISOString(), dopo(ore(20)).toISOString()], aperta: APERTA, adesso: dopo(ore(1)) });
   assert.deepEqual(r, { ok: true, fasce: [dopo(ore(20)).toISOString(), dopo(ore(30)).toISOString()] });
@@ -228,7 +228,7 @@ test("fasce non valide: vuote, più di 3, non allineate, già iniziate, oltre la
   assert.equal(fasceValide({ fasce: [dopo(min(47 * 60 + 30)).toISOString()], aperta: APERTA, adesso: dopo(ore(1)) }).ok, true); // ultima fascia utile
 });
 
-test("«Sono pronto ora»: vale 5 minuti; entrambi pronti solo se l'altro lo è ancora", () => {
+test("«Ci sono adesso»: vale 5 minuti; entrambi pronti solo se l'altro lo è ancora", () => {
   const ora = dopo(ore(2));
   assert.deepEqual(prontoValido({ mio: ora, suo: null, adesso: ora }), { mio: true, suo: false, entrambi: false, scade: new Date(ora.getTime() + min(5)) });
   assert.equal(prontoValido({ mio: ora, suo: new Date(ora.getTime() - min(4)), adesso: ora }).entrambi, true);
