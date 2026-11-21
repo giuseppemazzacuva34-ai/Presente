@@ -36,8 +36,8 @@ create function pg_temp.porta_svelata(porta uuid, a uuid, b uuid, fine_fa interv
 begin
   insert into public.porte (id, stanza_id, a, b, aperta_il)
     values (porta, '7f7f7f7f-0000-4000-8000-000000000801', a, b, now() - fine_fa - interval '3 hours');
-  perform public.assegna_crediti_beta(a, 10);
-  perform public.assegna_crediti_beta(b, 10);
+  perform public.assegna_crediti_beta(a, 100);
+  perform public.assegna_crediti_beta(b, 100);
   perform public.caparra_svelamento(porta, a);
   perform public.caparra_svelamento(porta, b);
   update public.svelamenti set iniziato_il = now() - fine_fa - interval '10 seconds', tipo = 'video', tentativi = 1,
@@ -152,8 +152,8 @@ select pg_temp.ok((select bool_and(v->'esiti'->0->>'esito' = 'chiusa') and bool_
 select pg_temp.ok((select bool_and(esito = 'chiusa' and risposta_a is null and risposta_b is null) from public.svelamenti
     where porta_id in ('8f8f8f8f-0000-4000-8000-000000000802', '8f8f8f8f-0000-4000-8000-000000000803')),
   'dopo 48 ore: esito «chiusa», le singole risposte cancellate');
-select pg_temp.ok(pg_temp.saldo('7c7c7c7c-0000-4000-8000-00000000087c') = 10 and pg_temp.saldo('7d7d7d7d-0000-4000-8000-00000000087d') = 10
-    and pg_temp.saldo('7e7e7e7e-0000-4000-8000-00000000087e') = 10 and pg_temp.saldo('7f7f7f7f-0000-4000-8000-00000000088f') = 10,
+select pg_temp.ok(pg_temp.saldo('7c7c7c7c-0000-4000-8000-00000000087c') = 100 and pg_temp.saldo('7d7d7d7d-0000-4000-8000-00000000087d') = 100
+    and pg_temp.saldo('7e7e7e7e-0000-4000-8000-00000000087e') = 100 and pg_temp.saldo('7f7f7f7f-0000-4000-8000-00000000088f') = 100,
   'dopo 48 ore: caparre restituite a entrambi, senza penale');
 select pg_temp.ok((select (v->'esiti'->0) - 'porta' - 'con' - 'nome' - 'eta' = (w->'esiti'->0) - 'porta' - 'con' - 'nome' - 'eta'
     from pg_temp.vista('7c7c7c7c-0000-4000-8000-00000000087c') v, pg_temp.vista('7d7d7d7d-0000-4000-8000-00000000087d') w),
@@ -174,7 +174,7 @@ select pg_temp.ok((select jsonb_array_length(v->'esiti') = 0 and jsonb_array_len
     from pg_temp.vista('7c7c7c7c-0000-4000-8000-00000000087c') v),
   'sospensione: prima delle 48 ore per l''altra persona nessun esito, la porta resta tra le svelate');
 select pg_temp.ok((pg_temp.riga('8f8f8f8f-0000-4000-8000-000000000802')).esito = 'sospensione', 'sospensione: porta chiusa');
-select pg_temp.ok(pg_temp.saldo('7c7c7c7c-0000-4000-8000-00000000087c') = 10 and pg_temp.saldo('7d7d7d7d-0000-4000-8000-00000000087d') = 10,
+select pg_temp.ok(pg_temp.saldo('7c7c7c7c-0000-4000-8000-00000000087c') = 100 and pg_temp.saldo('7d7d7d7d-0000-4000-8000-00000000087d') = 100,
   'sospensione: caparre restituite a entrambi');
 select pg_temp.ok(pg_temp.rispondi('8f8f8f8f-0000-4000-8000-000000000802', '7c7c7c7c-0000-4000-8000-00000000087c', 'si') = 'gia_risposto',
   'sospensione: la risposta data resta, nessun''altra');

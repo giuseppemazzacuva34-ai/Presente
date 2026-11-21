@@ -47,8 +47,8 @@ select pg_temp.ok(pg_temp.entra('6c6c6c6c-0000-4000-8000-00000000026c') = 'non_n
 -- Senza caparre non si entra (criterio: senza caparra di entrambi lo svelamento non si avvia, anche via API).
 select pg_temp.ok(pg_temp.entra('6a6a6a6a-0000-4000-8000-00000000026a') = 'manca_caparra', 'entra: senza caparre → manca_caparra');
 
-select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000026a', 10);
-select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000026b', 10);
+select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000026a', 100);
+select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000026b', 100);
 select public.caparra_svelamento('8e8e8e8e-0000-4000-8000-0000000002ab', '6a6a6a6a-0000-4000-8000-00000000026a');
 select public.caparra_svelamento('8e8e8e8e-0000-4000-8000-0000000002ab', '6b6b6b6b-0000-4000-8000-00000000026b');
 

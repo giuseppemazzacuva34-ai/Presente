@@ -38,7 +38,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il) values
    '5a5a5a5a-0000-4000-8000-00000000005a', '5d5d5d5d-0000-4000-8000-00000000005d', now() - interval '1 hour');
 
 set local role service_role;
-select public.assegna_crediti_beta(p, 30) from (values ('5a5a5a5a-0000-4000-8000-00000000005a'::uuid),
+select public.assegna_crediti_beta(p, 300) from (values ('5a5a5a5a-0000-4000-8000-00000000005a'::uuid),
   ('5b5b5b5b-0000-4000-8000-00000000005b'::uuid), ('5c5c5c5c-0000-4000-8000-00000000005c'::uuid),
   ('5d5d5d5d-0000-4000-8000-00000000005d'::uuid)) v(p);
 select public.blocca_caparra(porta, persona) from (values

@@ -51,13 +51,13 @@ select pg_temp.ok(pg_temp.rifiutato($$select public.svelamento_di('4a4a4a4a-0000
 reset role;
 set local role service_role;
 
-select public.assegna_crediti_beta('4a4a4a4a-0000-4000-8000-00000000004a', 50);
-select public.assegna_crediti_beta('4b4b4b4b-0000-4000-8000-00000000004b', 10);
-select public.assegna_crediti_beta('4c4c4c4c-0000-4000-8000-00000000004c', 10);
-select public.assegna_crediti_beta('4d4d4d4d-0000-4000-8000-00000000004d', 10);
+select public.assegna_crediti_beta('4a4a4a4a-0000-4000-8000-00000000004a', 500);
+select public.assegna_crediti_beta('4b4b4b4b-0000-4000-8000-00000000004b', 100);
+select public.assegna_crediti_beta('4c4c4c4c-0000-4000-8000-00000000004c', 100);
+select public.assegna_crediti_beta('4d4d4d4d-0000-4000-8000-00000000004d', 100);
 
 -- Stato prima di tutto: 4 porte di Ada, la più vecchia è scaduta e non compare.
-select pg_temp.ok((public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 50, 'svelamento_di: saldo di Ada 50');
+select pg_temp.ok((public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 500, 'svelamento_di: saldo di Ada 50');
 select pg_temp.ok(jsonb_array_length(public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') -> 'porte') = 3,
   'svelamento_di: 3 porte in attesa (quella scaduta non compare)');
 select pg_temp.ok((select p ->> 'nome' = 'Bruno' and (p ->> 'mia_caparra')::boolean = false and (p ->> 'sua_caparra')::boolean = false
@@ -83,7 +83,7 @@ select pg_temp.ok((select (p ->> 'mia_caparra')::boolean and not (p ->> 'sua_cap
 select pg_temp.ok((select not (p ->> 'mia_caparra')::boolean and (p ->> 'sua_caparra')::boolean
   from jsonb_array_elements(public.svelamento_di('4b4b4b4b-0000-4000-8000-00000000004b') -> 'porte') p),
   'svelamento_di: Bruno vede che Ada ha bloccato («Aspettiamo che anche…» al contrario)');
-select pg_temp.ok((public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 40, 'svelamento_di: saldo di Ada sceso a 40');
+select pg_temp.ok((public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 400, 'svelamento_di: saldo di Ada sceso a 40');
 
 -- Sospensione dell'altro durante le 48 ore: porta chiusa, caparra restituita a entrambi (risposta CPO 13/11).
 select public.caparra_svelamento('9d9d9d9d-0000-4000-8000-0000000000ac', '4a4a4a4a-0000-4000-8000-00000000004a');
@@ -96,8 +96,8 @@ select pg_temp.ok(not exists (select 1 from jsonb_array_elements(public.svelamen
   where p ->> 'porta' = '9d9d9d9d-0000-4000-8000-0000000000ac'), 'sospensione: la porta con Carlo non compare più ad Ada');
 select pg_temp.ok((select esito = 'sospensione' and esito_il is not null from public.svelamenti
   where porta_id = '9d9d9d9d-0000-4000-8000-0000000000ac'), 'sospensione: porta chiusa con esito «sospensione»');
-select pg_temp.ok(public.saldo_crediti('4c4c4c4c-0000-4000-8000-00000000004c') = 10
-  and (public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 40,
+select pg_temp.ok(public.saldo_crediti('4c4c4c4c-0000-4000-8000-00000000004c') = 100
+  and (public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 400,
   'sospensione: 10 crediti tornati a Carlo e ad Ada (Ada: 50 - 10 con Bruno)');
 select pg_temp.ok(public.caparra_svelamento('9d9d9d9d-0000-4000-8000-0000000000ac', '4a4a4a4a-0000-4000-8000-00000000004a') = 'porta_chiusa',
   'sospensione: nessuna nuova caparra sulla porta chiusa');
@@ -110,13 +110,13 @@ insert into public.blocchi (chi, bloccato) values ('4a4a4a4a-0000-4000-8000-0000
 select pg_temp.ok(public.caparra_svelamento('9d9d9d9d-0000-4000-8000-0000000000ad', '4a4a4a4a-0000-4000-8000-00000000004a') = 'porta_chiusa',
   'blocco: la caparra non si blocca, la porta è chiusa');
 select pg_temp.ok((select esito = 'blocco' from public.svelamenti where porta_id = '9d9d9d9d-0000-4000-8000-0000000000ad')
-  and public.saldo_crediti('4d4d4d4d-0000-4000-8000-00000000004d') = 10, 'blocco: esito «blocco» e 10 crediti tornati a Dario');
+  and public.saldo_crediti('4d4d4d4d-0000-4000-8000-00000000004d') = 100, 'blocco: esito «blocco» e 10 crediti tornati a Dario');
 
 -- Porta scaduta (48 ore passate) senza svelamento: chiusa, nessuna caparra, nessuna penale.
 select pg_temp.ok(public.caparra_svelamento('9d9d9d9d-0000-4000-8000-0000000000ae', '4a4a4a4a-0000-4000-8000-00000000004a') = 'porta_scaduta',
   'scadenza: dopo 48 ore la caparra non si blocca');
 select pg_temp.ok((select esito = 'scaduta' from public.svelamenti where porta_id = '9d9d9d9d-0000-4000-8000-0000000000ae')
-  and (public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 40, 'scadenza: esito «scaduta», saldo di Ada invariato');
+  and (public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') ->> 'saldo')::int = 400, 'scadenza: esito «scaduta», saldo di Ada invariato');
 
 -- Restano solo le porte in attesa: per Ada quella con Bruno.
 select pg_temp.ok(jsonb_array_length(public.svelamento_di('4a4a4a4a-0000-4000-8000-00000000004a') -> 'porte') = 1,
@@ -127,7 +127,7 @@ update public.porte set aperta_il = now() - interval '49 hours' where id = '9d9d
 select pg_temp.ok(jsonb_array_length(public.svelamento_di('4b4b4b4b-0000-4000-8000-00000000004b') -> 'porte') = 0,
   'svelamento_di: la porta scaduta sparisce anche per Bruno');
 select pg_temp.ok((select esito = 'scaduta' from public.svelamenti where porta_id = '9d9d9d9d-0000-4000-8000-0000000000ab')
-  and public.saldo_crediti('4a4a4a4a-0000-4000-8000-00000000004a') = 50,
+  and public.saldo_crediti('4a4a4a4a-0000-4000-8000-00000000004a') = 500,
   'svelamento_di: porta scaduta chiusa e caparra restituita ad Ada (saldo di nuovo 50)');
 
 reset role;

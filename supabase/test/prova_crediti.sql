@@ -44,50 +44,50 @@ select pg_temp.ok(not exists (select 1 from public.crediti_movimenti) and not ex
   'caparra: con crediti insufficienti nessuna riga scritta');
 
 -- Crediti di prova della beta (dal pannello).
-select public.assegna_crediti_beta('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 15);
-select public.assegna_crediti_beta('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', 10);
+select public.assegna_crediti_beta('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 150);
+select public.assegna_crediti_beta('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b', 100);
 select pg_temp.ok(pg_temp.rifiutato($$select public.assegna_crediti_beta('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', 0)$$), 'crediti beta: solo quantità positive');
-select pg_temp.ok(pg_temp.rifiutato($$select public.assegna_crediti_beta('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', 501)$$), 'crediti beta: al massimo 500 alla volta');
-select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 15, 'crediti: saldo dopo i crediti di prova');
+select pg_temp.ok(pg_temp.rifiutato($$select public.assegna_crediti_beta('3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c', 5001)$$), 'crediti beta: al massimo 5000 Coin alla volta');
+select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 150, 'crediti: saldo dopo i crediti di prova');
 
 -- Solo chi è nella porta blocca la caparra.
 select pg_temp.ok(public.blocca_caparra('9c9c9c9c-0000-4000-8000-000000000001', '3c3c3c3c-3c3c-4c3c-8c3c-3c3c3c3c3c3c') = 'non_nella_porta',
   'caparra: chi non è nella porta non blocca nulla');
 
 select pg_temp.ok(public.blocca_caparra('9c9c9c9c-0000-4000-8000-000000000001', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 'bloccata',
-  'caparra: con 15 crediti si bloccano 10');
-select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 5, 'caparra: saldo disponibile 15 - 10 = 5');
+  'caparra: con 150 Coin se ne bloccano 100');
+select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 50, 'caparra: saldo disponibile 150 - 100 = 50');
 select pg_temp.ok((select caparra_a_il is not null and caparra_b_il is null from public.svelamenti
   where porta_id = '9c9c9c9c-0000-4000-8000-000000000001'), 'caparra: lo svelamento segna l''orario della caparra di a');
 -- Una sola caparra per persona e porta.
 select pg_temp.ok(public.blocca_caparra('9c9c9c9c-0000-4000-8000-000000000001', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 'gia_bloccata',
   'caparra: la seconda volta non scala altri crediti');
-select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 5, 'caparra: saldo invariato dopo il doppio tocco');
+select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 50, 'caparra: saldo invariato dopo il doppio tocco');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti, porta_id) values
   ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'caparra_bloccata', -10, '9c9c9c9c-0000-4000-8000-000000000001')$$),
   'caparra: il database rifiuta una seconda caparra per la stessa porta');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti) values
-  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'caparra_bloccata', -7)$$), 'caparra: vale sempre 10 crediti e sempre con la porta');
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'caparra_bloccata', -7)$$), 'caparra: vale sempre 100 Coin e sempre con la porta');
 -- Il saldo non va mai sotto zero, nemmeno scrivendo nel registro.
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.crediti_movimenti (persona, tipo, crediti) values
-  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'stanza', -9)$$), 'crediti: il saldo non va mai sotto zero');
+  ('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a', 'stanza', -80)$$), 'crediti: il saldo non va mai sotto zero');
 -- Il registro non si modifica: si aggiungono righe.
 select pg_temp.ok(pg_temp.rifiutato($$update public.crediti_movimenti set crediti = 100$$), 'crediti: le righe del registro non si modificano');
 
 -- Seconda porta della stessa sera: caparra indipendente, ma servono altri 10 crediti.
 select pg_temp.ok(public.blocca_caparra('9c9c9c9c-0000-4000-8000-000000000002', '3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 'crediti_insufficienti',
-  'caparra: due porte = due caparre (5 crediti non bastano per la seconda)');
+  'caparra: due porte = due caparre (50 Coin non bastano per la seconda)');
 
 -- Porta chiusa: nessuna nuova caparra.
 select public.blocca_caparra('9c9c9c9c-0000-4000-8000-000000000001', '3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b');
 select pg_temp.ok(public.saldo_crediti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b') = 0
   and (select caparra_b_il is not null from public.svelamenti where porta_id = '9c9c9c9c-0000-4000-8000-000000000001'),
-  'caparra: anche b blocca i suoi 10');
+  'caparra: anche b blocca i suoi 100');
 
 -- Restituzione (un no, il silenzio, scadenza, blocco, sospensione): torna a entrambi, una volta sola, nessuna penale.
 select pg_temp.ok(public.restituisci_caparre('9c9c9c9c-0000-4000-8000-000000000001') = 2, 'restituzione: 2 caparre restituite');
-select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 15
-  and public.saldo_crediti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b') = 10, 'restituzione: saldi tornati come prima');
+select pg_temp.ok(public.saldo_crediti('3a3a3a3a-3a3a-4a3a-8a3a-3a3a3a3a3a3a') = 150
+  and public.saldo_crediti('3b3b3b3b-3b3b-4b3b-8b3b-3b3b3b3b3b3b') = 100, 'restituzione: saldi tornati come prima');
 select pg_temp.ok(public.restituisci_caparre('9c9c9c9c-0000-4000-8000-000000000001') = 0, 'restituzione: la seconda volta non restituisce nulla');
 select pg_temp.ok(not exists (select 1 from public.crediti_movimenti where tipo like 'penale%' or tipo like 'buca%'),
   'restituzione: nessuna riga di penale nel registro');

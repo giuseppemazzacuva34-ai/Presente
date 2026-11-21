@@ -38,7 +38,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il) values
    '7a7a7a7a-0000-4000-8000-00000000007a', '7d7d7d7d-0000-4000-8000-00000000007d', now() - interval '1 hour');
 
 set local role service_role;
-select public.assegna_crediti_beta(p, 30) from (values ('7a7a7a7a-0000-4000-8000-00000000007a'::uuid),
+select public.assegna_crediti_beta(p, 300) from (values ('7a7a7a7a-0000-4000-8000-00000000007a'::uuid),
   ('7b7b7b7b-0000-4000-8000-00000000007b'::uuid), ('7c7c7c7c-0000-4000-8000-00000000007c'::uuid),
   ('7d7d7d7d-0000-4000-8000-00000000007d'::uuid)) v(p);
 select public.blocca_caparra(porta, persona) from (values
@@ -102,8 +102,8 @@ select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000ac'
   = 'gia_fatto', 'check-in: il secondo tocco non cambia nulla');
 select pg_temp.ok((select segnale is null and esito is null and stato = 'confermato' from public.incontri
   where porta_id = '7f7f7f7f-0000-4000-8000-0000000000ac'), 'check-in: con un solo check-in nessun segnale');
-select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 10
-  and public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 20, 'check-in: con uno solo le caparre restano bloccate');
+select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 100
+  and public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 200, 'check-in: con uno solo le caparre restano bloccate');
 
 -- Ciro arriva: segnale uguale per tutti e due (dalla lista), incontro avvenuto, caparre sbloccate subito.
 select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', '7c7c7c7c-0000-4000-8000-00000000007c')
@@ -112,8 +112,8 @@ select pg_temp.ok((select i.segnale is not null and i.esito = 'avvenuto' and i.s
   and i.checkin_a_il is not null and i.checkin_b_il is not null and i.crediti_presente = 0
   and exists (select 1 from public.parole_segnale p where p.parola = i.segnale)
   from public.incontri i where i.porta_id = '7f7f7f7f-0000-4000-8000-0000000000ac'), 'segnale: una parola della lista, esito avvenuto');
-select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 20
-  and public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 30, 'crediti: caparre sbloccate subito per entrambi');
+select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 200
+  and public.saldo_crediti('7c7c7c7c-0000-4000-8000-00000000007c') = 300, 'crediti: caparre sbloccate subito per entrambi');
 -- Dopo: il check-in ripetuto non rimette crediti né cambia il segnale.
 create temp table prima (segnale text) on commit drop;
 insert into prima select segnale from public.incontri where porta_id = '7f7f7f7f-0000-4000-8000-0000000000ac';
@@ -121,7 +121,7 @@ select pg_temp.ok(public.checkin_incontro('7f7f7f7f-0000-4000-8000-0000000000ac'
   = 'avvenuto', 'check-in: dopo l''incontro risponde sempre «avvenuto»');
 select pg_temp.ok((select i.segnale = p.segnale from public.incontri i, prima p
   where i.porta_id = '7f7f7f7f-0000-4000-8000-0000000000ac'), 'segnale: non cambia più');
-select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 20, 'crediti: nessuna restituzione doppia');
+select pg_temp.ok(public.saldo_crediti('7a7a7a7a-0000-4000-8000-00000000007a') = 200, 'crediti: nessuna restituzione doppia');
 
 -- Nessuna posizione: la tabella degli incontri non ha colonne di luogo GPS.
 select pg_temp.ok(not exists (select 1 from information_schema.columns where table_schema = 'public'

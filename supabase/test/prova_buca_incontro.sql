@@ -36,7 +36,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il)
   from generate_series(1, 4) n;
 
 set local role service_role;
-select public.assegna_crediti_beta(pg_temp.p(n), 30) from generate_series(1, 8) n;
+select public.assegna_crediti_beta(pg_temp.p(n), 300) from generate_series(1, 8) n;
 select public.blocca_caparra(pg_temp.porta((n + 1) / 2), pg_temp.p(n)) from generate_series(1, 8) n;
 update public.svelamenti set iniziato_il = now() - interval '1 day 20 minutes', tentativi = 1, tipo = 'video', durata_secondi = 10,
   finito_il = now() - interval '1 day 19 minutes', esito = 'doppio_si', esito_il = now() - interval '1 day'
@@ -50,38 +50,38 @@ update public.incontri set checkin_a_il = now() - interval '40 minutes' where po
 update public.incontri set checkin_b_il = now() - interval '10 minutes', ritardo_minuti = 15, ritardo_di = pg_temp.p(5)
   where porta_id = pg_temp.porta(3);
 update public.incontri set orario = now() - interval '2 hours' where porta_id = pg_temp.porta(4);
-select pg_temp.ok(pg_temp.saldo(1) = 20 and pg_temp.saldo(2) = 20, 'prima: le due caparre sono bloccate');
+select pg_temp.ok(pg_temp.saldo(1) = 200 and pg_temp.saldo(2) = 200, 'prima: le due caparre sono bloccate');
 
 -- 1. Buca di p2: alla prima lettura dopo la finestra.
 select pg_temp.ok((public.incontro_aggiornato(pg_temp.porta(1))).esito = 'buca_b', 'buca: solo p1 ha fatto il check-in → buca di p2');
-select pg_temp.ok((select stato = 'concluso' and crediti_presente = 3 and esito_il is not null and segnale is null
-  from public.incontri where porta_id = pg_temp.porta(1)), 'buca: incontro concluso, 3 crediti a Presente, nessun segnale');
-select pg_temp.ok(pg_temp.saldo(1) = 37 and pg_temp.saldo(2) = 20, 'buca: chi ha aspettato riprende i suoi 10 più 7; chi manca perde 10');
+select pg_temp.ok((select stato = 'concluso' and crediti_presente = 30 and esito_il is not null and segnale is null
+  from public.incontri where porta_id = pg_temp.porta(1)), 'buca: incontro concluso, 30 Coin a Presente, nessun segnale');
+select pg_temp.ok(pg_temp.saldo(1) = 370 and pg_temp.saldo(2) = 200, 'buca: chi ha aspettato riprende i suoi 100 più 70; chi manca perde 100');
 select pg_temp.ok(pg_temp.saldo(1) + pg_temp.saldo(2)
-    + (select crediti_presente from public.incontri where porta_id = pg_temp.porta(1)) = 60,
-  'buca: la somma dei crediti torna (37 + 20 + 3 = 60)');
+    + (select crediti_presente from public.incontri where porta_id = pg_temp.porta(1)) = 600,
+  'buca: la somma dei Coin torna (370 + 200 + 30 = 600)');
 select (public.incontro_aggiornato(pg_temp.porta(1))).esito;
-select pg_temp.ok(pg_temp.saldo(1) = 37 and pg_temp.saldo(2) = 20, 'buca: rileggere non sposta altri crediti');
+select pg_temp.ok(pg_temp.saldo(1) = 370 and pg_temp.saldo(2) = 200, 'buca: rileggere non sposta altri crediti');
 select pg_temp.ok(public.checkin_incontro(pg_temp.porta(1), pg_temp.p(2)) = 'troppo_tardi',
   'buca: dopo la finestra «Sono qui» risponde «troppo tardi»');
 
 -- 2. Nessuno dei due: crediti a entrambi, nessuna penale.
 select pg_temp.ok((public.incontro_aggiornato(pg_temp.porta(2))).esito = 'nessun_checkin', 'nessun check-in: esito «nessun_checkin»');
-select pg_temp.ok(pg_temp.saldo(3) = 30 and pg_temp.saldo(4) = 30
+select pg_temp.ok(pg_temp.saldo(3) = 300 and pg_temp.saldo(4) = 300
     and (select crediti_presente = 0 and stato = 'concluso' from public.incontri where porta_id = pg_temp.porta(2)),
   'nessun check-in: crediti restituiti a entrambi, niente a Presente');
 
 -- 3. Con il ritardo la finestra si allunga: a +31 minuti ancora aperta; a +46 buca di p5.
 select pg_temp.ok((public.incontro_aggiornato(pg_temp.porta(3))).esito is null, 'ritardo +15: a 31 minuti dall''ora ancora aperto');
-select pg_temp.ok(pg_temp.saldo(5) = 20 and pg_temp.saldo(6) = 20, 'ritardo +15: caparre ancora bloccate');
+select pg_temp.ok(pg_temp.saldo(5) = 200 and pg_temp.saldo(6) = 200, 'ritardo +15: caparre ancora bloccate');
 update public.incontri set orario = now() - interval '46 minutes' where porta_id = pg_temp.porta(3);
 select pg_temp.ok((public.incontro_aggiornato(pg_temp.porta(3))).esito = 'buca_a', 'ritardo +15: a 46 minuti buca di p5');
-select pg_temp.ok(pg_temp.saldo(5) = 20 and pg_temp.saldo(6) = 37, 'ritardo +15: p6 riprende 10 più 7');
+select pg_temp.ok(pg_temp.saldo(5) = 200 and pg_temp.saldo(6) = 370, 'ritardo +15: p6 riprende 100 più 70');
 
 -- 4. Lavoro periodico: chiude gli incontri finiti anche senza che nessuno li apra.
 select pg_temp.ok(public.chiudi_incontri_finiti() = 1, 'lavoro periodico: chiude l''unico incontro rimasto finito');
 select pg_temp.ok((select esito = 'nessun_checkin' from public.incontri where porta_id = pg_temp.porta(4))
-    and pg_temp.saldo(7) = 30 and pg_temp.saldo(8) = 30, 'lavoro periodico: porta 4 chiusa, crediti a entrambi');
+    and pg_temp.saldo(7) = 300 and pg_temp.saldo(8) = 300, 'lavoro periodico: porta 4 chiusa, crediti a entrambi');
 select pg_temp.ok(public.chiudi_incontri_finiti() = 0, 'lavoro periodico: rifarlo non cambia nulla');
 reset role;
 
@@ -91,6 +91,6 @@ select pg_temp.ok(pg_temp.rifiutato($$select public.chiudi_incontri_finiti()$$),
 reset role;
 select pg_temp.ok(not exists (select 1 from public.crediti_movimenti where porta_id in
     (select pg_temp.porta(n) from generate_series(1, 4) n) and tipo = 'buca_ricevuta' and persona not in (pg_temp.p(1), pg_temp.p(6))),
-  'buca: i 7 crediti solo a chi ha aspettato');
+  'buca: i 70 Coin solo a chi ha aspettato');
 
 rollback;

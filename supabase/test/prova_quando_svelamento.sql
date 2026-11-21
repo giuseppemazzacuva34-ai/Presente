@@ -55,8 +55,8 @@ select pg_temp.ok(public.pronto_svelamento('8e8e8e8e-0000-4000-8000-0000000000ab
 select pg_temp.ok(public.fasce_svelamento('8e8e8e8e-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a', array[pg_temp.fascia(4)]) = 'manca_caparra',
   'fasce: senza la propria caparra → manca_caparra');
 
-select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000006a', 10);
-select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000006b', 10);
+select public.assegna_crediti_beta('6a6a6a6a-0000-4000-8000-00000000006a', 100);
+select public.assegna_crediti_beta('6b6b6b6b-0000-4000-8000-00000000006b', 100);
 select public.caparra_svelamento('8e8e8e8e-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a');
 
 -- Solo Ada ha la caparra: le fasce sì, «pronto» no (lo svelamento non si avvia senza due caparre).
@@ -142,7 +142,7 @@ set local role service_role;
 select pg_temp.ok(public.pronto_svelamento('8e8e8e8e-0000-4000-8000-0000000000ab', '6a6a6a6a-0000-4000-8000-00000000006a') = 'porta_chiusa',
   'pronto: porta con un blocco → porta_chiusa');
 select pg_temp.ok((select esito = 'blocco' from public.svelamenti where porta_id = '8e8e8e8e-0000-4000-8000-0000000000ab')
-  and public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 10 and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 10,
+  and public.saldo_crediti('6a6a6a6a-0000-4000-8000-00000000006a') = 100 and public.saldo_crediti('6b6b6b6b-0000-4000-8000-00000000006b') = 100,
   'pronto: porta chiusa e crediti restituiti a entrambi');
 
 reset role;

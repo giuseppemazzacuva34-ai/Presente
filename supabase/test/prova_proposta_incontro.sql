@@ -52,10 +52,10 @@ insert into public.porte (id, stanza_id, a, b, aperta_il) values
    '8a8a8a8a-0000-4000-8000-00000000008a', '8e8e8e8e-0000-4000-8000-00000000008e', now() - interval '1 hour');
 
 set local role service_role;
-select public.assegna_crediti_beta('8a8a8a8a-0000-4000-8000-00000000008a', 30);
-select public.assegna_crediti_beta('8b8b8b8b-0000-4000-8000-00000000008b', 10);
-select public.assegna_crediti_beta('8c8c8c8c-0000-4000-8000-00000000008c', 10);
-select public.assegna_crediti_beta('8d8d8d8d-0000-4000-8000-00000000008d', 10);
+select public.assegna_crediti_beta('8a8a8a8a-0000-4000-8000-00000000008a', 300);
+select public.assegna_crediti_beta('8b8b8b8b-0000-4000-8000-00000000008b', 100);
+select public.assegna_crediti_beta('8c8c8c8c-0000-4000-8000-00000000008c', 100);
+select public.assegna_crediti_beta('8d8d8d8d-0000-4000-8000-00000000008d', 100);
 select public.blocca_caparra('8f8f8f8f-0000-4000-8000-0000000000ab', '8a8a8a8a-0000-4000-8000-00000000008a');
 select public.blocca_caparra('8f8f8f8f-0000-4000-8000-0000000000ab', '8b8b8b8b-0000-4000-8000-00000000008b');
 select public.blocca_caparra('8f8f8f8f-0000-4000-8000-0000000000ac', '8a8a8a8a-0000-4000-8000-00000000008a');
@@ -179,7 +179,7 @@ select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ad
   'annulla') = 'annullato', 'annulla: Dario annulla l''incontro');
 select pg_temp.ok((select esito = 'annullato' and esito_il is not null and crediti_presente = 0 from public.incontri
   where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ad'), 'annulla: esito salvato, niente a Presente');
-select pg_temp.ok(public.saldo_crediti('8d8d8d8d-0000-4000-8000-00000000008d') = 10, 'annulla: i 10 crediti tornano a Dario');
+select pg_temp.ok(public.saldo_crediti('8d8d8d8d-0000-4000-8000-00000000008d') = 100, 'annulla: i 10 crediti tornano a Dario');
 select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ad', '8a8a8a8a-0000-4000-8000-00000000008a',
   pg_temp.roma(3, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'incontro_chiuso', 'annulla: dopo non si propone più');
 
@@ -188,9 +188,9 @@ select pg_temp.ok(public.proponi_incontro('8f8f8f8f-0000-4000-8000-0000000000ac'
   pg_temp.roma(2, 19), 'b1b1b1b1-0000-4000-8000-000000000001', null) = 'incontro_scaduto', 'scadenza: non si propone dopo la scadenza dell''incontro');
 select pg_temp.ok((select esito = 'scaduto' and crediti_presente = 0 from public.incontri
   where porta_id = '8f8f8f8f-0000-4000-8000-0000000000ac'), 'scadenza: esito «scaduto»');
-select pg_temp.ok(public.saldo_crediti('8c8c8c8c-0000-4000-8000-00000000008c') = 10, 'scadenza: i 10 crediti tornano a Carlo');
+select pg_temp.ok(public.saldo_crediti('8c8c8c8c-0000-4000-8000-00000000008c') = 100, 'scadenza: i 10 crediti tornano a Carlo');
 -- Ada: 30 assegnati − 3 caparre + 2 restituite (Dario, Carlo) = 20; quella con Bruno resta bloccata.
-select pg_temp.ok(public.saldo_crediti('8a8a8a8a-0000-4000-8000-00000000008a') = 20, 'crediti: il conto di Ada torna');
+select pg_temp.ok(public.saldo_crediti('8a8a8a8a-0000-4000-8000-00000000008a') = 200, 'crediti: il conto di Ada torna');
 select pg_temp.ok(public.rispondi_incontro('8f8f8f8f-0000-4000-8000-0000000000ac', '8a8a8a8a-0000-4000-8000-00000000008a',
   'accetto') = 'incontro_scaduto', 'scadenza: dopo non si risponde più (stesso motivo per tutti e due)');
 reset role;

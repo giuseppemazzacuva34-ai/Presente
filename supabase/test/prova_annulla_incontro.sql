@@ -28,7 +28,7 @@ insert into public.porte (id, stanza_id, a, b, aperta_il)
   from generate_series(1, 4) n;
 
 set local role service_role;
-select public.assegna_crediti_beta(pg_temp.p(n), 30) from generate_series(1, 8) n;
+select public.assegna_crediti_beta(pg_temp.p(n), 300) from generate_series(1, 8) n;
 select public.blocca_caparra(pg_temp.porta((n + 1) / 2), pg_temp.p(n)) from generate_series(1, 8) n;
 update public.svelamenti set iniziato_il = now() - interval '1 day 20 minutes', tentativi = 1, tipo = 'video', durata_secondi = 10,
   finito_il = now() - interval '1 day 19 minutes', esito = 'doppio_si', esito_il = now() - interval '1 day'
@@ -45,31 +45,31 @@ insert into public.incontri (porta_id, scadenza) values (pg_temp.porta(4), now()
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(1), pg_temp.p(9)) = 'non_nella_porta', 'annulla: solo le due persone della porta');
 
 -- 1. Da «da fissare»: crediti subito a entrambi, poi nessuna nuova proposta.
-select pg_temp.ok(pg_temp.saldo(1) = 20 and pg_temp.saldo(2) = 20, 'annulla: prima le caparre sono bloccate');
+select pg_temp.ok(pg_temp.saldo(1) = 200 and pg_temp.saldo(2) = 200, 'annulla: prima le caparre sono bloccate');
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(1), pg_temp.p(1)) = 'annullato', 'annulla da «da fissare»: esito «annullato»');
 select pg_temp.ok((select esito = 'annullato' and esito_il is not null from public.incontri where porta_id = pg_temp.porta(1)),
   'annulla da «da fissare»: incontro chiuso come «annullato»');
-select pg_temp.ok(pg_temp.saldo(1) = 30 and pg_temp.saldo(2) = 30, 'annulla: crediti restituiti subito a entrambi');
+select pg_temp.ok(pg_temp.saldo(1) = 300 and pg_temp.saldo(2) = 300, 'annulla: crediti restituiti subito a entrambi');
 select pg_temp.ok(public.proponi_incontro(pg_temp.porta(1), pg_temp.p(2),
     ((((now() at time zone 'Europe/Rome')::date + 2) + time '19:00') at time zone 'Europe/Rome'), null, 'Caffè del corso') = 'incontro_chiuso',
   'annulla: dopo, nessuna nuova proposta possibile');
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(1), pg_temp.p(2)) = 'incontro_chiuso', 'annulla: due volte no');
-select pg_temp.ok(pg_temp.saldo(1) = 30 and pg_temp.saldo(2) = 30, 'annulla: due volte non crea crediti');
+select pg_temp.ok(pg_temp.saldo(1) = 300 and pg_temp.saldo(2) = 300, 'annulla: due volte non crea crediti');
 
 -- 2. Con una proposta in corso, anche chi l'ha fatta può annullare.
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(2), pg_temp.p(3)) = 'annullato', 'annulla: chi ha proposto può annullare');
-select pg_temp.ok(pg_temp.saldo(3) = 30 and pg_temp.saldo(4) = 30, 'annulla con proposta: crediti a entrambi');
+select pg_temp.ok(pg_temp.saldo(3) = 300 and pg_temp.saldo(4) = 300, 'annulla con proposta: crediti a entrambi');
 
 -- 3. Confermato: prima «Disdici».
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(3), pg_temp.p(6)) = 'gia_confermato', 'annulla: un appuntamento confermato prima si disdice');
-select pg_temp.ok(pg_temp.saldo(5) = 20 and pg_temp.saldo(6) = 20, 'annulla: confermato, nessun credito si muove');
+select pg_temp.ok(pg_temp.saldo(5) = 200 and pg_temp.saldo(6) = 200, 'annulla: confermato, nessun credito si muove');
 select pg_temp.ok(public.disdici_incontro(pg_temp.porta(3), pg_temp.p(6)) = 'disdetto', 'annulla: prima la disdetta in tempo');
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(3), pg_temp.p(5)) = 'annullato', 'annulla: dopo la disdetta si può annullare');
-select pg_temp.ok(pg_temp.saldo(5) = 30 and pg_temp.saldo(6) = 30, 'annulla dopo la disdetta: crediti a entrambi');
+select pg_temp.ok(pg_temp.saldo(5) = 300 and pg_temp.saldo(6) = 300, 'annulla dopo la disdetta: crediti a entrambi');
 
 -- 4. Già scaduto: niente da annullare (i crediti sono già tornati).
 select pg_temp.ok(public.annulla_incontro(pg_temp.porta(4), pg_temp.p(7)) = 'incontro_scaduto', 'annulla: incontro scaduto');
-select pg_temp.ok(pg_temp.saldo(7) = 30 and pg_temp.saldo(8) = 30, 'annulla: scaduto, crediti restituiti una volta sola');
+select pg_temp.ok(pg_temp.saldo(7) = 300 and pg_temp.saldo(8) = 300, 'annulla: scaduto, crediti restituiti una volta sola');
 
 reset role;
 select pg_temp.ok(not has_function_privilege('authenticated', 'public.annulla_incontro(uuid, uuid)', 'execute'),
