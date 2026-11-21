@@ -26,8 +26,15 @@ export const TESTI_SVELAMENTO = Object.freeze({
   nonArrivato: "<nome> non c'è. Proponi un altro momento.",
   ecco: "Ecco <nome>.",
   caduta: "La connessione è caduta.",
-  inAttesa: "Hai risposto. Ti avvisiamo quando sapremo.",
-  chiusa: "Questa volta non vi incontrerete. I tuoi 10 crediti sono di nuovo disponibili.",
+  // Sì/no segreto (regola del CPO del 21/11 sulla #65). <quando> = giorno e ora di Roma della fine delle 48 ore.
+  domanda: "Vuoi incontrare <nome>?",
+  confermaSi: "Rispondi sì? Non potrai cambiarla.",
+  confermaNo: "Rispondi no? Non potrai cambiarla.",
+  conferma: "Conferma",
+  annulla: "Annulla",
+  inAttesa: "Hai risposto. Saprai com'è andata entro <quando>.",
+  doppioSi: "Vi siete detti sì. Ora fissate l'incontro.",
+  chiusa: "Questa volta non vi incontrerete. I tuoi 10 crediti sono tornati nel tuo saldo.",
   scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
   // Caparra (spec v1, passo 2). Per una porta chiusa da un blocco o da una sospensione non si dice mai il motivo.
   blocca: "Blocca 10 crediti",
@@ -151,16 +158,17 @@ export function dopoCaduta({ secondiFatti, tentativi }) {
   return { esito: "riprova", finestraSecondi: SVELAMENTO.riprovaSecondi, ripartDa: SVELAMENTO.durata, testo: TESTI_SVELAMENTO.caduta };
 }
 
-// Sì/no segreto. L'esito si decide quando hanno risposto entrambi o dopo 48 ore dalla fine dello svelamento.
-// Il risultato non contiene mai le singole risposte: «un no» e «il silenzio» danno esattamente lo stesso oggetto.
+// Sì/no segreto (regola del CPO del 21/11 sulla #65, D48 A). Doppio sì → esito subito. Ogni altro caso (un no, due no,
+// uno che non risponde) → esito SOLO alla fine delle 48 ore dalla fine dello svelamento, uguale per entrambi, caparre
+// restituite a entrambi nello stesso momento. Prima delle 48 ore chi aspetta riceve sempre lo stesso oggetto, che
+// l'altra persona abbia risposto o no: nessun indizio. Il risultato non contiene mai le singole risposte.
 export function esitoRisposte({ rispostaA, rispostaB, fineSvelamento, adesso, stessaArea = true, a = "a", b = "b" }) {
-  const scaduto = t(adesso) >= t(fineSvelamento) + SVELAMENTO.rispostaOre * ORA;
+  const esitoIl = new Date(t(fineSvelamento) + SVELAMENTO.rispostaOre * ORA);
   if (rispostaA === "si" && rispostaB === "si") {
     const giorni = giorniAppuntamento(stessaArea);
-    return { esito: "doppio_si", caparre: "bloccate", giorni, testo: `Vi incontrate! Avete ${giorni} giorni per vedervi` };
+    return { esito: "doppio_si", caparre: "bloccate", giorni, testo: TESTI_SVELAMENTO.doppioSi };
   }
-  const entrambe = rispostaA != null && rispostaB != null;
-  if (!entrambe && !scaduto) return { esito: "in_attesa", testo: TESTI_SVELAMENTO.inAttesa };
+  if (t(adesso) < t(esitoIl)) return { esito: "in_attesa", esitoIl, testo: TESTI_SVELAMENTO.inAttesa };
   return { esito: "chiusa", restituisci: [a, b], testo: TESTI_SVELAMENTO.chiusa };
 }
 
