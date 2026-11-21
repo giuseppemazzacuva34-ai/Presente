@@ -195,3 +195,15 @@ const CAMPI_REGISTRO = ["porta", "aperta", "caparraA", "caparraB", "svelata", "t
 export function registroFinale(dati) {
   return Object.fromEntries(CAMPI_REGISTRO.map((k) => [k, dati[k] ?? null]));
 }
+
+// Passo 8b-2a: <quando> dei testi del sì/no = giorno e ora di Roma («lunedì 23 novembre alle 21:00»). Null se non è
+// una data. Il fuso è scritto qui (come api/stanze.js) per non legare lo svelamento al modulo delle stanze.
+const FORMATO_QUANDO = new Intl.DateTimeFormat("it-IT", {
+  timeZone: "Europe/Rome", hourCycle: "h23", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+});
+export function quandoRoma(x) {
+  const ms = Date.parse(x);
+  if (!Number.isFinite(ms)) return null;
+  const p = Object.fromEntries(FORMATO_QUANDO.formatToParts(new Date(ms)).map((q) => [q.type, q.value]));
+  return `${p.weekday} ${p.day} ${p.month} alle ${p.hour}:${p.minute}`;
+}

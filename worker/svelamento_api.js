@@ -19,6 +19,10 @@
 //   POST /app/api/svelamento  { azione: "chiudi_e_segnala", porta }   → { ok, esito: "chiusa" }       (passo 7d-3a)
 //                             (passo 7c: solo con entra_svelamento → «iniziato_video» per la persona del token;
 //                              prima { ok: false, motivo: "non_iniziato" }, con le foto { ok: false, motivo: "foto" })
+//   POST /app/api/svelamento  { azione: "rispondi", porta, risposta: "si" | "no" }                (passo 8b-2a)
+//                             → { ok: true, esito: "risposto", stato } | { ok: true, esito: "doppio_si", testo, stato }
+//                             | { ok: false, motivo, testo? }   («risposto» identico per sì e no, mai se l'altra ha risposto)
+//   GET aggiunge «svelate» (porte in attesa del sì/no, con la domanda) ed «esiti» (doppio sì o chiusa, 7 giorni).
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
 // Chi blocca la caparra lo dice SOLO il token di Supabase: una persona scritta nel corpo non conta. Le regole
@@ -27,7 +31,7 @@
 // accesso, forma della richiesta e testi. Una porta chiusa da un blocco o da una sospensione dà solo «Questa porta si
 // è chiusa.», mai il motivo; una porta di altri risponde come una che non esiste. In beta i Coin sono di prova:
 // nessun pagamento (Stripe in Fase 4). Nei log solo codici e nomi di errore. Spento finché ACCESSO_APP non vale «si».
-import { SVELAMENTO, TESTI_SVELAMENTO } from "../api/svelamento.js";
+import { SVELAMENTO, TESTI_SVELAMENTO, quandoRoma } from "../api/svelamento.js";
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
 import { pubblicaVideo, riceviVideo, confermaVideo, vistaVideo } from "../api/video_svelamento.js";
 import { nuovaSessione, pubblicaSvelamento, riceviSvelamento, confermaSvelamento, chiudiVoce } from "../api/realtime.js";
@@ -40,6 +44,8 @@ const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const CAMPI_PORTA = ["porta", "con", "nome", "eta", "aperta_il", "scade_il", "mia_caparra", "sua_caparra"];
 const SCELTE = ["video", "foto"];
 const BLOCCATA = ["bloccata", "gia_bloccata"];
+const RISPOSTE = ["si", "no"];
+const TESTI_ESITO = { doppio_si: TESTI_SVELAMENTO.doppioSi, chiusa: TESTI_SVELAMENTO.chiusa };
 const FASCIA_MS = SVELAMENTO.fasciaMinuti * 60000;
 const istante = (x) => (typeof x === "string" && x.length <= 40 && Number.isFinite(Date.parse(x)) ? new Date(Date.parse(x)).toISOString() : null);
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
@@ -96,6 +102,30 @@ function porta(p) {
   return pulita;
 }
 
+// Passo 8b-2a: porte svelate in attesa del sì/no. Solo «ho_risposto» (mai cosa, mai se l'altra persona ha risposto).
+function svelata(p) {
+  const nome = String(p.nome || "");
+  const scade = istante(p.risposta_scade_il);
+  const hoRisposto = p.ho_risposto === true;
+  return {
+    porta: p.porta ?? null, con: p.con ?? null, nome: p.nome ?? null, eta: p.eta ?? null,
+    tipo: SCELTE.includes(p.tipo) ? p.tipo : null,
+    finito_il: istante(p.finito_il), risposta_scade_il: scade,
+    ho_risposto: hoRisposto,
+    domanda: TESTI_SVELAMENTO.domanda.replace("<nome>", nome),
+    in_attesa: hoRisposto && scade ? TESTI_SVELAMENTO.inAttesa.replace("<quando>", quandoRoma(scade)) : null,
+  };
+}
+
+// Passo 8b-2a: esito uguale per entrambi; solo «doppio_si» o «chiusa», mai il motivo di una chiusura.
+function esito(p) {
+  return {
+    porta: p.porta ?? null, con: p.con ?? null, nome: p.nome ?? null, eta: p.eta ?? null,
+    esito: p.esito, esito_il: istante(p.esito_il), testo: TESTI_ESITO[p.esito],
+  };
+}
+const lista = (x) => (Array.isArray(x) ? x.filter((p) => p && typeof p === "object") : []);
+
 async function stato(s, id, f) {
   const d = await rpc(s, "svelamento_di", { p_utente: id }, f);
   if (!d || typeof d !== "object" || !Number.isFinite(d.saldo) || !Array.isArray(d.porte)) return null;
@@ -107,8 +137,11 @@ async function stato(s, id, f) {
       blocca: TESTI_SVELAMENTO.blocca, spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra, beta: TESTI_SVELAMENTO.beta,
       scelta: { video: TESTI_SVELAMENTO.sceltaVideo, foto: TESTI_SVELAMENTO.sceltaFoto },
       quando: { ora: TESTI_SVELAMENTO.prontoOra, orario: TESTI_SVELAMENTO.scegliOrario, maxFasce: SVELAMENTO.maxFasce, fasciaMinuti: SVELAMENTO.fasciaMinuti },
+      risposta: { confermaSi: TESTI_SVELAMENTO.confermaSi, confermaNo: TESTI_SVELAMENTO.confermaNo, conferma: TESTI_SVELAMENTO.conferma, annulla: TESTI_SVELAMENTO.annulla },
     },
     porte: d.porte.filter((p) => p && typeof p === "object").map(porta),
+    svelate: lista(d.svelate).map(svelata),
+    esiti: lista(d.esiti).filter((p) => Object.hasOwn(TESTI_ESITO, p.esito)).map(esito),
   };
 }
 
@@ -129,10 +162,11 @@ export async function svelamentoApi(request, env, f = fetch) {
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
   if (corpo.errore) return corpo.errore;
-  const { azione, porta: idPorta, scelta, fasce } = corpo.dati;
+  const { azione, porta: idPorta, scelta, fasce, risposta: rispostaSiNo } = corpo.dati;
   if (!UUID.test(String(idPorta || ""))) return risposta(400, { ok: false, motivo: "dati" });
   if (azione === "scelta") return sceltaSvelamento(s, chi.id, idPorta, scelta, f);
   if (azione === "entra") return entra(s, chi.id, idPorta, f);
+  if (azione === "rispondi") return rispondi(s, chi.id, idPorta, rispostaSiNo, f);
   if (azione === "chiudi_e_segnala") return chiudiESegnala(env, s, chi.id, idPorta, f);
   if (Object.hasOwn(VIDEO, azione)) return video(env, s, chi.id, idPorta, azione, corpo.dati, f);
   if (azione === "pronto") return quando(s, chi.id, idPorta, "pronto_svelamento", {}, ["pronto", "entrambi_pronti"], f);
@@ -269,6 +303,21 @@ async function chiudiESegnala(env, s, id, idPorta, f) {
   if (esito === "non_iniziato" || esito === "finito") return risposta(200, { ok: false, motivo: esito });
   if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
   if (esito === "porta_chiusa") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.portaChiusa });
+  return riprova();
+}
+
+// Passo 8b-2a: sì/no segreto, solo per la persona del token. Le regole (una risposta sola e non modificabile, doppio
+// sì subito, ogni altro caso a fine 48 ore, sospensione senza indizi) le applica rispondi_svelamento() nel database.
+// «risposto» esce identico per un sì e per un no: lo stato che segue mostra solo «ho_risposto».
+async function rispondi(s, id, idPorta, r, f) {
+  if (!RISPOSTE.includes(r)) return risposta(400, { ok: false, motivo: "dati" });
+  const e = await rpc(s, "rispondi_svelamento", { p_porta: idPorta, p_persona: id, p_risposta: r }, f);
+  if (e === "risposto") return risposta(200, { ok: true, esito: e, stato: await stato(s, id, f) });
+  if (e === "doppio_si") return risposta(200, { ok: true, esito: e, testo: TESTI_SVELAMENTO.doppioSi, stato: await stato(s, id, f) });
+  if (e === "gia_risposto" || e === "non_svelata") return risposta(200, { ok: false, motivo: e });
+  if (e === "tempo_scaduto") return risposta(200, { ok: false, motivo: e, testo: TESTI_SVELAMENTO.chiusa });
+  if (e === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
+  if (e === "porta_chiusa") return risposta(200, { ok: false, motivo: e, testo: TESTI_SVELAMENTO.portaChiusa });
   return riprova();
 }
 
