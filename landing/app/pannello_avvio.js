@@ -176,6 +176,14 @@ async function mostraEmail(p, sanzione) {
     return;
   }
   const esito = h("p", { role: "status" });
+  const mandata = h("p", { role: "status", testo: e.mandata || "Non ancora segnata." });
+  const segna = h("button", { type: "button", class: "bottone-secondario", onclick: async () => {
+    segna.disabled = true;
+    const fatto = await p.segnaMandata(sanzione);
+    if (fatto.ok) { mandata.textContent = fatto.mandata; segna.remove(); return; }
+    segna.disabled = false;
+    mandata.textContent = "Non salvato: riprova tra poco.";
+  }, testo: "Ho mandato l'email" });
   const corpo = h("textarea", { id: "email-corpo", rows: "6", readonly: true });
   corpo.value = e.corpo;
   const copia = async (testo) => {
@@ -197,6 +205,9 @@ async function mostraEmail(p, sanzione) {
       h("button", { type: "button", class: "bottone-secondario", onclick: () => copia(`${e.oggetto}\n\n${e.corpo}`), testo: "Copia oggetto e testo" }),
       h("button", { type: "button", class: "bottone", onclick: () => mostraCoda(p), testo: "Fatto, torna all'elenco" })),
     esito,
+    // Spec #7 v1.3: «Email mandata» solo dopo questo tocco; data e ora le salva il database.
+    h("h2", { testo: "Email mandata?" }), mandata,
+    ...(e.mandata ? [] : [segna]),
   );
 }
 

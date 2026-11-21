@@ -159,6 +159,14 @@ export function testoEmailSanzione(e) {
   return { oggetto: `Presente! · ${livello}`, corpo: righe.join("\n") };
 }
 
+// Spec #7 v1.3 (passo 15f): «Email mandata» solo dopo il tocco di «Ho mandato l'email»; data e ora le salva il database.
+const GIORNO_MESE = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+const ORA = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+export function testoMandata(iso) {
+  const d = new Date(typeof iso === "string" ? iso : "");
+  return Number.isNaN(d.getTime()) ? "" : `Email mandata il ${GIORNO_MESE.format(d)} alle ${ORA.format(d)}.`;
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -213,7 +221,15 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       if (!d.ok) return { ok: false, motivo: d.motivo || "riprova" };
       const a = d.email && typeof d.email.a === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.a) ? d.email.a : null;
       const t = testoEmailSanzione(d.email);
-      return a && t ? { ok: true, a, ...t } : { ok: false, motivo: "riprova" };
+      return a && t ? { ok: true, a, ...t, mandata: testoMandata(d.mandata_il) } : { ok: false, motivo: "riprova" };
+    },
+    // «Ho mandato l'email»: data e ora salvate una volta sola dal database (solo per chi ha deciso la sanzione).
+    async segnaMandata(id) {
+      if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
+      const d = await chiama("/mandata", { id });
+      if (!d.ok) return { ok: false, motivo: d.motivo || "riprova" };
+      const mandata = testoMandata(d.mandata_il);
+      return mandata ? { ok: true, mandata } : { ok: false, motivo: "riprova" };
     },
     async ricorsi() {
       const d = await chiama("/ricorsi");
