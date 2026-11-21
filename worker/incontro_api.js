@@ -13,6 +13,9 @@
 //        «Disdici» (spec v1.1, passo 2m): esito «disdetto» (da fissare) o «disdetto_tardi» (buca di chi disdice)
 //   POST /app/api/incontro  { azione: "annulla", porta }                              → annulla_incontro
 //        «Annulla l'incontro» (passo 2o): esito «annullato», crediti a entrambi, poi nessuna proposta
+//   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
+//   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
+//   lettura non va, l'incontro si legge lo stesso, senza locali.
 // Chi propone o risponde lo dice SOLO il token, mai il corpo. Le regole (orari 10:00–23:00 di Roma ogni 30 minuti da
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
@@ -138,6 +141,23 @@ export async function incontroApi(request, env, f = fetch) {
 
 // Disdetta nello stato (passo 2q): solo «mia» sì/no e due orari, mai chi ha disdetto. Forma diversa → null.
 const orarioONull = (v) => v === null || (typeof v === "string" && v.length <= 40 && !Number.isNaN(Date.parse(v)));
+const TIPI_LOCALE = ["bar", "wine bar", "caffè", "bistrot", "cocktail bar", "enoteca"];
+const LOCALI_MASSIMI = 40;
+const breve = (v, max) => typeof v === "string" && v.length >= 1 && v.length <= max;
+function soloLocale(l) {
+  if (!l || typeof l !== "object" || Array.isArray(l) || !UUID.test(String(l.id)) || !breve(l.nome, 80)
+    || !breve(l.indirizzo, 120) || !TIPI_LOCALE.includes(l.tipo) || typeof l.da_verificare !== "boolean"
+    || !(l.fascia === null || l.fascia === undefined || breve(l.fascia, 40))) return null;
+  return { id: l.id, nome: l.nome, indirizzo: l.indirizzo, tipo: l.tipo, fascia: l.fascia ?? null, da_verificare: l.da_verificare };
+}
+function soloScelto(l) {
+  if (!l || typeof l !== "object" || !breve(l.nome, 80) || !breve(l.indirizzo, 120) || typeof l.da_verificare !== "boolean") return null;
+  return { nome: l.nome, indirizzo: l.indirizzo, da_verificare: l.da_verificare };
+}
+function soloLocali(r) {
+  const elenco = r && typeof r === "object" && Array.isArray(r.locali) ? r.locali.map(soloLocale).filter(Boolean).slice(0, LOCALI_MASSIMI) : [];
+  return { locali: elenco, locale_scelto: r && typeof r === "object" ? soloScelto(r.scelto) : null };
+}
 function soloDisdetta(d) {
   if (!d || typeof d !== "object" || Array.isArray(d) || typeof d.mia !== "boolean") return null;
   const il = d.il ?? null;
@@ -159,6 +179,7 @@ async function stato(s, request, chi, f) {
   }
   const incontro = Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null]));
   incontro.disdetta = soloDisdetta(r.disdetta);
+  Object.assign(incontro, soloLocali(await rpc(s, "locali_incontro", { p_porta: porta, p_persona: chi.id }, f)));
   return risposta(200, { ok: true, incontro });
 }
 

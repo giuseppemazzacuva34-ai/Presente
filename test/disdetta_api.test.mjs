@@ -104,7 +104,7 @@ test("stato: la disdetta arriva al telefono con solo mia, il e orario", async ()
   const conAltro = { ...STATO_DISDETTO, disdetta: { ...STATO_DISDETTO.disdetta, disdetto_da: ALTRO, persona: ALTRO } };
   const r = await incontroApi(leggiStato(), ENV, supabaseFinto({ rpc: { stato_incontro: conAltro } }).f);
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { ok: true, incontro: STATO_DISDETTO });
+  assert.deepEqual(await r.json(), { ok: true, incontro: { ...STATO_DISDETTO, locali: [], locale_scelto: null } });
 });
 
 test("stato: disdetta di forma strana → null (mai testo o oggetti del database al telefono)", async () => {
