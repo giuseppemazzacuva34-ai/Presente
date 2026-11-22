@@ -187,6 +187,7 @@ export function avvia(elemento, opzioni = {}) {
   vostriIncontri = (telefono && opzioni.vostriIncontri) || null;
   incontroVostro = (telefono && opzioni.incontro) || null;
   valutazioneVostra = (telefono && opzioni.valutazione) || null;
+  riepilogoMio = (telefono && opzioni.riepilogo) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -1049,6 +1050,7 @@ const SCHERMATE = {
           archivio ? h("button", { classe: "link", type: "button", onclick: apriDisponibilita }, TESTI_FASCIA.titolo) : null,
           stato.voce ? h("audio", { controls: true, src: stato.voce.url, "aria-label": "La tua presentazione" }) : null,
           h("p", { classe: "nota" }, "Questo è ciò che vedranno gli altri della stanza: nome, età, provincia, la tua voce e le tue 3 risposte. Mai foto, questionario, filtri o email.")),
+        bloccoRiepilogoMio(),
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
         storicoChiamate ? h("button", { classe: "link", type: "button", onclick: apriStorico }, TESTI_STORICO.titolo) : null,
@@ -1551,4 +1553,22 @@ function schermoValutazioneVostra() {
 export function regaliCambiati() {
   if (!radice || !regaliStanza || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
   disegna();
+}
+
+// Riepilogo alla cieca delle valutazioni nel profilo (#6 passo 3o, D20 A): solo frasi già pronte del modulo
+// riepilogo_valutazioni.js (bollini dal terzo incontro, «no» senza nome né data). Letto una volta, solo in memoria.
+let riepilogoMio = null;
+const riepilogoStato = { chiesto: false, righe: { bollini: [], no: [] } };
+function bloccoRiepilogoMio() {
+  if (!riepilogoMio) return null;
+  if (!riepilogoStato.chiesto) {
+    riepilogoStato.chiesto = true;
+    riepilogoMio.leggi().then((r) => { if (r && r.ok) { riepilogoStato.righe = r.righe; disegna(); } }).catch(() => {});
+  }
+  const righe = [...riepilogoStato.righe.bollini, ...riepilogoStato.righe.no];
+  if (!righe.length) return null;
+  return h("div", { classe: "riepilogo", role: "region", "aria-label": "Dopo i tuoi incontri" },
+    h("h2", {}, "Dopo i tuoi incontri"),
+    h("ul", {}, righe.map((t) => h("li", {}, t))),
+    h("p", { classe: "nota" }, "Lo vedi solo tu."));
 }
