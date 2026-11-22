@@ -99,3 +99,12 @@ export function creaSaldo({ coin, testata }) {
     },
   };
 }
+
+// Passo 2: il saldo nella testata si legge all'avvio e di nuovo quando si torna sull'app (visibilitychange). Nessun
+// timer: il numero cambia solo con una stanza o un regalo, e chi torna sull'app vede quello aggiornato.
+export async function collegaSaldo({ saldo, pagina } = {}) {
+  if (!saldo || typeof saldo.aggiorna !== "function" || !pagina) return { ok: false, motivo: "manca" };
+  const leggi = () => Promise.resolve().then(() => saldo.aggiorna()).catch(() => ({ ok: false, motivo: "rete" }));
+  pagina.addEventListener("visibilitychange", () => { if (pagina.visibilityState === "visible") leggi(); });
+  return leggi();
+}
