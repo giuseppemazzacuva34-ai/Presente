@@ -4,6 +4,8 @@
 //   GET  /app/api/regali?da=<id>  → { ok, ricevuti: [{ regalo, quanti }], testo }        (regali_ricevuti_da)
 //   POST /app/api/regali          { azione: "manda", a, regalo, chiave } → { ok: true, saldo } | { ok: false, motivo, testo }
 //                                 { azione: "visti", ids: [...] }        → { ok: true }    (segna_regali_visti)
+//   GET  /app/api/regali?schermata=coin → { ok, saldo, vista }                          (coin_schermata_vista, passo 6c)
+//   POST /app/api/regali          { azione: "coin_vista" }               → { ok: true }    (segna_coin_schermata_vista)
 //
 // Chi manda e chi riceve lo dice SOLO il token di Supabase: un «da» scritto nel corpo non conta. Tutte le regole
 // (stanza aperta, stessa stanza, compatibili, blocchi, segnalazioni, sospensioni, 3 e 10 al giorno, saldo, doppio
@@ -61,6 +63,22 @@ async function rpc(s, nome, argomenti, f) {
   }
 }
 
+// Per le funzioni che non restituiscono niente (PostgREST risponde 204 senza corpo): conta solo che sia andata.
+async function rpcFatto(s, nome, argomenti, f) {
+  try {
+    const r = await entro(ATTESA_SUPABASE_MS, f(`${s.base}/rest/v1/rpc/${nome}`, {
+      method: "POST",
+      headers: { apikey: s.chiave, authorization: `Bearer ${s.chiave}`, "content-type": "application/json" },
+      body: JSON.stringify(argomenti),
+    }));
+    if (!r.ok) console.error(`regali: ${nome} risposta ${r.status}`);
+    return r.ok;
+  } catch (e) {
+    console.error(`regali: ${nome} errore`, e && e.name);
+    return false;
+  }
+}
+
 export async function regaliApi(request, env, f = fetch) {
   const url = new URL(request.url);
   if (url.pathname !== PERCORSO_REGALI) return risposta(404, { ok: false, motivo: "non_trovato" });
@@ -74,6 +92,14 @@ export async function regaliApi(request, env, f = fetch) {
   if (chi.errore) return chi.errore;
 
   if (request.method === "GET") {
+    // Passo 6c (spec B.5): saldo e «già vista» per la schermata «I tuoi Coin».
+    if (url.searchParams.has("schermata")) {
+      if (url.searchParams.get("schermata") !== "coin") return dati();
+      const saldo = await rpc(s, "saldo_crediti", { p_persona: chi.id }, f);
+      const vista = await rpc(s, "coin_schermata_vista", { p_persona: chi.id }, f);
+      if (!Number.isInteger(saldo) || typeof vista !== "boolean") return riprova();
+      return risposta(200, { ok: true, saldo, vista });
+    }
     if (url.searchParams.has("da")) {
       const da = String(url.searchParams.get("da") || "");
       if (!UUID.test(da)) return dati();
@@ -95,6 +121,10 @@ export async function regaliApi(request, env, f = fetch) {
   const corpo = await leggiCorpo(request);
   if (corpo.errore) return corpo.errore;
   const d = corpo.dati;
+
+  if (d.azione === "coin_vista") {
+    return (await rpcFatto(s, "segna_coin_schermata_vista", { p_persona: chi.id }, f)) ? risposta(200, { ok: true }) : riprova();
+  }
 
   if (d.azione === "visti") {
     if (!Array.isArray(d.ids) || d.ids.length > VISTI_MASSIMO || !d.ids.every((x) => UUID.test(String(x)))) return dati();
