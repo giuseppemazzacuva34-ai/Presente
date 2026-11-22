@@ -110,5 +110,5 @@ test("stili: barra dei giorni e conto grande con i valori del prototipo v4", () 
 test("il service worker tiene il modulo della settimana anche senza rete", () => {
   const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
   assert.ok(sw.includes('"/app/moduli/settimana_home.js"'));
-  assert.ok(!sw.includes('"presente-app-40"'), "versione della cache aumentata");
+  assert.ok(!sw.includes('"presente-app-41"'), "versione della cache aumentata");
 });

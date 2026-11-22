@@ -22,6 +22,7 @@ import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalva
 import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
+import { vistaRegaliScheda } from "./regali_stanza.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
 import { vistaPorta, segnalaDaPorta } from "./svelamento.js";
@@ -35,6 +36,8 @@ import { settimanaHome, vistaSettimanaHome, TESTI_SETTIMANA } from "./settimana_
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
 let appuntiStanza = null;
+// «Manda un regalo» sulla scheda (#331 parte C, linea «sviluppatore-c»): solo con il telefono acceso, solo stanza aperta.
+let regaliStanza = null;
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
@@ -177,6 +180,7 @@ export function avvia(elemento, opzioni = {}) {
   avvisiPorte = (portaSvelamento && opzioni.avvisiPorte) || null;
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
+  regaliStanza = (telefono && opzioni.regali) || null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
   supporto = (telefono && opzioni.aiuto) || null;
@@ -491,6 +495,7 @@ function bloccoTuaStanza() {
     telefono.ricaricaPersone();
   }
   if (appuntiStanza && st.stato === "pronta") appuntiStanza.prepara(st.persone.map((p) => p.id));
+  if (regaliStanza && st.stato === "pronta" && !st.chiusa) regaliStanza.prepara(st.persone.map((p) => p.id));
   if (st.stato === "pronta" && st.chiusa) {
     // #5 spec v1.1 passo 9: stanza «Chiusa» fino a lunedì 9:00. Schede in sola lettura (con i tuoi appunti), senza
     // pulsanti Chiama o Chiave; il menu ⋯ resta per segnalare o bloccare.
@@ -510,7 +515,8 @@ function bloccoTuaStanza() {
           "aria-disabled": conTesto ? "true" : null, disabled: m.attesa || (!p.chiama && !conTesto),
           onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
         chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null,
-        appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null);
+        appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null,
+        regaliStanza ? vistaRegaliScheda(h, regaliStanza, p.id, nomeScheda(p)) : null);
     }));
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
@@ -1538,4 +1544,10 @@ function schermoIncontroVostro() {
 }
 function schermoValutazioneVostra() {
   return h("section", { classe: "schermata" }, vistaValutazione(h, valutazioneVostra));
+}
+
+// Regali ricevuti sulla scheda (#331, linea «sviluppatore-c»): dopo la lettura si ridisegna solo nella home.
+export function regaliCambiati() {
+  if (!radice || !regaliStanza || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  disegna();
 }
