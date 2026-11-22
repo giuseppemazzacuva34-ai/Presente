@@ -29,12 +29,20 @@ export const TESTI_FOGLIO = Object.freeze({
 });
 
 const coin = (n) => `${n} Coin`;
+const REGALI_ALLA_PERSONA_AL_GIORNO = 3; // come COIN.regaliAllaPersonaAlGiorno in api/coin.js (lo controlla il test)
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona");
 const mancano = (n) => (n === 1 ? "Ti manca 1 Coin" : `Ti mancano ${n} Coin`);
 const saldoValido = (n) => Number.isInteger(n) && n >= 0;
 const regaloDa = (id) => CATALOGO.find((r) => r.id === id) ?? null;
 
-// Cosa mostra il foglio. fase: "scelta" | "conferma" | "invio" | "fatto" | "errore".
+// Testi dei due limiti giornalieri (CPO, 22/11), uguali a testoLimite di api/coin.js; qui con il nome della stanza.
+export function testoLimite(motivo, nome) {
+  if (motivo === "limite_persona") return `Oggi hai già mandato ${REGALI_ALLA_PERSONA_AL_GIORNO} regali a ${chi(nome)}. Domani puoi mandargliene altri.`;
+  if (motivo === "limite_giorno") return "Per oggi hai mandato tutti i regali. Domani puoi mandarne altri.";
+  return null;
+}
+
+// Cosa mostra il foglio. fase: "scelta" | "conferma" | "invio" | "fatto" | "limite" | "errore".
 export function statoFoglio({ nome, saldo = null, scelto = null, inChiamata = false, fase = "scelta", errore = null } = {}) {
   const n = chi(nome);
   const s = saldoValido(saldo) ? saldo : null;
@@ -55,6 +63,9 @@ export function statoFoglio({ nome, saldo = null, scelto = null, inChiamata = fa
   }
   if (fase === "fatto") {
     return { ...base, messaggio: `${r.nome} ${r.mandato} a ${n}.`, primario: { testo: TESTI_FOGLIO.chiudi, attivo: true }, secondario: null };
+  }
+  if (fase === "limite") {
+    return { ...base, messaggio: errore || TESTI_FOGLIO.generico, primario: { testo: TESTI_FOGLIO.chiudi, attivo: true }, secondario: null };
   }
   if (fase === "errore") {
     return { ...base, errore: errore || TESTI_FOGLIO.generico, primario: { testo: TESTI_FOGLIO.chiudi, attivo: true }, secondario: null };
@@ -146,6 +157,9 @@ export function apriFoglioRegali(contenitore, { a, nome, saldo = null, inChiamat
       st.fase = "fatto";
       if (r.saldo !== null) st.saldo = r.saldo;
       if (typeof alRegalo === "function") alRegalo(r.saldo);
+    } else if (testoLimite(r.motivo, nome)) {
+      st.fase = "limite"; // limite del giorno: messaggio con role="status", nessun Coin scalato, il foglio resta aperto
+      st.errore = testoLimite(r.motivo, nome);
     } else {
       st.fase = "errore";
       st.errore = r.testo;
@@ -195,7 +209,7 @@ export function apriFoglioRegali(contenitore, { a, nome, saldo = null, inChiamat
     pri.disabled = !s.primario.attivo;
     pri.addEventListener("click", () => {
       if (st.fase === "scelta") { st.fase = "conferma"; disegna(); } else if (st.fase === "conferma") invia();
-      else if (st.fase === "fatto" || st.fase === "errore") chiudi(); // durante l'invio un secondo tocco non fa nulla
+      else if (st.fase === "fatto" || st.fase === "limite" || st.fase === "errore") chiudi(); // durante l'invio un secondo tocco non fa nulla
     });
     azioni.append(pri);
     parti.push(azioni);

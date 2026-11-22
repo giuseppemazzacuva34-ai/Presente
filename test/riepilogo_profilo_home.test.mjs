@@ -23,5 +23,5 @@ test("avvio: riepilogo col proprio token", () => {
 test("service worker: modulo nella cache, versione aumentata", () => {
   const sw = leggi("../landing/app/sw.js");
   assert.ok(sw.includes('"/app/moduli/riepilogo_valutazioni.js"'));
-  assert.ok(!sw.includes('"presente-app-41"'), "versione della cache aumentata");
+  assert.ok(!sw.includes('"presente-app-42"'), "versione della cache aumentata");
 });

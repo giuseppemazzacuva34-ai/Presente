@@ -36,6 +36,13 @@ export const coin = (n) => `${n} Coin`;
 const mancano = (n) => (n === 1 ? "Ti manca 1 Coin" : `Ti mancano ${n} Coin`);
 const no = (motivo, testo = null) => ({ ok: false, motivo, testo });
 
+// Testi dei due limiti giornalieri (CPO, 22/11; giorno di calendario di Roma). <nome> = nome di battesimo nella stanza.
+export function testoLimite(motivo, nome) {
+  if (motivo === "limite_persona") return `Oggi hai già mandato ${COIN.regaliAllaPersonaAlGiorno} regali a ${chi(nome)}. Domani puoi mandargliene altri.`;
+  if (motivo === "limite_giorno") return "Per oggi hai mandato tutti i regali. Domani puoi mandarne altri.";
+  return null;
+}
+
 // Decide se un regalo può partire. Ordine: dati validi, stanza, persona, limiti, saldo.
 // Per i limiti la spec non dà un testo: testo null finché il CPO non lo scrive.
 export function regaloPermesso(d = {}) {
