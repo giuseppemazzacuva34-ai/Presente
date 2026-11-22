@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { regaliApi, PERCORSO_REGALI } from "../worker/regali_api.js";
-import { TESTI_COIN, ricevutiTesto } from "../api/coin.js";
+import { TESTI_COIN, ricevutiTesto, testoLimite } from "../api/coin.js";
 import worker from "../worker/index.js";
 
 const BASE = "https://abcdefghijklmnopqrst.supabase.co";
@@ -93,7 +93,7 @@ test("stanza chiusa, limiti e saldo insufficiente", async () => {
   assert.deepEqual(await (await regaliApi(manda(), ENV, s.f)).json(), { ok: false, motivo: "stanza_chiusa", testo: "La stanza è chiusa." });
   for (const motivo of ["limite_persona", "limite_giorno"]) {
     s = supabaseFinto({ rpc: { manda_regalo: motivo } });
-    assert.deepEqual(await (await regaliApi(manda(), ENV, s.f)).json(), { ok: false, motivo, testo: null });
+    assert.deepEqual(await (await regaliApi(manda(), ENV, s.f)).json(), { ok: false, motivo, testo: testoLimite(motivo) });
   }
   s = supabaseFinto({ rpc: { manda_regalo: "saldo", saldo_crediti: 3 } });
   assert.deepEqual(await (await regaliApi(manda({ regalo: "spumante" }), ENV, s.f)).json(), { ok: false, motivo: "saldo", testo: "Ti mancano 7 Coin" });

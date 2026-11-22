@@ -13,7 +13,7 @@
 // Blocco, segnalazione, sospensione, fuori stanza e non compatibile tornano tutti come «non_puoi» con lo stesso
 // testo: chi è bloccato o segnalato non lo scopre. In beta i Coin sono di prova: nessun pagamento, nessun servizio
 // esterno. Nei log solo nomi di funzioni e codici, mai token o persone. Spento finché ACCESSO_APP non vale «si».
-import { REGALI, TESTI_COIN, avvisoRegalo, ricevutiTesto, tiMancano } from "../api/coin.js";
+import { REGALI, TESTI_COIN, avvisoRegalo, ricevutiTesto, tiMancano, testoLimite } from "../api/coin.js";
 
 export const PERCORSO_REGALI = "/app/api/regali";
 const CORPO_MASSIMO = 4 * 1024; // al massimo 50 id da 36 caratteri
@@ -149,8 +149,8 @@ export async function regaliApi(request, env, f = fetch) {
     const manca = Number.isInteger(saldo) ? Math.max(1, PREZZO.get(d.regalo) - saldo) : null;
     return risposta(200, { ok: false, motivo: esito, testo: manca ? tiMancano(manca) : null });
   }
-  // limite_persona e limite_giorno: il testo lo scrive il CPO (spec senza frase); l'app mostra un testo neutro.
-  if (esito === "limite_persona" || esito === "limite_giorno") return risposta(200, { ok: false, motivo: esito, testo: null });
+  // Limiti giornalieri (testi del CPO del 22/11): il Worker non sa il nome, l'app lo mette lei per limite_persona.
+  if (esito === "limite_persona" || esito === "limite_giorno") return risposta(200, { ok: false, motivo: esito, testo: testoLimite(esito) });
   return dati();
 }
 
