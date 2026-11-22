@@ -1,0 +1,455 @@
+<meta charset="utf-8">
+<title>Dentro Presente</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: telefono vivo a sinistra (nuovo design, animato) con interruttore Prima/Dopo, scheda editoriale a destra con la tua nota e cosa è cambiato; indice in basso */
+:root{
+  --nero:#0E0D10; --nero-alto:#1A171D; --avorio:#F2EDE4; --grigio:#A8A29A; --rosso:#E8432B; --rosso-acceso:#F05A43; --rosso-scuro:#8F2414;
+  --linea:rgba(242,237,228,.16); --linea-forte:rgba(242,237,228,.4);
+  --serif:"Instrument Serif","Iowan Old Style",Palatino,Georgia,serif;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--nero);color:var(--avorio);font-family:var(--sans);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1200px;margin:0 auto;padding-block:28px 56px;display:flex;flex-direction:column;gap:28px}
+.lab{font-weight:600;font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--grigio)}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.logo{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1;letter-spacing:-.01em}
+.logo b{color:var(--rosso);font-weight:400}
+.conteggio{display:flex;gap:18px;flex-wrap:wrap}
+.fasi{display:flex;gap:8px;flex-wrap:wrap}
+.fase,.tog button{border:1px solid var(--linea);border-radius:999px;padding:7px 14px;font-size:14px;color:var(--grigio);background:none;cursor:pointer;font-family:var(--sans)}
+.fase[aria-pressed="true"],.tog button[aria-pressed="true"]{border-color:var(--avorio);color:var(--avorio)}
+.palco{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:56px;align-items:start}
+.colonna-tel{display:flex;flex-direction:column;gap:14px;align-items:center}
+.tog{display:flex;gap:8px}
+.tel{position:relative;border:1.5px solid var(--linea-forte);border-radius:48px;padding:10px;background:#000;width:min(400px,100%)}
+.schermo{position:relative;border-radius:38px;overflow:hidden;aspect-ratio:390/844;background:var(--nero);container-type:inline-size}
+.schermo>img.vecchia{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.scala{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0}
+.scheda{display:flex;flex-direction:column;gap:18px;min-width:0;padding-top:8px}
+.scheda h1{font-family:var(--serif);font-weight:400;font-size:clamp(40px,5.2vw,64px);line-height:1.02;letter-spacing:-.012em;text-wrap:balance;margin:0}
+.scheda h1 em{display:block;color:var(--rosso)}
+.filo{width:64px;height:2px;background:var(--rosso)}
+.scheda p{margin:0;max-width:58ch}
+.tua-nota{border-left:2px solid var(--linea-forte);padding:4px 0 4px 16px;color:var(--grigio);font-style:italic}
+.cambi{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.cambi li::marker{color:var(--rosso)}
+.giudizio{border-top:1px solid var(--linea);padding-top:20px;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.voti{display:flex;gap:10px;flex-wrap:wrap}
+.voto{font-family:var(--sans);font-weight:700;font-size:16px;border-radius:4px;padding:13px 22px;cursor:pointer;border:1.5px solid var(--linea-forte);background:none;color:var(--avorio)}
+.voto:hover{border-color:var(--avorio)}
+.voto[aria-pressed="true"].si{background:var(--rosso);border-color:var(--rosso);color:var(--nero)}
+.voto[aria-pressed="true"].no{background:var(--avorio);border-color:var(--avorio);color:var(--nero)}
+label.lab{display:block}
+textarea{width:100%;min-height:92px;resize:vertical;background:var(--nero-alto);color:var(--avorio);border:1.5px solid var(--linea-forte);border-radius:4px;padding:12px 14px;font:inherit;font-size:16px}
+.salvato{font-size:13px;color:var(--grigio);min-height:1.2em}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.freccia{font-family:var(--sans);font-weight:600;font-size:15px;background:none;color:var(--avorio);border:1.5px solid var(--linea-forte);border-radius:999px;padding:11px 20px;cursor:pointer}
+.freccia:disabled{opacity:.35;cursor:default}
+.indice{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.mini{background:none;border:1px solid var(--linea);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--grigio);text-align:left;font-family:var(--sans);font-size:13px;line-height:1.3;display:flex;gap:8px;align-items:flex-start}
+.mini i{width:8px;height:8px;border-radius:50%;flex:none;border:1px solid var(--linea-forte);margin-top:4px}
+.mini[data-voto="si"] i{background:var(--rosso);border-color:var(--rosso)}
+.mini[data-voto="no"] i{background:var(--avorio);border-color:var(--avorio)}
+.mini[aria-current="true"]{border-color:var(--avorio);color:var(--avorio)}
+.mini .nuova{color:var(--rosso)}
+.note-dev{border:1px solid var(--linea);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.note-dev ul{margin:0;padding-left:18px;color:var(--grigio)}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--avorio);outline-offset:2px}
+@media (max-width:860px){.palco{grid-template-columns:minmax(0,1fr);gap:28px}.tel{width:min(340px,100%)}}
+
+/* ===== il telefono: nuovo design ===== */
+.app{position:absolute;inset:0;background:#0E0D10;color:#F2EDE4;font-family:var(--sans);font-size:15px;line-height:1.45;display:flex;flex-direction:column}
+.app .testa{padding:44px 22px 0;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.app .marchio{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1;letter-spacing:-.01em}
+.app .marchio b{color:#E8432B;font-weight:400}
+.app .onda{display:flex;gap:3px;align-items:center;height:22px}
+.app .onda span{width:3px;border-radius:3px;filter:drop-shadow(0 0 3px rgba(232,67,43,.35))}
+.app.viva .onda span{animation:batti 1.6s cubic-bezier(.45,0,.55,1) infinite alternate}
+.app .onda span{animation:respiro 3.2s cubic-bezier(.45,0,.55,1) infinite alternate}
+.app .icona-profilo{position:absolute;right:20px;top:46px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(242,237,228,.3);display:grid;place-items:center;font-size:13px;color:#F2EDE4;background:#1A171D}
+.app .corpo{flex:1;padding:22px 22px 0;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.app .passo{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8A29A;font-weight:600}
+.app .barra{height:3px;background:rgba(242,237,228,.12);border-radius:2px;overflow:hidden}
+.app .barra i{display:block;height:100%;background:#E8432B}
+.app h2{font-family:var(--serif);font-weight:400;font-size:31px;line-height:1.05;margin:0;letter-spacing:-.01em}
+.app h2 em{color:#E8432B}
+.app .sub{color:#A8A29A;font-size:15px;margin:0}
+.app .nota{color:#A8A29A;font-size:12px;margin:0}
+.app .campo{border:1px solid rgba(242,237,228,.3);border-radius:12px;padding:12px 14px;font-size:15px;background:#1A171D}
+.app .campo small{display:block;font-size:11px;color:#A8A29A;margin-bottom:2px}
+.app .righe3{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px}
+.app .chips{display:flex;flex-wrap:wrap;gap:7px}
+.app .chip{border:1px solid rgba(242,237,228,.3);border-radius:999px;padding:7px 12px;font-size:12.5px}
+.app .chip.on{background:#F2EDE4;color:#0E0D10;border-color:#F2EDE4}
+.app .gruppo{display:flex;flex-direction:column;gap:7px}
+.app .piede{padding:14px 22px 30px;display:grid;grid-template-columns:1fr 1.7fr;gap:12px;align-items:stretch}
+.app .piede.uno{grid-template-columns:1fr}
+.app .piede.tre{grid-template-columns:1fr 1fr}
+/* pulsanti 3D */
+.b3{height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:400;font-size:19px;letter-spacing:.07em;text-transform:uppercase;position:relative;transform:translateY(0);transition:transform .08s,box-shadow .08s}
+.b3.p{background:linear-gradient(180deg,#F46A53 0%,#E8432B 55%,#D63A22 100%);color:#0E0D10;box-shadow:0 6px 0 #8F2414,0 12px 20px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.38)}
+.b3.s{background:linear-gradient(180deg,#2C282F 0%,#1C191F 100%);color:#F2EDE4;border:1px solid rgba(242,237,228,.16);box-shadow:0 6px 0 #050406,0 12px 20px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1)}
+.b3.off{opacity:.4}
+.b3.picc{height:40px;border-radius:12px;font-size:16px;box-shadow:0 4px 0 #050406,0 8px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.1)}
+.b3.p.picc{box-shadow:0 4px 0 #8F2414,0 8px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.38)}
+.app .link{text-align:center;font-size:13px;color:#A8A29A;text-decoration:underline;text-underline-offset:3px}
+.app .link.rosso{color:#F05A43}
+.app .regola{display:grid;grid-template-columns:24px 1fr;gap:10px;padding:10px 0;border-top:1px solid rgba(242,237,228,.12)}
+.app .regola b{font-family:var(--serif);font-weight:400;font-size:18px;display:block}
+.app .regola span{font-size:12.5px;color:#A8A29A}
+.app .regola .n{color:#E8432B;font-size:11px;font-weight:600;letter-spacing:.1em;padding-top:4px}
+.app .rec{border:1px solid rgba(242,237,228,.18);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;background:#151217}
+.app .tempo{font-family:var(--serif);font-size:34px;line-height:1}
+.app .foto3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.app .foto3 div{aspect-ratio:3/4;border-radius:12px;background:radial-gradient(circle at 40% 35%,#5a2a2a,#1a1116 70%);filter:blur(0);position:relative;overflow:hidden;border:1px solid rgba(242,237,228,.15)}
+.app .foto3 div::after{content:"";position:absolute;inset:0;backdrop-filter:blur(8px);background:rgba(14,13,16,.25)}
+/* stanza */
+.cerchio{position:relative;width:190px;height:190px;margin:2px auto 0}
+.cerchio .asse{position:absolute;left:50%;top:6px;bottom:6px;width:1px;background:rgba(242,237,228,.22)}
+.cerchio .p{position:absolute;width:15px;height:15px;border-radius:50%;border:1.5px solid rgba(242,237,228,.55);transform:translate(-50%,-50%)}
+.cerchio .p.fatta{background:#F2EDE4;border-color:#F2EDE4}
+.cerchio .p.tu{background:#E8432B;border-color:#E8432B;width:20px;height:20px}
+.cerchio .et{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#A8A29A;font-weight:600}
+.lista-t{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8A29A;font-weight:600;border-bottom:1px solid rgba(242,237,228,.12);padding-bottom:5px;margin-top:4px}
+.persona{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(242,237,228,.08)}
+.persona b{font-weight:600;font-size:14px;display:block}
+.persona small{font-size:11px;color:#A8A29A}
+.persona .b3{height:34px;padding:0 11px;border-radius:10px;font-size:14px;letter-spacing:.05em}
+.persona .b3.s{box-shadow:0 3px 0 #050406,inset 0 1px 0 rgba(255,255,255,.1)}
+.persona .b3.p{box-shadow:0 3px 0 #8F2414,inset 0 1px 0 rgba(255,255,255,.38)}
+/* chiamata */
+.sfondo-ch{position:absolute;inset:0;overflow:hidden}
+.sfondo-ch .sagoma{position:absolute;inset:-10%;background-size:cover;background-position:40% 45%;filter:blur(3px);animation:ondeggia 9s cubic-bezier(.45,0,.55,1) infinite alternate}
+.sfondo-ch .luci{position:absolute;inset:0;background:radial-gradient(circle at 20% 30%,rgba(255,120,90,.35),transparent 22%),radial-gradient(circle at 80% 60%,rgba(232,67,43,.4),transparent 25%),radial-gradient(circle at 50% 85%,rgba(244,106,83,.3),transparent 20%);mix-blend-mode:screen;animation:luci 11s ease-in-out infinite alternate}
+@keyframes ondeggia{0%{transform:translate(-14px,4px) scale(1.04) rotate(-1deg)}50%{transform:translate(10px,-8px) scale(1.09) rotate(.8deg)}100%{transform:translate(-4px,6px) scale(1.05) rotate(-.4deg)}}
+@keyframes luci{0%{transform:translate(0,0);opacity:.6}50%{transform:translate(18px,-22px);opacity:1}100%{transform:translate(-16px,14px);opacity:.7}}
+.sfondo-ch .sagoma.css{background:radial-gradient(ellipse 30% 22% at 50% 38%,#1a0a0a 0%,#1a0a0a 60%,transparent 62%),radial-gradient(ellipse 48% 30% at 50% 78%,#1a0a0a 0%,#1a0a0a 60%,transparent 62%),radial-gradient(circle at 50% 45%,#5c1212,#14070a 75%)}
+.sfondo-ch .vetro{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,13,16,.6) 0%,rgba(232,67,43,.08) 30%,rgba(90,12,8,.2) 60%,rgba(14,13,16,.94) 90%);backdrop-filter:blur(3px)}
+.sfondo-ch .riflesso{position:absolute;inset:-40% -60%;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.07) 50%,transparent 58%);animation:scorre 6s linear infinite}
+.onda-grande{display:flex;gap:4px;align-items:center;justify-content:center;height:110px}
+.onda-grande span{width:6px;border-radius:6px;animation:batti 1.5s cubic-bezier(.45,0,.55,1) infinite alternate;filter:drop-shadow(0 0 6px rgba(232,67,43,.45))}
+.onda-grande.attesa span{animation:attesa 2.2s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes batti{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+@keyframes respiro{from{transform:scaleY(.7)}to{transform:scaleY(1)}}
+@keyframes attesa{0%,100%{transform:scaleY(.15);opacity:.4}50%{transform:scaleY(.9);opacity:1}}
+@keyframes respira{from{transform:scale(1) translateY(0)}to{transform:scale(1.06) translateY(-8px)}}
+@keyframes scorre{from{transform:translateX(-30%)}to{transform:translateX(30%)}}
+.timer{font-family:var(--serif);font-style:italic;font-size:64px;line-height:1;text-align:center}
+.avviso{background:rgba(242,237,228,.92);color:#0E0D10;border-radius:10px;padding:7px 10px;font-size:11.5px;text-align:center}
+.carta{border:1px solid rgba(242,237,228,.3);border-radius:16px;padding:16px;background:rgba(14,13,16,.55);font-family:var(--serif);font-style:italic;font-size:20px;line-height:1.2}
+.carta small{display:block;font-family:var(--sans);font-style:normal;font-size:11px;color:#A8A29A;margin-top:8px}
+/* porta */
+.porta{position:relative;width:120px;height:190px;margin:6px auto;border:2px solid rgba(242,237,228,.85);border-radius:4px 4px 0 0;overflow:hidden;background:#0a0809}
+.porta .luce{position:absolute;top:0;bottom:0;left:50%;width:4px;background:#E8432B;box-shadow:0 0 18px 6px rgba(232,67,43,.7);animation:apri 3s ease-in-out infinite alternate}
+.porta .anta{position:absolute;top:0;bottom:0;left:0;width:50%;background:linear-gradient(90deg,#141016,#1d181f);transform-origin:left;animation:anta 3s ease-in-out infinite alternate}
+@keyframes apri{from{width:2px;left:50%}to{width:46px;left:50%}}
+@keyframes anta{from{transform:perspective(300px) rotateY(0)}to{transform:perspective(300px) rotateY(-28deg)}}
+.frase{border-left:2px solid #E8432B;padding:4px 0 4px 12px;font-family:var(--serif);font-style:italic;font-size:19px}
+.settimana{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.settimana i{height:5px;border-radius:3px;background:rgba(242,237,228,.18)}
+.settimana i.on{background:#F2EDE4}
+.settimana i.oggi{background:#E8432B}
+.motivo{display:flex;gap:10px;align-items:center;border:1px solid rgba(242,237,228,.2);border-radius:12px;padding:11px 12px;font-size:13.5px}
+.motivo i{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(242,237,228,.5);flex:none}
+.motivo.on{border-color:#F2EDE4}
+.motivo.on i{border:5px solid #E8432B}
+.b3.grande{height:64px;font-size:26px;letter-spacing:.12em;border-radius:18px}
+.coin{position:absolute;left:20px;top:46px;height:34px;border-radius:999px;border:1px solid rgba(242,237,228,.3);background:#1A171D;display:flex;align-items:center;gap:6px;padding:0 12px 0 6px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.coin i{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#F46A53,#C7361F 70%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);display:grid;place-items:center;font-style:normal;font-size:10px;color:#0E0D10;font-weight:800}
+.coin.basso{border-color:#E8432B;color:#F05A43}
+.pacco{border:1px solid rgba(242,237,228,.2);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:#151217}
+.pacco.on{border-color:#E8432B;box-shadow:0 0 0 1px #E8432B,0 0 24px rgba(232,67,43,.25)}
+.pacco .q{font-family:var(--serif);font-size:30px;line-height:1}
+.pacco .q small{font-family:var(--sans);font-size:11px;color:#A8A29A;display:block;letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
+.pacco .e{font-weight:700;font-size:17px}
+.etichetta-r{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#0E0D10;background:#E8432B;border-radius:999px;padding:3px 8px}
+.costi{display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:13px;color:#A8A29A;border-top:1px solid rgba(242,237,228,.12);padding-top:10px}
+.costi b{color:#F2EDE4;font-weight:600;text-align:right}
+.velo-modale{position:absolute;inset:0;background:rgba(5,4,6,.72);backdrop-filter:blur(3px)}
+.foglio{position:absolute;left:0;right:0;bottom:0;background:#18151B;border-top:1px solid rgba(242,237,228,.18);border-radius:26px 26px 0 0;padding:18px 22px 30px;display:flex;flex-direction:column;gap:12px}
+.foglio .maniglia{width:44px;height:4px;border-radius:2px;background:rgba(242,237,228,.3);margin:0 auto 4px}
+.regali{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.regalo{border:1px solid rgba(242,237,228,.2);border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;background:#151217;font-size:12.5px}
+.regalo.on{border-color:#E8432B;box-shadow:0 0 0 1px #E8432B,0 0 22px rgba(232,67,43,.3)}
+.regalo svg{width:56px;height:56px;filter:drop-shadow(0 0 8px rgba(232,67,43,.55))}
+.regalo b{font-weight:700;font-size:12px;color:#F05A43}
+.vola{animation:vola 3s cubic-bezier(.45,0,.55,1) infinite alternate}
+@keyframes vola{from{transform:translateY(8px) scale(.96)}to{transform:translateY(-8px) scale(1.04)}}
+.conta{font-family:var(--serif);font-style:italic;font-size:84px;line-height:1;text-align:center}
+.stanza-card{border:1px solid rgba(242,237,228,.2);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;background:#151217;position:relative;overflow:hidden}
+.stanza-card.on{border-color:#E8432B;box-shadow:0 0 0 1px #E8432B,0 0 24px rgba(232,67,43,.2)}
+.stanza-card h3{font-family:var(--serif);font-weight:400;font-size:22px;margin:0;line-height:1.1}
+.stanza-card .riga{display:flex;justify-content:space-between;font-size:12px;color:#A8A29A}
+.stanza-card .riga b{color:#F2EDE4}
+.stanza-card.arrivo{opacity:.72}
+.foto-full{position:absolute;inset:0;background-size:cover;background-position:center}
+.ante{position:absolute;inset:0;display:flex}
+.anta-s{flex:1;background:linear-gradient(90deg,rgba(28,22,26,.92),rgba(40,30,34,.86));backdrop-filter:blur(10px);border-right:1px solid rgba(255,255,255,.06);box-shadow:inset 0 0 40px rgba(0,0,0,.6)}
+.anta-s.sx{animation:apriSx 6s cubic-bezier(.22,.61,.36,1) .5s both;border-right:2px solid rgba(232,67,43,.7)}
+.anta-s.dx{animation:apriDx 6s cubic-bezier(.22,.61,.36,1) .5s both;border-left:2px solid rgba(232,67,43,.7)}
+.anta-s{position:relative}
+.anta-s::after{content:"";position:absolute;top:46%;width:3px;height:70px;border-radius:2px;background:rgba(242,237,228,.45)}
+.anta-s.sx::after{right:12px}.anta-s.dx::after{left:12px}
+@keyframes apriSx{from{transform:translateX(0)}to{transform:translateX(-96%)}}
+@keyframes apriDx{from{transform:translateX(0)}to{transform:translateX(96%)}}
+.rivela{animation:rivela 8s cubic-bezier(.22,.61,.36,1) both}
+@keyframes rivela{from{transform:scale(1.14);filter:brightness(.55) blur(6px)}to{transform:scale(1);filter:brightness(1) blur(var(--sfoca,0px))}}
+.bagliore{position:absolute;inset:0;background:radial-gradient(ellipse 30% 45% at 50% 48%,rgba(255,140,100,.35),transparent 70%);animation:bagliore 4s ease-in-out 2s infinite alternate}
+@keyframes bagliore{from{opacity:.4}to{opacity:1}}
+.stato{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+.stato.on{background:#F2EDE4;box-shadow:0 0 0 0 rgba(242,237,228,.6);animation:pulsa 2s ease-out infinite}
+.stato.ch{background:#E8432B;box-shadow:0 0 0 0 rgba(232,67,43,.7);animation:pulsaR 1.4s ease-out infinite}
+.stato.off{border:1.5px solid rgba(242,237,228,.4)}
+@keyframes pulsa{to{box-shadow:0 0 0 8px rgba(242,237,228,0)}}
+@keyframes pulsaR{to{box-shadow:0 0 0 9px rgba(232,67,43,0)}}
+.cerchio .p.on{background:#F2EDE4;border-color:#F2EDE4;animation:pulsa 2s ease-out infinite}
+.cerchio .p.ch{background:#E8432B;border-color:#E8432B;animation:pulsaR 1.4s ease-out infinite}
+.cerchio svg{position:absolute;inset:0;overflow:visible}
+.cerchio svg line{stroke:#E8432B;stroke-width:2;stroke-dasharray:4 5;animation:flusso 1s linear infinite}
+@keyframes flusso{to{stroke-dashoffset:-18}}
+.legenda{display:flex;justify-content:center;gap:14px;font-size:10.5px;color:#A8A29A;margin-top:2px}
+.appuntamento{display:flex;align-items:center;gap:8px;border:1px dashed rgba(232,67,43,.7);border-radius:12px;padding:8px 10px;font-size:12.5px}
+.appuntamento b{color:#F05A43;font-weight:600}
+.conteggi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.conteggi div{border:1px solid rgba(242,237,228,.2);border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;background:#151217}
+.conteggi svg{width:48px;height:48px;filter:drop-shadow(0 0 8px rgba(232,67,43,.55))}
+.conteggi b{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1}
+.conteggi span{font-size:11.5px;color:#A8A29A}
+.scelta2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scelta2 .opz{border:1px solid rgba(242,237,228,.2);border-radius:18px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:10px;background:#151217;text-align:center;font-size:12.5px;color:#A8A29A}
+.scelta2 .opz b{color:#F2EDE4;font-size:14px;font-weight:600}
+.scelta2 .opz.on{border-color:#E8432B;box-shadow:0 0 0 1px #E8432B,0 0 24px rgba(232,67,43,.25)}
+.anello{width:84px;height:84px;border-radius:50%;background:conic-gradient(#E8432B 0 62%,rgba(242,237,228,.15) 62% 100%);display:grid;place-items:center}
+.anello span{width:70px;height:70px;border-radius:50%;background:#151217;display:grid;place-items:center;font-family:var(--serif);font-style:italic;font-size:24px;color:#F2EDE4}
+.pila{position:relative;width:84px;height:84px}
+.pila i{position:absolute;width:52px;height:66px;border-radius:9px;background:radial-gradient(circle at 40% 35%,#6b2a24,#1a1116 75%);border:1px solid rgba(242,237,228,.2);filter:blur(.3px)}
+.segmenti{display:grid;grid-template-columns:1fr 1fr;background:#151217;border:1px solid rgba(242,237,228,.18);border-radius:14px;padding:4px}
+.segmenti span{text-align:center;padding:10px;border-radius:10px;font-size:13px;font-weight:600}
+.segmenti span.on{background:#F2EDE4;color:#0E0D10}
+.orari{display:flex;gap:8px}
+.orari span{flex:1;text-align:center;border:1px solid rgba(242,237,228,.2);border-radius:10px;padding:8px 0;font-size:13px;color:#A8A29A}
+@media (prefers-reduced-motion:reduce){.app *{animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo">presente<b>!</b></div>
+    <div class="conteggio lab"><span id="c-si">0 mi piace</span><span id="c-no">0 da cambiare</span><span id="c-vuote"></span></div>
+  </header>
+
+  <div>
+    <div class="lab">Il nuovo design dell'app · quarta versione · 22 novembre 2026</div>
+    <div class="fasi" role="group" aria-label="Fasi dell'esperienza" style="margin-top:12px" id="fasi"></div>
+  </div>
+
+  <section class="palco">
+    <div class="colonna-tel">
+      <div class="tog" role="group" aria-label="Versione">
+        <button type="button" id="t-dopo" aria-pressed="true">Nuovo design</button>
+        <button type="button" id="t-prima" aria-pressed="false">Com'era</button>
+      </div>
+      <div class="tel"><div class="schermo" id="schermo"></div></div>
+    </div>
+    <div class="scheda">
+      <div class="lab" id="etichetta"></div>
+      <h1 id="titolo"></h1>
+      <div class="filo"></div>
+      <p id="testo"></p>
+      <div id="blocco-nota"><div class="lab" style="margin-bottom:6px">La tua ultima nota</div><p class="tua-nota" id="sua-nota"></p></div>
+      <div><div class="lab" style="margin-bottom:6px">Cosa è cambiato</div><ul class="cambi" id="cambi"></ul></div>
+      <div class="giudizio">
+        <div class="lab">Il tuo giudizio su questa versione</div>
+        <div class="voti">
+          <button class="voto si" id="b-si" type="button" aria-pressed="false">Mi piace</button>
+          <button class="voto no" id="b-no" type="button" aria-pressed="false">Da cambiare</button>
+        </div>
+        <label class="lab" for="nota">Cosa cambieresti ancora</label>
+        <textarea id="nota" placeholder="Scrivi qui. Lo leggo e lo passo agli sviluppatori."></textarea>
+        <div class="salvato" id="salvato" role="status" aria-live="polite"></div>
+      </div>
+      <div class="nav">
+        <button class="freccia" id="prec" type="button">← Indietro</button>
+        <span class="lab" id="pos"></span>
+        <button class="freccia" id="succ" type="button">Avanti →</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div class="lab">Tutte le schermate</div>
+    <div class="indice" id="indice"></div>
+  </section>
+
+  <section class="note-dev">
+    <div class="lab">Regole nuove da portare nel codice, dopo il tuo ok</div>
+    <ul>
+      <li>Logo «presente!» sempre al centro in alto, con l'onda della voce sotto. Il profilo si apre dal cerchio in alto a destra.</li>
+      <li>Tutti i pulsanti in 3D, sulla stessa riga e della stessa altezza, sempre nello stesso punto in basso.</li>
+      <li>La stanza: cerchio diviso tra uomini e donne, sotto l'elenco degli uomini e poi quello delle donne. «Chiama» e «Dai una chiave» sulla stessa riga.</li>
+      <li>Fino a 3 chiamate con ogni persona della stanza in una settimana, per tutti.</li>
+      <li>Chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito.</li>
+      <li>«Elimina il mio account» solo dentro il profilo.</li>
+      <li>Chiamata: onda in movimento mentre squilla; durante la chiamata, onda viva sopra una sagoma in movimento dietro un vetro rosso.</li>
+      <li>La home cambia con i giorni della settimana; la sera delle porte non mostra più «Il tuo profilo è pronto».</li>
+      <li>Onda della voce nei toni del rosso, più morbida; scritte dei pulsanti in maiuscolo; «Entra» più grande.</li>
+      <li>Dopo l'iscrizione: acquisto dei Coin con Gomry (200 a 20 €, 500 + 50 a 45 €). Saldo sempre in alto a sinistra; sotto gli 80 Coin diventa rosso e invita a ricaricare.</li>
+      <li>Regali in chiamata: rosa 5, spumante 10, fiori 20 Coin; chi li riceve li vede comparire sopra la chiamata.</li>
+      <li>Quando ci saranno più stanze: scelta della stanza, prima la più affine, poi le Esperienze.</li>
+      <li>La porta: porta scorrevole che si apre piano, una volta sola, con dietro una luce calda e la sagoma dell'altra persona (maschile o femminile).</li>
+      <li>Stanza viva: stato online, in chiamata (e con chi), non in linea; «Fissa» per proporre un appuntamento, con conferma e promemoria 10 minuti prima.</li>
+      <li>Chiamata: la sagoma dietro il vetro è dell'altro genere rispetto a chi parla.</li>
+      <li>Storico dei regali ricevuti nel profilo, per tipo e per persona.</li>
+      <li>Scritte dei pulsanti in Instrument Serif maiuscolo.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const IMG="img/";
+const ROSSI=["#8F2414","#B83220","#C7361F","#D63A22","#E8432B","#F05A43","#F46A53","#FF7A62"];
+const tono=(k,n)=>{const d=Math.abs(k-(n-1)/2)/((n-1)/2);return ROSSI[Math.max(0,Math.min(ROSSI.length-1,Math.round((1-d)*(ROSSI.length-1))))]};
+const onda=(n=21,viva=false)=>{let h="";for(let k=0;k<n;k++){const e=Math.sin((k+0.5)/n*Math.PI);const ht=5+Math.round(15*Math.pow(e,1.4)*(0.75+0.25*Math.sin(k*0.8)));h+=`<span style="height:${ht}px;background:${tono(k,n)};animation-delay:${(-k*0.18).toFixed(2)}s"></span>`}return `<div class="onda">${h}</div>`};
+const ondaG=(cls="")=>{const n=27;let h="";for(let k=0;k<n;k++){const e=Math.sin((k+0.5)/n*Math.PI);const ht=12+Math.round(88*Math.pow(e,1.5)*(0.7+0.3*Math.sin(k*0.9+1)));h+=`<span style="height:${ht}px;background:linear-gradient(180deg,${tono(k,n)},#8F2414);animation-delay:${(-k*0.16).toFixed(2)}s;animation-duration:${(1.3+(k%4)*0.15).toFixed(2)}s"></span>`}return `<div class="onda-grande ${cls}">${h}</div>`};
+let SALDO=145;
+const testa=(profilo=true,viva=false,saldo=null)=>`<div class="testa"><div class="marchio">presente<b>!</b></div>${onda(21,viva)}${profilo?`<div class="coin ${(saldo??SALDO)<80?'basso':''}"><i>C</i>${saldo??SALDO}</div><div class="icona-profilo" aria-label="Profilo">G</div>`:''}</div>`;
+const piede=(a,b,opz={})=>`<div class="piede ${opz.cls||""}">${a?`<div class="b3 s">${a}</div>`:""}<div class="b3 p ${opz.off?"off":""}">${b}</div></div>`;
+const passo=(n,t,pct)=>`<div class="passo">Passo ${n} di 10 · ${t}</div><div class="barra"><i style="width:${pct}%"></i></div>`;
+const cerchio=(fatte=[],stati=null)=>{const P=[];for(let k=0;k<12;k++){const a=(k/12)*2*Math.PI-Math.PI/2+Math.PI/12;P.push([95+82*Math.cos(a),95+82*Math.sin(a)])}let h='<div class="cerchio"><div class="asse"></div><span class="et" style="left:-6px;transform:translate(-100%,-50%)">Uomini</span><span class="et" style="right:-6px;transform:translate(100%,-50%)">Donne</span>';if(stati&&stati.linee){h+='<svg viewBox="0 0 190 190">'+stati.linee.map(([a,b])=>`<line x1="${P[a][0]}" y1="${P[a][1]}" x2="${P[b][0]}" y2="${P[b][1]}"/>`).join("")+'</svg>'}for(let k=0;k<12;k++){const tu=k===0;const st=stati?(stati.ch?.includes(k)?"ch":stati.on?.includes(k)?"on":""):"";h+=`<i class="p ${tu?"tu":""} ${fatte.includes(k)?"fatta":""} ${st}" style="left:${P[k][0]}px;top:${P[k][1]}px"></i>`}return h+"</div>"};
+const persona=(n,e,c,ch,chiave=true,st="on",testo="online")=>`<div class="persona"><div><b><span class="stato ${st}"></span>${n}, ${e}</b><small>${testo} · chiamate ${ch} di 3</small></div><div class="b3 s">${st==="on"?"Chiama":"Fissa"}</div><div class="b3 ${chiave?"p":"s"}">${chiave?"Dai una chiave":"Chiave data"}</div></div>`;
+const ICO={
+rosa:`<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 30c-7 0-11-5-10-11 4 1 6-3 10-3s6 4 10 3c1 6-3 11-10 11z" fill="#E8432B" stroke="#F46A53" stroke-width="1.5"/><path d="M27 19c2-2 8-2 10 0M28 23c2 1 6 1 8 0" stroke="#8F2414" stroke-width="1.5"/><path d="M32 30v26" stroke="#F2EDE4" stroke-width="2"/><path d="M32 44c-6-1-9-5-9-9 5 0 8 3 9 9zM32 40c5-1 8-4 8-8-5 0-7 3-8 8z" fill="#2c3a2a" stroke="#F2EDE4" stroke-width="1.5"/></svg>`,
+spumante:`<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M24 8h16l-2 22a6 6 0 0 1-12 0z" fill="rgba(232,67,43,.35)" stroke="#F2EDE4" stroke-width="2"/><path d="M25 18h14" stroke="#F46A53" stroke-width="1.5"/><path d="M32 36v18M24 56h16" stroke="#F2EDE4" stroke-width="2"/><circle cx="30" cy="24" r="1.4" fill="#F2EDE4"/><circle cx="34" cy="21" r="1.1" fill="#F2EDE4"/><circle cx="32" cy="27" r="1" fill="#F2EDE4"/><path d="M44 8l3-3M46 13l4-1M42 4l1-3" stroke="#F05A43" stroke-width="1.5"/></svg>`,
+fiori:`<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 30l12 28 12-28z" fill="#1F1A21" stroke="#F2EDE4" stroke-width="1.8"/><path d="M23 36h18M26 43h12" stroke="rgba(242,237,228,.35)" stroke-width="1.2"/><path d="M26 30c-2-6-1-12 2-16M38 30c2-6 1-12-2-16M32 30V12" stroke="#7d9a6e" stroke-width="1.6"/><path d="M28 14c-3-1-5-5-4-8 3 0 5 2 6 5 1-3 3-5 6-5 1 3-1 7-4 8z" fill="#F05A43" stroke="#F46A53" stroke-width="1.2"/><circle cx="20" cy="18" r="2.4" fill="#F2EDE4"/><circle cx="16.5" cy="18" r="2.4" fill="#F2EDE4"/><circle cx="23.5" cy="18" r="2.4" fill="#F2EDE4"/><circle cx="20" cy="14.5" r="2.4" fill="#F2EDE4"/><circle cx="20" cy="21.5" r="2.4" fill="#F2EDE4"/><circle cx="20" cy="18" r="2" fill="#E8432B"/><path d="M42 22c0-5 3-9 7-9 0 5-3 9-7 9z M42 22c-2-4-1-8 2-10" fill="#C7361F" stroke="#F46A53" stroke-width="1.2"/><circle cx="46" cy="26" r="1.6" fill="#F2EDE4"/><circle cx="44" cy="29" r="1.4" fill="#F2EDE4"/><path d="M27 31c3 2 7 2 10 0" stroke="#E8432B" stroke-width="2"/></svg>`};
+const chiamataSfondo=`<div class="sfondo-ch"><div class="sagoma" style="background-image:url(img/chiamata-uomo.jpg)"></div><div class="luci"></div><div class="vetro"></div><div class="riflesso"></div></div>`;
+
+const S=[
+ {id:"n01",f:"ingresso",o:"01-benvenuto",t:"Benvenuto",h:["Il logo al centro,","l'onda sotto."],d:"La prima schermata: logo centrato con l'onda della voce, una frase sola e un pulsante in 3D.",c:["Onda nei toni del rosso del brand, con linee più morbide","«ENTRA» più grande e in maiuscolo","Tutte le scritte dei pulsanti in maiuscolo, in tutta l'app"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo" style="justify-content:center;gap:18px">${ondaG("attesa")}<h2 style="text-align:center;font-size:36px">Prima la voce.<br><em>Poi il resto.</em></h2><p class="sub" style="text-align:center">Una stanza di 12 persone vicine a te.<br>Chiamate solo voce da 15 minuti.<br>Le foto, solo dopo il sì di entrambi.</p></div><p class="nota" style="text-align:center;padding:0 22px 10px">Informativa privacy · Regole della stanza</p><div class="piede uno"><div class="b3 p grande">Entra</div></div></div>`},
+ {id:"n02",f:"ingresso",o:"02-accesso-email-senza-password",t:"Passo 1 · Email",h:["Pulsanti allineati,","stessa altezza."],d:"«Indietro» e «Mandami il link» sono sulla stessa riga, alti uguali, in 3D.",c:["Logo centrato con l'onda","«Indietro» e «Mandami il link» allineati e alti uguali","Pulsanti in 3D, sempre nello stesso punto"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(1,"Email",10)}<h2>La tua email</h2><p class="sub">Ti mandiamo un link: lo apri e sei dentro. Niente password.</p><div class="campo"><small>Email</small>giulia@esempio.it</div></div>${piede("Indietro","Mandami il link")}</div>`},
+ {id:"n03",f:"ingresso",o:"03-maggiore-eta",t:"Passo 2 · Età",h:["Quando sei","nato o nata?"],d:"Data di nascita su una riga, pulsanti allineati in basso.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(2,"Maggiore età",20)}<h2>Quando sei nato o nata?</h2><p class="sub">Serve per l'età che vedranno gli altri, mai la data. Dopo non si può più cambiare.</p><div class="righe3"><div class="campo">12</div><div class="campo">maggio</div><div class="campo">1993</div></div></div>${piede("Indietro","Continua")}</div>`},
+ {id:"n04",f:"ingresso",o:"04-quattro-regole",t:"Passo 3 · Le regole",h:["Quattro regole,","prima di entrare."],d:"Le regole in quattro righe brevi, con la spunta e i pulsanti allineati.",c:["Logo centrato con l'onda","Regole più compatte, tutte visibili senza scorrere","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo" style="gap:6px">${passo(3,"Le regole",30)}<h2 style="margin-top:8px">Quattro regole</h2><div class="regola"><span class="n">01</span><div><b>Niente numeri prima della porta</b><span>I contatti si scambiano dopo il sì reciproco.</span></div></div><div class="regola"><span class="n">02</span><div><b>Rispetto, sempre</b><span>Chi manca di rispetto viene segnalato e bloccato.</span></div></div><div class="regola"><span class="n">03</span><div><b>Foto vere</b><span>Tue, recenti, con il volto in almeno una.</span></div></div><div class="regola"><span class="n">04</span><div><b>Chi dà buca paga</b><span>I tuoi crediti vanno a chi ti ha aspettato.</span></div></div><div class="motivo on" style="margin-top:6px"><i></i>Accetto le regole</div></div>${piede("Indietro","Continua")}</div>`},
+ {id:"n05",f:"ingresso",o:"05-chi-sei",t:"Passo 4 · Chi sei",h:["Gli altri vedranno","solo nome, età e provincia."],d:"Nome, provincia e come ti presenti, con i pulsanti allineati.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(4,"Chi sei",40)}<h2>Chi sei</h2><p class="sub">Gli altri vedranno solo nome, età e provincia.</p><div class="campo"><small>Nome di battesimo</small>Giulia</div><div class="campo"><small>Provincia</small>Milano</div><div class="gruppo"><span class="passo">Mi presento come</span><div class="chips"><span class="chip on">Donna</span><span class="chip">Uomo</span><span class="chip">Non binario</span><span class="chip">Preferisco descrivermi</span></div></div></div>${piede("Indietro","Continua")}</div>`},
+ {id:"n06",f:"ingresso",o:"06-chi-cerchi",t:"Passo 5 · Chi cerchi",h:["Chi vorresti","nella tua stanza?"],d:"Le preferenze in gruppi corti, pulsanti allineati.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo" style="gap:11px">${passo(5,"Chi cerchi",50)}<h2>Chi cerchi</h2><div class="gruppo"><span class="passo">Età</span><div class="righe3" style="grid-template-columns:1fr 1fr"><div class="campo">da 28</div><div class="campo">a 40</div></div></div><div class="gruppo"><span class="passo">Dove</span><div class="chips"><span class="chip on">Vicino a me</span><span class="chip">Anche altre città</span><span class="chip">Anche all'estero</span></div></div><div class="gruppo"><span class="passo">Cosa cerco</span><div class="chips"><span class="chip">Una storia seria</span><span class="chip on">Conoscersi senza fretta</span></div></div><div class="gruppo"><span class="passo">Figli</span><div class="chips"><span class="chip">Ne voglio</span><span class="chip on">Forse</span><span class="chip">No</span><span class="chip">Ne ho</span></div></div></div>${piede("Indietro","Continua")}</div>`},
+ {id:"n07",f:"ingresso",o:"07-profilo-vocale-registrazione",t:"Passo 6 · La tua voce",h:["La voce","si vede mentre parli."],d:"Mentre registri, l'onda si muove con la tua voce. Pulsanti allineati e in 3D.",c:["Logo centrato con l'onda","Onda grande che si muove durante la registrazione","Pulsante «Ferma» in 3D; «Indietro» e «Continua» allineati"],
+  html:()=>`<div class="app viva">${testa(false,true)}<div class="corpo">${passo(6,"La tua voce",60)}<h2>La tua voce</h2><p class="sub">Presentati come faresti a una cena tra amici. Hai 20 secondi.</p><div class="rec">${ondaG()}<div style="display:flex;justify-content:space-between;align-items:center"><span class="tempo">8 / 20 s</span><div class="b3 p picc" style="padding:0 22px">Ferma</div></div></div></div>${piede("Indietro","Continua",{off:true})}</div>`},
+ {id:"n08",f:"ingresso",o:"08-profilo-vocale-fatto",t:"Passo 6 · Riascolta",h:["Ti riascolti,","e se vuoi rifai."],d:"La registrazione pronta, con «Riascolta» e «Rifai» sulla stessa riga.",c:["Logo centrato con l'onda","«Riascolta» e «Rifai» sulla stessa riga, in 3D","Pulsanti in basso allineati"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(6,"La tua voce",60)}<h2>La tua voce</h2><p class="sub">Eccola. Se non ti convince, rifalla.</p><div class="rec">${ondaG("attesa")}<div class="piede tre" style="padding:0"><div class="b3 s picc">▶ Riascolta</div><div class="b3 s picc">Rifai</div></div></div></div>${piede("Indietro","Continua")}</div>`},
+ {id:"n09",f:"ingresso",o:"09-tre-risposte-a-voce",t:"Passo 7 · Tre risposte",h:["Tre domande,","a voce."],d:"Le domande come pillole, le tre scelte evidenziate.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo" style="gap:10px">${passo(7,"Tre risposte a voce",70)}<h2>Tre risposte a voce</h2><p class="sub">Scegli 3 domande e rispondi a voce, massimo 30 secondi.</p><div class="chips" style="flex-direction:column;align-items:flex-start"><span class="chip on">Una cosa che ti fa ridere sempre</span><span class="chip">Il posto dove ti senti a casa</span><span class="chip on">Un viaggio che rifaresti domani</span><span class="chip">Una cosa capita tardi, ma meglio tardi che mai</span><span class="chip on">La tua domenica perfetta</span><span class="chip">Una canzone che ti riporta indietro</span></div></div>${piede("Indietro","Registra le risposte")}</div>`},
+ {id:"n10",f:"ingresso",o:"10-questionario-privato",t:"Passo 8 · Questionario",h:["Quindici domande","che nessuno vedrà."],d:"Una domanda per schermata, pulsanti allineati.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(8,"Questionario privato",80)}<h2>Nella vita metti al primo posto…</h2><p class="sub">Valori · domanda 1 di 15 · scegli 2</p><div class="chips"><span class="chip on">Famiglia</span><span class="chip">Lavoro e carriera</span><span class="chip">Libertà e viaggi</span><span class="chip">Amici</span><span class="chip on">Crescita personale</span><span class="chip">Stabilità</span><span class="chip">Impegno per gli altri</span></div><p class="nota">Le risposte restano private. Servono solo a scegliere la tua stanza.</p></div>${piede("Indietro","Avanti")}</div>`},
+ {id:"n11",f:"ingresso",o:"11-questionario-domanda-soldi",t:"Passo 8 · Una domanda",h:["In coppia","le spese si dividono…"],d:"Domanda concreta e quanto conta per te, pulsanti allineati.",c:["Logo centrato con l'onda","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(8,"Questionario privato",80)}<h2>In coppia le spese si dividono…</h2><p class="sub">Soldi · domanda 7 di 15</p><div class="chips" style="flex-direction:column;align-items:flex-start"><span class="chip">A metà</span><span class="chip on">In proporzione a quanto si guadagna</span><span class="chip">Cassa comune</span></div><div class="gruppo"><span class="passo">Quanto conta per te</span><div class="chips"><span class="chip">Poco</span><span class="chip on">Abbastanza</span><span class="chip">Molto</span></div></div></div>${piede("Indietro","Avanti")}</div>`},
+ {id:"n12",f:"ingresso",o:"12-foto-nascoste",t:"Passo 9 · Le foto",h:["Le foto ci sono.","Solo dopo il sì."],d:"Le tre foto sfocate come le vedranno gli altri prima della porta.",c:["Logo centrato con l'onda","Le foto si vedono sfocate: si capisce subito che restano nascoste","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(false)}<div class="corpo">${passo(9,"Foto",90)}<h2>Le tue foto</h2><p class="sub">Nessuno le vede fino a quando aprite la porta in due. Servono 3 foto, con il volto in almeno una.</p><div class="foto3"><div></div><div></div><div></div></div><p class="nota">Il telefono toglie dalle foto i dati nascosti: posizione, modello, data.</p></div>${piede("Indietro","Continua")}</div>`},
+ {id:"coin-negozio",f:"ingresso",o:null,t:"I tuoi Coin",h:["I Coin si comprano","prima di entrare."],d:"Nuova schermata, subito dopo l'iscrizione: quanti Coin hai, i due pacchetti e quanto costa ogni cosa. La prima stanza resta in regalo.",c:["Schermata nuova dopo la registrazione","Due pacchetti: 200 Coin a 20 € e 500 Coin a 45 € (+50 in regalo)","Cosa costa: stanza 80, caparra 10, regali da 5 a 20","Pagamento con Gomry"],
+  html:()=>`<div class="app">${testa(true,false,0)}<div class="corpo" style="gap:11px"><div class="passo">Passo 10 di 10 · I tuoi Coin</div><div class="barra"><i style="width:100%"></i></div><h2>I tuoi Coin<br><em>per la stanza e i regali.</em></h2><p class="sub" style="font-size:13.5px">Hai 0 Coin. La tua prima stanza è in regalo.</p><div class="pacco"><div class="q">200<small>Coin</small></div><div class="nota">2 stanze, o 1 stanza e regali</div><div class="e">20 €</div></div><div class="pacco on"><div class="q">500<small>+50 in regalo</small></div><div><span class="etichetta-r">Il più scelto</span></div><div class="e">45 €</div></div><div class="costi"><span>Una stanza al buio, 7 giorni</span><b>80 Coin</b><span>Caparra dello svelamento</span><b>10 Coin</b><span>Regali in chiamata</span><b>5 · 10 · 20</b></div><p class="nota">Paghi con Gomry: carta, Apple Pay, Google Pay.</p></div>${piede("Più tardi","Paga 45 €")}</div>`},
+ {id:"coin-pagamento",f:"ingresso",o:null,t:"Pagamento con Gomry",h:["Paghi con Gomry,","in un tocco."],d:"Nuova schermata: il foglio di pagamento di Gomry sale dal basso. Presente non vede i dati della carta.",c:["Schermata nuova","Pagamento con Gomry: Apple Pay, Google Pay o carta","Un pulsante solo per pagare"],
+  html:()=>`<div class="app">${testa(true,false,0)}<div class="corpo"><h2>I tuoi Coin</h2></div><div class="velo-modale"></div><div class="foglio"><div class="maniglia"></div><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="passo">Pagamento sicuro · Gomry</span><span class="nota">Annulla</span></div><div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="font-size:28px">550 Coin</h2><b style="font-size:22px">45,00 €</b></div><p class="nota">500 Coin + 50 in regalo</p><div class="motivo on"><i></i>Apple Pay</div><div class="motivo"><i></i>Google Pay</div><div class="motivo"><i></i>Carta di credito o debito</div><p class="nota">Il pagamento lo gestisce Gomry. Presente non vede i dati della tua carta.</p><div class="b3 p" style="margin-top:4px">Paga con Apple Pay</div></div></div>`},
+ {id:"coin-fatto",f:"ingresso",o:null,t:"Coin caricati",h:["Ora hai","550 Coin."],d:"Nuova schermata: conferma del pagamento, con il saldo che sale. Il saldo resta sempre visibile in alto a sinistra.",c:["Schermata nuova","Il saldo in Coin è sempre in alto a sinistra, accanto al logo"],
+  html:()=>`<div class="app">${testa(true,false,550)}<div class="corpo" style="justify-content:center;gap:16px;text-align:center"><div class="passo">Pagamento riuscito</div><div class="conta vola">550</div><p class="passo" style="color:#F2EDE4">Coin</p><h2 style="font-size:30px">Sei pronta<br><em>per la tua stanza.</em></h2><p class="sub">Li trovi sempre in alto a sinistra.</p></div>${piede("","Vai alla home",{cls:"uno"})}</div>`},
+ {id:"n13",f:"stanza",o:"13-profilo-pronto-home",t:"La home",h:["La home cambia","con la settimana."],d:"Prima della stanza: il conto alla rovescia al lunedì. L'elenco delle persone sta solo nella stanza, «Elimina account» solo nel profilo.",c:["Logo centrato con l'onda e il profilo in alto a destra","Niente elenco persone né «Elimina account» nella home","Una sola cosa da fare: il conto alla rovescia alla stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:16px"><div class="passo">La tua settimana</div><div class="settimana"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><h2>Ciao Giulia.<br><em>La tua stanza apre lunedì.</em></h2><div class="timer" style="font-size:52px">1 g 18 h</div><p class="sub" style="text-align:center">Lunedì alle 9 entri con 11 persone vicine a te. La prima stanza è in regalo.</p>${cerchio([])}</div>${piede("","Ci sarò lunedì",{cls:"uno"})}</div>`},
+ {id:"scegli-stanza",f:"stanza",o:null,t:"Scegli la stanza",h:["Prima la stanza","più affine a te."],d:"Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le persone più affini, sotto le stanze con un'esperienza. Le esperienze sono in arrivo.",c:["Schermata nuova","Prima proposta: la stanza con le persone più affini","Sotto: stanze Esperienza e VIP (in arrivo)","Il costo in Coin su ogni stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:10px"><div class="passo">Lunedì · scegli dove entrare</div><h2>Scegli<br><em>la tua stanza.</em></h2><div class="stanza-card on"><span class="etichetta-r" style="align-self:flex-start">Più affine a te</span><h3>Al buio · Milano</h3><p class="nota">12 persone scelte con il tuo questionario.</p><div class="riga"><span>7 giorni · chiamate da 15 minuti</span><b>80 Coin</b></div></div><div class="stanza-card arrivo"><span class="passo">Esperienza · in arrivo</span><h3>Aperitivo al buio</h3><p class="nota">Una settimana di chiamate, poi la serata in un locale partner.</p><div class="riga"><span>Locale partner Gomry</span><b>120 Coin</b></div></div><div class="stanza-card arrivo"><span class="passo">VIP · in arrivo</span><h3>La stanza in diretta</h3><p class="nota">Con una presentatrice, in diretta.</p><div class="riga"><span>Solo con consenso di tutti</span><b>200 Coin</b></div></div></div>${piede("","Entra nella stanza",{cls:"uno"})}</div>`},
+ {id:"n14",f:"stanza",o:"14-stanza-di-12",t:"La stanza",h:["Una stanza viva:","chi c'è, chi parla."],d:"Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento.",c:["Stato di ogni persona: online (punto chiaro che pulsa), in chiamata (rosso), non in linea","Nel cerchio, una linea rossa unisce chi è in chiamata","«Fissa» al posto di «Chiama» quando la persona è occupata o non in linea","Gli appuntamenti fissati compaiono in cima alla stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:7px;padding-top:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="passo">La tua stanza · Milano</div><div class="passo" style="color:#F2EDE4">Giorno 2 di 7</div></div>${cerchio([1,3,4,8],{on:[3,7,9,11],ch:[5,8],linee:[[5,8]]})}<div class="legenda"><span><span class="stato on"></span>online</span><span><span class="stato ch"></span>in chiamata</span><span><span class="stato off"></span>non in linea</span></div><div class="appuntamento">◷ Chiamata fissata con <b>Luca</b> oggi alle 21:00</div><div class="lista-t"><span>Uomini · 6</span><span>2 chiavi</span></div>${persona("Marco",35,"Milano","1",true,"on","online")}${persona("Dario",34,"Milano","2",true,"ch","in chiamata con Sara")}${persona("Luca",33,"Milano","0",true,"off","non in linea · da 2 h")}<div class="link" style="margin-top:4px">Lascia la stanza</div></div></div>`},
+ {id:"fissa-chiamata",f:"stanza",o:null,t:"Fissa una chiamata",h:["Datevi","un appuntamento."],d:"Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima.",c:["Schermata nuova","Giorno e ora a scelta, entro la settimana della stanza","L'altra persona conferma o propone un altro orario","Promemoria 10 minuti prima a tutti e due"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:12px"><div class="passo">Luca, 33 · non in linea</div><h2>Fissa una chiamata<br><em>con Luca.</em></h2><div class="passo">Giorno</div><div class="orari"><span style="background:#F2EDE4;color:#0E0D10;border-color:#F2EDE4">Oggi</span><span>Domani</span><span>Giovedì</span></div><div class="passo">Ora</div><div class="orari"><span>19:00</span><span style="background:#F2EDE4;color:#0E0D10;border-color:#F2EDE4">21:00</span><span>22:30</span></div><div class="campo" style="font-family:var(--serif);font-style:italic;font-size:17px;min-height:70px">Ti va di sentirci stasera?</div><p class="nota">Luca riceve la proposta e la conferma, o te ne propone un'altra. Vi avvisiamo 10 minuti prima.</p></div>${piede("Annulla","Proponi")}</div>`},
+ {id:"coin-quasi-finiti",f:"stanza",o:null,t:"Coin quasi finiti",h:["Ti restano","15 Coin."],d:"Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare.",c:["Schermata nuova","Saldo in rosso quando i Coin stanno finendo","Spiega cosa si può ancora fare e cosa no","«Dopo» e «Ricarica» sulla stessa riga"],
+  html:()=>`<div class="app">${testa(true,false,15)}<div class="corpo"><div class="passo">La tua stanza · Milano</div>${cerchio([1,3,4,8])}</div><div class="velo-modale"></div><div class="foglio"><div class="maniglia"></div><span class="passo">I tuoi Coin</span><h2>Ti restano<br><em>15 Coin.</em></h2><p class="sub" style="font-size:14px">Bastano per una caparra o qualche regalo, non per la prossima stanza (80 Coin).</p><div class="pacco on"><div class="q">500<small>+50 in regalo</small></div><div></div><div class="e">45 €</div></div><div class="piede" style="padding:4px 0 0"><div class="b3 s">Dopo</div><div class="b3 p">Ricarica</div></div></div></div>`},
+ {id:"n15",f:"stanza",o:null,t:"Lascia la stanza",h:["Puoi uscire,","dicendo perché."],d:"Nuova schermata: chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito.",c:["Schermata nuova","Motivo obbligatorio, scelto da un elenco o scritto","Il motivo non lo vede nessuno della stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:10px"><h2>Vuoi lasciare<br><em>la stanza?</em></h2><p class="sub">Dicci il motivo. Le persone della stanza vedranno solo che sei uscita.</p><div class="motivo"><i></i>Questa settimana non ho tempo</div><div class="motivo on"><i></i>Non mi trovo con le persone della stanza</div><div class="motivo"><i></i>Ho conosciuto qualcuno</div><div class="motivo"><i></i>Problemi con l'app</div><div class="motivo"><i></i>Altro, lo scrivo io</div></div>${piede("Resto","Lascia la stanza")}</div>`},
+ {id:"n16",f:"stanza",o:null,t:"Il profilo",h:["«Elimina account»","sta qui, e solo qui."],d:"Nuova schermata: il profilo si apre dal cerchio in alto a destra. Qui modifichi voce, risposte, foto e preferenze; in fondo c'è «Elimina il mio account».",c:["Schermata nuova, dal cerchio in alto a destra","«Modifica» e «Elimina account» tolti dalla home e dalla stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:10px"><h2>Giulia, 33<br><em>Milano</em></h2><div class="rec" style="padding:12px">${ondaG("attesa").replace('height:110px','height:60px')}<div class="b3 s picc">▶ La tua voce · 18 s</div></div><div class="pacco" style="padding:10px 14px"><div class="q" style="font-size:24px">145<small>Coin</small></div><div></div><div class="b3 p picc" style="padding:0 16px">Ricarica</div></div><div class="motivo">Le tre risposte a voce<span style="margin-left:auto;color:#A8A29A">›</span></div><div class="motivo">Regali ricevuti · 17<span style="margin-left:auto;color:#A8A29A">›</span></div><div class="motivo">Le tue foto (nascoste)<span style="margin-left:auto;color:#A8A29A">›</span></div><div class="motivo">Chi cerchi · Notifiche · Privacy<span style="margin-left:auto;color:#A8A29A">›</span></div><div class="link rosso" style="margin-top:2px">Elimina il mio account</div></div>${piede("","Torna alla stanza",{cls:"uno"})}</div>`},
+ {id:"n17",f:"stanza",o:"15-chiamata-squillo",t:"La chiamata · Squilla",h:["Mentre squilla,","l'onda aspetta."],d:"Mentre la linea si collega, l'onda pulsa al centro. Sotto, quante chiamate hai fatto con questa persona.",c:["Onda nei toni del rosso, più morbida, che pulsa mentre prende la linea","Logo centrato con l'onda","«CHIUDI» in 3D e in maiuscolo"],
+  html:()=>`<div class="app viva">${testa(false,true)}<div class="corpo" style="justify-content:center;gap:14px;text-align:center"><div class="passo">Chiamata 2 di 3 con Marco</div><h2>Stai chiamando<br><em>Marco</em></h2>${ondaG("attesa")}<p class="sub">Squilla… 4 s</p></div>${piede("","Chiudi",{cls:"uno"})}</div>`},
+ {id:"n18",f:"stanza",o:"16-chiamata-15-minuti",t:"La chiamata · 15 minuti",h:["Una sagoma","dietro un vetro rosso."],d:"Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra, l'onda viva della voce e il timer.",c:["Sfondo più vivo: la sagoma ondeggia e le luci si muovono dietro il vetro","Sagoma maschile perché parla una donna (Giulia); femminile se parla un uomo","Sfondo: sagoma in movimento dietro un vetro rosso (nessun volto)","Onda viva sopra la sagoma","«Microfono» e «Chiudi» sulla stessa riga, in 3D; «Chiudi e segnala» sotto"],
+  html:()=>`<div class="app viva">${chiamataSfondo}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(false,true)}<div class="corpo" style="gap:12px;text-align:center"><div class="avviso">Niente numeri, cognomi o social prima della porta</div><h2 style="margin-top:8px">Marco</h2><div class="timer">14:46</div>${ondaG()}</div><div class="piede tre" style="padding-bottom:10px"><div class="b3 s">Microfono</div><div class="b3 s">Chiudi</div></div><div style="padding:0 22px 30px"><div class="b3 s" style="color:#F05A43">Chiudi e segnala</div></div></div></div>`},
+ {id:"regali",f:"stanza",o:null,t:"La chiamata · I regali",h:["Un regalo","mentre parlate."],d:"Nuova schermata: durante la chiamata il tasto «Regalo» apre i tre regali. Si paga con i Coin, il saldo è in alto.",c:["Disegno nuovo per i fiori: un mazzo misto, non di rose","Rosa 5 Coin, spumante 10, fiori 20","Il saldo si aggiorna subito"],
+  html:()=>`<div class="app viva">${chiamataSfondo}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(true,true)}<div class="corpo" style="gap:10px;text-align:center"><h2>Marco</h2><div class="timer" style="font-size:48px">09:12</div>${ondaG().replace('height:110px','height:70px')}</div></div><div class="velo-modale" style="background:rgba(5,4,6,.45)"></div><div class="foglio"><div class="maniglia"></div><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="passo">Fai un regalo a Marco</span><span class="nota">Hai 145 Coin</span></div><div class="regali"><div class="regalo on">${ICO.rosa}<span>Rosa</span><b>5 Coin</b></div><div class="regalo">${ICO.spumante}<span>Spumante</span><b>10 Coin</b></div><div class="regalo">${ICO.fiori}<span>Fiori</span><b>20 Coin</b></div></div><p class="nota">Marco lo vede subito, durante la chiamata.</p><div class="piede" style="padding:4px 0 0"><div class="b3 s">Chiudi</div><div class="b3 p">Regala la rosa</div></div></div></div>`},
+ {id:"regalo-ricevuto",f:"stanza",o:null,t:"La chiamata · Regalo ricevuto",h:["Marco ti ha regalato","una rosa."],d:"Nuova schermata: chi riceve il regalo lo vede comparire sopra la chiamata, con un'animazione leggera.",c:["Schermata nuova","Il regalo compare sopra l'onda, poi sparisce da solo","I regali ricevuti restano nel profilo"],
+  html:()=>`<div class="app viva">${chiamataSfondo}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(true,true)}<div class="corpo" style="gap:12px;text-align:center;justify-content:center"><div class="vola" style="width:150px;height:150px;margin:0 auto">${ICO.rosa.replace('<svg ','<svg style="width:150px;height:150px;filter:drop-shadow(0 0 18px rgba(232,67,43,.8))" ')}</div><h2>Marco ti ha regalato<br><em>una rosa.</em></h2><div class="timer" style="font-size:40px">09:05</div>${ondaG().replace('height:110px','height:60px')}</div><div class="piede tre" style="padding-bottom:30px"><div class="b3 s">Regalo</div><div class="b3 s">Chiudi</div></div></div></div>`},
+ {id:"storico-regali",f:"stanza",o:null,t:"I tuoi regali",h:["Quanti regali","hai ricevuto."],d:"Nuova schermata, dal profilo: il numero di regali ricevuti per tipo e da chi, stanza per stanza.",c:["Schermata nuova, dal profilo","Totale per tipo: rose, spumante, fiori","Elenco per persona e per stanza"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:12px"><div class="passo">Il tuo profilo · regali ricevuti</div><h2>Hai ricevuto<br><em>17 regali.</em></h2><div class="conteggi"><div>${ICO.rosa}<b>12</b><span>Rose</span></div><div>${ICO.spumante}<b>4</b><span>Spumante</span></div><div>${ICO.fiori}<b>1</b><span>Fiori</span></div></div><div class="lista-t"><span>Questa stanza</span><span>Milano</span></div><div class="persona" style="grid-template-columns:1fr auto"><div><b>Marco, 35</b><small>3 rose · 1 spumante</small></div><span class="nota">oggi</span></div><div class="persona" style="grid-template-columns:1fr auto"><div><b>Dario, 34</b><small>2 rose</small></div><span class="nota">ieri</span></div><div class="lista-t"><span>Stanze passate</span><span>2</span></div><div class="persona" style="grid-template-columns:1fr auto"><div><b>7 persone</b><small>7 rose · 3 spumante · 1 fiori</small></div><span class="nota">›</span></div></div>${piede("","Torna al profilo",{cls:"uno"})}</div>`},
+ {id:"n19",f:"stanza",o:"17-chiamata-carta-rompighiaccio",t:"La chiamata · Le carte",h:["La carta","sopra la voce."],d:"La carta rompighiaccio appare sopra lo stesso sfondo della chiamata.",c:["Stesso sfondo della chiamata: sagoma dietro il vetro rosso","Onda viva sopra la sagoma","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app viva">${chiamataSfondo}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(false,true)}<div class="corpo" style="gap:12px;text-align:center"><h2>Marco</h2><div class="timer" style="font-size:48px">11:20</div>${ondaG().replace('height:110px','height:70px')}<div class="carta">Qual è il suono che ti mette di buon umore?<small>Pescata da te · Carte: 1 di 3</small></div></div><div class="piede tre" style="padding-bottom:30px"><div class="b3 s">Altra carta</div><div class="b3 s">Chiudi</div></div></div></div>`},
+ {id:"n20",f:"stanza",o:"18-chiamata-ultimo-minuto",t:"La chiamata · Ultimo minuto",h:["Ancora","un minuto."],d:"L'ultimo minuto: il timer diventa rosso, l'onda continua sopra la sagoma.",c:["Stesso sfondo della chiamata","Timer rosso nell'ultimo minuto","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app viva">${chiamataSfondo}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(false,true)}<div class="corpo" style="gap:12px;text-align:center"><h2>Marco</h2><div class="timer" style="color:#F05A43">0:59</div><p class="sub">Ancora un minuto</p>${ondaG()}</div><div class="piede tre" style="padding-bottom:30px"><div class="b3 s">Microfono</div><div class="b3 s">Chiudi</div></div></div></div>`},
+ {id:"n21",f:"stanza",o:"19-la-richiameresti",t:"Dopo la chiamata",h:["La","richiameresti?"],d:"Sì o no in privato, sulla stessa riga e in 3D.",c:["Logo centrato con l'onda","«Sì» e «No» allineati, in 3D"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="justify-content:center;gap:16px;text-align:center"><div class="passo">Chiamata 2 di 3 con Marco · finita</div><h2 style="font-size:40px">La<br><em>richiameresti?</em></h2><p class="sub">Resta tra te e Presente. Marco non lo saprà mai.</p></div><div class="piede tre"><div class="b3 s">No</div><div class="b3 p">Sì</div></div><div class="link" style="padding:0 0 30px">Segnala un problema</div></div>`},
+ {id:"n22",f:"scelta",o:"20-diario-privato",t:"Il diario",h:["Cosa ti è rimasto","di questa chiamata?"],d:"Il diario privato, con «Salta» e «Salva» sulla stessa riga.",c:["Logo centrato con l'onda","«Salta» e «Salva» allineati, in 3D"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo"><div class="passo">Il tuo diario · Marco</div><h2>Cosa ti è rimasto di questa chiamata?</h2><div class="campo" style="min-height:150px;font-family:var(--serif);font-style:italic;font-size:18px">Ride di gusto. Parla dei suoi viaggi come se li stesse rivivendo.</div><p class="nota">Lo leggi solo tu. Non lo usiamo per niente.</p></div>${piede("Salta","Salva")}</div>`},
+ {id:"n23",f:"scelta",o:"21-dai-una-chiave-con-frase",t:"Le chiavi",h:["Dai una chiave","con una frase."],d:"La chiave si dà da una schermata sua, con la frase e i pulsanti allineati.",c:["Schermata dedicata invece del riquadro dentro la stanza","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo"><div class="passo">Le tue chiavi · 2 di 2</div><h2>Dai una chiave<br><em>a Marco?</em></h2><p class="sub">Leggerà la tua frase solo se anche lui ti dà una chiave.</p><div class="campo" style="min-height:110px;font-family:var(--serif);font-style:italic;font-size:18px">La tua risata mi è rimasta in testa.</div><p class="nota">Puoi cambiare idea fino a domenica alle 21.</p></div>${piede("Indietro","Dai la chiave")}</div>`},
+ {id:"n24",f:"scelta",o:"22-chiave-data",t:"Chiave data",h:["Hai dato","una chiave."],d:"Conferma breve; si torna alla stanza.",c:["Logo centrato con l'onda","«Cambia frase» e «Riprendi la chiave» allineati, in 3D"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="justify-content:center;text-align:center;gap:14px"><div class="passo">Ti resta 1 chiave</div><h2 style="font-size:38px">Hai dato una chiave<br><em>a Marco.</em></h2><p class="frase" style="text-align:left">La tua risata mi è rimasta in testa.</p></div><div class="piede tre" style="padding-bottom:14px"><div class="b3 s">Cambia frase</div><div class="b3 s">Riprendi la chiave</div></div>${piede("","Torna alla stanza",{cls:"uno"})}</div>`},
+ {id:"n25",f:"scelta",o:"23-sera-delle-porte-animazione",t:"Domenica sera",h:["Una porta","che invita."],d:"Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21.",c:["Immagine nuova, calda e accogliente al posto di quella scura","La luce oltre la porta respira piano","Pulsanti con il nuovo carattere"],
+  html:()=>`<div class="app">${'<div class="foto-full rivela" style="background-image:url(img/porta-calda.jpg)"></div><div class="bagliore"></div><div class="foto-full" style="background:linear-gradient(180deg,rgba(14,13,16,.85) 0%,rgba(14,13,16,.15) 30%,rgba(14,13,16,.05) 60%,rgba(14,13,16,.95) 92%)"></div>'}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(true)}<div class="corpo" style="gap:10px;text-align:center"><div class="settimana"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="oggi"></i></div><div class="passo">Domenica sera</div><h2 style="font-size:34px">La stanza si chiude.<br><em>Le porte si aprono alle 21.</em></h2></div><div style="padding:0 22px 14px;text-align:center"><div class="timer" style="font-size:60px">00:42</div></div>${piede("","Rivedi la tua stanza",{cls:"uno"})}</div></div>`},
+ {id:"n26",f:"scelta",o:"24-porta-aperta",t:"La porta",h:["La porta si apre","piano, e c'è lui."],d:"Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo.",c:["Immagine nuova, calda e romantica al posto di quella inquietante","Apertura morbida e continua, senza scatti né blocchi","Dopo l'apertura, la luce respira piano"],
+  html:()=>`<div class="app">${'<div class="foto-full rivela" style="background-image:url(img/porta-uomo-rosa.jpg);background-position:30% 40%;--sfoca:4px"></div><div class="bagliore"></div><div class="ante"><div class="anta-s sx"></div><div class="anta-s dx"></div></div><div class="foto-full" style="background:linear-gradient(180deg,rgba(14,13,16,.8) 0%,rgba(14,13,16,0) 25%,rgba(14,13,16,0) 55%,rgba(14,13,16,.96) 80%)"></div>'}<div style="position:relative;display:flex;flex-direction:column;height:100%">${testa(true)}<div class="corpo" style="gap:6px;text-align:center"><div class="passo">Domenica · ore 21</div><h2 style="font-size:34px">Una porta<br><em>si è aperta.</em></h2></div><div style="padding:0 22px 12px;display:flex;flex-direction:column;gap:8px"><div><b style="font-size:17px">Marco, 35</b><span class="nota"> · Milano</span></div><p class="frase" style="margin:0">La tua risata mi è rimasta in testa.</p></div>${piede("","Vai allo svelamento",{cls:"uno"})}</div></div>`},
+ {id:"n27",f:"scelta",o:"25-svelamento-caparra",t:"Lo svelamento",h:["Hai 48 ore","per lo svelamento."],d:"La caparra spiegata in tre righe, pulsanti allineati.",c:["Logo centrato con l'onda","Testo più breve sulla caparra","Pulsanti allineati e in 3D"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo"><div class="passo">Svelamento · Marco, 35</div><h2>Hai 48 ore<br><em>per lo svelamento.</em></h2><div class="timer" style="font-size:44px;text-align:left">47:59</div><p class="sub">Bloccate entrambi 10 crediti. Se uno dei due dice no o non risponde, tornano a tutti e due. Li perde solo chi dà buca a un appuntamento confermato.</p><p class="nota">I tuoi crediti: 15</p></div>${piede("Più tardi","Blocca 10 crediti")}</div>`},
+ {id:"n28",f:"scelta",o:"26-svelamento-come-e-quando",t:"Lo svelamento · Come",h:["Due modi","di vedersi."],d:"Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico.",c:["Due schede grandi al posto di quattro pulsanti","Il cerchio dei 10 secondi per il video, le foto sfocate per le foto","«Adesso» o un orario, in un selettore unico"],
+  html:()=>`<div class="app">${testa(true)}<div class="corpo" style="gap:12px"><div class="passo">Svelamento · Marco, 35</div><h2>Come vi volete<br><em>vedere?</em></h2><div class="scelta2"><div class="opz on"><div class="anello"><span>10 s</span></div><b>Videochiamata</b>Dieci secondi, poi si chiude da sola.</div><div class="opz"><div class="pila"><i style="left:4px;top:12px;transform:rotate(-8deg)"></i><i style="left:16px;top:6px"></i><i style="left:28px;top:12px;transform:rotate(8deg)"></i></div><b>Le foto</b>Le vostre tre foto, insieme.</div></div><div class="passo" style="margin-top:4px">Quando</div><div class="segmenti"><span class="on">Adesso</span><span>Scegli un orario</span></div><div class="orari"><span>21:30</span><span>22:00</span><span>22:30</span></div></div>${piede("Torna","Sono pronta")}</div>`},
+];
+const FASI={ingresso:"L'ingresso",stanza:"La stanza e le chiamate",scelta:"La scelta e lo svelamento"};
+let i=0, vista="dopo", giudizi={}, vecchi={}, round2={}, round3={}, db=null;
+const $=id=>document.getElementById(id);
+const chiave=k=>S[k].id;
+const chiaveVecchia=o=>{const n=parseInt(o,10);return "s"+String(n).padStart(2,"0")};
+function leggi(){try{return JSON.parse(localStorage.getItem("giudizi4")||"{}")}catch(e){return {}}}
+function scrivi(){try{localStorage.setItem("giudizi4",JSON.stringify(giudizi))}catch(e){}}
+giudizi=leggi();
+function scala(){const s=$("schermo");const w=s.clientWidth;const a=s.querySelector(".scala");if(a)a.style.transform=`scale(${w/390})`}
+function fasi(){const f=$("fasi");f.innerHTML="";Object.entries(FASI).forEach(([k,v])=>{const b=document.createElement("button");b.type="button";b.className="fase";b.textContent=v;b.setAttribute("aria-pressed",S[i].f===k);b.onclick=()=>vai(S.findIndex(s=>s.f===k));f.appendChild(b)})}
+function indice(){const g=$("indice");g.innerHTML="";S.forEach((s,k)=>{const b=document.createElement("button");b.type="button";b.className="mini";const v=giudizi[chiave(k)]?.voto||"";if(v)b.dataset.voto=v;b.setAttribute("aria-current",k===i);b.innerHTML=`<i></i><span>${String(k+1).padStart(2,"0")} ${s.t}${s.o?"":' <span class="nuova">· nuova</span>'}</span>`;b.onclick=()=>{vai(k);window.scrollTo({top:0,behavior:"smooth"})};g.appendChild(b)});const n=Object.values(giudizi),si=n.filter(x=>x.voto==="si").length,no=n.filter(x=>x.voto==="no").length;$("c-si").textContent=si+" mi piace";$("c-no").textContent=no+" da cambiare";$("c-vuote").textContent=(S.length-si-no)+" da vedere"}
+function mostra(){
+  const s=S[i],g=giudizi[chiave(i)]||{};
+  const sc=$("schermo");
+  if(vista==="prima"&&s.o){sc.innerHTML=`<img class="vecchia" src="${IMG}${s.o}.jpg" alt="Com'era: ${s.t}">`}
+  else{sc.innerHTML=`<div class="scala">${s.html()}</div>`;scala();}
+  $("t-prima").disabled=!s.o;$("t-prima").style.opacity=s.o?1:.35;
+  $("t-dopo").setAttribute("aria-pressed",vista!=="prima"||!s.o);$("t-prima").setAttribute("aria-pressed",vista==="prima"&&!!s.o);
+  $("etichetta").textContent="N° "+String(i+1).padStart(2,"0")+" · "+s.t+(s.o?"":" · schermata nuova");
+  $("titolo").innerHTML="";$("titolo").append(s.h[0]);const em=document.createElement("em");em.textContent=s.h[1];$("titolo").appendChild(em);
+  $("testo").textContent=s.d;
+  const vn=(round2[s.id]?.nota)||(s.o?(vecchi[chiaveVecchia(s.o)]?.nota||""):"");$("blocco-nota").hidden=!vn;$("sua-nota").textContent=vn;
+  $("cambi").innerHTML="";s.c.forEach(t=>{const li=document.createElement("li");li.textContent=t;$("cambi").appendChild(li)});
+  $("b-si").setAttribute("aria-pressed",g.voto==="si");$("b-no").setAttribute("aria-pressed",g.voto==="no");
+  if(document.activeElement!==$("nota"))$("nota").value=g.nota||"";
+  $("pos").textContent=(i+1)+" di "+S.length;$("prec").disabled=i===0;$("succ").disabled=i===S.length-1;
+  $("salvato").textContent=g.voto||g.nota?(db?"Salvato":"Salvato su questo dispositivo"):"";
+  fasi();indice();try{history.replaceState(null,"","#"+S[i].id)}catch(e){}
+}
+function vai(k){if(k<0||k>=S.length)return;i=k;mostra()}
+async function salva(campi){const k=chiave(i);giudizi[k]={...(giudizi[k]||{}),...campi,schermata:S[i].t,aggiornato:new Date().toISOString()};scrivi();indice();
+  if(db){try{await db.collection("giudizi4").doc(k).set(giudizi[k]);$("salvato").textContent="Salvato"}catch(e){$("salvato").textContent="Non salvato online: riprova tra poco"}}else $("salvato").textContent="Salvato su questo dispositivo"}
+$("b-si").onclick=()=>{const g=giudizi[chiave(i)]||{};salva({voto:g.voto==="si"?null:"si"});mostra()};
+$("b-no").onclick=()=>{const g=giudizi[chiave(i)]||{};salva({voto:g.voto==="no"?null:"no"});mostra();$("nota").focus()};
+let t;$("nota").addEventListener("input",()=>{clearTimeout(t);$("salvato").textContent="…";t=setTimeout(()=>salva({nota:$("nota").value}),700)});
+$("prec").onclick=()=>vai(i-1);$("succ").onclick=()=>vai(i+1);
+$("t-dopo").onclick=()=>{vista="dopo";mostra()};$("t-prima").onclick=()=>{vista="prima";mostra()};
+document.addEventListener("keydown",e=>{if(e.target.tagName==="TEXTAREA")return;if(e.key==="ArrowRight")vai(i+1);if(e.key==="ArrowLeft")vai(i-1)});
+window.addEventListener("resize",scala);
+const hh=(location.hash||"").slice(1);const hi=S.findIndex(x=>x.id===hh);if(hi>=0)i=hi;
+
+mostra();
+(async()=>{try{db=await window.claude?.use?.("db")}catch(e){db=null}if(!db)return;
+  db.collection("giudizi").onSnapshot(snap=>{snap.docs.forEach(d=>{vecchi[d.id]=d.data()});mostra()},()=>{});
+  db.collection("giudizi2").onSnapshot(snap=>{snap.docs.forEach(d=>{if(d.data().nota&&!round3[d.id]?.nota)round2[d.id]=d.data()});mostra()},()=>{});
+  db.collection("giudizi3").onSnapshot(snap=>{snap.docs.forEach(d=>{round3[d.id]=d.data();if(d.data().nota)round2[d.id]=d.data()});mostra()},()=>{});
+  db.collection("giudizi4").onSnapshot(snap=>{snap.docs.forEach(d=>{giudizi[d.id]=d.data()});scrivi();mostra()},()=>{});
+})();
+</script>
