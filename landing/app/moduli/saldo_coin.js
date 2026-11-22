@@ -102,9 +102,64 @@ export function creaSaldo({ coin, testata }) {
 
 // Passo 2: il saldo nella testata si legge all'avvio e di nuovo quando si torna sull'app (visibilitychange). Nessun
 // timer: il numero cambia solo con una stanza o un regalo, e chi torna sull'app vede quello aggiornato.
-export async function collegaSaldo({ saldo, pagina } = {}) {
+// Passo 3: avviso(n) apre la schermata 21 quando i Coin non bastano per la prossima stanza, una sola volta per visita
+// (in memoria, niente salvataggi locali): chi chiude con «Dopo» non lo rivede a ogni ritorno sull'app.
+export async function collegaSaldo({ saldo, pagina, avviso } = {}) {
   if (!saldo || typeof saldo.aggiorna !== "function" || !pagina) return { ok: false, motivo: "manca" };
-  const leggi = () => Promise.resolve().then(() => saldo.aggiorna()).catch(() => ({ ok: false, motivo: "rete" }));
+  let avvisato = false;
+  const avvisa = (r) => {
+    if (avvisato || typeof avviso !== "function" || !r || r.ok !== true || r.quasiFiniti !== true) return;
+    avvisato = true;
+    try { avviso(r.saldo); } catch { /* la vista non deve fermare il saldo */ }
+  };
+  const leggi = () => Promise.resolve().then(() => saldo.aggiorna()).catch(() => ({ ok: false, motivo: "rete" }))
+    .then((r) => { avvisa(r); return r; });
   pagina.addEventListener("visibilitychange", () => { if (pagina.visibilityState === "visible") leggi(); });
   return leggi();
+}
+
+function el(doc, tag, classe, testo) {
+  const e = doc.createElement(tag);
+  if (classe) e.className = classe;
+  if (testo != null) e.textContent = testo;
+  return e;
+}
+
+// Schermata 21 come foglio dal basso, fuori da <main id="app"> (la home si ridisegna). dati = quasiFiniti(saldo).
+// Pulsanti veri, Esc chiude, l'attenzione parte da «Dopo». «Ricarica» in beta resta spento.
+export function apriFoglioQuasiFiniti(contenitore, dati, { alChiudi } = {}) {
+  if (!contenitore || !dati) return null;
+  const doc = contenitore.ownerDocument;
+  const foglio = el(doc, "section", "foglio-regali foglio-coin");
+  foglio.setAttribute("role", "dialog");
+  foglio.setAttribute("aria-modal", "true");
+  foglio.setAttribute("aria-labelledby", "foglio-coin-titolo");
+  let aperto = true;
+  const chiudi = () => {
+    if (!aperto) return;
+    aperto = false;
+    foglio.remove();
+    if (typeof alChiudi === "function") alChiudi();
+  };
+  const titolo = el(doc, "h2", null, dati.titolo[0]);
+  titolo.setAttribute("id", "foglio-coin-titolo");
+  titolo.append(el(doc, "br"), el(doc, "em", null, dati.titolo[1]));
+  const pacco = el(doc, "div", "pacco");
+  const q = el(doc, "div", "q", String(dati.pacchetto.coin));
+  q.append(el(doc, "small", null, dati.pacchetto.sotto));
+  pacco.append(q, el(doc, "div"), el(doc, "div", "e", dati.pacchetto.euro));
+  const azioni = el(doc, "div", "azioni");
+  const dopo = el(doc, "button", "bottone-secondario", dati.dopo);
+  dopo.setAttribute("type", "button");
+  dopo.addEventListener("click", chiudi);
+  const ricarica = el(doc, "button", "bottone", dati.ricarica);
+  ricarica.setAttribute("type", "button");
+  ricarica.disabled = dati.attivo !== true;
+  azioni.append(dopo, ricarica);
+  foglio.append(el(doc, "p", "foglio-regali-titolo", dati.etichetta), titolo, el(doc, "p", "sub", dati.testo), pacco,
+    el(doc, "p", "foglio-regali-nota", T.notaBeta), azioni);
+  foglio.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); chiudi(); } });
+  contenitore.append(foglio);
+  dopo.focus();
+  return { chiudi };
 }
