@@ -14,6 +14,10 @@ export const TESTI_SETTIMANA = Object.freeze({
   domenica: "Le porte si aprono alle 21.",
   porteAperte: "Le porte sono aperte.",
   manca: "Mancano",
+  uomini: "Uomini",
+  donne: "Donne",
+  cerchioDonna: "La tua stanza: 12 posti, uomini a sinistra e donne a destra. Il tuo posto è a destra.",
+  cerchioUomo: "La tua stanza: 12 posti, uomini a sinistra e donne a destra. Il tuo posto è a sinistra.",
 });
 
 const FUSO = "Europe/Rome";
@@ -88,4 +92,18 @@ export function vistaSettimanaHome(h, m) {
     h("h1", {}, m.titolo, h("br"), h("em", {}, m.evidenza)),
     m.conto ? h("p", { classe: "conto-settimana", id: "conto-settimana", "aria-label": `${TESTI_SETTIMANA.manca} ${m.conto}` }, m.conto) : null,
     m.nota ? h("p", { classe: "sottotitolo nota-settimana" }, m.nota) : null);
+}
+
+// Il cerchio dei 12 posti sotto il conto (schermata 16): uomini a sinistra (k6…k11), donne a destra (k0…k5), «tu» in
+// rosso in alto dalla tua parte. Solo il proprio «mi presento come», nessun dato di altri. Per «non binario» e
+// «preferisco descrivermi» niente cerchio finché il CPO non dice come disporre la stanza. Le posizioni sono nel CSS.
+const TU = { donna: 0, uomo: 11 };
+export function vistaCerchioHome(h, presento) {
+  if (!Object.hasOwn(TU, presento)) return null;
+  const tu = TU[presento];
+  return h("div", { classe: "cerchio", role: "img", "aria-label": presento === "donna" ? TESTI_SETTIMANA.cerchioDonna : TESTI_SETTIMANA.cerchioUomo },
+    h("div", { classe: "asse" }),
+    h("span", { classe: "et sx", "aria-hidden": "true" }, TESTI_SETTIMANA.uomini),
+    h("span", { classe: "et dx", "aria-hidden": "true" }, TESTI_SETTIMANA.donne),
+    Array.from({ length: 12 }, (_, k) => h("i", { classe: k === tu ? `p k${k} tu` : `p k${k}` })));
 }
