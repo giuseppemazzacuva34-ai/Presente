@@ -17,6 +17,9 @@
 //        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
 //   POST /app/api/incontro  { azione: "racconta", porta, testo }                     → racconta_valutazione
 //        «Sì, racconto» (passo 3h): il racconto (1-1000 caratteri) va nella segnalazione da 1 ora già partita; «raccontato»
+//   GET  /app/api/incontro?riepilogo=1                                              → riepilogo_valutazioni
+//        Passo 3i (D20): { ok: true, riepilogo: { valutati, bollini, no_ricevuti } } della persona del token, alla
+//        cieca; mai la singola valutazione né la domanda sulla sicurezza (ripulito da soloRiepilogo).
 //   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
 //   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
 //   lettura non va, l'incontro si legge lo stesso, senza locali.
@@ -24,7 +27,7 @@
 // domani alla scadenza, un solo luogo, 3 controproposte, 48 ore, scadenza, crediti) le applica il database: qui solo
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
-import { controllaRisposte } from "../api/valutazione.js";
+import { controllaRisposte, VALUTAZIONE } from "../api/valutazione.js";
 
 export const PERCORSO_INCONTRO = "/app/api/incontro";
 const CORPO_MASSIMO = 8 * 1024; // passo 3h: il racconto arriva a 1000 caratteri, anche di 4 byte
@@ -124,6 +127,7 @@ export async function incontroApi(request, env, f = fetch) {
   if (!s) return riprova();
   const chi = await chiEDavvero(request, env, f);
   if (chi.errore) return chi.errore;
+  if (request.method === "GET" && new URL(request.url).searchParams.get("riepilogo") === "1") return riepilogo(s, chi, f);
   if (request.method === "GET") return stato(s, request, chi, f);
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
@@ -204,6 +208,25 @@ async function stato(s, request, chi, f) {
   incontro.disdetta = soloDisdetta(r.disdetta);
   Object.assign(incontro, soloLocali(await rpc(s, "locali_incontro", { p_porta: porta, p_persona: chi.id }, f)));
   return risposta(200, { ok: true, incontro });
+}
+
+// Riepilogo alla cieca (passo 3i): solo i tre campi previsti; bollini solo dal terzo incontro valutato; «no» solo
+// sulle tre domande dei fatti, mai sulla sicurezza. Forma sconosciuta → guasto («riprova»), mai un riepilogo inventato.
+const DOMANDE = VALUTAZIONE.domande.map((d) => d.id);
+const intero = (n, max) => Number.isInteger(n) && n >= 0 && n <= max;
+function soloRiepilogo(r) {
+  if (!r || typeof r !== "object" || Array.isArray(r) || !intero(r.valutati, 100000) || !Array.isArray(r.no_ricevuti)) return null;
+  let bollini = null;
+  if (r.valutati >= VALUTAZIONE.bolliniDopo && r.bollini !== null && r.bollini !== undefined) {
+    if (typeof r.bollini !== "object" || !DOMANDE.every((d) => intero(r.bollini[d], r.valutati))) return null;
+    bollini = Object.fromEntries(DOMANDE.map((d) => [d, r.bollini[d]]));
+  }
+  return { valutati: r.valutati, bollini, no_ricevuti: DOMANDE.filter((d) => r.no_ricevuti.includes(d)) };
+}
+async function riepilogo(s, chi, f) {
+  const r = soloRiepilogo(await rpc(s, "riepilogo_valutazioni", { p_persona: chi.id }, f));
+  if (!r) return riprova();
+  return risposta(200, { ok: true, riepilogo: r });
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve
