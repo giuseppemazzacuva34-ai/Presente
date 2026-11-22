@@ -1,7 +1,7 @@
 // Avvio della web app (Fase 2): registra il service worker (app installabile) e apre l'iscrizione.
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
-import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati, nomeMio } from "/app/moduli/flusso.js";
+import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati, nomeMio, regaliCambiati } from "/app/moduli/flusso.js";
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -27,6 +27,8 @@ import { creaAvvisiPorte } from "/app/moduli/avvisi_porte.js";
 import { creaSalaAttesa } from "/app/moduli/sala_attesa.js";
 import { fabbricaSchermata } from "/app/moduli/schermata_svelamento.js";
 import { conAttesa } from "/app/moduli/in_attesa.js";
+import { creaRegali } from "/app/moduli/regali.js";
+import { creaRegaliStanza } from "/app/moduli/regali_stanza.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -127,7 +129,10 @@ async function preparaAccesso() {
         nomeMio: () => nomeMio(), aggiorna: () => portaCambiata() }) });
     // Avvisi delle porte nella home (#65 passo 4, senza push finché non c'è D24): una lettura al minuto, solo con porte aperte.
     const avvisiPorte = creaAvvisiPorte({ svelamento: sv, aggiorna: () => avvisiCambiati(), pagina: document });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte };
+    // Regali (#331 parte C): «Manda un regalo» sulla scheda; il foglio sta in .pagina.app, fuori da #app che si ridisegna.
+    const regali = creaRegaliStanza({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
+      contenitore: document.querySelector(".pagina.app"), aggiorna: () => regaliCambiati() });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, regali };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
