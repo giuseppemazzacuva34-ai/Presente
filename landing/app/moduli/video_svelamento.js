@@ -293,6 +293,11 @@ export function collegaVideo({ svelamento, video, porta }) {
       return c.ok ? { ok: true, vista: segui(c.vista) } : no(c);
     },
     riprova: async () => pubblicaCon(await video.riparti()),
+    // Passo 8b-3b: la connessione è caduta; il server ferma il timer (si torna molto sfocati con la sua vista).
+    async caduta() {
+      const r = await svelamento.cadutaVideo(porta);
+      return r.ok ? { ok: true, vista: segui(r.vista) } : no(r);
+    },
     async vista() {
       const r = await svelamento.vistaVideo(porta);
       return r.ok ? { ok: true, vista: segui(r.vista) } : no(r);
