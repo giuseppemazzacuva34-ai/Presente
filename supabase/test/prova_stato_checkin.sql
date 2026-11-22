@@ -98,7 +98,7 @@ select public.checkin_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5c5c5c5c
 insert into s select 'a2', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5a5a5a5a-0000-4000-8000-00000000005a');
 insert into s select 'c2', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000ac', '5c5c5c5c-0000-4000-8000-00000000005c');
 select pg_temp.ok((select a.j->>'segnale' = c.j->>'segnale' and a.j->>'segnale' is not null and a.j->>'esito' = 'avvenuto'
-  and a.j->>'stato' = 'concluso' and a.j->'azioni' = '[]'::jsonb and (c.j->>'checkin_mio')::boolean and (c.j->>'checkin_altro')::boolean
+  and a.j->>'stato' = 'concluso' and a.j->'azioni' = '["valuta"]'::jsonb and (c.j->>'checkin_mio')::boolean and (c.j->>'checkin_altro')::boolean
   from s a, s c where a.chi = 'a2' and c.chi = 'c2'), 'stato: dopo i due check-in lo stesso segnale per tutti e due');
 select pg_temp.ok((select j::text not like '%5a5a5a5a%' and j::text not like '%5c5c5c5c%' from s where chi = 'c2'),
   'stato: mai l''id delle persone');
