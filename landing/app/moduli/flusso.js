@@ -1226,10 +1226,22 @@ export function chiaviCambiate() {
 // Schermata della porta (#65): il modulo avvisa a ogni cambio; si ridisegna solo nella home, e il fuoco va al titolo
 // quando la schermata si apre o si chiude, così tastiera e lettore di schermo non si perdono.
 let portaEraAperta = false;
+let confermaEra = null;
 export function portaCambiata() {
   if (!radice || !portaSvelamento || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
   disegna();
   const aperta = portaSvelamento.modello().aperta;
+  // #65 passo 8b-3a: la conferma del sì/no. Aperta → fuoco su «Conferma»; chiusa (Annulla o risposta data) → fuoco
+  // sul primo pulsante del gruppo della domanda, o sul gruppo stesso, così la tastiera non si perde.
+  const conferma = portaSvelamento.modello().conferma || null;
+  if (aperta && conferma !== confermaEra) {
+    const prima = confermaEra;
+    confermaEra = conferma;
+    const dove = conferma ? radice.querySelector("#risposta-conferma-bottone")
+      : prima ? (radice.querySelector(".risposta-svelamento button") || radice.querySelector(".risposta-svelamento")) : null;
+    if (dove) { if (!conferma && dove.tagName !== "BUTTON") dove.setAttribute("tabindex", "-1"); dove.focus({ preventScroll: true }); }
+  }
+  if (!aperta) confermaEra = null;
   if (aperta !== portaEraAperta) {
     portaEraAperta = aperta;
     if (!aperta && avvisiPorte) avvisiPorte.subito();

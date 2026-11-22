@@ -58,7 +58,20 @@ export const TESTI = Object.freeze({
   nonArrivato: "<nome> non c'è. Proponi un altro momento.",
   // Provvisorio, da rivedere con «contenuti».
   entra: "Entra",
+  // Passo 8b-3a (spec passi 8-9, regola del CPO del 21/11): il sì/no segreto. Conferma e Annulla sono quelli del server.
+  si: "Sì",
+  no: "No",
+  confermaSi: "Rispondi sì? Non potrai cambiarla.",
+  confermaNo: "Rispondi no? Non potrai cambiarla.",
+  conferma: "Conferma",
+  annulla: "Annulla",
+  domanda: "Vuoi incontrare <nome>?",
+  // Provvisori, da rivedere con «contenuti».
+  giaRisposto: "Hai già risposto: la risposta non si può cambiare.",
+  titoloSvelamento: "Svelamento",
 });
+const RISPOSTE = ["si", "no"];
+const ESITI = ["doppio_si", "chiusa"];
 const MAX_FASCE = 3;
 const ENTRA_MS = 3000; // mentre si aspetta l'altra persona si richiede «entra» ogni 3 secondi
 const VIDEO_ATTIVO = new Set(["collego", "aspetta", "in_corso", "caduta"]);
@@ -78,6 +91,12 @@ export function contoPorta(scadeIl, adesso = new Date()) {
   if (ore > 0) return `${ore === 1 ? "Manca" : "Mancano"} ${plurale(ore, "ora", "ore")} e ${plurale(minuti, "minuto", "minuti")} per lo svelamento.`;
   const m = Math.max(1, minuti);
   return `${m === 1 ? "Manca" : "Mancano"} ${plurale(m, "minuto", "minuti")} per lo svelamento.`;
+}
+
+// Passo 8b-3a: «Mancano 33 ore e 0 minuti per rispondere.» (48 ore dalla fine dello svelamento); null a tempo finito.
+export function contoRisposta(scadeIl, adesso = new Date()) {
+  const conto = contoPorta(scadeIl, adesso);
+  return conto ? conto.replace("per lo svelamento.", "per rispondere.") : null;
 }
 
 // Le mezz'ore che si possono ancora segnare: iniziano da adesso in poi (allineate a :00 o :30) e finiscono entro la
@@ -122,10 +141,32 @@ function quandoPorta(p, n, adesso) {
   };
 }
 
+const chiDi = (p) => { const n = nome(p.nome) || "questa persona"; return Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n; };
+
 // Cosa mostra la schermata di una porta (spec, passi 1-4). null = stato non ancora letto.
 export function schermataPorta(stato, idPorta, adesso = new Date()) {
   if (!stato || !Array.isArray(stato.porte)) return null;
-  const p = UUID.test(String(idPorta || "")) ? stato.porte.find((x) => x && x.porta === idPorta) : null;
+  const valido = UUID.test(String(idPorta || ""));
+  const trova = (l) => (valido && Array.isArray(l) ? l.find((x) => x && x.porta === idPorta) : null) || null;
+  // Passo 8b-3a: l'esito (uguale per entrambi, testo del server) vince; poi la porta svelata in attesa del sì/no.
+  const e = trova(stato.esiti);
+  if (e) {
+    if (!ESITI.includes(e.esito) || typeof e.testo !== "string" || !e.testo) return { tipo: "chiusa", testo: TESTI.portaChiusa };
+    return { tipo: "esito", porta: e.porta, esito: e.esito, testo: e.testo, chi: chiDi(e) };
+  }
+  const sv = trova(stato.svelate);
+  if (sv) {
+    const hoRisposto = sv.ho_risposto === true;
+    return {
+      tipo: "risposta", porta: sv.porta, chi: chiDi(sv),
+      domanda: typeof sv.domanda === "string" && sv.domanda ? sv.domanda : TESTI.domanda.replace("<nome>", nome(sv.nome) || "questa persona"),
+      conto: hoRisposto ? null : contoRisposta(sv.risposta_scade_il, adesso),
+      hoRisposto,
+      // Solo il testo del server: mai cosa si è risposto, mai se l'altra persona ha risposto.
+      inAttesa: hoRisposto && typeof sv.in_attesa === "string" && sv.in_attesa ? sv.in_attesa : null,
+    };
+  }
+  const p = trova(stato.porte);
   if (!p) return { tipo: "chiusa", testo: TESTI.portaChiusa };
   const conto = contoPorta(p.scade_il, adesso);
   if (!conto) return { tipo: "scaduta", testo: TESTI.scaduta };
@@ -164,6 +205,7 @@ const ERRORI = Object.freeze({
   gia_iniziato: TESTI.giaIniziato,
   manca_caparra: TESTI.mancaCaparra,
   fasce_non_valide: TESTI.fasceNonValide,
+  gia_risposto: TESTI.giaRisposto,
 });
 export const testoErroreSvelamento = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 const errore = (motivo) => ({ ok: false, motivo, testo: testoErroreSvelamento(motivo) });
@@ -260,6 +302,12 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "chiudi_e_segnala", porta });
       return r.ok ? { ok: true, esito: r.dati.esito } : r;
     },
+    // Passo 8b-3a: il sì/no segreto (passo 8b-2a lato server). Chi risponde lo dice solo il token.
+    async rispondi(porta, risposta) {
+      if (!UUID.test(String(porta || "")) || !RISPOSTE.includes(risposta)) return errore("riprova");
+      const r = await chiedi({ azione: "rispondi", porta, risposta });
+      return r.ok ? { ok: true, esito: r.dati.esito, testo: r.dati.testo ?? null, stato: r.dati.stato ?? null } : r;
+    },
     async vistaVideo(porta) {
       if (!UUID.test(String(porta || ""))) return errore("non_trovata");
       const r = await chiedi({ azione: "vista", porta });
@@ -294,6 +342,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
   let inVoloEntra = false;
   let schermata = null; // la schermata del video, solo dopo «iniziato» + «video»
   let segnala = null;   // dopo «Chiudi e segnala»: { contro, origine, nome } per il modulo della #7
+  let conferma = null;  // passo 8b-3a: "si" | "no" in attesa di «Conferma» (solo in memoria)
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
   // «Passa alle foto» dalla sala: la propria scelta diventa «foto» (vale per entrambi, lo decide il server).
   async function passaAlleFoto() {
@@ -431,6 +480,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       fermaIngresso();
       chiudiVideo();
       segnala = null;
+      conferma = null;
       if (sala) sala.chiudi();
       porta = String(id || "");
       stato = null;
@@ -447,6 +497,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       porta = null;
       stato = null;
       errore = null;
+      conferma = null;
       ricarica = false;
       orari = false;
       carica = false;
@@ -474,6 +525,48 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
     // Il modulo della segnalazione è stato inviato o chiuso.
     fineSegnala() {
       segnala = null;
+      avvisa();
+    },
+    // Passo 8b-3a: Sì o No apre la conferma; nulla parte prima di «Conferma».
+    scegliRisposta(valore) {
+      if (inCorso || !porta || !RISPOSTE.includes(valore)) return;
+      const s = schermataPorta(stato, porta, adesso());
+      if (!s || s.tipo !== "risposta" || s.hoRisposto) return;
+      conferma = valore;
+      errore = null;
+      avvisa();
+    },
+    annullaRisposta() {
+      if (conferma === null) return;
+      conferma = null;
+      avvisa();
+    },
+    async confermaRisposta() {
+      if (inCorso || !porta || !conferma) return;
+      const s = schermataPorta(stato, porta, adesso());
+      if (!s || s.tipo !== "risposta" || s.hoRisposto) { conferma = null; avvisa(); return; }
+      const valore = conferma;
+      const id = porta;
+      inCorso = true;
+      errore = null;
+      avvisa();
+      const r = await Promise.resolve().then(() => svelamento.rispondi(id, valore)).catch(() => ({ ok: false, motivo: "rete" }));
+      inCorso = false;
+      if (porta !== id) return;
+      if (r && r.ok) {
+        conferma = null;
+        if (r.stato) stato = r.stato;
+        else await leggi();
+        avvisa();
+        return;
+      }
+      const motivo = r && r.motivo;
+      // Le regole le dice il server: dopo un rifiuto si rilegge, così la schermata mostra la porta come la vede lui.
+      if (["gia_risposto", "tempo_scaduto", "porta_chiusa", "non_svelata", "non_trovata"].includes(motivo)) {
+        conferma = null;
+        await leggi();
+      }
+      errore = (r && r.testo) || testoErroreSvelamento(motivo);
       avvisa();
     },
     mostraRicarica() {
@@ -570,6 +663,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       orari,
       bozza: [...bozza],
       ingresso,
+      conferma,
       puoEntrare: typeof creaVideo === "function",
       nome: nomeAltra(),
       segnala: segnala ? { ...segnala } : null,
@@ -591,6 +685,8 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
     return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
       h("h1", { id: "porta-titolo", classe: "nascosto" }, s && s.tipo === "porta" ? s.titolo : "Svelamento"),
       vistaSchermata(h, video),
+      // Passo 8b-3a: a video finito, appena il server dà la porta svelata, sotto «Ecco <nome>.» c'è il sì/no.
+      fase === "finito" && s && (s.tipo === "risposta" || s.tipo === "esito") ? vistaRisposta(h, ps, m, s) : null,
       VIDEO_ATTIVO.has(fase) ? null
         : h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI.torna)));
   }
@@ -601,6 +697,7 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
       h("button", { classe: "link", type: "button", onclick: () => ps.riprova() }, "Riprova"));
   }
   if (s && (s.tipo === "chiusa" || s.tipo === "scaduta")) parti.push(h("p", { classe: "sottotitolo" }, s.testo));
+  if (s && (s.tipo === "risposta" || s.tipo === "esito")) parti.push(vistaRisposta(h, ps, m, s));
   if (s && s.tipo === "porta") {
     const c = s.caparra;
     parti.push(
@@ -640,9 +737,38 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
     }
   }
   return h("section", { classe: "schermata porta-svelamento", "aria-labelledby": "porta-titolo" },
-    h("h1", { id: "porta-titolo" }, s && s.tipo === "porta" ? s.titolo : "Svelamento"),
+    h("h1", { id: "porta-titolo" }, s && s.tipo === "porta" ? s.titolo : TESTI.titoloSvelamento),
     parti,
     h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI.torna)));
+}
+
+// Passo 8b-3a: la domanda segreta e l'esito. Sì / No aprono una conferma con «Conferma» e «Annulla» (pulsanti veri,
+// quindi da tastiera con Invio e Spazio); il fuoco va su «Conferma» quando si apre (portaCambiata in flusso.js).
+function vistaRisposta(h, ps, m, s) {
+  if (s.tipo === "esito") {
+    return h("div", { classe: "esito-svelamento" },
+      h("p", { classe: "porta-chi" }, h("strong", {}, s.chi)),
+      h("p", { role: "status" }, s.testo));
+  }
+  const parti = [h("p", { classe: "porta-chi" }, h("strong", {}, s.chi))];
+  if (s.hoRisposto) {
+    parti.push(h("p", { role: "status" }, s.inAttesa || TESTI.giaRisposto));
+  } else {
+    if (s.conto) parti.push(h("p", { classe: "nota", role: "timer" }, s.conto));
+    if (m.conferma) {
+      parti.push(h("p", { id: "risposta-conferma", role: "status" }, m.conferma === "si" ? TESTI.confermaSi : TESTI.confermaNo),
+        h("div", { classe: "azioni" },
+          h("button", { classe: "bottone", type: "button", id: "risposta-conferma-bottone", "aria-describedby": "risposta-conferma",
+            disabled: m.inCorso, onclick: () => ps.confermaRisposta() }, m.inCorso ? "Un attimo…" : TESTI.conferma),
+          h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso, onclick: () => ps.annullaRisposta() }, TESTI.annulla)));
+    } else {
+      parti.push(h("div", { classe: "azioni" },
+        h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.scegliRisposta("si") }, TESTI.si),
+        h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.scegliRisposta("no") }, TESTI.no)));
+    }
+  }
+  return h("div", { classe: "risposta-svelamento", role: "group", "aria-labelledby": "risposta-titolo" },
+    h("h2", { id: "risposta-titolo" }, s.domanda), parti);
 }
 
 // Passo 5b: «Quando?». Gli orari si scelgono con 3 menu (uno per mezz'ora), ognuno con la sua etichetta.
