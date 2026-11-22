@@ -1,0 +1,681 @@
+[
+ {
+  "n": 1,
+  "id": "n01",
+  "t": "Benvenuto",
+  "h": [
+   "Il logo al centro,",
+   "l'onda sotto."
+  ],
+  "d": "La prima schermata: logo centrato con l'onda della voce, una frase sola e un pulsante in 3D.",
+  "c": [
+   "Onda nei toni del rosso del brand, con linee più morbide",
+   "«ENTRA» più grande e in maiuscolo",
+   "Tutte le scritte dei pulsanti in maiuscolo, in tutta l'app"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/01-benvenuto.png"
+ },
+ {
+  "n": 2,
+  "id": "n02",
+  "t": "Passo 1 · Email",
+  "h": [
+   "Pulsanti allineati,",
+   "stessa altezza."
+  ],
+  "d": "«Indietro» e «Mandami il link» sono sulla stessa riga, alti uguali, in 3D.",
+  "c": [
+   "Logo centrato con l'onda",
+   "«Indietro» e «Mandami il link» allineati e alti uguali",
+   "Pulsanti in 3D, sempre nello stesso punto"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/02-passo-1-email.png"
+ },
+ {
+  "n": 3,
+  "id": "n03",
+  "t": "Passo 2 · Età",
+  "h": [
+   "Quando sei",
+   "nato o nata?"
+  ],
+  "d": "Data di nascita su una riga, pulsanti allineati in basso.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/03-passo-2-eta.png"
+ },
+ {
+  "n": 4,
+  "id": "n04",
+  "t": "Passo 3 · Le regole",
+  "h": [
+   "Quattro regole,",
+   "prima di entrare."
+  ],
+  "d": "Le regole in quattro righe brevi, con la spunta e i pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Regole più compatte, tutte visibili senza scorrere",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/04-passo-3-le-regole.png"
+ },
+ {
+  "n": 5,
+  "id": "n05",
+  "t": "Passo 4 · Chi sei",
+  "h": [
+   "Gli altri vedranno",
+   "solo nome, età e provincia."
+  ],
+  "d": "Nome, provincia e come ti presenti, con i pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/05-passo-4-chi-sei.png"
+ },
+ {
+  "n": 6,
+  "id": "n06",
+  "t": "Passo 5 · Chi cerchi",
+  "h": [
+   "Chi vorresti",
+   "nella tua stanza?"
+  ],
+  "d": "Le preferenze in gruppi corti, pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/06-passo-5-chi-cerchi.png"
+ },
+ {
+  "n": 7,
+  "id": "n07",
+  "t": "Passo 6 · La tua voce",
+  "h": [
+   "La voce",
+   "si vede mentre parli."
+  ],
+  "d": "Mentre registri, l'onda si muove con la tua voce. Pulsanti allineati e in 3D.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Onda grande che si muove durante la registrazione",
+   "Pulsante «Ferma» in 3D; «Indietro» e «Continua» allineati"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/07-passo-6-la-tua-voce.png"
+ },
+ {
+  "n": 8,
+  "id": "n08",
+  "t": "Passo 6 · Riascolta",
+  "h": [
+   "Ti riascolti,",
+   "e se vuoi rifai."
+  ],
+  "d": "La registrazione pronta, con «Riascolta» e «Rifai» sulla stessa riga.",
+  "c": [
+   "Logo centrato con l'onda",
+   "«Riascolta» e «Rifai» sulla stessa riga, in 3D",
+   "Pulsanti in basso allineati"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/08-passo-6-riascolta.png"
+ },
+ {
+  "n": 9,
+  "id": "n09",
+  "t": "Passo 7 · Tre risposte",
+  "h": [
+   "Tre domande,",
+   "a voce."
+  ],
+  "d": "Le domande come pillole, le tre scelte evidenziate.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/09-passo-7-tre-risposte.png"
+ },
+ {
+  "n": 10,
+  "id": "n10",
+  "t": "Passo 8 · Questionario",
+  "h": [
+   "Quindici domande",
+   "che nessuno vedrà."
+  ],
+  "d": "Una domanda per schermata, pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/10-passo-8-questionario.png"
+ },
+ {
+  "n": 11,
+  "id": "n11",
+  "t": "Passo 8 · Una domanda",
+  "h": [
+   "In coppia",
+   "le spese si dividono…"
+  ],
+  "d": "Domanda concreta e quanto conta per te, pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/11-passo-8-una-domanda.png"
+ },
+ {
+  "n": 12,
+  "id": "n12",
+  "t": "Passo 9 · Le foto",
+  "h": [
+   "Le foto ci sono.",
+   "Solo dopo il sì."
+  ],
+  "d": "Le tre foto sfocate come le vedranno gli altri prima della porta.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Le foto si vedono sfocate: si capisce subito che restano nascoste",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "ingresso",
+  "nuova": false,
+  "file": "schermate/12-passo-9-le-foto.png"
+ },
+ {
+  "n": 13,
+  "id": "coin-negozio",
+  "t": "I tuoi Coin",
+  "h": [
+   "I Coin si comprano",
+   "prima di entrare."
+  ],
+  "d": "Nuova schermata, subito dopo l'iscrizione: quanti Coin hai, i due pacchetti e quanto costa ogni cosa. La prima stanza resta in regalo.",
+  "c": [
+   "Schermata nuova dopo la registrazione",
+   "Due pacchetti: 200 Coin a 20 € e 500 Coin a 45 € (+50 in regalo)",
+   "Cosa costa: stanza 80, caparra 10, regali da 5 a 20",
+   "Pagamento con Gomry"
+  ],
+  "f": "ingresso",
+  "nuova": true,
+  "file": "schermate/13-i-tuoi-coin.png"
+ },
+ {
+  "n": 14,
+  "id": "coin-pagamento",
+  "t": "Pagamento con Gomry",
+  "h": [
+   "Paghi con Gomry,",
+   "in un tocco."
+  ],
+  "d": "Nuova schermata: il foglio di pagamento di Gomry sale dal basso. Presente non vede i dati della carta.",
+  "c": [
+   "Schermata nuova",
+   "Pagamento con Gomry: Apple Pay, Google Pay o carta",
+   "Un pulsante solo per pagare"
+  ],
+  "f": "ingresso",
+  "nuova": true,
+  "file": "schermate/14-pagamento-con-gomry.png"
+ },
+ {
+  "n": 15,
+  "id": "coin-fatto",
+  "t": "Coin caricati",
+  "h": [
+   "Ora hai",
+   "550 Coin."
+  ],
+  "d": "Nuova schermata: conferma del pagamento, con il saldo che sale. Il saldo resta sempre visibile in alto a sinistra.",
+  "c": [
+   "Schermata nuova",
+   "Il saldo in Coin è sempre in alto a sinistra, accanto al logo"
+  ],
+  "f": "ingresso",
+  "nuova": true,
+  "file": "schermate/15-coin-caricati.png"
+ },
+ {
+  "n": 16,
+  "id": "n13",
+  "t": "La home",
+  "h": [
+   "La home cambia",
+   "con la settimana."
+  ],
+  "d": "Prima della stanza: il conto alla rovescia al lunedì. L'elenco delle persone sta solo nella stanza, «Elimina account» solo nel profilo.",
+  "c": [
+   "Logo centrato con l'onda e il profilo in alto a destra",
+   "Niente elenco persone né «Elimina account» nella home",
+   "Una sola cosa da fare: il conto alla rovescia alla stanza"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/16-la-home.png"
+ },
+ {
+  "n": 17,
+  "id": "scegli-stanza",
+  "t": "Scegli la stanza",
+  "h": [
+   "Prima la stanza",
+   "più affine a te."
+  ],
+  "d": "Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le persone più affini, sotto le stanze con un'esperienza. Le esperienze sono in arrivo.",
+  "c": [
+   "Schermata nuova",
+   "Prima proposta: la stanza con le persone più affini",
+   "Sotto: stanze Esperienza e VIP (in arrivo)",
+   "Il costo in Coin su ogni stanza"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/17-scegli-la-stanza.png"
+ },
+ {
+  "n": 18,
+  "id": "n14",
+  "t": "La stanza",
+  "h": [
+   "Una stanza viva:",
+   "chi c'è, chi parla."
+  ],
+  "d": "Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento.",
+  "c": [
+   "Stato di ogni persona: online (punto chiaro che pulsa), in chiamata (rosso), non in linea",
+   "Nel cerchio, una linea rossa unisce chi è in chiamata",
+   "«Fissa» al posto di «Chiama» quando la persona è occupata o non in linea",
+   "Gli appuntamenti fissati compaiono in cima alla stanza"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/18-la-stanza.png"
+ },
+ {
+  "n": 19,
+  "id": "fissa-chiamata",
+  "t": "Fissa una chiamata",
+  "h": [
+   "Datevi",
+   "un appuntamento."
+  ],
+  "d": "Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima.",
+  "c": [
+   "Schermata nuova",
+   "Giorno e ora a scelta, entro la settimana della stanza",
+   "L'altra persona conferma o propone un altro orario",
+   "Promemoria 10 minuti prima a tutti e due"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/19-fissa-una-chiamata.png"
+ },
+ {
+  "n": 20,
+  "id": "coin-quasi-finiti",
+  "t": "Coin quasi finiti",
+  "h": [
+   "Ti restano",
+   "15 Coin."
+  ],
+  "d": "Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare.",
+  "c": [
+   "Schermata nuova",
+   "Saldo in rosso quando i Coin stanno finendo",
+   "Spiega cosa si può ancora fare e cosa no",
+   "«Dopo» e «Ricarica» sulla stessa riga"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/20-coin-quasi-finiti.png"
+ },
+ {
+  "n": 21,
+  "id": "n15",
+  "t": "Lascia la stanza",
+  "h": [
+   "Puoi uscire,",
+   "dicendo perché."
+  ],
+  "d": "Nuova schermata: chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito.",
+  "c": [
+   "Schermata nuova",
+   "Motivo obbligatorio, scelto da un elenco o scritto",
+   "Il motivo non lo vede nessuno della stanza"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/21-lascia-la-stanza.png"
+ },
+ {
+  "n": 22,
+  "id": "n16",
+  "t": "Il profilo",
+  "h": [
+   "«Elimina account»",
+   "sta qui, e solo qui."
+  ],
+  "d": "Nuova schermata: il profilo si apre dal cerchio in alto a destra. Qui modifichi voce, risposte, foto e preferenze; in fondo c'è «Elimina il mio account».",
+  "c": [
+   "Schermata nuova, dal cerchio in alto a destra",
+   "«Modifica» e «Elimina account» tolti dalla home e dalla stanza"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/22-il-profilo.png"
+ },
+ {
+  "n": 23,
+  "id": "n17",
+  "t": "La chiamata · Squilla",
+  "h": [
+   "Mentre squilla,",
+   "l'onda aspetta."
+  ],
+  "d": "Mentre la linea si collega, l'onda pulsa al centro. Sotto, quante chiamate hai fatto con questa persona.",
+  "c": [
+   "Onda nei toni del rosso, più morbida, che pulsa mentre prende la linea",
+   "Logo centrato con l'onda",
+   "«CHIUDI» in 3D e in maiuscolo"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/23-la-chiamata-squilla.png"
+ },
+ {
+  "n": 24,
+  "id": "n18",
+  "t": "La chiamata · 15 minuti",
+  "h": [
+   "Una sagoma",
+   "dietro un vetro rosso."
+  ],
+  "d": "Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra, l'onda viva della voce e il timer.",
+  "c": [
+   "Sfondo più vivo: la sagoma ondeggia e le luci si muovono dietro il vetro",
+   "Sagoma maschile perché parla una donna (Giulia); femminile se parla un uomo",
+   "Sfondo: sagoma in movimento dietro un vetro rosso (nessun volto)",
+   "Onda viva sopra la sagoma",
+   "«Microfono» e «Chiudi» sulla stessa riga, in 3D; «Chiudi e segnala» sotto"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/24-la-chiamata-15-minuti.png"
+ },
+ {
+  "n": 25,
+  "id": "regali",
+  "t": "La chiamata · I regali",
+  "h": [
+   "Un regalo",
+   "mentre parlate."
+  ],
+  "d": "Nuova schermata: durante la chiamata il tasto «Regalo» apre i tre regali. Si paga con i Coin, il saldo è in alto.",
+  "c": [
+   "Disegno nuovo per i fiori: un mazzo misto, non di rose",
+   "Rosa 5 Coin, spumante 10, fiori 20",
+   "Il saldo si aggiorna subito"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/25-la-chiamata-i-regali.png"
+ },
+ {
+  "n": 26,
+  "id": "regalo-ricevuto",
+  "t": "La chiamata · Regalo ricevuto",
+  "h": [
+   "Marco ti ha regalato",
+   "una rosa."
+  ],
+  "d": "Nuova schermata: chi riceve il regalo lo vede comparire sopra la chiamata, con un'animazione leggera.",
+  "c": [
+   "Schermata nuova",
+   "Il regalo compare sopra l'onda, poi sparisce da solo",
+   "I regali ricevuti restano nel profilo"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/26-la-chiamata-regalo-ricevuto.png"
+ },
+ {
+  "n": 27,
+  "id": "storico-regali",
+  "t": "I tuoi regali",
+  "h": [
+   "Quanti regali",
+   "hai ricevuto."
+  ],
+  "d": "Nuova schermata, dal profilo: il numero di regali ricevuti per tipo e da chi, stanza per stanza.",
+  "c": [
+   "Schermata nuova, dal profilo",
+   "Totale per tipo: rose, spumante, fiori",
+   "Elenco per persona e per stanza"
+  ],
+  "f": "stanza",
+  "nuova": true,
+  "file": "schermate/27-i-tuoi-regali.png"
+ },
+ {
+  "n": 28,
+  "id": "n19",
+  "t": "La chiamata · Le carte",
+  "h": [
+   "La carta",
+   "sopra la voce."
+  ],
+  "d": "La carta rompighiaccio appare sopra lo stesso sfondo della chiamata.",
+  "c": [
+   "Stesso sfondo della chiamata: sagoma dietro il vetro rosso",
+   "Onda viva sopra la sagoma",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/28-la-chiamata-le-carte.png"
+ },
+ {
+  "n": 29,
+  "id": "n20",
+  "t": "La chiamata · Ultimo minuto",
+  "h": [
+   "Ancora",
+   "un minuto."
+  ],
+  "d": "L'ultimo minuto: il timer diventa rosso, l'onda continua sopra la sagoma.",
+  "c": [
+   "Stesso sfondo della chiamata",
+   "Timer rosso nell'ultimo minuto",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/29-la-chiamata-ultimo-minuto.png"
+ },
+ {
+  "n": 30,
+  "id": "n21",
+  "t": "Dopo la chiamata",
+  "h": [
+   "La",
+   "richiameresti?"
+  ],
+  "d": "Sì o no in privato, sulla stessa riga e in 3D.",
+  "c": [
+   "Logo centrato con l'onda",
+   "«Sì» e «No» allineati, in 3D"
+  ],
+  "f": "stanza",
+  "nuova": false,
+  "file": "schermate/30-dopo-la-chiamata.png"
+ },
+ {
+  "n": 31,
+  "id": "n22",
+  "t": "Il diario",
+  "h": [
+   "Cosa ti è rimasto",
+   "di questa chiamata?"
+  ],
+  "d": "Il diario privato, con «Salta» e «Salva» sulla stessa riga.",
+  "c": [
+   "Logo centrato con l'onda",
+   "«Salta» e «Salva» allineati, in 3D"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/31-il-diario.png"
+ },
+ {
+  "n": 32,
+  "id": "n23",
+  "t": "Le chiavi",
+  "h": [
+   "Dai una chiave",
+   "con una frase."
+  ],
+  "d": "La chiave si dà da una schermata sua, con la frase e i pulsanti allineati.",
+  "c": [
+   "Schermata dedicata invece del riquadro dentro la stanza",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/32-le-chiavi.png"
+ },
+ {
+  "n": 33,
+  "id": "n24",
+  "t": "Chiave data",
+  "h": [
+   "Hai dato",
+   "una chiave."
+  ],
+  "d": "Conferma breve; si torna alla stanza.",
+  "c": [
+   "Logo centrato con l'onda",
+   "«Cambia frase» e «Riprendi la chiave» allineati, in 3D"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/33-chiave-data.png"
+ },
+ {
+  "n": 34,
+  "id": "n25",
+  "t": "Domenica sera",
+  "h": [
+   "Una porta",
+   "che invita."
+  ],
+  "d": "Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21.",
+  "c": [
+   "Immagine nuova, calda e accogliente al posto di quella scura",
+   "La luce oltre la porta respira piano",
+   "Pulsanti con il nuovo carattere"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/34-domenica-sera.png"
+ },
+ {
+  "n": 35,
+  "id": "n26",
+  "t": "La porta",
+  "h": [
+   "La porta si apre",
+   "piano, e c'è lui."
+  ],
+  "d": "Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo.",
+  "c": [
+   "Immagine nuova, calda e romantica al posto di quella inquietante",
+   "Apertura morbida e continua, senza scatti né blocchi",
+   "Dopo l'apertura, la luce respira piano"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/35-la-porta.png"
+ },
+ {
+  "n": 36,
+  "id": "n26b",
+  "t": "La porta · se sei un uomo",
+  "h": [
+   "La porta si apre",
+   "piano, e c'è lei."
+  ],
+  "d": "La stessa porta vista da un uomo (qui Luca): dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco.",
+  "c": [
+   "Versione per gli utenti uomini",
+   "Sagoma femminile con la rosa, stessa luce e stessa apertura morbida",
+   "Il resto della schermata è identico"
+  ],
+  "f": "scelta",
+  "nuova": true,
+  "file": "schermate/36-la-porta-se-sei-un-uomo.png"
+ },
+ {
+  "n": 37,
+  "id": "n27",
+  "t": "Lo svelamento",
+  "h": [
+   "Hai 48 ore",
+   "per lo svelamento."
+  ],
+  "d": "La caparra spiegata in tre righe, pulsanti allineati.",
+  "c": [
+   "Logo centrato con l'onda",
+   "Testo più breve sulla caparra",
+   "Pulsanti allineati e in 3D"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/37-lo-svelamento.png"
+ },
+ {
+  "n": 38,
+  "id": "n28",
+  "t": "Lo svelamento · Come",
+  "h": [
+   "Due modi",
+   "di vedersi."
+  ],
+  "d": "Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico.",
+  "c": [
+   "Due schede grandi al posto di quattro pulsanti",
+   "Il cerchio dei 10 secondi per il video, le foto sfocate per le foto",
+   "«Adesso» o un orario, in un selettore unico"
+  ],
+  "f": "scelta",
+  "nuova": false,
+  "file": "schermate/38-lo-svelamento-come.png"
+ }
+]

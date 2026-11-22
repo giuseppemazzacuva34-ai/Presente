@@ -4,8 +4,8 @@
 
 ## Dove sta il riferimento
 
-- `prototipo/index.html`: il prototipo vivo con tutte le 37 schermate e le animazioni. Si apre in locale con `python3 -m http.server` dentro `prototipo/`, poi `http://localhost:8000/#<id>` (es. `#n14`). Il codice CSS delle schermate è nella sezione `/* ===== il telefono: nuovo design ===== */`: **usate quei valori**, non stime.
-- `schermate/*.png`: le 37 schermate a 2x (780 × 1688), una per file, nell'ordine del percorso.
+- `prototipo/index.html`: il prototipo vivo con tutte le 38 schermate e le animazioni. Si apre in locale con `python3 -m http.server` dentro `prototipo/`, poi `http://localhost:8000/#<id>` (es. `#n14`). Il codice CSS delle schermate è nella sezione `/* ===== il telefono: nuovo design ===== */`: **usate quei valori**, non stime.
+- `schermate/*.png`: le 38 schermate a 2x (780 × 1688), una per file, nell'ordine del percorso.
 - `immagini/`: le immagini dei fondi (generate con AI, nessuna persona reale, volti mai a fuoco).
 - Anteprima online per Giuseppe: pagina «Dentro Presente» su claude.ai (privata).
 
@@ -35,7 +35,7 @@
 8. **Home che cambia con la settimana** (conto alla rovescia al lunedì; domenica sera conto alla rovescia alle 21). Mai «Il tuo profilo è pronto» nella sera delle porte.
 9. **Chiamata**: mentre squilla, onda che pulsa; durante la chiamata, onda viva sopra una sagoma che ondeggia dietro un vetro rosso, **dell'altro genere rispetto a chi parla** (`immagini/chiamata-uomo.jpg` se parla una donna, `immagini/chiamata-donna.jpg` se parla un uomo).
 10. **Regali in chiamata**: tasto «Regalo», foglio con rosa (5), spumante (10), fiori (20); chi riceve vede il regalo comparire sopra la chiamata. **Storico dei regali** nel profilo, per tipo e per persona.
-11. **La porta**: porta scorrevole che si apre **una volta sola**, morbida, in 6 secondi; dietro, luce calda e la sagoma dell'altra persona (`immagini/porta-uomo-rosa.jpg`; la versione femminile è da generare). Domenica sera: `immagini/porta-calda.jpg`.
+11. **La porta**: porta scorrevole che si apre **una volta sola**, morbida, in 6 secondi; dietro, luce calda e la sagoma dell'altra persona (se sei donna `immagini/porta-uomo-rosa.jpg`, se sei uomo `immagini/porta-donna-rosa.jpg`). Domenica sera: `immagini/porta-calda.jpg`.
 12. **Svelamento · come**: due schede (videochiamata 10 s / foto) e il selettore «Adesso / Scegli un orario».
 13. **Scegli la stanza** (quando ci saranno più stanze): prima la più affine, poi Esperienza e VIP con «in arrivo». Non serve per la beta.
 
@@ -78,8 +78,9 @@
 | 33 | Chiave data | `schermate/33-chiave-data.png` | `#n24` | Conferma breve; si torna alla stanza. |
 | 34 | Domenica sera | `schermate/34-domenica-sera.png` | `#n25` | Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21. |
 | 35 | La porta | `schermate/35-la-porta.png` | `#n26` | Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo. |
-| 36 | Lo svelamento | `schermate/36-lo-svelamento.png` | `#n27` | La caparra spiegata in tre righe, pulsanti allineati. |
-| 37 | Lo svelamento · Come | `schermate/37-lo-svelamento-come.png` | `#n28` | Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico. |
+| 36 | La porta · se sei un uomo · **nuova** | `schermate/36-la-porta-se-sei-un-uomo.png` | `#n26b` | La stessa porta vista da un uomo: dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco. |
+| 37 | Lo svelamento | `schermate/37-lo-svelamento.png` | `#n27` | La caparra spiegata in tre righe, pulsanti allineati. |
+| 38 | Lo svelamento · Come | `schermate/38-lo-svelamento-come.png` | `#n28` | Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico. |
 
 ## Dettaglio, schermata per schermata
 
@@ -393,18 +394,27 @@ Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda 
 - Immagine nuova, calda e romantica al posto di quella inquietante
 - Apertura morbida e continua, senza scatti né blocchi
 - Dopo l'apertura, la luce respira piano
-### 36 · Lo svelamento
+### 36 · La porta · se sei un uomo · nuova
 
-![Lo svelamento](schermate/36-lo-svelamento.png)
+![La porta · se sei un uomo](schermate/36-la-porta-se-sei-un-uomo.png)
+
+La stessa porta vista da un uomo (qui Luca): dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco.
+
+- Versione per gli utenti uomini
+- Sagoma femminile con la rosa, stessa luce e stessa apertura morbida (`immagini/porta-donna-rosa.jpg`)
+- Il resto della schermata è identico
+### 37 · Lo svelamento
+
+![Lo svelamento](schermate/37-lo-svelamento.png)
 
 La caparra spiegata in tre righe, pulsanti allineati.
 
 - Logo centrato con l'onda
 - Testo più breve sulla caparra
 - Pulsanti allineati e in 3D
-### 37 · Lo svelamento · Come
+### 38 · Lo svelamento · Come
 
-![Lo svelamento · Come](schermate/37-lo-svelamento-come.png)
+![Lo svelamento · Come](schermate/38-lo-svelamento-come.png)
 
 Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico.
 
