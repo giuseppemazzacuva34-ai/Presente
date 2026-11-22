@@ -24,17 +24,35 @@ export const TESTI_AVVISI = Object.freeze({
   entrambiPronti: TESTI_PORTA.entrambiPronti,
   bottone: "Vai allo svelamento",
   etichetta: "Vai allo svelamento con <nome>",
+  // Passo 8b-3a: porta svelata senza risposta.
+  rispondi: "Rispondi",
+  etichettaRispondi: "Rispondi a <nome>",
 });
+const ESITI = ["doppio_si", "chiusa"];
 
 const tempo = (x) => (typeof x === "string" ? Date.parse(x) : NaN);
 const nomeDi = (n) => (typeof n === "string" && n.trim() ? n.trim() : "una persona della stanza");
 const aperte = (stato, ora) => (stato && Array.isArray(stato.porte) ? stato.porte : [])
   .filter((p) => p && UUID.test(String(p.porta || "")) && tempo(p.scade_il) > ora);
 
+// Passo 8b-3a: porte svelate in attesa del sì/no (con il tempo ancora aperto) ed esiti.
+const svelate = (stato, ora) => (stato && Array.isArray(stato.svelate) ? stato.svelate : [])
+  .filter((p) => p && UUID.test(String(p.porta || "")) && tempo(p.risposta_scade_il) > ora);
+const esiti = (stato) => (stato && Array.isArray(stato.esiti) ? stato.esiti : [])
+  .filter((p) => p && UUID.test(String(p.porta || "")) && ESITI.includes(p.esito) && typeof p.testo === "string" && p.testo.trim());
+
 // Cosa dire per ogni porta ancora aperta, sull'orologio di chi guarda.
 export function avvisiPorte(stato, adesso = new Date()) {
   const ora = adesso.getTime();
-  return aperte(stato, ora).map((p) => {
+  // Chi ha già risposto non riceve avvisi: nessun indizio su cosa fa l'altra persona. L'esito è uguale per entrambi.
+  const domande = svelate(stato, ora).filter((p) => p.ho_risposto !== true).map((p) => {
+    const nome = nomeDi(p.nome);
+    const domanda = typeof p.domanda === "string" && p.domanda.trim() ? p.domanda.trim() : TESTI_PORTA.domanda.replace("<nome>", nome);
+    return { porta: p.porta, testo: domanda, urgente: true, fissata: null, bottone: TESTI_AVVISI.rispondi,
+      etichetta: TESTI_AVVISI.etichettaRispondi.replace("<nome>", nome) };
+  });
+  const finiti = esiti(stato).map((p) => ({ porta: p.porta, testo: p.testo.trim(), urgente: false, fissata: null, bottone: null, etichetta: null }));
+  return [...domande, ...finiti, ...aperte(stato, ora).map((p) => {
     const nome = nomeDi(p.nome);
     const mioVivo = p.mio_pronto === true && tempo(p.pronto_scade_il) > ora;
     const suo = p.suo_pronto === true;
@@ -51,7 +69,7 @@ export function avvisiPorte(stato, adesso = new Date()) {
     const fissata = !urgente && Number.isFinite(inizio) && inizio > ora && etichettaFascia(p.fascia_fissata)
       ? `${TESTI_PORTA.fasciaFissata}: ${etichettaFascia(p.fascia_fissata)}` : null;
     return { porta: p.porta, testo, urgente, fissata, bottone: TESTI_AVVISI.bottone, etichetta: TESTI_AVVISI.etichetta.replace("<nome>", nome) };
-  });
+  })];
 }
 
 // Quanto aspettare prima della prossima lettura; null = fermarsi (si rilegge quando l'app torna visibile).
@@ -60,7 +78,8 @@ export function prossimaLettura(r, adesso = new Date()) {
     if (r && (r.motivo === "spento" || r.motivo === "accesso")) return null;
     return LETTURA_MS;
   }
-  return aperte(r.stato, adesso.getTime()).length ? LETTURA_MS : null;
+  const ora = adesso.getTime();
+  return aperte(r.stato, ora).length || svelate(r.stato, ora).length ? LETTURA_MS : null;
 }
 
 export function creaAvvisiPorte({ svelamento, aggiorna = () => {}, pagina = null, adesso = () => new Date(),
@@ -135,5 +154,5 @@ export function vistaAvvisiPorte(h, ap, { apri, soloUrgenti = false } = {}) {
     lista.map((a) => h("div", { classe: "porta-aperta" },
       h("p", a.urgente ? { role: "status" } : {}, h("strong", {}, a.testo)),
       a.fissata ? h("p", { classe: "nota" }, a.fissata) : null,
-      h("button", { classe: "bottone", type: "button", "aria-label": a.etichetta, onclick: () => apri(a.porta) }, a.bottone))));
+      a.bottone ? h("button", { classe: "bottone", type: "button", "aria-label": a.etichetta, onclick: () => apri(a.porta) }, a.bottone) : null)));
 }
