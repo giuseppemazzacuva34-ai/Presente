@@ -29,7 +29,8 @@ begin;
 insert into auth.users (id, email) select pg_temp.p(n), 'cs' || n || '@example.com' from generate_series(1, 9) n;
 insert into public.profili (id, nome, data_nascita, citta)
   select pg_temp.p(n), 'Prova', '1990-01-01', 'Milano' from generate_series(1, 9) n;
-update public.profili set nome = 'Giulia' where id = pg_temp.p(2);
+update public.profili set nome = 'Giulia', mi_presento_come = 'donna' where id = pg_temp.p(2);
+update public.profili set mi_presento_come = 'uomo' where id = pg_temp.p(1);
 -- A: chiusa un minuto fa (1, 2, 3, 4). E: chiusa 13 ore fa (5): la sera è finita (lunedì 9:00 passato).
 -- C: aperta (6, 7). D: chiude tra 30 secondi (8, 9): chiavi già chiuse.
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
@@ -91,8 +92,10 @@ create temp table dopo on commit drop as select n, public.sera_di(pg_temp.p(n)) 
 reset role;
 select pg_temp.ok((select s from dopo where n = 1) = jsonb_build_object('stato', 'pronta', 'porte', jsonb_build_array(
     jsonb_build_object('id', (select id from public.porte where a = least(pg_temp.p(1), pg_temp.p(2)) and b = greatest(pg_temp.p(1), pg_temp.p(2))),
-      'con', pg_temp.p(2), 'nome', 'Giulia', 'frase_per_te', 'Il treno, ancora.'))),
-  'sera: 1 vede la porta con 2, il suo nome e la frase che 2 gli ha lasciato');
+      'con', pg_temp.p(2), 'nome', 'Giulia', 'frase_per_te', 'Il treno, ancora.', 'sagoma', 'donna'))),
+  'sera: 1 vede la porta con 2, il suo nome, la frase che 2 gli ha lasciato e la sagoma (design v4, schermate 37-38)');
+select pg_temp.ok((select s->'porte'->0->>'sagoma' from dopo where n = 2) = 'uomo',
+  'sera: 2 vede dietro la porta la sagoma di un uomo (1 si presenta come uomo)');
 select pg_temp.ok((select s->'porte'->0->'frase_per_te' from dopo where n = 2) = 'null'::jsonb
   and (select s->'porte'->0->>'con' from dopo where n = 2) = pg_temp.p(1)::text,
   'sera: 2 vede la porta con 1, senza frase (1 non l''ha scritta), mai la propria');
@@ -102,6 +105,19 @@ select pg_temp.ok((select s from dopo where n = 3) = (select s from dopo where n
   'sera: chi ha dato una chiave non ricambiata vede esattamente come chi non ne ha date; la frase non c''è più');
 select pg_temp.ok((select s from dopo where n = 5) = '{"stato": "nessuna"}'::jsonb,
   'sera: dopo lunedì 9:00 (12 ore dalla chiusura) la sera non si mostra più');
+
+-- Chi non si presenta come donna o uomo (o non l'ha detto): sagoma neutra, la porta calda senza persona.
+update public.profili set mi_presento_come = 'non_binario' where id = pg_temp.p(2);
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'neutra', 'sera: «non binario» → sagoma neutra');
+reset role;
+update public.profili set mi_presento_come = null where id = pg_temp.p(2);
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'neutra', 'sera: senza risposta → sagoma neutra');
+-- Mai età, città o altro del profilo nella sera.
+select pg_temp.ok(not (public.sera_di(pg_temp.p(1))->'porte'->0 ?| array['eta', 'citta', 'data_nascita', 'mi_presento_come', 'foto']),
+  'sera: mai età, città, data di nascita, genere grezzo o foto');
+reset role;
 
 -- Un blocco dopo la sera: per il server la porta non c'è più.
 insert into public.blocchi (chi, bloccato) values (pg_temp.p(2), pg_temp.p(1));
