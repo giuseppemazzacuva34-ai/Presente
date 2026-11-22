@@ -30,6 +30,7 @@ import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, conferma
 import { vistaIncontro } from "./incontro.js";
 import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
+import { settimanaHome, vistaSettimanaHome, TESTI_SETTIMANA } from "./settimana_home.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -398,6 +399,12 @@ function aggiornaSulPosto(m) {
   const sc = m.schermo;
   const metti = (id, testo) => { const el = radice.querySelector(`#${id}`); if (el && testo && el.textContent !== testo) el.textContent = testo; };
   metti("chiamata-timer", sc.timer);
+  // Design v4 (#349): il conto alla rovescia della home si aggiorna sul posto a ogni giro della sentinella.
+  const conto = radice.querySelector("#conto-settimana");
+  if (conto) {
+    const c = settimanaDellaHome().conto;
+    if (c && conto.textContent !== c) { conto.textContent = c; conto.setAttribute("aria-label", `${TESTI_SETTIMANA.manca} ${c}`); }
+  }
   if (sc.tipo === "squillo_in_uscita") metti("chiamata-testo", sc.testo);
   if (sc.carte) metti("chiamata-carte", sc.carte.etichetta);
 }
@@ -664,6 +671,23 @@ function barra() {
   return h("div", { classe: "avanzamento" },
     h("div", { classe: "avanzamento-testo" }, `Passo ${stato.passo} di ${totale + 1} · ${PASSI[stato.passo].titolo}`),
     h("div", { classe: "avanzamento-barra", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(totale), "aria-valuenow": String(fatto) }, riempimento));
+}
+
+// Design v4 (#349): la home, con la settimana al posto del titolo.
+function inStanzaAperta() {
+  if (!telefono) return false;
+  const st = telefono.modello().stanza;
+  return !!st && st.stato === "pronta" && !st.chiusa;
+}
+const settimanaDellaHome = () => settimanaHome(new Date(), { nome: stato.nome, inStanza: inStanzaAperta() });
+
+function schermataHome(testa, corpo, azioni) {
+  return h("section", { classe: "schermata" },
+    testa,
+    h("div", { classe: "corpo" }, corpo),
+    errore(salvataggio.errore),
+    salvataggio.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
+    h("div", { classe: "azioni" }, azioni));
 }
 
 function schermata(titolo, sottotitolo, corpo, azioni) {
@@ -999,8 +1023,8 @@ const SCHERMATE = {
   fatto() {
     chiediContatore();
     const zonaVisibile = nomeVisibile(stato.provincia);
-    return schermata("Il tuo profilo è pronto.",
-      "La prossima stanza apre lunedì alle 9:00.",
+    // Design v4 (#349, schermate 16 e 35): in cima la settimana, mai «profilo pronto».
+    return schermataHome(vistaSettimanaHome(h, settimanaDellaHome()),
       [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
           stato.raggio === "citta" ? contatoreSoloZona(contatore.testo) : contatore.testo) : null,
         bloccoItalia(),
