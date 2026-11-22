@@ -14,6 +14,8 @@
 // Passo 2v (D143 B): se lo stato porta dei locali (a Milano i 30 del tab «Locali pilota»), «Dove» è un menu con i locali
 // e «Un altro luogo pubblico»; i non visitati dicono «da verificare». Si manda solo l'id di un locale dell'elenco.
 
+import { TESTI_VALUTAZIONE } from "./valutazione.js";
+
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
 const MEZZORA = 30 * 60 * 1000;
@@ -22,7 +24,7 @@ const ULTIMA_ORA = 23 * 60; // 23:00 compreso
 const LUOGO_MASSIMO = 80;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
-const AZIONI = ["proponi", "accetto", "altra_data", "annulla", "sono_qui", "disdici", "annulla_incontro"];
+const AZIONI = ["proponi", "accetto", "altra_data", "annulla", "sono_qui", "disdici", "annulla_incontro", "valuta"];
 const ORE_GRATIS = 6; // come INCONTRO.disdettaGratisOre in api/incontro.js (il test lo controlla); decide il server
 const RISPOSTE = ["accetto", "annulla"];
 
@@ -166,7 +168,8 @@ export function schermataIncontro(i, adesso = new Date(), nome = null) {
   const azioni = Array.isArray(i.azioni) ? i.azioni.filter((a) => AZIONI.includes(a)) : [];
   if (i.esito === "avvenuto") {
     const parola = typeof i.segnale === "string" && i.segnale.trim() ? i.segnale.trim() : null;
-    return { tipo: "avvenuto", azioni: [], testo: TESTI_INCONTRO.creditiLiberi,
+    // Passo 3f: «valuta» (dal server, passo 3e) apre le 4 domande della valutazione (moduli/valutazione.js).
+    return { tipo: "avvenuto", azioni: azioni.filter((a) => a === "valuta"), testo: TESTI_INCONTRO.creditiLiberi,
       segnale: parola ? TESTI_INCONTRO.segnale.replace("<parola>", parola) : null };
   }
   if (i.stato === "concluso" || i.esito) {
@@ -429,7 +432,8 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
 }
 
 // La vista (h come in flusso.js). null se la schermata non è aperta.
-export function vistaIncontro(h, inc) {
+// opzioni.valuta (passo 3f): chi apre la schermata della valutazione; senza, il pulsante non c'è.
+export function vistaIncontro(h, inc, { valuta = null } = {}) {
   const m = inc.modello();
   if (!m.porta && !m.errore) return null;
   const T = TESTI_INCONTRO;
@@ -453,6 +457,7 @@ export function vistaIncontro(h, inc) {
     if (s.azioni.includes("annulla")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.rispondi("annulla") }, T.annulla));
     if (s.azioni.includes("disdici")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.disdici() }, T.disdici));
     if (s.azioni.includes("annulla_incontro")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.annullaIncontro() }, T.annulla));
+    if (s.azioni.includes("valuta") && typeof valuta === "function") parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => valuta() }, TESTI_VALUTAZIONE.apri));
   }
   if (s && (m.conferma === "disdici" || m.conferma === "annulla_incontro")) {
     const disdici = m.conferma === "disdici";
