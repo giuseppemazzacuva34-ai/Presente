@@ -19,6 +19,10 @@
 //   caparre e scelte restano); al telefono motivo «quando», mai «Ecco <nome>.»;
 // - «Chiudi e segnala» → niente: il database ha già chiuso la porta.
 // Se il database non risponde si riprova a ogni allarme (al massimo TENTATIVI volte); la pulizia aspetta.
+// Passo 8b-3b: la caduta della connessione prima dei 10 secondi la dice il telefono («caduta»): il timer si ferma (non
+// vale come svelamento finito), le tracce ricevute da tutti e due si chiudono e si aspetta «Riprova» per CADUTA_MS; il
+// timer riparte da 10 solo quando tutti e due ricevono di nuovo. Senza «Riprova» entro CADUTA_MS, o alla caduta del
+// terzo avvio, «quando». Caduta dopo i 10 secondi: lo svelamento vale («finito»).
 // Niente Cloudflare qui dentro: archivio, orologio e chiusura delle sessioni arrivano da fuori (test con node --test).
 
 import { SVELAMENTO } from "./svelamento.js";
@@ -27,6 +31,7 @@ export const ATTESA_DOPO_FINE = 60_000;
 export const SCADENZA_MS = 15 * 60_000; // nessuno svelamento iniziato entro 15 minuti dalla prima pubblicazione: si chiude
 export const RIPROVA_MS = 30_000;
 export const TENTATIVI = 5;
+export const CADUTA_MS = SVELAMENTO.riprovaSecondi * 1000; // «Riprova» per 2 minuti dopo una caduta (spec, casi limite)
 const DURATA_MS = SVELAMENTO.durata * 1000;
 const SFOCATO_MS = SVELAMENTO.sfocato * 1000;
 
@@ -60,6 +65,13 @@ const altraDi = (stato, da) => Object.keys(stato.persone).find((p) => p !== da);
 // Tutte le tracce di una sessione: le mie due (voce, video) più le due che ricevo o sto per ricevere (passo 7c).
 // «ricevo» e «arrivo» non sono mai pieni insieme: così una sessione non supera mai 4 tracce (limite di chiudiVoce).
 const tracce = (p) => [...p.mids, ...(p.ricevo || []), ...(p.arrivo || [])];
+// Quando chiude da solo uno svelamento non finito: 10 secondi dall'inizio; senza inizio 15 minuti dalla prima
+// pubblicazione, o prima CADUTA_MS dopo una caduta (passo 8b-3b).
+function scadenza(stato) {
+  if (stato.inizio) return stato.inizio + DURATA_MS;
+  const ferma = stato.creato + SCADENZA_MS;
+  return stato.cadutaIl ? Math.min(ferma, stato.cadutaIl + CADUTA_MS) : ferma;
+}
 
 export class GestoreSvelamento {
   constructor({ storage, adesso = () => new Date(), chiudiSessione, segna = null }) {
@@ -159,6 +171,7 @@ export class GestoreSvelamento {
     if (!stato.inizio && Object.values(stato.persone).every((x) => x.ricevo)) {
       stato.inizio = this.adesso().getTime();
       stato.avvii = (stato.avvii || 0) + 1;
+      delete stato.cadutaIl;
     }
     await this.#salva(stato, chiusure);
     if (chiusure.length) await this.#esegui();
@@ -181,6 +194,44 @@ export class GestoreSvelamento {
     await this.#esegui();
     await this.#allarme();
     return { ok: true };
+  }
+
+  // Passo 8b-3b: il telefono dice che la connessione è caduta. Prima dei 10 secondi il timer si ferma e si aspetta
+  // «Riprova»; al terzo avvio si torna al passo 4; dopo i 10 secondi lo svelamento vale. Ripetuta non cambia nulla.
+  async caduta({ da }) {
+    if (!persona(da)) return no("dati");
+    const stato = await this.storage.get("stato");
+    if (!stato) return no("nessuna");
+    if (!stato.persone[da]) return Object.keys(stato.persone).length >= 2 ? no("non_tocca_a_te") : no("nessuna");
+    const adesso = this.adesso().getTime();
+    if (await this.#scadi(stato, adesso)) {
+      await this.#esegui();
+      await this.#segna();
+      await this.#allarme();
+    }
+    if (stato.finitoIl) return finito(stato);
+    if (!stato.inizio) return { ok: true, vista: vistaPer(stato, da, adesso) };
+    if ((stato.avvii || 0) >= SVELAMENTO.tentativi) {
+      Object.assign(stato, { finitoIl: adesso, quando: true, daSegnare: "quando" });
+      await this.#salva(stato, Object.values(stato.persone).map((p) => ({ sessione: p.sessione, mids: tracce(p) })));
+      await this.#esegui();
+      await this.#segna();
+      await this.#allarme();
+      return no("quando");
+    }
+    const chiusure = [];
+    for (const p of Object.values(stato.persone)) {
+      for (const campo of ["ricevo", "arrivo"]) {
+        if (p[campo]) chiusure.push({ sessione: p.sessione, mids: p[campo] });
+        p[campo] = null;
+      }
+    }
+    stato.inizio = null;
+    stato.cadutaIl = adesso;
+    await this.#salva(stato, chiusure);
+    await this.#esegui();
+    await this.#allarme();
+    return { ok: true, vista: vistaPer(stato, da, adesso) };
   }
 
   async vista(da) {
@@ -226,8 +277,7 @@ export class GestoreSvelamento {
   // Tempo scaduto e non ancora finito: si chiude adesso. 10 secondi pieni → «finito»; nessun inizio entro SCADENZA_MS →
   // di nuovo «Quando?» (passo 8b-2b). true se ha chiuso.
   async #scadi(stato, adesso) {
-    const scade = stato.inizio ? stato.inizio + DURATA_MS : stato.creato + SCADENZA_MS;
-    if (stato.finitoIl || adesso < scade) return false;
+    if (stato.finitoIl || adesso < scadenza(stato)) return false;
     stato.finitoIl = adesso;
     if (stato.inizio) stato.daSegnare = "finito";
     else Object.assign(stato, { quando: true, daSegnare: "quando" });
@@ -305,7 +355,7 @@ export class GestoreSvelamento {
       quando = attesa.chiusure.length || stato.daSegnare ? adesso + RIPROVA_MS : stato.finitoIl + ATTESA_DOPO_FINE;
     }
     else {
-      quando = stato.inizio ? stato.inizio + DURATA_MS : stato.creato + SCADENZA_MS;
+      quando = scadenza(stato);
       if (attesa.chiusure.length) quando = Math.min(quando, adesso + RIPROVA_MS);
     }
     await this.storage.setAlarm(quando);

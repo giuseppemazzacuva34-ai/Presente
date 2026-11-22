@@ -155,6 +155,6 @@ test("avvio: regali col token di chi usa l'app, foglio fuori da <main id=\"app\"
 
 test("service worker: versione nuova e moduli dei regali nella cache", () => {
   const sw = leggiFile("../landing/app/sw.js");
-  assert.ok(!sw.includes('"presente-app-39"'));
+  assert.ok(!sw.includes('"presente-app-40"'));
   for (const m of ["regali.js", "regali_stanza.js"]) assert.ok(sw.includes(`"/app/moduli/${m}"`), m);
 });

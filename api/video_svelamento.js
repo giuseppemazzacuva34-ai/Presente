@@ -6,6 +6,8 @@
 //   ricevi    → offerta di Cloudflare con voce e video dell'altra persona (tracce segnate «in arrivo» nel DO)
 //   conferma  risposta del telefono → rinegoziazione; con le conferme di tutti e due partono i 10 secondi
 //   vista     → fase, inizio, nitidoDal, fine (per chi aspetta l'altra persona)
+//   caduta    il telefono ha perso la connessione (passo 8b-3b): prima dei 10 secondi il timer si ferma e si aspetta
+//             «Riprova»; dopo vale come finito
 // Al telefono non arriva mai un id di sessione: solo descrizioni SDP e la «vista». Se il DO rifiuta dopo che Realtime
 // ha già aperto qualcosa, si chiude subito. Nessuna registrazione, niente SDP nei log: solo nomi di errore.
 // Le dipendenze arrivano da fuori (d), così si prova tutto con node --test senza rete.
@@ -78,5 +80,10 @@ export async function confermaVideo({ per, risposta }, d) {
 
 export async function vistaVideo({ per }, d) {
   const r = await d.svelamento.vista(per);
+  return esito(r) || { ok: true, vista: r.vista };
+}
+
+export async function cadutaVideo({ per }, d) {
+  const r = await d.svelamento.caduta({ da: per });
   return esito(r) || { ok: true, vista: r.vista };
 }
