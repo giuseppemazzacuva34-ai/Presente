@@ -30,6 +30,7 @@ import { conAttesa } from "/app/moduli/in_attesa.js";
 import { creaIncontro } from "/app/moduli/incontro.js";
 import { creaValutazione } from "/app/moduli/valutazione.js";
 import { creaVostriIncontri } from "/app/moduli/vostri_incontri.js";
+import { creaRiepilogo } from "/app/moduli/riepilogo_valutazioni.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -135,7 +136,9 @@ async function preparaAccesso() {
     const incontro = creaIncontro({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => incontroCambiato() });
     const valutazione = creaValutazione({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => incontroCambiato(),
       finito: () => incontro.riprova() });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione };
+    // Riepilogo alla cieca nel profilo (#6 passo 3o): solo le proprie valutazioni ricevute, via Worker col proprio token.
+    const riepilogo = creaRiepilogo({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
