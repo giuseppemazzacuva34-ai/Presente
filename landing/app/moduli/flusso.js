@@ -27,6 +27,9 @@ import { TESTI_SANZIONE } from "./sanzioni.js";
 import { vistaPorta, segnalaDaPorta } from "./svelamento.js";
 import { vistaAvvisiPorte } from "./avvisi_porte.js";
 import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, confermaScrivici, contatore as contatoreAiuto, filtraDomande, testoErroreAiuto, statoMessaggio } from "./aiuto.js";
+import { vistaIncontro } from "./incontro.js";
+import { vistaValutazione } from "./valutazione.js";
+import { vistaVostriIncontri } from "./vostri_incontri.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -176,6 +179,9 @@ export function avvia(elemento, opzioni = {}) {
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
   supporto = (telefono && opzioni.aiuto) || null;
+  vostriIncontri = (telefono && opzioni.vostriIncontri) || null;
+  incontroVostro = (telefono && opzioni.incontro) || null;
+  valutazioneVostra = (telefono && opzioni.valutazione) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -635,6 +641,8 @@ function disegna() {
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
   if (portaSvelamento && segnalaDaPorta(portaSvelamento.modello().segnala)) { radice.replaceChildren(schermoSegnalaPorta()); return; }
   if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
+  if (valutazioneVostra && valutazioneVostra.modello().porta) { radice.replaceChildren(schermoValutazioneVostra()); return; }
+  if (incontroVostro && (incontroVostro.modello().porta || incontroVostro.modello().errore)) { radice.replaceChildren(schermoIncontroVostro()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
@@ -1001,6 +1009,7 @@ const SCHERMATE = {
         bloccoTuaStanza(),
         bloccoEsiti(),
         bloccoSanzioni(),
+        bloccoVostriIncontri(),
         h("div", { classe: "riepilogo" },
           h("p", {}, h("strong", {}, stato.nome.trim()), `, ${etaDa(stato.dataNascita)} anni, ${zonaVisibile}`),
           // Spec #3 v1.2: sotto la provincia, la zona delle stanze. Solo per te: gli altri vedono la provincia, mai l'area.
@@ -1477,4 +1486,32 @@ function schermoAiuto() {
 // Come h(): salta null, undefined e false (Element.append(null) scriverebbe «null» sullo schermo).
 function aggiungi(el, ...figli) {
   el.append(...figli.filter((f) => f !== null && f !== undefined && f !== false));
+}
+
+// «I vostri incontri» (#6 passo 3n, linea «sviluppatore-b»): riquadro nella home (vostri_incontri.js), schermata
+// «Il vostro incontro» (incontro.js) e valutazione (valutazione.js). Elenco letto una volta, riletto tornando alla home.
+let vostriIncontri = null;
+let incontroVostro = null;
+let valutazioneVostra = null;
+const vostri = { chiesti: false, righe: [] };
+export function incontroCambiato() {
+  disegna();
+}
+function bloccoVostriIncontri() {
+  if (!vostriIncontri || !incontroVostro) return null;
+  if (!vostri.chiesti) {
+    vostri.chiesti = true;
+    vostriIncontri.leggi().then((r) => { if (r && r.ok) { vostri.righe = r.righe; disegna(); } }).catch(() => {});
+  }
+  return vistaVostriIncontri(h, vostri.righe, { apri: (porta, opz) => { incontroVostro.apri(porta, opz).catch(() => {}); } });
+}
+function schermoIncontroVostro() {
+  const m = incontroVostro.modello();
+  const valuta = valutazioneVostra && m.porta ? () => valutazioneVostra.apri(m.porta, { nome: m.nome }) : null;
+  return h("section", { classe: "schermata" },
+    vistaIncontro(h, incontroVostro, { valuta }),
+    h("button", { classe: "link", type: "button", onclick: () => { vostri.chiesti = false; incontroVostro.chiudi(); } }, "Torna alla home"));
+}
+function schermoValutazioneVostra() {
+  return h("section", { classe: "schermata" }, vistaValutazione(h, valutazioneVostra));
 }
