@@ -20,6 +20,9 @@
 //   GET  /app/api/incontro?riepilogo=1                                              → riepilogo_valutazioni
 //        Passo 3i (D20): { ok: true, riepilogo: { valutati, bollini, no_ricevuti } } della persona del token, alla
 //        cieca; mai la singola valutazione né la domanda sulla sicurezza (ripulito da soloRiepilogo).
+//   GET  /app/api/incontro?elenco=1                                                 → miei_incontri
+//        Passo 3l: { ok: true, incontri: [{ porta, nome, stato, scadenza, orario, esito }] } della persona del token,
+//        per raggiungere dalla home la schermata «Il vostro incontro» (ripulito da soloIncontroElenco).
 //   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
 //   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
 //   lettura non va, l'incontro si legge lo stesso, senza locali.
@@ -128,6 +131,7 @@ export async function incontroApi(request, env, f = fetch) {
   const chi = await chiEDavvero(request, env, f);
   if (chi.errore) return chi.errore;
   if (request.method === "GET" && new URL(request.url).searchParams.get("riepilogo") === "1") return riepilogo(s, chi, f);
+  if (request.method === "GET" && new URL(request.url).searchParams.get("elenco") === "1") return elenco(s, chi, f);
   if (request.method === "GET") return stato(s, request, chi, f);
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
@@ -227,6 +231,22 @@ async function riepilogo(s, chi, f) {
   const r = soloRiepilogo(await rpc(s, "riepilogo_valutazioni", { p_persona: chi.id }, f));
   if (!r) return riprova();
   return risposta(200, { ok: true, riepilogo: r });
+}
+
+// Elenco degli incontri (passo 3l): solo sei campi; righe di forma sbagliata si scartano, una risposta che non è un
+// elenco è un guasto («riprova»).
+const ESITI = ["avvenuto", "buca_a", "buca_b", "disdetto", "scaduto", "nessun_checkin", "contestato", "in_revisione", "annullato"];
+function soloIncontroElenco(x) {
+  if (!x || typeof x !== "object" || !UUID.test(String(x.porta)) || !STATI.includes(x.stato)) return null;
+  if (typeof x.scadenza !== "string" || !orarioONull(x.scadenza) || !orarioONull(x.orario ?? null)) return null;
+  const esito = x.esito ?? null;
+  if (esito !== null && !ESITI.includes(esito)) return null;
+  return { porta: x.porta, nome: breve(x.nome, 40) ? x.nome : null, stato: x.stato, scadenza: x.scadenza, orario: x.orario ?? null, esito };
+}
+async function elenco(s, chi, f) {
+  const r = await rpc(s, "miei_incontri", { p_persona: chi.id }, f);
+  if (!Array.isArray(r)) return riprova();
+  return risposta(200, { ok: true, incontri: r.map(soloIncontroElenco).filter(Boolean).slice(0, 50) });
 }
 
 // Limite di frequenza: stesso binding gratuito delle altre richieste (LIMITE_PROVINCIA), chiave a parte. L'IP serve
