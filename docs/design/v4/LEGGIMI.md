@@ -4,8 +4,8 @@
 
 ## Dove sta il riferimento
 
-- `prototipo/index.html`: il prototipo vivo con tutte le 38 schermate e le animazioni. Si apre in locale con `python3 -m http.server` dentro `prototipo/`, poi `http://localhost:8000/#<id>` (es. `#n14`). Il codice CSS delle schermate è nella sezione `/* ===== il telefono: nuovo design ===== */`: **usate quei valori**, non stime.
-- `schermate/*.png`: le 38 schermate a 2x (780 × 1688), una per file, nell'ordine del percorso.
+- `prototipo/index.html`: il prototipo vivo con tutte le 41 schermate e le animazioni. Si apre in locale con `python3 -m http.server` dentro `prototipo/`, poi `http://localhost:8000/#<id>` (es. `#n14`). Il codice CSS delle schermate è nella sezione `/* ===== il telefono: nuovo design ===== */`: **usate quei valori**, non stime.
+- `schermate/*.png`: le 41 schermate a 2x (780 × 1688), una per file, nell'ordine del percorso.
 - `immagini/`: le immagini dei fondi (generate con AI, nessuna persona reale, volti mai a fuoco).
 - Anteprima online per Giuseppe: pagina «Dentro Presente» su claude.ai (privata).
 
@@ -38,6 +38,12 @@
 11. **La porta**: porta scorrevole che si apre **una volta sola**, morbida, in 6 secondi; dietro, luce calda e la sagoma dell'altra persona (se sei donna `immagini/porta-uomo-rosa.jpg`, se sei uomo `immagini/porta-donna-rosa.jpg`). Domenica sera: `immagini/porta-calda.jpg`.
 12. **Svelamento · come**: due schede (videochiamata 10 s / foto) e il selettore «Adesso / Scegli un orario».
 13. **Scegli la stanza** (quando ci saranno più stanze): prima la più affine, poi Esperienza e VIP con «in arrivo». Non serve per la beta.
+14. **La madrina (o il padrino) della stanza** · nuova, decisa da Giuseppe il 22/11. Ogni stanza ha una persona vera della città che la accompagna:
+    - **Lunedì, apertura**: un vocale di benvenuto (fino a 90 s) caricato dalla madrina prima dell'apertura. Presenta le 12 persone **solo con il nome di battesimo** e ricorda le regole. Schermata «La madrina apre la stanza» (`#madrina-apre`): scheda con il simbolo «!» nel cerchio rosso, onda grande, elenco dei nomi (tu in rosso), regole in una riga, «Entra nella stanza». Il vocale resta riascoltabile dalla stanza per tutta la settimana.
+    - **Domenica, prima delle 21**: un secondo vocale con **quante** porte si sono aperte, mai chi (schermata `#madrina-domenica`). Il numero lo calcola il server dalle chiavi reciproche e lo vede la madrina in un pannello suo, senza nomi.
+    - **Serata della stanza (in arrivo, non per la beta)**: invito con giorno, ora e locale consigliato; la madrina presenta tutti, anche chi non ha scelto nessuno; «Non vengo» / «Ci sarò» (`#serata-stanza`).
+    - **Video per i social**: la madrina fa video alle serate. In app serve un **consenso separato e facoltativo, spento di base**, per comparire nei video; senza consenso la persona non compare. Testo del consenso e informativa: decisione di Giuseppe (privacy) prima di svilupparlo.
+    - Ruolo «madrina» lato server: vede la sua stanza solo con nomi di battesimo, carica i due vocali, legge il numero delle porte aperte; **mai** numeri di telefono, foto, voci, diari, chiavi date da chi a chi.
 
 ## Elenco delle schermate
 
@@ -60,27 +66,30 @@
 | 15 | Coin caricati · **nuova** | `schermate/15-coin-caricati.png` | `#coin-fatto` | Nuova schermata: conferma del pagamento, con il saldo che sale. Il saldo resta sempre visibile in alto a sinistra. |
 | 16 | La home | `schermate/16-la-home.png` | `#n13` | Prima della stanza: il conto alla rovescia al lunedì. L'elenco delle persone sta solo nella stanza, «Elimina account» solo nel profilo. |
 | 17 | Scegli la stanza · **nuova** | `schermate/17-scegli-la-stanza.png` | `#scegli-stanza` | Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le persone più affini, sotto le stanze con un'esperienza. Le esperienze sono in arrivo. |
-| 18 | La stanza | `schermate/18-la-stanza.png` | `#n14` | Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento. |
-| 19 | Fissa una chiamata · **nuova** | `schermate/19-fissa-una-chiamata.png` | `#fissa-chiamata` | Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima. |
-| 20 | Coin quasi finiti · **nuova** | `schermate/20-coin-quasi-finiti.png` | `#coin-quasi-finiti` | Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare. |
-| 21 | Lascia la stanza · **nuova** | `schermate/21-lascia-la-stanza.png` | `#n15` | Nuova schermata: chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito. |
-| 22 | Il profilo · **nuova** | `schermate/22-il-profilo.png` | `#n16` | Nuova schermata: il profilo si apre dal cerchio in alto a destra. Qui modifichi voce, risposte, foto e preferenze; in fondo c'è «Elimina il mio account». |
-| 23 | La chiamata · Squilla | `schermate/23-la-chiamata-squilla.png` | `#n17` | Mentre la linea si collega, l'onda pulsa al centro. Sotto, quante chiamate hai fatto con questa persona. |
-| 24 | La chiamata · 15 minuti | `schermate/24-la-chiamata-15-minuti.png` | `#n18` | Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra, l'onda viva della voce e il timer. |
-| 25 | La chiamata · I regali · **nuova** | `schermate/25-la-chiamata-i-regali.png` | `#regali` | Nuova schermata: durante la chiamata il tasto «Regalo» apre i tre regali. Si paga con i Coin, il saldo è in alto. |
-| 26 | La chiamata · Regalo ricevuto · **nuova** | `schermate/26-la-chiamata-regalo-ricevuto.png` | `#regalo-ricevuto` | Nuova schermata: chi riceve il regalo lo vede comparire sopra la chiamata, con un'animazione leggera. |
-| 27 | I tuoi regali · **nuova** | `schermate/27-i-tuoi-regali.png` | `#storico-regali` | Nuova schermata, dal profilo: il numero di regali ricevuti per tipo e da chi, stanza per stanza. |
-| 28 | La chiamata · Le carte | `schermate/28-la-chiamata-le-carte.png` | `#n19` | La carta rompighiaccio appare sopra lo stesso sfondo della chiamata. |
-| 29 | La chiamata · Ultimo minuto | `schermate/29-la-chiamata-ultimo-minuto.png` | `#n20` | L'ultimo minuto: il timer diventa rosso, l'onda continua sopra la sagoma. |
-| 30 | Dopo la chiamata | `schermate/30-dopo-la-chiamata.png` | `#n21` | Sì o no in privato, sulla stessa riga e in 3D. |
-| 31 | Il diario | `schermate/31-il-diario.png` | `#n22` | Il diario privato, con «Salta» e «Salva» sulla stessa riga. |
-| 32 | Le chiavi | `schermate/32-le-chiavi.png` | `#n23` | La chiave si dà da una schermata sua, con la frase e i pulsanti allineati. |
-| 33 | Chiave data | `schermate/33-chiave-data.png` | `#n24` | Conferma breve; si torna alla stanza. |
-| 34 | Domenica sera | `schermate/34-domenica-sera.png` | `#n25` | Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21. |
-| 35 | La porta | `schermate/35-la-porta.png` | `#n26` | Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo. |
-| 36 | La porta · se sei un uomo · **nuova** | `schermate/36-la-porta-se-sei-un-uomo.png` | `#n26b` | La stessa porta vista da un uomo: dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco. |
-| 37 | Lo svelamento | `schermate/37-lo-svelamento.png` | `#n27` | La caparra spiegata in tre righe, pulsanti allineati. |
-| 38 | Lo svelamento · Come | `schermate/38-lo-svelamento-come.png` | `#n28` | Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico. |
+| 18 | La madrina apre la stanza · **nuova** | `schermate/18-la-madrina-apre-la-stanza.png` | `#madrina-apre` | Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana. |
+| 19 | La stanza | `schermate/19-la-stanza.png` | `#n14` | Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento. |
+| 20 | Fissa una chiamata · **nuova** | `schermate/20-fissa-una-chiamata.png` | `#fissa-chiamata` | Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima. |
+| 21 | Coin quasi finiti · **nuova** | `schermate/21-coin-quasi-finiti.png` | `#coin-quasi-finiti` | Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare. |
+| 22 | Lascia la stanza · **nuova** | `schermate/22-lascia-la-stanza.png` | `#n15` | Nuova schermata: chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito. |
+| 23 | Il profilo · **nuova** | `schermate/23-il-profilo.png` | `#n16` | Nuova schermata: il profilo si apre dal cerchio in alto a destra. Qui modifichi voce, risposte, foto e preferenze; in fondo c'è «Elimina il mio account». |
+| 24 | La chiamata · Squilla | `schermate/24-la-chiamata-squilla.png` | `#n17` | Mentre la linea si collega, l'onda pulsa al centro. Sotto, quante chiamate hai fatto con questa persona. |
+| 25 | La chiamata · 15 minuti | `schermate/25-la-chiamata-15-minuti.png` | `#n18` | Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra, l'onda viva della voce e il timer. |
+| 26 | La chiamata · I regali · **nuova** | `schermate/26-la-chiamata-i-regali.png` | `#regali` | Nuova schermata: durante la chiamata il tasto «Regalo» apre i tre regali. Si paga con i Coin, il saldo è in alto. |
+| 27 | La chiamata · Regalo ricevuto · **nuova** | `schermate/27-la-chiamata-regalo-ricevuto.png` | `#regalo-ricevuto` | Nuova schermata: chi riceve il regalo lo vede comparire sopra la chiamata, con un'animazione leggera. |
+| 28 | I tuoi regali · **nuova** | `schermate/28-i-tuoi-regali.png` | `#storico-regali` | Nuova schermata, dal profilo: il numero di regali ricevuti per tipo e da chi, stanza per stanza. |
+| 29 | La chiamata · Le carte | `schermate/29-la-chiamata-le-carte.png` | `#n19` | La carta rompighiaccio appare sopra lo stesso sfondo della chiamata. |
+| 30 | La chiamata · Ultimo minuto | `schermate/30-la-chiamata-ultimo-minuto.png` | `#n20` | L'ultimo minuto: il timer diventa rosso, l'onda continua sopra la sagoma. |
+| 31 | Dopo la chiamata | `schermate/31-dopo-la-chiamata.png` | `#n21` | Sì o no in privato, sulla stessa riga e in 3D. |
+| 32 | Il diario | `schermate/32-il-diario.png` | `#n22` | Il diario privato, con «Salta» e «Salva» sulla stessa riga. |
+| 33 | Le chiavi | `schermate/33-le-chiavi.png` | `#n23` | La chiave si dà da una schermata sua, con la frase e i pulsanti allineati. |
+| 34 | Chiave data | `schermate/34-chiave-data.png` | `#n24` | Conferma breve; si torna alla stanza. |
+| 35 | Domenica sera | `schermate/35-domenica-sera.png` | `#n25` | Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21. |
+| 36 | La madrina · le porte aperte · **nuova** | `schermate/36-la-madrina-le-porte-aperte.png` | `#madrina-domenica` | Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi. |
+| 37 | La porta | `schermate/37-la-porta.png` | `#n26` | Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo. |
+| 38 | La porta · se sei un uomo · **nuova** | `schermate/38-la-porta-se-sei-un-uomo.png` | `#n26b` | La stessa porta vista da un uomo (qui Luca): dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco. |
+| 39 | Lo svelamento | `schermate/39-lo-svelamento.png` | `#n27` | La caparra spiegata in tre righe, pulsanti allineati. |
+| 40 | Lo svelamento · Come | `schermate/40-lo-svelamento-come.png` | `#n28` | Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico. |
+| 41 | La serata della stanza · **nuova** | `schermate/41-la-serata-della-stanza.png` | `#serata-stanza` | Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì. |
 
 ## Dettaglio, schermata per schermata
 
@@ -186,7 +195,7 @@ Le tre foto sfocate come le vedranno gli altri prima della porta.
 - Logo centrato con l'onda
 - Le foto si vedono sfocate: si capisce subito che restano nascoste
 - Pulsanti allineati e in 3D
-### 13 · I tuoi Coin (nuova)
+### 13 · I tuoi Coin · nuova
 
 ![I tuoi Coin](schermate/13-i-tuoi-coin.png)
 
@@ -196,7 +205,7 @@ Nuova schermata, subito dopo l'iscrizione: quanti Coin hai, i due pacchetti e qu
 - Due pacchetti: 200 Coin a 20 € e 500 Coin a 45 € (+50 in regalo)
 - Cosa costa: stanza 80, caparra 10, regali da 5 a 20
 - Pagamento con Gomry
-### 14 · Pagamento con Gomry (nuova)
+### 14 · Pagamento con Gomry · nuova
 
 ![Pagamento con Gomry](schermate/14-pagamento-con-gomry.png)
 
@@ -205,7 +214,7 @@ Nuova schermata: il foglio di pagamento di Gomry sale dal basso. Presente non ve
 - Schermata nuova
 - Pagamento con Gomry: Apple Pay, Google Pay o carta
 - Un pulsante solo per pagare
-### 15 · Coin caricati (nuova)
+### 15 · Coin caricati · nuova
 
 ![Coin caricati](schermate/15-coin-caricati.png)
 
@@ -222,7 +231,7 @@ Prima della stanza: il conto alla rovescia al lunedì. L'elenco delle persone st
 - Logo centrato con l'onda e il profilo in alto a destra
 - Niente elenco persone né «Elimina account» nella home
 - Una sola cosa da fare: il conto alla rovescia alla stanza
-### 17 · Scegli la stanza (nuova)
+### 17 · Scegli la stanza · nuova
 
 ![Scegli la stanza](schermate/17-scegli-la-stanza.png)
 
@@ -232,9 +241,19 @@ Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le per
 - Prima proposta: la stanza con le persone più affini
 - Sotto: stanze Esperienza e VIP (in arrivo)
 - Il costo in Coin su ogni stanza
-### 18 · La stanza
+### 18 · La madrina apre la stanza · nuova
 
-![La stanza](schermate/18-la-stanza.png)
+![La madrina apre la stanza](schermate/18-la-madrina-apre-la-stanza.png)
+
+Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.
+
+- Scheda della madrina con il simbolo «!» nel cerchio rosso (mai la sua foto qui)
+- Vocale con l'onda grande, si riascolta quando vuoi
+- Solo i nomi di battesimo delle 12 persone, tu evidenziata in rosso
+- Le regole in una riga, poi si entra nella stanza
+### 19 · La stanza
+
+![La stanza](schermate/19-la-stanza.png)
 
 Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento.
 
@@ -242,9 +261,9 @@ Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea 
 - Nel cerchio, una linea rossa unisce chi è in chiamata
 - «Fissa» al posto di «Chiama» quando la persona è occupata o non in linea
 - Gli appuntamenti fissati compaiono in cima alla stanza
-### 19 · Fissa una chiamata (nuova)
+### 20 · Fissa una chiamata · nuova
 
-![Fissa una chiamata](schermate/19-fissa-una-chiamata.png)
+![Fissa una chiamata](schermate/20-fissa-una-chiamata.png)
 
 Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima.
 
@@ -252,9 +271,9 @@ Nuova schermata: quando una persona è occupata o non in linea, le proponi un gi
 - Giorno e ora a scelta, entro la settimana della stanza
 - L'altra persona conferma o propone un altro orario
 - Promemoria 10 minuti prima a tutti e due
-### 20 · Coin quasi finiti (nuova)
+### 21 · Coin quasi finiti · nuova
 
-![Coin quasi finiti](schermate/20-coin-quasi-finiti.png)
+![Coin quasi finiti](schermate/21-coin-quasi-finiti.png)
 
 Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare.
 
@@ -262,35 +281,35 @@ Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in a
 - Saldo in rosso quando i Coin stanno finendo
 - Spiega cosa si può ancora fare e cosa no
 - «Dopo» e «Ricarica» sulla stessa riga
-### 21 · Lascia la stanza (nuova)
+### 22 · Lascia la stanza · nuova
 
-![Lascia la stanza](schermate/21-lascia-la-stanza.png)
+![Lascia la stanza](schermate/22-lascia-la-stanza.png)
 
 Nuova schermata: chi lascia la stanza sceglie un motivo. Gli altri vedono solo che è uscito.
 
 - Schermata nuova
 - Motivo obbligatorio, scelto da un elenco o scritto
 - Il motivo non lo vede nessuno della stanza
-### 22 · Il profilo (nuova)
+### 23 · Il profilo · nuova
 
-![Il profilo](schermate/22-il-profilo.png)
+![Il profilo](schermate/23-il-profilo.png)
 
 Nuova schermata: il profilo si apre dal cerchio in alto a destra. Qui modifichi voce, risposte, foto e preferenze; in fondo c'è «Elimina il mio account».
 
 - Schermata nuova, dal cerchio in alto a destra
 - «Modifica» e «Elimina account» tolti dalla home e dalla stanza
-### 23 · La chiamata · Squilla
+### 24 · La chiamata · Squilla
 
-![La chiamata · Squilla](schermate/23-la-chiamata-squilla.png)
+![La chiamata · Squilla](schermate/24-la-chiamata-squilla.png)
 
 Mentre la linea si collega, l'onda pulsa al centro. Sotto, quante chiamate hai fatto con questa persona.
 
 - Onda nei toni del rosso, più morbida, che pulsa mentre prende la linea
 - Logo centrato con l'onda
 - «CHIUDI» in 3D e in maiuscolo
-### 24 · La chiamata · 15 minuti
+### 25 · La chiamata · 15 minuti
 
-![La chiamata · 15 minuti](schermate/24-la-chiamata-15-minuti.png)
+![La chiamata · 15 minuti](schermate/25-la-chiamata-15-minuti.png)
 
 Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra, l'onda viva della voce e il timer.
 
@@ -299,125 +318,144 @@ Durante la chiamata: dietro, una sagoma che si muove oltre un vetro rosso; sopra
 - Sfondo: sagoma in movimento dietro un vetro rosso (nessun volto)
 - Onda viva sopra la sagoma
 - «Microfono» e «Chiudi» sulla stessa riga, in 3D; «Chiudi e segnala» sotto
-### 25 · La chiamata · I regali (nuova)
+### 26 · La chiamata · I regali · nuova
 
-![La chiamata · I regali](schermate/25-la-chiamata-i-regali.png)
+![La chiamata · I regali](schermate/26-la-chiamata-i-regali.png)
 
 Nuova schermata: durante la chiamata il tasto «Regalo» apre i tre regali. Si paga con i Coin, il saldo è in alto.
 
 - Disegno nuovo per i fiori: un mazzo misto, non di rose
 - Rosa 5 Coin, spumante 10, fiori 20
 - Il saldo si aggiorna subito
-### 26 · La chiamata · Regalo ricevuto (nuova)
+### 27 · La chiamata · Regalo ricevuto · nuova
 
-![La chiamata · Regalo ricevuto](schermate/26-la-chiamata-regalo-ricevuto.png)
+![La chiamata · Regalo ricevuto](schermate/27-la-chiamata-regalo-ricevuto.png)
 
 Nuova schermata: chi riceve il regalo lo vede comparire sopra la chiamata, con un'animazione leggera.
 
 - Schermata nuova
 - Il regalo compare sopra l'onda, poi sparisce da solo
 - I regali ricevuti restano nel profilo
-### 27 · I tuoi regali (nuova)
+### 28 · I tuoi regali · nuova
 
-![I tuoi regali](schermate/27-i-tuoi-regali.png)
+![I tuoi regali](schermate/28-i-tuoi-regali.png)
 
 Nuova schermata, dal profilo: il numero di regali ricevuti per tipo e da chi, stanza per stanza.
 
 - Schermata nuova, dal profilo
 - Totale per tipo: rose, spumante, fiori
 - Elenco per persona e per stanza
-### 28 · La chiamata · Le carte
+### 29 · La chiamata · Le carte
 
-![La chiamata · Le carte](schermate/28-la-chiamata-le-carte.png)
+![La chiamata · Le carte](schermate/29-la-chiamata-le-carte.png)
 
 La carta rompighiaccio appare sopra lo stesso sfondo della chiamata.
 
 - Stesso sfondo della chiamata: sagoma dietro il vetro rosso
 - Onda viva sopra la sagoma
 - Pulsanti allineati e in 3D
-### 29 · La chiamata · Ultimo minuto
+### 30 · La chiamata · Ultimo minuto
 
-![La chiamata · Ultimo minuto](schermate/29-la-chiamata-ultimo-minuto.png)
+![La chiamata · Ultimo minuto](schermate/30-la-chiamata-ultimo-minuto.png)
 
 L'ultimo minuto: il timer diventa rosso, l'onda continua sopra la sagoma.
 
 - Stesso sfondo della chiamata
 - Timer rosso nell'ultimo minuto
 - Pulsanti allineati e in 3D
-### 30 · Dopo la chiamata
+### 31 · Dopo la chiamata
 
-![Dopo la chiamata](schermate/30-dopo-la-chiamata.png)
+![Dopo la chiamata](schermate/31-dopo-la-chiamata.png)
 
 Sì o no in privato, sulla stessa riga e in 3D.
 
 - Logo centrato con l'onda
 - «Sì» e «No» allineati, in 3D
-### 31 · Il diario
+### 32 · Il diario
 
-![Il diario](schermate/31-il-diario.png)
+![Il diario](schermate/32-il-diario.png)
 
 Il diario privato, con «Salta» e «Salva» sulla stessa riga.
 
 - Logo centrato con l'onda
 - «Salta» e «Salva» allineati, in 3D
-### 32 · Le chiavi
+### 33 · Le chiavi
 
-![Le chiavi](schermate/32-le-chiavi.png)
+![Le chiavi](schermate/33-le-chiavi.png)
 
 La chiave si dà da una schermata sua, con la frase e i pulsanti allineati.
 
 - Schermata dedicata invece del riquadro dentro la stanza
 - Pulsanti allineati e in 3D
-### 33 · Chiave data
+### 34 · Chiave data
 
-![Chiave data](schermate/33-chiave-data.png)
+![Chiave data](schermate/34-chiave-data.png)
 
 Conferma breve; si torna alla stanza.
 
 - Logo centrato con l'onda
 - «Cambia frase» e «Riprendi la chiave» allineati, in 3D
-### 34 · Domenica sera
+### 35 · Domenica sera
 
-![Domenica sera](schermate/34-domenica-sera.png)
+![Domenica sera](schermate/35-domenica-sera.png)
 
 Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21.
 
 - Immagine nuova, calda e accogliente al posto di quella scura
 - La luce oltre la porta respira piano
 - Pulsanti con il nuovo carattere
-### 35 · La porta
+### 36 · La madrina · le porte aperte · nuova
 
-![La porta](schermate/35-la-porta.png)
+![La madrina · le porte aperte](schermate/36-la-madrina-le-porte-aperte.png)
+
+Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.
+
+- Vocale della domenica con l'onda
+- Il numero grande in rosso
+- «Solo quante, mai chi»: se una è la tua lo scopri alle 21
+### 37 · La porta
+
+![La porta](schermate/37-la-porta.png)
 
 Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo.
 
 - Immagine nuova, calda e romantica al posto di quella inquietante
 - Apertura morbida e continua, senza scatti né blocchi
 - Dopo l'apertura, la luce respira piano
-### 36 · La porta · se sei un uomo · nuova
+### 38 · La porta · se sei un uomo · nuova
 
-![La porta · se sei un uomo](schermate/36-la-porta-se-sei-un-uomo.png)
+![La porta · se sei un uomo](schermate/38-la-porta-se-sei-un-uomo.png)
 
 La stessa porta vista da un uomo (qui Luca): dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco.
 
 - Versione per gli utenti uomini
-- Sagoma femminile con la rosa, stessa luce e stessa apertura morbida (`immagini/porta-donna-rosa.jpg`)
+- Sagoma femminile con la rosa, stessa luce e stessa apertura morbida
 - Il resto della schermata è identico
-### 37 · Lo svelamento
+### 39 · Lo svelamento
 
-![Lo svelamento](schermate/37-lo-svelamento.png)
+![Lo svelamento](schermate/39-lo-svelamento.png)
 
 La caparra spiegata in tre righe, pulsanti allineati.
 
 - Logo centrato con l'onda
 - Testo più breve sulla caparra
 - Pulsanti allineati e in 3D
-### 38 · Lo svelamento · Come
+### 40 · Lo svelamento · Come
 
-![Lo svelamento · Come](schermate/38-lo-svelamento-come.png)
+![Lo svelamento · Come](schermate/40-lo-svelamento-come.png)
 
 Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico.
 
 - Due schede grandi al posto di quattro pulsanti
 - Il cerchio dei 10 secondi per il video, le foto sfocate per le foto
 - «Adesso» o un orario, in un selettore unico
+### 41 · La serata della stanza · nuova
+
+![La serata della stanza](schermate/41-la-serata-della-stanza.png)
+
+Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.
+
+- Invito alla serata con giorno, ora e locale consigliato
+- La madrina presenta tutti, anche chi non ha scelto nessuno
+- Consenso separato e facoltativo per comparire nei video (spento di base)
+- «Non vengo» e «Ci sarò» allineati, in 3D

@@ -1,6 +1,5 @@
 [
  {
-  "n": 1,
   "id": "n01",
   "t": "Benvenuto",
   "h": [
@@ -15,10 +14,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 1,
   "file": "schermate/01-benvenuto.png"
  },
  {
-  "n": 2,
   "id": "n02",
   "t": "Passo 1 · Email",
   "h": [
@@ -33,10 +32,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 2,
   "file": "schermate/02-passo-1-email.png"
  },
  {
-  "n": 3,
   "id": "n03",
   "t": "Passo 2 · Età",
   "h": [
@@ -50,10 +49,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 3,
   "file": "schermate/03-passo-2-eta.png"
  },
  {
-  "n": 4,
   "id": "n04",
   "t": "Passo 3 · Le regole",
   "h": [
@@ -68,10 +67,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 4,
   "file": "schermate/04-passo-3-le-regole.png"
  },
  {
-  "n": 5,
   "id": "n05",
   "t": "Passo 4 · Chi sei",
   "h": [
@@ -85,10 +84,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 5,
   "file": "schermate/05-passo-4-chi-sei.png"
  },
  {
-  "n": 6,
   "id": "n06",
   "t": "Passo 5 · Chi cerchi",
   "h": [
@@ -102,10 +101,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 6,
   "file": "schermate/06-passo-5-chi-cerchi.png"
  },
  {
-  "n": 7,
   "id": "n07",
   "t": "Passo 6 · La tua voce",
   "h": [
@@ -120,10 +119,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 7,
   "file": "schermate/07-passo-6-la-tua-voce.png"
  },
  {
-  "n": 8,
   "id": "n08",
   "t": "Passo 6 · Riascolta",
   "h": [
@@ -138,10 +137,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 8,
   "file": "schermate/08-passo-6-riascolta.png"
  },
  {
-  "n": 9,
   "id": "n09",
   "t": "Passo 7 · Tre risposte",
   "h": [
@@ -155,10 +154,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 9,
   "file": "schermate/09-passo-7-tre-risposte.png"
  },
  {
-  "n": 10,
   "id": "n10",
   "t": "Passo 8 · Questionario",
   "h": [
@@ -172,10 +171,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 10,
   "file": "schermate/10-passo-8-questionario.png"
  },
  {
-  "n": 11,
   "id": "n11",
   "t": "Passo 8 · Una domanda",
   "h": [
@@ -189,10 +188,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 11,
   "file": "schermate/11-passo-8-una-domanda.png"
  },
  {
-  "n": 12,
   "id": "n12",
   "t": "Passo 9 · Le foto",
   "h": [
@@ -207,10 +206,10 @@
   ],
   "f": "ingresso",
   "nuova": false,
+  "n": 12,
   "file": "schermate/12-passo-9-le-foto.png"
  },
  {
-  "n": 13,
   "id": "coin-negozio",
   "t": "I tuoi Coin",
   "h": [
@@ -226,10 +225,10 @@
   ],
   "f": "ingresso",
   "nuova": true,
+  "n": 13,
   "file": "schermate/13-i-tuoi-coin.png"
  },
  {
-  "n": 14,
   "id": "coin-pagamento",
   "t": "Pagamento con Gomry",
   "h": [
@@ -244,10 +243,10 @@
   ],
   "f": "ingresso",
   "nuova": true,
+  "n": 14,
   "file": "schermate/14-pagamento-con-gomry.png"
  },
  {
-  "n": 15,
   "id": "coin-fatto",
   "t": "Coin caricati",
   "h": [
@@ -261,10 +260,10 @@
   ],
   "f": "ingresso",
   "nuova": true,
+  "n": 15,
   "file": "schermate/15-coin-caricati.png"
  },
  {
-  "n": 16,
   "id": "n13",
   "t": "La home",
   "h": [
@@ -279,10 +278,10 @@
   ],
   "f": "stanza",
   "nuova": false,
+  "n": 16,
   "file": "schermate/16-la-home.png"
  },
  {
-  "n": 17,
   "id": "scegli-stanza",
   "t": "Scegli la stanza",
   "h": [
@@ -298,10 +297,29 @@
   ],
   "f": "stanza",
   "nuova": true,
+  "n": 17,
   "file": "schermate/17-scegli-la-stanza.png"
  },
  {
+  "id": "madrina-apre",
+  "t": "La madrina apre la stanza",
+  "h": [
+   "La madrina",
+   "vi presenta."
+  ],
+  "d": "Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.",
+  "c": [
+   "Scheda della madrina con il simbolo «!» nel cerchio rosso (mai la sua foto qui)",
+   "Vocale con l'onda grande, si riascolta quando vuoi",
+   "Solo i nomi di battesimo delle 12 persone, tu evidenziata in rosso",
+   "Le regole in una riga, poi si entra nella stanza"
+  ],
+  "f": "stanza",
+  "nuova": true,
   "n": 18,
+  "file": "schermate/18-la-madrina-apre-la-stanza.png"
+ },
+ {
   "id": "n14",
   "t": "La stanza",
   "h": [
@@ -317,10 +335,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/18-la-stanza.png"
+  "n": 19,
+  "file": "schermate/19-la-stanza.png"
  },
  {
-  "n": 19,
   "id": "fissa-chiamata",
   "t": "Fissa una chiamata",
   "h": [
@@ -336,10 +354,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/19-fissa-una-chiamata.png"
+  "n": 20,
+  "file": "schermate/20-fissa-una-chiamata.png"
  },
  {
-  "n": 20,
   "id": "coin-quasi-finiti",
   "t": "Coin quasi finiti",
   "h": [
@@ -355,10 +373,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/20-coin-quasi-finiti.png"
+  "n": 21,
+  "file": "schermate/21-coin-quasi-finiti.png"
  },
  {
-  "n": 21,
   "id": "n15",
   "t": "Lascia la stanza",
   "h": [
@@ -373,10 +391,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/21-lascia-la-stanza.png"
+  "n": 22,
+  "file": "schermate/22-lascia-la-stanza.png"
  },
  {
-  "n": 22,
   "id": "n16",
   "t": "Il profilo",
   "h": [
@@ -390,10 +408,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/22-il-profilo.png"
+  "n": 23,
+  "file": "schermate/23-il-profilo.png"
  },
  {
-  "n": 23,
   "id": "n17",
   "t": "La chiamata · Squilla",
   "h": [
@@ -408,10 +426,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/23-la-chiamata-squilla.png"
+  "n": 24,
+  "file": "schermate/24-la-chiamata-squilla.png"
  },
  {
-  "n": 24,
   "id": "n18",
   "t": "La chiamata · 15 minuti",
   "h": [
@@ -428,10 +446,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/24-la-chiamata-15-minuti.png"
+  "n": 25,
+  "file": "schermate/25-la-chiamata-15-minuti.png"
  },
  {
-  "n": 25,
   "id": "regali",
   "t": "La chiamata · I regali",
   "h": [
@@ -446,10 +464,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/25-la-chiamata-i-regali.png"
+  "n": 26,
+  "file": "schermate/26-la-chiamata-i-regali.png"
  },
  {
-  "n": 26,
   "id": "regalo-ricevuto",
   "t": "La chiamata · Regalo ricevuto",
   "h": [
@@ -464,10 +482,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/26-la-chiamata-regalo-ricevuto.png"
+  "n": 27,
+  "file": "schermate/27-la-chiamata-regalo-ricevuto.png"
  },
  {
-  "n": 27,
   "id": "storico-regali",
   "t": "I tuoi regali",
   "h": [
@@ -482,10 +500,10 @@
   ],
   "f": "stanza",
   "nuova": true,
-  "file": "schermate/27-i-tuoi-regali.png"
+  "n": 28,
+  "file": "schermate/28-i-tuoi-regali.png"
  },
  {
-  "n": 28,
   "id": "n19",
   "t": "La chiamata · Le carte",
   "h": [
@@ -500,10 +518,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/28-la-chiamata-le-carte.png"
+  "n": 29,
+  "file": "schermate/29-la-chiamata-le-carte.png"
  },
  {
-  "n": 29,
   "id": "n20",
   "t": "La chiamata · Ultimo minuto",
   "h": [
@@ -518,10 +536,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/29-la-chiamata-ultimo-minuto.png"
+  "n": 30,
+  "file": "schermate/30-la-chiamata-ultimo-minuto.png"
  },
  {
-  "n": 30,
   "id": "n21",
   "t": "Dopo la chiamata",
   "h": [
@@ -535,10 +553,10 @@
   ],
   "f": "stanza",
   "nuova": false,
-  "file": "schermate/30-dopo-la-chiamata.png"
+  "n": 31,
+  "file": "schermate/31-dopo-la-chiamata.png"
  },
  {
-  "n": 31,
   "id": "n22",
   "t": "Il diario",
   "h": [
@@ -552,10 +570,10 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/31-il-diario.png"
+  "n": 32,
+  "file": "schermate/32-il-diario.png"
  },
  {
-  "n": 32,
   "id": "n23",
   "t": "Le chiavi",
   "h": [
@@ -569,10 +587,10 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/32-le-chiavi.png"
+  "n": 33,
+  "file": "schermate/33-le-chiavi.png"
  },
  {
-  "n": 33,
   "id": "n24",
   "t": "Chiave data",
   "h": [
@@ -586,10 +604,10 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/33-chiave-data.png"
+  "n": 34,
+  "file": "schermate/34-chiave-data.png"
  },
  {
-  "n": 34,
   "id": "n25",
   "t": "Domenica sera",
   "h": [
@@ -604,10 +622,28 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/34-domenica-sera.png"
+  "n": 35,
+  "file": "schermate/35-domenica-sera.png"
  },
  {
-  "n": 35,
+  "id": "madrina-domenica",
+  "t": "La madrina · le porte aperte",
+  "h": [
+   "Questa settimana",
+   "3 porte aperte."
+  ],
+  "d": "Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.",
+  "c": [
+   "Vocale della domenica con l'onda",
+   "Il numero grande in rosso",
+   "«Solo quante, mai chi»: se una è la tua lo scopri alle 21"
+  ],
+  "f": "scelta",
+  "nuova": true,
+  "n": 36,
+  "file": "schermate/36-la-madrina-le-porte-aperte.png"
+ },
+ {
   "id": "n26",
   "t": "La porta",
   "h": [
@@ -622,10 +658,10 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/35-la-porta.png"
+  "n": 37,
+  "file": "schermate/37-la-porta.png"
  },
  {
-  "n": 36,
   "id": "n26b",
   "t": "La porta · se sei un uomo",
   "h": [
@@ -640,10 +676,10 @@
   ],
   "f": "scelta",
   "nuova": true,
-  "file": "schermate/36-la-porta-se-sei-un-uomo.png"
+  "n": 38,
+  "file": "schermate/38-la-porta-se-sei-un-uomo.png"
  },
  {
-  "n": 37,
   "id": "n27",
   "t": "Lo svelamento",
   "h": [
@@ -658,10 +694,10 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/37-lo-svelamento.png"
+  "n": 39,
+  "file": "schermate/39-lo-svelamento.png"
  },
  {
-  "n": 38,
   "id": "n28",
   "t": "Lo svelamento · Come",
   "h": [
@@ -676,6 +712,26 @@
   ],
   "f": "scelta",
   "nuova": false,
-  "file": "schermate/38-lo-svelamento-come.png"
+  "n": 40,
+  "file": "schermate/40-lo-svelamento-come.png"
+ },
+ {
+  "id": "serata-stanza",
+  "t": "La serata della stanza",
+  "h": [
+   "Le stanze si incontrano",
+   "dal vivo."
+  ],
+  "d": "Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.",
+  "c": [
+   "Invito alla serata con giorno, ora e locale consigliato",
+   "La madrina presenta tutti, anche chi non ha scelto nessuno",
+   "Consenso separato e facoltativo per comparire nei video (spento di base)",
+   "«Non vengo» e «Ci sarò» allineati, in 3D"
+  ],
+  "f": "scelta",
+  "nuova": true,
+  "n": 41,
+  "file": "schermate/41-la-serata-della-stanza.png"
  }
 ]
