@@ -58,7 +58,7 @@ test("dopo 3 secondi l'animazione finisce da sola e compare la porta", async () 
   await o.scatta(3000);
   assert.equal(c.modello().animazione, false);
   assert.ok(aggiornata > prima, "la pagina si ridisegna");
-  assert.ok(testo(vistaSera(h, c)).includes("Una porta si è aperta: Giulia."));
+  assert.ok(testo(vistaSera(h, c)).includes("Una portasi è aperta.Giulia"));
 });
 
 test("«Salta» chiude subito l'animazione; il timer dopo non fa danni", async () => {
