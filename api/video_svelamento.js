@@ -21,7 +21,7 @@ async function chiudi(d, sessione, mids) {
   try { await d.chiudiSessione(sessione, mids); } catch { /* Realtime chiude comunque le sessioni senza traffico */ }
 }
 
-export async function pubblicaVideo({ per, offerta }, d) {
+export async function pubblicaVideo({ per, porta, offerta }, d) {
   if (!offertaSvelamento(offerta)) return no("svelamento");
   const mids = [midDi(offerta.sdp, "audio"), midDi(offerta.sdp, "video")];
   if (!mids[0] || !mids[1] || mids[0] === mids[1]) return no("svelamento");
@@ -32,7 +32,7 @@ export async function pubblicaVideo({ per, offerta }, d) {
     const p = await d.pubblicaSvelamento(s.sessione, offerta);
     if (!p || !p.ok) return esito(p);
     pubblicata = true;
-    const r = await d.svelamento.pubblica({ da: per, sessione: s.sessione, mids });
+    const r = await d.svelamento.pubblica({ da: per, sessione: s.sessione, mids, porta }); // porta: per l'allarme (8b-2b)
     if (!r || !r.ok) {
       await chiudi(d, s.sessione, mids);
       return esito(r);

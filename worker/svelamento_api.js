@@ -22,6 +22,9 @@
 //   POST /app/api/svelamento  { azione: "rispondi", porta, risposta: "si" | "no" }                (passo 8b-2a)
 //                             → { ok: true, esito: "risposto", stato } | { ok: true, esito: "doppio_si", testo, stato }
 //                             | { ok: false, motivo, testo? }   («risposto» identico per sì e no, mai se l'altra ha risposto)
+//   Passo 8b-2b: la fine del video la segna il Durable Object della porta (segnaFineSvelamento: fine_svelamento dopo 10
+//   secondi pieni, torna_a_quando se nessuno si collega o al terzo avvio caduto); il Worker gliela chiede subito quando
+//   la vista dice «finito» o «quando». Con le foto la fine vale appena entra_svelamento dice «iniziato_foto».
 //   GET aggiunge «svelate» (porte in attesa del sì/no, con la domanda) ed «esiti» (doppio sì o chiusa, 7 giorni).
 //   La scelta e le fasce dell'altra persona non escono mai: solo «mia_scelta», «mie_fasce» e la fascia fissata.
 //
@@ -47,6 +50,7 @@ const BLOCCATA = ["bloccata", "gia_bloccata"];
 const RISPOSTE = ["si", "no"];
 const TESTI_ESITO = { doppio_si: TESTI_SVELAMENTO.doppioSi, chiusa: TESTI_SVELAMENTO.chiusa };
 const FASCIA_MS = SVELAMENTO.fasciaMinuti * 60000;
+const FINE = { finito: "fine_svelamento", quando: "torna_a_quando" };
 const istante = (x) => (typeof x === "string" && x.length <= 40 && Number.isFinite(Date.parse(x)) ? new Date(Date.parse(x)).toISOString() : null);
 const riprova = () => risposta(503, { ok: false, motivo: "riprova" });
 
@@ -78,6 +82,15 @@ async function rpc(s, nome, argomenti, f) {
     console.error(`svelamento: ${nome} errore`, e && e.name);
     return undefined;
   }
+}
+
+// Passo 8b-2b: per il Durable Object `Svelamento` (worker/svelamento.js), mai per il telefono. «finito» →
+// fine_svelamento, «quando» → torna_a_quando. Restituisce la risposta del database, o undefined se non c'è.
+export async function segnaFineSvelamento(env, { porta, persona, fine }, f = fetch) {
+  const s = server(env);
+  if (!s || !Object.hasOwn(FINE, fine) || !UUID.test(String(porta || "")) || typeof persona !== "string" || !persona) return undefined;
+  const r = await rpc(s, FINE[fine], { p_porta: porta, p_persona: persona }, f);
+  return typeof r === "string" ? r : undefined;
 }
 
 // Solo i campi previsti escono verso il telefono, anche se un giorno la funzione del database ne restituisse altri.
@@ -238,7 +251,11 @@ const INIZIATO = { iniziato_video: "video", iniziato_foto: "foto" };
 async function entra(s, id, idPorta, f) {
   const esito = await rpc(s, "entra_svelamento", { p_porta: idPorta, p_persona: id }, f);
   if (esito === "in_attesa") return risposta(200, { ok: true, esito });
-  if (Object.hasOwn(INIZIATO, esito)) return risposta(200, { ok: true, esito: "iniziato", tipo: INIZIATO[esito] });
+  if (Object.hasOwn(INIZIATO, esito)) {
+    // Passo 8b-2b: con le foto non c'è un video da aspettare, la fine vale subito (da lì le 48 ore del sì/no).
+    if (esito === "iniziato_foto") await rpc(s, "fine_svelamento", { p_porta: idPorta, p_persona: id }, f);
+    return risposta(200, { ok: true, esito: "iniziato", tipo: INIZIATO[esito] });
+  }
   if (["non_ancora", "non_arrivato", "manca_caparra", "gia_iniziato"].includes(esito)) return risposta(200, { ok: false, motivo: esito });
   if (esito === "non_nella_porta") return risposta(404, { ok: false, motivo: "non_trovata" });
   if (esito === "porta_scaduta") return risposta(200, { ok: false, motivo: esito, testo: TESTI_SVELAMENTO.scaduta });
@@ -271,7 +288,14 @@ async function video(env, s, id, idPorta, azione, dati, f) {
     chiudiSessione: (sessione, mids) => chiudiVoce(env, sessione, mids, f),
   };
   try {
-    const r = await VIDEO[azione]({ per: id, offerta: dati.offerta, risposta: dati.risposta }, d);
+    const r = await VIDEO[azione]({ per: id, porta: idPorta, offerta: dati.offerta, risposta: dati.risposta }, d);
+    // Passo 8b-2b: video finito o di nuovo «Quando?»: il Durable Object lo segna subito nel database (lo fa comunque
+    // il suo allarme; ripetuto non cambia nulla). Un errore qui non cambia la risposta al telefono.
+    const v = r && r.ok && r.vista;
+    const fase = v ? (v.fase === "in_corso" && Number.isFinite(v.fine) && v.ora >= v.fine ? "finito" : v.fase) : r && r.motivo;
+    if (fase === "finito" || fase === "quando") {
+      try { await d.svelamento.segna(); } catch (e) { console.error("svelamento: segna", e && e.name); }
+    }
     if (r && r.ok) return risposta(200, r);
     const motivo = String((r && r.motivo) || "riprova");
     if (DATI_VIDEO.includes(motivo)) return risposta(400, { ok: false, motivo });

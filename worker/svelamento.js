@@ -6,6 +6,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { GestoreSvelamento } from "../api/svelamento_do.js";
 import { chiudiVoce } from "../api/realtime.js";
+import { segnaFineSvelamento } from "./svelamento_api.js";
 
 export class Svelamento extends DurableObject {
   constructor(ctx, env) {
@@ -13,6 +14,8 @@ export class Svelamento extends DurableObject {
     this.gestore = new GestoreSvelamento({
       storage: ctx.storage,
       chiudiSessione: (sessione, mids) => chiudiVoce(this.env, sessione, mids),
+      // Passo 8b-2b: la fine del video va al database (fine_svelamento / torna_a_quando) con la chiave del server.
+      segna: (x) => segnaFineSvelamento(this.env, x),
     });
   }
 
@@ -23,6 +26,7 @@ export class Svelamento extends DurableObject {
   ricevuto(dati) { return this.gestore.ricevuto(dati); }
   vista(da) { return this.gestore.vista(da); }
   chiudi(dati) { return this.gestore.chiudi(dati); }
+  segna() { return this.gestore.segna(); }
 
   async alarm() {
     await this.gestore.allarme();

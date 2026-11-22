@@ -149,7 +149,8 @@ test("nessuno arriva: dopo SCADENZA_MS il server chiude la sessione rimasta aper
   await g.pubblica(PUB_A);
   vai(SCADENZA_MS);
   await g.allarme();
-  assert.equal((await g.vista("a")).vista.fase, "finito");
+  // Passo 8b-2b: senza inizio non è uno svelamento finito, si torna a «Quando?» (test/fine_svelamento_do.test.mjs).
+  assert.equal((await g.vista("a")).motivo, "quando");
   assert.deepEqual(chiuse, [{ sessione: "sessioneA123", mids: ["0", "1"] }]);
 });
 
