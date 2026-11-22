@@ -207,10 +207,19 @@ export function vistaSera(h, ks, { svelamento = null } = {}) {
     h("div", { classe: "porte-ante", "aria-hidden": "true" }, h("span", { classe: "porta-anta" }), h("span", { classe: "porta-anta" })),
     h("button", { classe: "link", type: "button", "aria-label": "Salta l'animazione delle porte", onclick: () => ks.saltaAnimazione() }, "Salta"));
   if (s.tipo === "nessuna_porta") return h("div", { classe: "chiavi-sera" }, h("p", {}, s.testo));
-  // Solo i testi della spec: nessun titolo nuovo. Con due porte, due schede una sotto l'altra.
+  // Design v4 (#349), schermate 37-38 «La porta»: dietro le ante che scorrono la sagoma di chi c'è (immagine fissa
+  // dell'app, decorativa), poi occhiello, titolo, nome, frase e «Vai allo svelamento». Con due porte, due schede.
   return h("div", { classe: "chiavi-sera" },
-    s.schede.map((p) => h("div", { classe: "porta-aperta" },
-      h("p", {}, h("strong", {}, p.testo)),
-      p.frase ? [h("p", { classe: "nota" }, p.scritto), h("blockquote", {}, p.frase)] : null,
-      typeof svelamento === "function" ? h("button", { classe: "bottone", type: "button", "aria-label": p.etichetta, onclick: () => svelamento(p.porta) }, p.bottone) : null)));
+    s.schede.map((p) => h("div", { classe: "porta-aperta porta-v4" },
+      h("div", { classe: "porta-v4-scena", "aria-hidden": "true" },
+        h("img", { classe: "porta-v4-foto", src: p.immagine, alt: "" }),
+        h("div", { classe: "porta-v4-luce" }),
+        h("div", { classe: "porta-v4-ante" }, h("span", { classe: "porta-v4-anta sx" }), h("span", { classe: "porta-v4-anta dx" }))),
+      h("div", { classe: "porta-v4-testa" },
+        h("p", { classe: "passo" }, TESTI.portaOcchiello),
+        h("h2", {}, TESTI.portaTitolo[0], h("br", {}), h("em", {}, TESTI.portaTitolo[1]))),
+      h("div", { classe: "porta-v4-piede" },
+        h("p", { classe: "porta-v4-chi" }, h("strong", {}, p.nome)),
+        p.frase ? [h("p", { classe: "nascosto" }, p.scritto), h("blockquote", { classe: "frase" }, p.frase)] : null,
+        typeof svelamento === "function" ? h("button", { classe: "bottone", type: "button", "aria-label": p.etichetta, onclick: () => svelamento(p.porta) }, p.bottone) : null))));
 }

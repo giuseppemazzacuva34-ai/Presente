@@ -41,8 +41,9 @@ test("con una porta: nome, frase dell'altra persona e «Vai allo svelamento» ch
   const aperte = [];
   const v = vistaSera(h, c, { svelamento: (porta) => aperte.push(porta) });
   assert.equal(v.a.classe, "chiavi-sera");
-  assert.equal(tutti(v, (x) => /^h\d$/.test(x.tag)).length, 0, "nessun titolo fuori dai testi della spec");
-  assert.match(testo(v), /Una porta si è aperta: Giulia\./);
+  // Design v4 (#349, approvato da Giuseppe): l'unico titolo è quello della schermata, «Una porta / si è aperta.».
+  assert.deepEqual(tutti(v, (x) => /^h\d$/.test(x.tag)).map(testo), ["Una portasi è aperta."]);
+  assert.match(testo(v), /Giulia/);
   assert.match(testo(v), /Giulia ti ha scritto:/);
   assert.match(testo(v), /Il treno, ancora\./);
   assert.equal(bottone(v, "Vai allo svelamento").a["aria-label"], "Vai allo svelamento con Giulia", "con due porte i pulsanti si distinguono");
@@ -54,7 +55,7 @@ test("senza il flusso dello svelamento il pulsante non compare (niente pulsanti 
   const c = creaChiaviStanza({ chiavi: chiaviFinte(conPorta) });
   await c.prepara();
   const v = vistaSera(h, c);
-  assert.match(testo(v), /Una porta si è aperta: Giulia\./);
+  assert.match(testo(v), /Una portasi è aperta\.Giulia/);
   assert.equal(bottone(v, "Vai allo svelamento"), undefined);
 });
 
@@ -75,7 +76,7 @@ test("in attesa del calcolo delle 21:00: «Tra poco le porte» e una nuova lettu
   assert.equal(timer.length, 1);
   assert.equal(timer[0][1], 20000);
   await timer[0][0]();
-  assert.match(testo(vistaSera(h, c)), /Una porta si è aperta: Giulia\./);
+  assert.match(testo(vistaSera(h, c)), /Una portasi è aperta\.Giulia/);
   assert.equal(timer.length, 1, "dopo la risposta pronta nessuna nuova lettura");
 });
 

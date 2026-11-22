@@ -322,3 +322,37 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .cerchio .p.k9 { left: 15.8px; top: 73.8px; }
 .cerchio .p.k10 { left: 37.0px; top: 37.0px; }
 .cerchio .p.k11 { left: 73.8px; top: 15.8px; }
+
+/* ===== Linea C (#349): «La porta» del design v4, schermate 37-38 =====
+   Valori dal prototipo docs/design/v4/prototipo (.foto-full, .rivela, .bagliore, .ante, .anta-s, .frase). La scena è
+   decorativa (aria-hidden): nome, frase e pulsante restano testo vero sopra. Le ante scorrono una volta sola. */
+.app .porta-v4 { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: min(78vh, 680px); margin: 0 -16px 1rem; border-radius: 0; background: #0E0D10; isolation: isolate; }
+.app .porta-v4 + .porta-v4 { margin-top: 1rem; }
+.app .porta-v4-scena { position: absolute; inset: 0; z-index: -1; }
+.app .porta-v4-scena::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14, 13, 16, 0.8) 0%, rgba(14, 13, 16, 0) 25%, rgba(14, 13, 16, 0) 55%, rgba(14, 13, 16, 0.96) 80%); }
+.app .porta-v4-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; filter: blur(4px); animation: porta-v4-rivela 8s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.app .porta-v4-foto[src$="porta-uomo-rosa.jpg"] { object-position: 30% 40%; }
+.app .porta-v4-foto[src$="porta-donna-rosa.jpg"] { object-position: 62% 40%; }
+.app .porta-v4-luce { position: absolute; inset: 0; background: radial-gradient(ellipse 30% 45% at 50% 48%, rgba(255, 140, 100, 0.35), transparent 70%); animation: porta-v4-luce 4s ease-in-out 2s infinite alternate; }
+.app .porta-v4-ante { position: absolute; inset: 0; display: flex; }
+.app .porta-v4-anta { position: relative; flex: 1; background: linear-gradient(90deg, rgba(28, 22, 26, 0.92), rgba(40, 30, 34, 0.86)); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6); }
+.app .porta-v4-anta::after { content: ""; position: absolute; top: 46%; width: 3px; height: 70px; border-radius: 2px; background: rgba(242, 237, 228, 0.45); }
+.app .porta-v4-anta.sx { border-right: 2px solid rgba(232, 67, 43, 0.7); animation: porta-v4-sx 6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s both; }
+.app .porta-v4-anta.dx { border-left: 2px solid rgba(232, 67, 43, 0.7); animation: porta-v4-dx 6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s both; }
+.app .porta-v4-anta.sx::after { right: 12px; }
+.app .porta-v4-anta.dx::after { left: 12px; }
+@keyframes porta-v4-sx { from { transform: translateX(0); } to { transform: translateX(-96%); } }
+@keyframes porta-v4-dx { from { transform: translateX(0); } to { transform: translateX(96%); } }
+@keyframes porta-v4-rivela { from { transform: scale(1.14); filter: brightness(0.55) blur(6px); } to { transform: scale(1); filter: brightness(1) blur(4px); } }
+@keyframes porta-v4-luce { from { opacity: 0.4; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .app .porta-v4-anta.sx { animation: none; transform: translateX(-96%); } .app .porta-v4-anta.dx { animation: none; transform: translateX(96%); } .app .porta-v4-luce { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .app .porta-v4-foto { animation: none; } }
+.app .porta-v4-testa { padding: 22px 22px 0; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.app .porta-v4 .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .porta-v4 h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 34px; line-height: 1.05; letter-spacing: -0.01em; color: var(--avorio); }
+.app .porta-v4 h2 em { color: #E8432B; }
+.app .porta-v4-piede { padding: 0 22px 12px; display: flex; flex-direction: column; gap: 8px; }
+.app .porta-v4-chi { margin: 0; font-size: 17px; color: var(--avorio); }
+.app .porta-v4 .frase { margin: 0; border-left: 2px solid #E8432B; padding: 4px 0 4px 12px; font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--avorio); }
+.app .porta-v4 .bottone { width: 100%; margin: 8px 0 0; }
+.app .chiavi-sera:has(.porta-v4) { border: 0; padding: 0; }
