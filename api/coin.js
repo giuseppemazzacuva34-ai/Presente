@@ -89,3 +89,20 @@ export function foglioRegali(saldo) {
     saldo: `Hai ${coin(s)}`,
   };
 }
+
+// «Ti mancano N Coin» anche per le richieste del Worker (stesso testo del foglio).
+export const tiMancano = (n) => mancano(n);
+
+// Nella scheda, solo per chi riceve: «Ti ha mandato: 1 rosa, 1 bicchiere di spumante» (spec, parte C).
+// Ordine del catalogo; regali sconosciuti o conteggi non validi si ignorano; niente regali = nessuna riga.
+const PLURALI = Object.freeze({ rosa: "rose", spumante: "bicchieri di spumante", fiori: "mazzi di fiori" });
+export function ricevutiTesto(lista) {
+  const quanti = new Map((Array.isArray(lista) ? lista : [])
+    .filter((x) => x && regaloDa(x.regalo) && Number.isInteger(x.quanti) && x.quanti > 0)
+    .map((x) => [x.regalo, x.quanti]));
+  const pezzi = REGALI.filter((r) => quanti.has(r.id)).map((r) => {
+    const n = quanti.get(r.id);
+    return `${n} ${n === 1 ? r.nome.toLowerCase() : PLURALI[r.id]}`;
+  });
+  return pezzi.length ? `Ti ha mandato: ${pezzi.join(", ")}` : null;
+}
