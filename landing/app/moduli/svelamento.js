@@ -308,6 +308,12 @@ export function creaSvelamento({ token, fetch: f = globalThis.fetch, attesa = AT
       const r = await chiedi({ azione: "rispondi", porta, risposta });
       return r.ok ? { ok: true, esito: r.dati.esito, testo: r.dati.testo ?? null, stato: r.dati.stato ?? null } : r;
     },
+    // Passo 8b-3b: la connessione è caduta prima dei 10 secondi; il server ferma il timer e aspetta «Riprova».
+    async cadutaVideo(porta) {
+      if (!UUID.test(String(porta || ""))) return errore("non_trovata");
+      const r = await chiedi({ azione: "caduta", porta });
+      return r.ok ? { ok: true, vista: r.dati.vista ?? null } : r;
+    },
     async vistaVideo(porta) {
       if (!UUID.test(String(porta || ""))) return errore("non_trovata");
       const r = await chiedi({ azione: "vista", porta });

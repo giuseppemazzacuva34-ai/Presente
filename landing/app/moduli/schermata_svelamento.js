@@ -13,6 +13,8 @@
 // - Caduta prima dei 10 secondi: «La connessione è caduta.» + «Riprova» per 2 minuti, al massimo 3 volte; il timer
 //   riparte da 10 con lo sfocato iniziale (lo azzera il server). Poi si torna a scegliere quando (quandoEsci).
 //   Caduta dopo i 10 secondi: lo svelamento è valido (come la fine).
+//   Passo 8b-3b: la caduta la si dice subito al server («caduta»), che ferma il timer; se non passa si riprova al giro
+//   dopo, una alla volta. Se il server risponde «quando» (terzo avvio) si esce, se risponde «finito» lo svelamento vale.
 // Niente registrazioni, niente immagini, niente salvataggi: la schermata tiene solo stato in memoria.
 // Le dipendenze arrivano da fuori (orologio, giro, video), così si prova tutto con node --test.
 
@@ -55,6 +57,8 @@ export function creaSchermataSvelamento({
   let ultima = 0;
   let cadutaIl = 0;
   let riprove = 0;
+  let cadutaDetta = true; // passo 8b-3b: la caduta è arrivata al server (o non c'è nulla da dire)
+  let dicendo = false;
   let muto = false;
   let testo = null;
   let tempo = { secondi: 10, sfocato: true };
@@ -141,9 +145,27 @@ export function creaSchermataSvelamento({
     }
   }
 
+  // Passo 8b-3b: dice al server che la connessione è caduta. Una richiesta alla volta; ripetuta al giro dopo se non passa.
+  async function diciCaduta() {
+    if (cadutaDetta || dicendo || stato !== "caduta" || typeof collega.caduta !== "function") return;
+    const mio = turno;
+    dicendo = true;
+    ultima = adesso();
+    let r;
+    try { r = await collega.caduta(); } catch { r = { ok: false, motivo: "riprova" }; }
+    dicendo = false;
+    if (mio !== turno || stato !== "caduta") return;
+    if (r && r.ok) { cadutaDetta = true; return; }
+    const motivo = String((r && r.motivo) || "riprova");
+    if (motivo === "quando") return esci("tentativi");
+    if (motivo === "finito") return finisci();
+    if (!PASSEGGERI.has(motivo)) { cadutaDetta = true; return; }
+  }
+
   async function passo() {
     if (stato === "caduta") {
-      if (adesso() - cadutaIl > RIPROVA_MS) esci("tempo");
+      if (adesso() - cadutaIl > RIPROVA_MS) return esci("tempo");
+      if (!cadutaDetta && adesso() - ultima >= leggiOgni) await diciCaduta();
       return;
     }
     if (stato !== "aspetta" && stato !== "in_corso") return;
@@ -184,6 +206,7 @@ export function creaSchermataSvelamento({
       scarto = 0;
       ricevuto = false;
       riprove = 0;
+      cadutaDetta = true;
       muto = false;
       testo = null;
       tempo = { secondi: 10, sfocato: true };
@@ -203,7 +226,9 @@ export function creaSchermataSvelamento({
       stato = "caduta";
       cadutaIl = adesso();
       tempo = { secondi: 10, sfocato: true };
+      cadutaDetta = false;
       avvisa();
+      diciCaduta();
     },
     async riprova() {
       if (stato !== "caduta" || riprove >= MAX_RIPROVE) return;

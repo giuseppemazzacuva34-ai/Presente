@@ -27,6 +27,7 @@ export class Svelamento extends DurableObject {
   vista(da) { return this.gestore.vista(da); }
   chiudi(dati) { return this.gestore.chiudi(dati); }
   segna() { return this.gestore.segna(); }
+  caduta(dati) { return this.gestore.caduta(dati); }
 
   async alarm() {
     await this.gestore.allarme();
