@@ -15,6 +15,8 @@
 //        «Annulla l'incontro» (passo 2o): esito «annullato», crediti a entrambi, poi nessuna proposta
 //   POST /app/api/incontro  { azione: "valuta", porta, presentato, foto_sue, come_in_chiamata, sicuro } → valuta_incontro
 //        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
+//   POST /app/api/incontro  { azione: "racconta", porta, testo }                     → racconta_valutazione
+//        «Sì, racconto» (passo 3h): il racconto (1-1000 caratteri) va nella segnalazione da 1 ora già partita; «raccontato»
 //   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
 //   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
 //   lettura non va, l'incontro si legge lo stesso, senza locali.
@@ -25,9 +27,10 @@ import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
 import { controllaRisposte } from "../api/valutazione.js";
 
 export const PERCORSO_INCONTRO = "/app/api/incontro";
-const CORPO_MASSIMO = 1024;
+const CORPO_MASSIMO = 8 * 1024; // passo 3h: il racconto arriva a 1000 caratteri, anche di 4 byte
 const ATTESA_SUPABASE_MS = 1500;
 const TESTO_MASSIMO = 200; // il database ammette 80 caratteri: qui si scarta solo ciò che è chiaramente sbagliato
+const RACCONTO_MASSIMO = 1000; // come il modulo di segnalazione e il database (racconta_valutazione)
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
@@ -39,7 +42,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Passo 2o (spec v1.1): «Annulla l'incontro» da «da fissare» o con una proposta in corso → crediti a entrambi.
   annulla_incontro: ["annullato"],
   // Passo 3c (D20): valutazione dopo l'incontro avvenuto.
-  valuta_incontro: ["grazie", "racconta"] };
+  valuta_incontro: ["grazie", "racconta"],
+  // Passo 3h: «Sì, racconto» dopo «No» alla sicurezza.
+  racconta_valutazione: ["raccontato"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -49,6 +54,7 @@ const RIFIUTI = {
   disdici_incontro: ["non_confermato", "troppo_tardi", "incontro_chiuso", "incontro_scaduto"],
   annulla_incontro: ["gia_confermato", "incontro_chiuso", "incontro_scaduto"],
   valuta_incontro: ["non_avvenuto", "chiusa", "gia_fatta", "risposta_non_valida"],
+  racconta_valutazione: ["testo_non_valido", "nessuna_segnalazione", "gia_raccontato"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -147,6 +153,11 @@ export async function incontroApi(request, env, f = fetch) {
     if (!v.ok) return dati();
     return esegui(s, "valuta_incontro", { p_porta: porta, p_persona: chi.id, p_presentato: v.risposte.presentato,
       p_foto_sue: v.risposte.foto_sue, p_come_in_chiamata: v.risposte.come_in_chiamata, p_sicuro: v.risposte.sicuro }, f);
+  }
+  if (azione === "racconta") {
+    const t = corpo.dati.testo;
+    if (typeof t !== "string" || !t.trim() || [...t].length > RACCONTO_MASSIMO) return dati();
+    return esegui(s, "racconta_valutazione", { p_porta: porta, p_persona: chi.id, p_testo: t }, f);
   }
   return dati();
 }
