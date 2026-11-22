@@ -7,10 +7,14 @@
 // Mai voti, stelle o domande sull'aspetto; nessun riepilogo sull'altra persona qui (solo riepiloghi alla cieca, altrove).
 // Con «No» alla sicurezza il server ha già fatto partire un controllo di 1 ora (#7, passo 16b): qui si propone di
 // raccontare. Le risposte restano nella memoria della pagina fino all'invio: niente salvataggi locali, niente log.
+// Passo 3i: «Sì, racconto» apre qui una casella (1000 caratteri); «Manda» fa POST { azione: "racconta", porta, testo }
+// (worker/incontro_api.js → racconta_valutazione, passo 3g-3h): il racconto entra nella segnalazione da 1 ora già
+// partita, senza crearne un'altra. Anche il racconto resta solo nella memoria della pagina finché non parte.
 // Il modulo non tocca la pagina: riceve fetch, token e h dall'esterno, così si prova con node --test.
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
+const RACCONTO_MASSIMO = 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const TESTI_VALUTAZIONE = Object.freeze({
@@ -30,6 +34,11 @@ export const TESTI_VALUTAZIONE = Object.freeze({
   pericolo: "Se sei in pericolo ora, chiama il 112.",
   raccontaSi: "Sì, racconto",
   chiudi: "Chiudi",
+  // Passo 3i, provvisori, da rivedere con «contenuti».
+  etichettaRacconto: "Cosa è successo? Resta tra te e Presente.",
+  manda: "Manda",
+  scriviQualcosa: "Scrivi qualche parola, poi «Manda».",
+  raccontoRicevuto: "Grazie. Il tuo racconto è arrivato a chi controllerà entro 1 ora.",
 });
 
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim().slice(0, 60) : null);
@@ -55,6 +64,9 @@ const ERRORI = Object.freeze({
   chiusa: "Il tempo per rispondere è finito.",
   non_avvenuto: "Questa valutazione non è disponibile.",
   non_trovato: "Questa valutazione non è disponibile.",
+  // Passo 3i: la segnalazione è già stata letta (o chiusa) prima del racconto.
+  nessuna_segnalazione: "La segnalazione è già stata letta. Se serve, usa «Segnala un problema».",
+  testo_non_valido: "Scrivi qualche parola, poi «Manda».",
 });
 export const testoErroreValutazione = (motivo) => (Object.hasOwn(ERRORI, String(motivo)) ? ERRORI[motivo] : "Non è andata. Riprova tra poco.");
 // Con questi motivi non serve riprovare: la valutazione è chiusa per questa persona.
@@ -68,10 +80,12 @@ export function creaValutazione({ token, fetch: f = globalThis.fetch, attesa = A
   let inCorso = false;
   let errore = null;
   let esito = null; // «grazie», «racconta» o «chiusa»
+  let racconto = null; // { testo, inviato } dopo «Sì, racconto»
+  let raccontoChiuso = false; // la segnalazione non accetta più racconti: «Sì, racconto» non torna
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
   const fine = (e) => { try { finito(e); } catch { /* idem */ } };
 
-  async function manda(corpo) {
+  async function manda(corpo, buoni = ["grazie", "racconta"]) {
     const t = await Promise.resolve().then(token).catch(() => null);
     if (!t) return { ok: false, motivo: "accesso" };
     const ferma = new AbortController();
@@ -90,7 +104,7 @@ export function creaValutazione({ token, fetch: f = globalThis.fetch, attesa = A
       try { dati = await r.json(); } catch { return { ok: false, motivo: "riprova" }; }
       if (!dati || typeof dati !== "object") return { ok: false, motivo: "riprova" };
       if (dati.ok !== true) return { ok: false, motivo: r.status === 404 ? "non_trovato" : String(dati.motivo || "riprova") };
-      return ["grazie", "racconta"].includes(dati.esito) ? { ok: true, esito: dati.esito } : { ok: false, motivo: "riprova" };
+      return buoni.includes(dati.esito) ? { ok: true, esito: dati.esito } : { ok: false, motivo: "riprova" };
     } finally {
       clearTimeout(timer);
     }
@@ -129,6 +143,8 @@ export function creaValutazione({ token, fetch: f = globalThis.fetch, attesa = A
       inCorso = false;
       errore = null;
       esito = null;
+      racconto = null;
+      raccontoChiuso = false;
       avvisa();
     },
     // Una risposta della lista porta alla domanda successiva; all'ultima si manda tutto.
@@ -161,15 +177,58 @@ export function creaValutazione({ token, fetch: f = globalThis.fetch, attesa = A
       errore = null;
       esito = null;
       inCorso = false;
+      racconto = null;
+      raccontoChiuso = false;
       avvisa();
       fine(prima || "non_ora");
     },
-    modello: () => ({ porta, nome, passo, risposte: { ...risposte }, inCorso, errore, esito }),
+    // «Sì, racconto» (passo 3i): solo dopo «No» alla sicurezza.
+    apriRacconto() {
+      if (!porta || esito !== "racconta" || racconto || raccontoChiuso) return;
+      racconto = { testo: "", inviato: false };
+      errore = null;
+      avvisa();
+    },
+    scriviRacconto(t) {
+      if (!racconto || racconto.inviato || inCorso) return;
+      racconto = { ...racconto, testo: [...String(t ?? "")].slice(0, RACCONTO_MASSIMO).join("") };
+    },
+    async mandaRacconto() {
+      if (!porta || !racconto || racconto.inviato || inCorso) return false;
+      const t = racconto.testo;
+      if (!t.trim()) {
+        errore = TESTI_VALUTAZIONE.scriviQualcosa;
+        avvisa();
+        return false;
+      }
+      inCorso = true;
+      errore = null;
+      avvisa();
+      const id = porta;
+      const r = await manda({ azione: "racconta", porta: id, testo: t }, ["raccontato"]);
+      inCorso = false;
+      if (porta !== id || !racconto) return false;
+      // «gia_raccontato»: il racconto c'è già (per esempio una seconda scheda aperta): per chi scrive è arrivato.
+      if (r.ok || r.motivo === "gia_raccontato") {
+        racconto = { testo: "", inviato: true };
+        avvisa();
+        return true;
+      }
+      errore = testoErroreValutazione(r.motivo);
+      if (r.motivo === "nessuna_segnalazione" || r.motivo === "non_trovato") {
+        racconto = null;
+        raccontoChiuso = true;
+      }
+      avvisa();
+      return false;
+    },
+    modello: () => ({ porta, nome, passo, risposte: { ...risposte }, inCorso, errore, esito,
+      racconto: racconto ? { ...racconto } : null, raccontoChiuso }),
   };
 }
 
-// La vista (h come in flusso.js). null se la valutazione non è aperta. opzioni.racconta apre il racconto (#7).
-export function vistaValutazione(h, val, { racconta = null } = {}) {
+// La vista (h come in flusso.js). null se la valutazione non è aperta. «Sì, racconto» apre la casella qui (passo 3i).
+export function vistaValutazione(h, val) {
   const m = val.modello();
   if (!m.porta) return null;
   const T = TESTI_VALUTAZIONE;
@@ -178,10 +237,17 @@ export function vistaValutazione(h, val, { racconta = null } = {}) {
     parti.push(h("p", { role: "status" }, T.grazie));
   } else if (m.esito === "racconta") {
     parti.push(h("p", { role: "status" }, T.giaAvvisati.replace("<nome>", m.nome || T.altraPersona)),
-      h("p", { classe: "nota" }, h("a", { href: "tel:112" }, T.pericolo)),
-      h("p", { id: "valutazione-racconta" }, T.racconta));
-    if (typeof racconta === "function") {
-      parti.push(h("button", { classe: "bottone", type: "button", "aria-describedby": "valutazione-racconta", onclick: () => racconta() }, T.raccontaSi));
+      h("p", { classe: "nota" }, h("a", { href: "tel:112" }, T.pericolo)));
+    if (m.racconto && m.racconto.inviato) {
+      parti.push(h("p", { role: "status" }, T.raccontoRicevuto));
+    } else if (m.racconto) {
+      parti.push(h("label", { for: "valutazione-racconto" }, T.etichettaRacconto),
+        h("textarea", { id: "valutazione-racconto", classe: "racconto-segnala", maxlength: String(RACCONTO_MASSIMO), rows: "4",
+          disabled: m.inCorso, oninput: (e) => val.scriviRacconto(e.target.value) }, m.racconto.testo),
+        h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => val.mandaRacconto() }, m.inCorso ? T.attimo : T.manda));
+    } else if (!m.raccontoChiuso) {
+      parti.push(h("p", { id: "valutazione-racconta" }, T.racconta),
+        h("button", { classe: "bottone", type: "button", "aria-describedby": "valutazione-racconta", onclick: () => val.apriRacconto() }, T.raccontaSi));
     }
   } else if (!m.esito) {
     const d = domandeValutazione(m.nome)[m.passo];
@@ -195,7 +261,7 @@ export function vistaValutazione(h, val, { racconta = null } = {}) {
     if (m.passo > 0) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso, onclick: () => val.indietro() }, T.indietro));
   }
   if (m.errore) parti.push(h("p", { classe: "errore", role: "alert" }, m.errore));
-  if (m.esito !== "grazie" && m.esito !== "chiusa") {
+  if (m.esito !== "grazie" && m.esito !== "chiusa" && !(m.racconto && m.racconto.inviato)) {
     parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso, onclick: () => val.chiudi() }, T.nonOra));
   } else {
     parti.push(h("button", { classe: "bottone-secondario", type: "button", onclick: () => val.chiudi() }, T.chiudi));

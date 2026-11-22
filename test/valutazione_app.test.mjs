@@ -104,14 +104,81 @@ test("con «No» alla sicurezza: «Vuoi raccontarci cosa è successo?» e il pul
   v.apri(PORTA, { nome: "Marta" });
   for (const r of ["si", "no", "no", false]) await v.rispondi(r);
   assert.equal(v.modello().esito, "racconta");
-  let aperto = 0;
-  const vista = vistaValutazione(h, v, { racconta: () => { aperto++; } });
+  const vista = vistaValutazione(h, v);
   assert.ok(testo(vista).includes(TESTI_VALUTAZIONE.racconta));
   assert.ok(testo(vista).includes(TESTI_VALUTAZIONE.giaAvvisati.replace("<nome>", "Marta")), "si dice che il controllo è già partito");
   assert.ok(tutti(vista, (x) => x.tag === "a" && x.a.href === "tel:112").length === 1, "112 a portata di dito");
-  bottone(vista, TESTI_VALUTAZIONE.raccontaSi).a.onclick();
-  assert.equal(aperto, 1);
   assert.ok(bottone(vista, TESTI_VALUTAZIONE.nonOra), "si può anche non raccontare");
+  assert.equal(tutti(vista, (x) => x.tag === "textarea").length, 0, "la casella si apre solo con «Sì, racconto»");
+  bottone(vista, TESTI_VALUTAZIONE.raccontaSi).a.onclick();
+  assert.deepEqual(v.modello().racconto, { testo: "", inviato: false });
+});
+
+// Passo 3g-3i: «Sì, racconto» apre la casella qui; il racconto va nella segnalazione da 1 ora già partita.
+async function finoAlRacconto(risposte = []) {
+  const r = rete([{ dati: { ok: true, esito: "racconta" } }, ...risposte]);
+  let fatto = null;
+  const v = creaValutazione({ token: () => "t", fetch: r.f, finito: (e) => { fatto = e; } });
+  v.apri(PORTA, { nome: "Marta" });
+  for (const x of ["si", "si", "si", false]) await v.rispondi(x);
+  v.apriRacconto();
+  return { v, ...r, fatto: () => fatto };
+}
+
+test("racconto: casella da 1000 caratteri con etichetta, «Manda» e «Non ora»", async () => {
+  const { v } = await finoAlRacconto();
+  const vista = vistaValutazione(h, v);
+  const [casella] = tutti(vista, (x) => x.tag === "textarea");
+  assert.equal(casella.a.maxlength, "1000");
+  assert.ok(tutti(vista, (x) => x.tag === "label" && x.a.for === casella.a.id).length === 1, "la casella ha la sua etichetta");
+  casella.a.oninput({ target: { value: "Mi ha seguita." } });
+  assert.equal(v.modello().racconto.testo, "Mi ha seguita.");
+  assert.ok(bottone(vista, TESTI_VALUTAZIONE.manda));
+  assert.ok(bottone(vista, TESTI_VALUTAZIONE.nonOra));
+});
+
+test("racconto vuoto: nessuna richiesta, si chiede di scrivere", async () => {
+  const { v, chiamate } = await finoAlRacconto();
+  v.scriviRacconto("   ");
+  assert.equal(await v.mandaRacconto(), false);
+  assert.equal(chiamate.length, 1, "solo la valutazione");
+  assert.equal(v.modello().errore, TESTI_VALUTAZIONE.scriviQualcosa);
+});
+
+test("racconto: una sola richiesta con azione, porta e testo, poi il grazie", async () => {
+  const { v, chiamate } = await finoAlRacconto([{ dati: { ok: true, esito: "raccontato" } }]);
+  v.scriviRacconto("x".repeat(1200));
+  assert.equal([...v.modello().racconto.testo].length, 1000, "mai oltre 1000 caratteri");
+  v.scriviRacconto("Mi ha seguita fino a casa.");
+  assert.equal(await v.mandaRacconto(), true);
+  assert.equal(chiamate.length, 2);
+  assert.deepEqual(chiamate[1].corpo, { azione: "racconta", porta: PORTA, testo: "Mi ha seguita fino a casa." });
+  assert.equal(chiamate[1].auth, "Bearer t");
+  assert.equal(v.modello().racconto.inviato, true);
+  const vista = vistaValutazione(h, v);
+  assert.ok(testo(vista).includes(TESTI_VALUTAZIONE.raccontoRicevuto));
+  assert.equal(tutti(vista, (x) => x.tag === "textarea").length, 0);
+  assert.ok(bottone(vista, TESTI_VALUTAZIONE.chiudi));
+  assert.ok(!bottone(vista, TESTI_VALUTAZIONE.raccontaSi));
+});
+
+test("racconto: senza rete il testo resta per riprovare; già ricevuto vale come mandato", async () => {
+  const { v } = await finoAlRacconto([new Error("rete"), { dati: { ok: false, motivo: "gia_raccontato" } }]);
+  v.scriviRacconto("Mi ha seguita.");
+  assert.equal(await v.mandaRacconto(), false);
+  assert.equal(v.modello().errore, testoErroreValutazione("rete"));
+  assert.equal(v.modello().racconto.testo, "Mi ha seguita.");
+  assert.equal(await v.mandaRacconto(), true);
+  assert.equal(v.modello().racconto.inviato, true);
+});
+
+test("racconto: segnalazione già letta → si dice di usare «Segnala un problema», la casella si chiude", async () => {
+  const { v } = await finoAlRacconto([{ dati: { ok: false, motivo: "nessuna_segnalazione" } }]);
+  v.scriviRacconto("Mi ha seguita.");
+  assert.equal(await v.mandaRacconto(), false);
+  assert.equal(v.modello().errore, testoErroreValutazione("nessuna_segnalazione"));
+  assert.equal(v.modello().racconto, null);
+  assert.ok(!bottone(vistaValutazione(h, v), TESTI_VALUTAZIONE.raccontaSi), "non si riapre");
 });
 
 test("«Non ora» chiude senza mandare nulla", async () => {
