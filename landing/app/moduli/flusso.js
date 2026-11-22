@@ -31,7 +31,7 @@ import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, conferma
 import { vistaIncontro } from "./incontro.js";
 import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
-import { settimanaHome, vistaSettimanaHome, TESTI_SETTIMANA } from "./settimana_home.js";
+import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -1031,7 +1031,8 @@ const SCHERMATE = {
     const zonaVisibile = nomeVisibile(stato.provincia);
     // Design v4 (#349, schermate 16 e 35): in cima la settimana, mai «profilo pronto».
     return schermataHome(vistaSettimanaHome(h, settimanaDellaHome()),
-      [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
+      [inStanzaAperta() ? null : vistaCerchioHome(h, stato.miPresento),
+        contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
           stato.raggio === "citta" ? contatoreSoloZona(contatore.testo) : contatore.testo) : null,
         bloccoItalia(),
         italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null,
