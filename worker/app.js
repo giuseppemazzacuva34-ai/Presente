@@ -10,7 +10,7 @@ import { supportoOperatoreApi } from "./supporto_operatore_api.js";
 import { svelamentoApi, PERCORSO_SVELAMENTO } from "./svelamento_api.js";
 import { incontroApi, PERCORSO_INCONTRO } from "./incontro_api.js";
 import { regaliApi, PERCORSO_REGALI } from "./regali_api.js";
-import { accessoTester, PERCORSO_ACCESSO_TESTER, modoAccesso } from "./accesso_tester.js";
+import { accessoTester, cancelloTester, PERCORSO_ACCESSO_TESTER, modoAccesso } from "./accesso_tester.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -49,8 +49,16 @@ export function eApp(pathname) {
   return pathname === "/app" || pathname.startsWith("/app/");
 }
 
-export async function app(request, env) {
+export async function app(request, env, f = fetch) {
   const url = new URL(request.url);
+  if (url.pathname === PERCORSO_ACCESSO_TESTER) return conIntestazioniApp(await accessoTester(request, env, f), url.pathname);
+  // ACCESSO_APP = «tester»: le API rispondono solo a chi ha l'email nel segreto EMAIL_TESTER (worker/accesso_tester.js).
+  // Superato il controllo, l'API vede l'accesso acceso come con «si». I lavori programmati restano spenti (leggono «si»).
+  if (url.pathname.startsWith("/app/api/") && modoAccesso(env) === "tester") {
+    const fermo = await cancelloTester(request, env, f);
+    if (fermo) return conIntestazioniApp(fermo, url.pathname);
+    env = { ...env, ACCESSO_APP: "si" };
+  }
   if (url.pathname === PERCORSO_ELIMINA) return conIntestazioniApp(await eliminaAccount(request, env), url.pathname);
   if (url.pathname === PERCORSO_PROVINCIA_LISTA) return conIntestazioniApp(await provinciaLista(request, env), url.pathname);
   if (url.pathname === PERCORSO_ZONA) return conIntestazioniApp(await contatoreZona(request, env), url.pathname);
@@ -67,7 +75,6 @@ export async function app(request, env) {
   if (url.pathname.startsWith(PERCORSO_SUPPORTO + "/")) return conIntestazioniApp(await supportoOperatoreApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_INCONTRO) return conIntestazioniApp(await incontroApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_REGALI) return conIntestazioniApp(await regaliApi(request, env), url.pathname);
-  if (url.pathname === PERCORSO_ACCESSO_TESTER) return conIntestazioniApp(await accessoTester(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }

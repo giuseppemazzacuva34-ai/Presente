@@ -156,3 +156,71 @@ test("config.json: con «tester» l'accesso è acceso e dice il modo; l'elenco d
   const no = await configurazione({ ...ENV, ACCESSO_APP: "no" }).json();
   assert.equal(no.accesso, false);
 });
+
+// Passo 2: con «tester» le API dell'app (/app/api/*) rispondono solo a chi ha l'email in elenco.
+// Il controllo è uno solo, in worker/app.js, prima di ogni API: chi è lo dice Supabase leggendo il token.
+import { app } from "../worker/app.js";
+
+const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.firma-finta-abcdef";
+function conFetchFinto(persona, stato = 200) {
+  const chiamate = [];
+  const f = async (url, opzioni = {}) => {
+    chiamate.push({ url, opzioni });
+    if (new URL(url).pathname === "/auth/v1/user") return new Response(JSON.stringify(persona), { status: stato });
+    return new Response("[]", { status: 200 });
+  };
+  return { f, chiamate };
+}
+const api = (percorso, { token = TOKEN } = {}) => new Request("https://presenteincontri.app" + percorso, {
+  headers: token ? { authorization: `Bearer ${token}` } : {},
+});
+
+test("tester: un token di una persona fuori elenco non arriva alle API (403, nessuna altra chiamata)", async () => {
+  const s = conFetchFinto({ id: "11111111-1111-1111-1111-111111111111", email: "altra@example.com", email_confirmed_at: "2026-11-22T20:00:00Z" });
+  const r = await app(api("/app/api/zona"), ENV, s.f);
+  assert.equal(r.status, 403);
+  assert.deepEqual(await r.json(), { ok: false, motivo: "non_aperto" });
+  assert.equal(s.chiamate.length, 1);
+  assert.equal(new URL(s.chiamate[0].url).pathname, "/auth/v1/user");
+  assert.equal(s.chiamate[0].opzioni.headers.authorization, `Bearer ${TOKEN}`);
+});
+
+test("tester: senza token o con token rifiutato da Supabase → 401", async () => {
+  const s = conFetchFinto(null, 401);
+  assert.equal((await app(api("/app/api/zona", { token: null }), ENV, s.f)).status, 401);
+  assert.equal((await app(api("/app/api/zona"), ENV, s.f)).status, 401);
+});
+
+test("tester: Supabase non risponde → 503, mai un passaggio libero", async () => {
+  const f = async () => { throw new Error("rete assente"); };
+  const r = await app(api("/app/api/zona"), ENV, f);
+  assert.equal(r.status, 503);
+});
+
+test("tester: la persona in elenco arriva all'API, che la vede accesa come con «si»", async () => {
+  const s = conFetchFinto({ id: "11111111-1111-1111-1111-111111111111", email: "Prova.Tester@example.com", email_confirmed_at: "2026-11-22T20:00:00Z" });
+  // L'API della zona usa il fetch globale: lo si sostituisce solo per questo test.
+  const originale = globalThis.fetch;
+  globalThis.fetch = s.f;
+  try {
+    const r = await app(api("/app/api/zona"), ENV, s.f);
+    assert.notEqual(r.status, 404); // non «spento»: l'API è stata raggiunta
+    assert.notEqual(r.status, 403);
+    assert.ok(s.chiamate.length >= 2); // il controllo del Worker e poi l'API stessa
+  } finally {
+    globalThis.fetch = originale;
+  }
+});
+
+test("tester: /app/api/accesso non chiede il token (serve proprio per entrare)", async () => {
+  const s = supabaseFinto();
+  const r = await app(richiesta({ email: "altra@example.com" }), ENV, s.f);
+  assert.deepEqual(await r.json(), { ok: false, motivo: "non_aperto" });
+  assert.equal(s.chiamate.length, 0);
+});
+
+test("con «no» e con «si» nessun controllo in più: le API decidono come prima", async () => {
+  const s = conFetchFinto({});
+  assert.equal((await app(api("/app/api/zona"), { ...ENV, ACCESSO_APP: "no" }, s.f)).status, 404);
+  assert.equal(s.chiamate.length, 0);
+});

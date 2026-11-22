@@ -116,3 +116,24 @@ export async function accessoTester(request, env, f = fetch) {
     return risposta(200, { ok: false, motivo: "generico" });
   }
 }
+
+// Passo 2. Con «tester», prima di ogni API dell'app (tranne /app/api/accesso): chi è lo dice Supabase leggendo il token.
+// Restituisce null se la persona è in elenco (l'API può rispondere), altrimenti la risposta da dare subito.
+// Se Supabase non risponde non si passa mai: 503.
+export async function cancelloTester(request, env, f = fetch) {
+  const token = (request.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9._-]{20,4096})$/);
+  if (!token) return risposta(401, { ok: false, motivo: "accesso" });
+  const base = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  const servizio = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!URL_SUPABASE.test(base) || !servizio) return risposta(503, { ok: false, motivo: "generico" });
+  let persona;
+  try {
+    const chi = await entro(ATTESA_SUPABASE_MS, f(`${base}/auth/v1/user`, { headers: { apikey: servizio, authorization: `Bearer ${token[1]}` } }));
+    if (chi.status === 401 || chi.status === 403) return risposta(401, { ok: false, motivo: "accesso" });
+    if (!chi.ok) return risposta(503, { ok: false, motivo: "generico" });
+    persona = await chi.json();
+  } catch {
+    return risposta(503, { ok: false, motivo: "generico" });
+  }
+  return personaAmmessa(env, persona) ? null : risposta(403, { ok: false, motivo: "non_aperto" });
+}
