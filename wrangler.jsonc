@@ -66,6 +66,12 @@
       "name": "LIMITE_PROVINCIA",
       "namespace_id": "47013",
       "simple": { "limit": 10, "period": 60 }
+    },
+    // Accesso dei tester (/app/api/accesso, ACCESSO_APP = «tester»): 5 richieste al minuto dalla stessa connessione.
+    {
+      "name": "LIMITE_ACCESSO",
+      "namespace_id": "47014",
+      "simple": { "limit": 5, "period": 60 }
     }
   ],
   // Le iscrizioni restano chiuse finché l'informativa privacy (decisione D5) non è approvata e completata.
@@ -82,6 +88,7 @@
     "MOSTRA_POSTI": "si",
     // Accesso vero alla web app con email (issue #2). "no" = l'app resta in anteprima e non manda nulla a Supabase.
     // Si mette "si" solo dopo l'informativa privacy dell'app (T08) e la revisione di sicurezza del CISO (T15).
+    // "tester" = entra solo chi ha l'email nel segreto EMAIL_TESTER (worker/accesso_tester.js, richiesta di Giuseppe del 22/11).
     "ACCESSO_APP": "no",
     // Risposte automatiche ai commenti «BUIO» su Instagram e Facebook (docs/meta-webhook.md).
     // "no" = Meta può verificare l'indirizzo ma nessuno riceve risposte. "si" solo quando l'app Meta è in modalità Live

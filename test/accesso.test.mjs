@@ -156,3 +156,39 @@ test("utenteId: dalla risposta del codice o, arrivando dal link, dal token stess
   b.daLink(`https://presenteincontri.app/app/#access_token=eyJhbGciOi.${corpo}.firma&refresh_token=r&expires_in=3600`);
   assert.equal(b.utenteId(), "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
 });
+
+// Accesso solo per i tester (ACCESSO_APP = «tester», richiesta del 22/11): l'email la chiede il Worker, non l'app.
+test("modo tester: l'email si chiede al Worker (/app/api/accesso), mai direttamente a Supabase", async () => {
+  const chiamate = [];
+  const f = async (url, opzioni) => {
+    chiamate.push({ url, ...opzioni, corpo: opzioni.body ? JSON.parse(opzioni.body) : null });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  const a = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", fetch: f, viaServer: true });
+  const r = await a.mandaLink("  Prova@Example.com ", "https://presenteincontri.app/app/");
+  assert.deepEqual(r, { ok: true });
+  assert.equal(chiamate.length, 1);
+  assert.equal(chiamate[0].url, "/app/api/accesso");
+  assert.equal(chiamate[0].method, "POST");
+  assert.deepEqual(chiamate[0].corpo, { email: "prova@example.com" });
+  assert.equal(chiamate[0].headers.apikey, undefined);
+});
+
+test("modo tester: email fuori elenco → «Accesso non ancora aperto»", async () => {
+  const f = async () => new Response(JSON.stringify({ ok: false, motivo: "non_aperto" }), { status: 200 });
+  const a = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", fetch: f, viaServer: true });
+  const r = await a.mandaLink("altra@example.com");
+  assert.deepEqual(r, { ok: false, motivo: "non_aperto" });
+  assert.match(MESSAGGI.non_aperto, /^Accesso non ancora aperto/);
+});
+
+test("modo tester: troppe richieste, rete assente e risposte strane restano messaggi noti", async () => {
+  const troppe = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", viaServer: true,
+    fetch: async () => new Response(JSON.stringify({ ok: false, motivo: "troppe" }), { status: 429 }) });
+  assert.deepEqual(await troppe.mandaLink("prova@example.com"), { ok: false, motivo: "troppe" });
+  const rete = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", viaServer: true, fetch: async () => { throw new Error("x"); } });
+  assert.deepEqual(await rete.mandaLink("prova@example.com"), { ok: false, motivo: "rete" });
+  const strana = creaAccesso({ supabaseUrl: URL_FINTA, supabaseAnonKey: "anon", viaServer: true,
+    fetch: async () => new Response(JSON.stringify({ ok: false, motivo: "<b>boh</b>" }), { status: 200 }) });
+  assert.deepEqual(await strana.mandaLink("prova@example.com"), { ok: false, motivo: "generico" });
+});
