@@ -16,6 +16,8 @@
 //   POST /app/api/svelamento  { azione: "ricevi", porta }             → { ok, descrizione (offerta di Cloudflare), vista }
 //   POST /app/api/svelamento  { azione: "conferma", porta, risposta } → { ok, vista }
 //   POST /app/api/svelamento  { azione: "vista", porta }              → { ok, vista: { fase, inizio?, nitidoDal?, fine? } }
+//   POST /app/api/svelamento  { azione: "caduta", porta }             → { ok, vista } | { ok: false, motivo: "quando" | "finito" }
+//                             (passo 8b-3b: connessione caduta; prima dei 10 s il timer si ferma e si aspetta «Riprova»)
 //   POST /app/api/svelamento  { azione: "chiudi_e_segnala", porta }   → { ok, esito: "chiusa" }       (passo 7d-3a)
 //                             (passo 7c: solo con entra_svelamento → «iniziato_video» per la persona del token;
 //                              prima { ok: false, motivo: "non_iniziato" }, con le foto { ok: false, motivo: "foto" })
@@ -36,7 +38,7 @@
 // nessun pagamento (Stripe in Fase 4). Nei log solo codici e nomi di errore. Spento finché ACCESSO_APP non vale «si».
 import { SVELAMENTO, TESTI_SVELAMENTO, quandoRoma } from "../api/svelamento.js";
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
-import { pubblicaVideo, riceviVideo, confermaVideo, vistaVideo } from "../api/video_svelamento.js";
+import { pubblicaVideo, riceviVideo, confermaVideo, vistaVideo, cadutaVideo } from "../api/video_svelamento.js";
 import { nuovaSessione, pubblicaSvelamento, riceviSvelamento, confermaSvelamento, chiudiVoce } from "../api/realtime.js";
 
 export const PERCORSO_SVELAMENTO = "/app/api/svelamento";
@@ -266,7 +268,7 @@ async function entra(s, id, idPorta, f) {
 // Passo 7c: richieste video dei 10 secondi. Prima di tutto il database: solo con «iniziato_video» per la persona del
 // token (entra_svelamento non cambia nulla a svelamento iniziato: dice solo che si è dentro). Poi Realtime e il Durable
 // Object della porta (uno per porta: SVELAMENTO.idFromName(porta)). Senza l'inizio nessuna chiamata a Realtime.
-const VIDEO = { pubblica: pubblicaVideo, ricevi: riceviVideo, conferma: confermaVideo, vista: vistaVideo };
+const VIDEO = { pubblica: pubblicaVideo, ricevi: riceviVideo, conferma: confermaVideo, vista: vistaVideo, caduta: cadutaVideo };
 const DATI_VIDEO = ["svelamento", "dati"];
 async function video(env, s, id, idPorta, azione, dati, f) {
   const e = await rpc(s, "entra_svelamento", { p_porta: idPorta, p_persona: id }, f);
