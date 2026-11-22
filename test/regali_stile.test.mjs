@@ -32,25 +32,31 @@ for (const id of ["rosa", "spumante", "fiori"]) {
 }
 
 test("foglio: sale dal basso sopra la schermata, fondo #18151B, angoli 26px, velo scuro dietro", () => {
-  const f = regole("#app .foglio-regali");
+  const f = regole(".app .foglio-regali");
   for (const r of [/position: fixed/, /bottom: 0/, /left: 0/, /right: 0/, /background: #18151B/, /border-radius: 26px 26px 0 0/, /z-index: \d+/]) assert.match(f, r);
   assert.match(f, /box-shadow: 0 0 0 100vmax rgba\(5, 4, 6, 0\.72\)/);
+  // Vive fuori da <main id="app">, che la home ridisegna: il piede ha la sua griglia (secondario a sinistra).
+  assert.doesNotMatch(css.slice(css.indexOf("/* ===== Linea C (#331)")), /#app /);
+  const p = regole(".app .foglio-regali .azioni");
+  assert.match(p, /display: grid/);
+  assert.match(p, /grid-template-columns: 1fr 1\.7fr/);
+  assert.match(regole(".app .foglio-regali .azioni > .bottone-secondario"), /order: -1/);
 });
 
 test("tre regali in griglia, il scelto con bordo rosso, nome e prezzo sempre scritti", () => {
-  assert.match(regole("#app .foglio-regali-scelte"), /grid-template-columns: repeat\(3, 1fr\)/);
-  const r = regole("#app .regalo-scelta");
+  assert.match(regole(".app .foglio-regali-scelte"), /grid-template-columns: repeat\(3, 1fr\)/);
+  const r = regole(".app .regalo-scelta");
   for (const x of [/border-radius: 16px/, /background: #151217/, /min-height: 44px/, /flex-direction: column/]) assert.match(r, x);
-  assert.match(regole('#app .regalo-scelta[aria-pressed="true"]'), /border-color: #E8432B/);
-  assert.match(regole("#app .regalo-icona"), /width: 56px/);
-  assert.match(regole("#app .regalo-scelta:focus-visible"), /outline: 2px solid var\(--avorio\)/);
+  assert.match(regole('.app .regalo-scelta[aria-pressed="true"]'), /border-color: #E8432B/);
+  assert.match(regole(".app .regalo-icona"), /width: 56px/);
+  assert.match(regole(".app .regalo-scelta:focus-visible"), /outline: 2px solid var\(--avorio\)/);
 });
 
 test("contrasto AA: prezzo, nome, saldo e nota leggibili sul fondo del foglio (≥ 4,5:1)", () => {
-  const prezzo = colore(regole("#app .regalo-prezzo"), "color");
+  const prezzo = colore(regole(".app .regalo-prezzo"), "color");
   assert.ok(prezzo, "manca il colore del prezzo");
   assert.ok(contrasto(prezzo, "#151217") >= 4.5, `prezzo ${prezzo}`);
-  for (const sel of ["#app .regalo-nome", "#app .foglio-regali-saldo", "#app .foglio-regali-nota", "#app .foglio-regali-messaggio"]) {
+  for (const sel of [".app .regalo-nome", ".app .foglio-regali-saldo", ".app .foglio-regali-nota", ".app .foglio-regali-messaggio"]) {
     const c = colore(regole(sel), "color");
     assert.ok(c, `manca il colore di ${sel}`);
     assert.ok(contrasto(c, "#18151B") >= 4.5, `${sel} ${c}`);
@@ -58,9 +64,9 @@ test("contrasto AA: prezzo, nome, saldo e nota leggibili sul fondo del foglio (�
 });
 
 test("avviso del regalo ricevuto: piccolo, in alto al centro, compare piano e si ferma con «riduci movimento»", () => {
-  const a = regole("#app .avviso-regalo");
+  const a = regole(".app .avviso-regalo");
   for (const x of [/position: fixed/, /left: 50%/, /transform: translateX\(-50%\)/, /animation: regalo-arriva/]) assert.match(a, x);
   assert.ok(contrasto(colore(a, "color"), colore(a, "background")) >= 4.5);
   assert.match(css, /@keyframes regalo-arriva \{/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ #app \.avviso-regalo \{ animation: none; \} \}/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.app \.avviso-regalo \{ animation: none; \} \}/);
 });
