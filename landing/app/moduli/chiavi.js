@@ -16,7 +16,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const TESTI = Object.freeze({
   chiuse: "Le chiavi sono chiuse. Tra poco le porte.",
   nessunaPorta: "Stasera nessuna porta si è aperta. Lunedì alle 9 apre una nuova stanza.",
+  // Design v4 (#349, approvato il 22/11), schermate 37-38 «La porta».
+  portaOcchiello: "Domenica · ore 21",
+  portaTitolo: Object.freeze(["Una porta", "si è aperta."]),
 });
+
+// Dietro le ante (v4, schermate 37-38): la sagoma di chi c'è, mai un volto a fuoco. Solo valori noti, mai un percorso
+// che arriva dalla rete.
+const IMMAGINI_PORTA = Object.freeze({ uomo: "/app/img/porta-uomo-rosa.jpg", donna: "/app/img/porta-donna-rosa.jpg", neutra: "/app/img/porta-calda.jpg" });
+const sagomaDa = (x) => (x === "uomo" || x === "donna" ? x : "neutra");
 
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "");
 const dateDa = (stato) => (Array.isArray(stato?.date) ? stato.date : []);
@@ -76,7 +84,8 @@ export function schermataSera(sera) {
       const nome = chi(p.nome) || "una persona della stanza";
       const frase = typeof p.frase_per_te === "string" && p.frase_per_te.trim() ? p.frase_per_te.trim() : null;
       return { porta: p.id, testo: `Una porta si è aperta: ${nome}.`, scritto: frase ? `${nome} ti ha scritto:` : null, frase,
-        bottone: "Vai allo svelamento", etichetta: `Vai allo svelamento con ${nome}` };
+        bottone: "Vai allo svelamento", etichetta: `Vai allo svelamento con ${nome}`,
+        nome, sagoma: sagomaDa(p.sagoma), immagine: IMMAGINI_PORTA[sagomaDa(p.sagoma)] };
     });
   // Chi non ha porte vede sempre lo stesso testo, che abbia dato chiavi o no.
   return schede.length ? { tipo: "porte", schede } : { tipo: "nessuna_porta", testo: TESTI.nessunaPorta };
