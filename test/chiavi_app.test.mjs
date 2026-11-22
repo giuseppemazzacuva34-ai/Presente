@@ -7,6 +7,7 @@ import {
   contatoreChiavi, schedaChiave, finestraDai, confermaRiprendi, contoAllaRovescia, schermataSera, testoErroreChiavi, creaChiavi,
 } from "../landing/app/moduli/chiavi.js";
 import { TESTI_CHIAVI } from "../api/chiavi.js";
+import { TESTI as TESTI_APP } from "../landing/app/moduli/chiavi.js";
 
 const LEI = "11111111-2222-4333-8444-555555555555";
 const LUI = "66666666-7777-4888-9999-000000000000";
@@ -59,8 +60,10 @@ test("sera con porte: «Una porta si è aperta: <nome>.», la frase dell'altra p
     { id: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", con: LUI, nome: "Marco", frase_per_te: null },
   ] });
   assert.deepEqual(s, { tipo: "porte", schede: [
-    { porta: PORTA, testo: "Una porta si è aperta: Giulia.", scritto: "Giulia ti ha scritto:", frase: "Il treno, ancora.", bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Giulia" },
-    { porta: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", testo: "Una porta si è aperta: Marco.", scritto: null, frase: null, bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Marco" },
+    { porta: PORTA, testo: "Una porta si è aperta: Giulia.", scritto: "Giulia ti ha scritto:", frase: "Il treno, ancora.", bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Giulia",
+      nome: "Giulia", sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
+    { porta: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", testo: "Una porta si è aperta: Marco.", scritto: null, frase: null, bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Marco",
+      nome: "Marco", sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
   ] });
 });
 
@@ -126,4 +129,20 @@ test("il modulo non salva nulla in locale e non parla del diario", () => {
   const sorgente = readFileSync(new URL("../landing/app/moduli/chiavi.js", import.meta.url), "utf8");
   assert.doesNotMatch(sorgente, /localStorage|sessionStorage|indexedDB|document\./);
   assert.doesNotMatch(sorgente, /diario/i);
+});
+
+// Design v4 (#349), schermate 37-38 «La porta»: dietro le ante la sagoma di chi c'è (dal server: uomo, donna, neutra).
+test("sera v4: sagoma e immagine dietro la porta secondo il server; valori sconosciuti → porta calda senza persona", () => {
+  const porta = (sagoma) => schermataSera({ ok: true, stato: "pronta", porte: [{ id: PORTA, con: LEI, nome: "Marco", frase_per_te: null, sagoma }] }).schede[0];
+  assert.deepEqual([porta("uomo").sagoma, porta("uomo").immagine], ["uomo", "/app/img/porta-uomo-rosa.jpg"]);
+  assert.deepEqual([porta("donna").sagoma, porta("donna").immagine], ["donna", "/app/img/porta-donna-rosa.jpg"]);
+  for (const x of ["neutra", "non_binario", "", null, undefined, "../x.jpg"]) {
+    assert.deepEqual([porta(x).sagoma, porta(x).immagine], ["neutra", "/app/img/porta-calda.jpg"], String(x));
+  }
+  assert.equal(porta("uomo").nome, "Marco");
+});
+
+test("sera v4: testi della schermata approvata (occhiello e titolo in due righe)", () => {
+  assert.equal(TESTI_APP.portaOcchiello, "Domenica · ore 21");
+  assert.deepEqual(TESTI_APP.portaTitolo, ["Una porta", "si è aperta."]);
 });
