@@ -145,3 +145,33 @@ test("il Worker instrada /app/api/regali (spento senza ACCESSO_APP)", async () =
   assert.equal(r.status, 404);
   assert.deepEqual(await r.json(), { ok: false, motivo: "spento" });
 });
+
+// Passo 6c (spec B.5): la schermata «I tuoi Coin» si mostra da sola solo la prima volta; lo ricorda il server.
+test("schermata Coin: GET ?schermata=coin dà saldo e «già vista» di chi guarda (dal token)", async () => {
+  const s = supabaseFinto({ rpc: { saldo_crediti: 200, coin_schermata_vista: false } });
+  const r = await regaliApi(richiesta({ percorso: `${PERCORSO_REGALI}?schermata=coin` }), ENV, s.f);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, saldo: 200, vista: false });
+  assert.deepEqual(s.rpc("coin_schermata_vista").map((v) => v.corpo), [{ p_persona: ID }]);
+  assert.equal(s.rpc("regali_da_vedere").length, 0);
+});
+
+test("schermata Coin: risposta strana del database → 503, mai «vista» inventata", async () => {
+  const s = supabaseFinto({ rpc: { saldo_crediti: 200, coin_schermata_vista: "si" } });
+  assert.equal((await regaliApi(richiesta({ percorso: `${PERCORSO_REGALI}?schermata=coin` }), ENV, s.f)).status, 503);
+  const t = supabaseFinto({ rpc: { saldo_crediti: 200 } });
+  assert.equal((await regaliApi(richiesta({ percorso: `${PERCORSO_REGALI}?schermata=altro` }), ENV, t.f)).status, 400);
+});
+
+test("schermata Coin: POST «coin_vista» la segna per chi guarda, un «persona» nel corpo non conta", async () => {
+  const s = supabaseFinto({ rpc: { segna_coin_schermata_vista: new Response(null, { status: 204 }) } }); // funzione «void»: PostgREST risponde senza corpo
+  const r = await regaliApi(richiesta({ metodo: "POST", corpo: { azione: "coin_vista", persona: LEI } }), ENV, s.f);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true });
+  assert.deepEqual(s.rpc("segna_coin_schermata_vista").map((v) => v.corpo), [{ p_persona: ID }]);
+});
+
+test("schermata Coin: se il database non risponde, POST «coin_vista» → 503", async () => {
+  const s = supabaseFinto({ rpc: { segna_coin_schermata_vista: new Response("{}", { status: 500 }) } });
+  assert.equal((await regaliApi(richiesta({ metodo: "POST", corpo: { azione: "coin_vista" } }), ENV, s.f)).status, 503);
+});
