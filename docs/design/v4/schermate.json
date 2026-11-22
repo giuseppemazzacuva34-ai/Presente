@@ -302,14 +302,14 @@
  },
  {
   "id": "madrina-apre",
-  "t": "La madrina apre la stanza",
+  "t": "Il Filo apre la stanza",
   "h": [
-   "La madrina",
+   "Il Filo",
    "vi presenta."
   ],
-  "d": "Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.",
+  "d": "Nuova schermata, il lunedì all'apertura: il vocale di benvenuto del Filo della stanza (la persona vera della città che la accompagna). Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.",
   "c": [
-   "Scheda della madrina con il simbolo «!» nel cerchio rosso (mai la sua foto qui)",
+   "Scheda del Filo con il simbolo «!» nel cerchio rosso (mai la sua foto qui)",
    "Vocale con l'onda grande, si riascolta quando vuoi",
    "Solo i nomi di battesimo delle 12 persone, tu evidenziata in rosso",
    "Le regole in una riga, poi si entra nella stanza"
@@ -317,7 +317,7 @@
   "f": "stanza",
   "nuova": true,
   "n": 18,
-  "file": "schermate/18-la-madrina-apre-la-stanza.png"
+  "file": "schermate/18-il-filo-apre-la-stanza.png"
  },
  {
   "id": "n14",
@@ -627,12 +627,12 @@
  },
  {
   "id": "madrina-domenica",
-  "t": "La madrina · le porte aperte",
+  "t": "Il Filo · le porte aperte",
   "h": [
    "Questa settimana",
    "3 porte aperte."
   ],
-  "d": "Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.",
+  "d": "Nuova schermata, domenica poco prima delle 21: il vocale del Filo annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.",
   "c": [
    "Vocale della domenica con l'onda",
    "Il numero grande in rosso",
@@ -641,7 +641,7 @@
   "f": "scelta",
   "nuova": true,
   "n": 36,
-  "file": "schermate/36-la-madrina-le-porte-aperte.png"
+  "file": "schermate/36-il-filo-le-porte-aperte.png"
  },
  {
   "id": "n26",
@@ -722,10 +722,10 @@
    "Le stanze si incontrano",
    "dal vivo."
   ],
-  "d": "Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.",
+  "d": "Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. Il Filo presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.",
   "c": [
    "Invito alla serata con giorno, ora e locale consigliato",
-   "La madrina presenta tutti, anche chi non ha scelto nessuno",
+   "Il Filo presenta tutti, anche chi non ha scelto nessuno",
    "Consenso separato e facoltativo per comparire nei video (spento di base)",
    "«Non vengo» e «Ci sarò» allineati, in 3D"
   ],

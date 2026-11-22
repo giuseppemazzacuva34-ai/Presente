@@ -38,12 +38,12 @@
 11. **La porta**: porta scorrevole che si apre **una volta sola**, morbida, in 6 secondi; dietro, luce calda e la sagoma dell'altra persona (se sei donna `immagini/porta-uomo-rosa.jpg`, se sei uomo `immagini/porta-donna-rosa.jpg`). Domenica sera: `immagini/porta-calda.jpg`.
 12. **Svelamento · come**: due schede (videochiamata 10 s / foto) e il selettore «Adesso / Scegli un orario».
 13. **Scegli la stanza** (quando ci saranno più stanze): prima la più affine, poi Esperienza e VIP con «in arrivo». Non serve per la beta.
-14. **La madrina (o il padrino) della stanza** · nuova, decisa da Giuseppe il 22/11. Ogni stanza ha una persona vera della città che la accompagna:
-    - **Lunedì, apertura**: un vocale di benvenuto (fino a 90 s) caricato dalla madrina prima dell'apertura. Presenta le 12 persone **solo con il nome di battesimo** e ricorda le regole. Schermata «La madrina apre la stanza» (`#madrina-apre`): scheda con il simbolo «!» nel cerchio rosso, onda grande, elenco dei nomi (tu in rosso), regole in una riga, «Entra nella stanza». Il vocale resta riascoltabile dalla stanza per tutta la settimana.
-    - **Domenica, prima delle 21**: un secondo vocale con **quante** porte si sono aperte, mai chi (schermata `#madrina-domenica`). Il numero lo calcola il server dalle chiavi reciproche e lo vede la madrina in un pannello suo, senza nomi.
-    - **Serata della stanza (in arrivo, non per la beta)**: invito con giorno, ora e locale consigliato; la madrina presenta tutti, anche chi non ha scelto nessuno; «Non vengo» / «Ci sarò» (`#serata-stanza`).
-    - **Video per i social**: la madrina fa video alle serate. In app serve un **consenso separato e facoltativo, spento di base**, per comparire nei video; senza consenso la persona non compare. Testo del consenso e informativa: decisione di Giuseppe (privacy) prima di svilupparlo.
-    - Ruolo «madrina» lato server: vede la sua stanza solo con nomi di battesimo, carica i due vocali, legge il numero delle porte aperte; **mai** numeri di telefono, foto, voci, diari, chiavi date da chi a chi.
+14. **Il Filo della stanza** · nuova, decisa da Giuseppe il 22/11 (nome scelto: «il Filo», resta «Filo» in tutte le lingue, «Red Thread» come spiegazione). Ogni stanza ha una persona vera della città che la accompagna:
+    - **Lunedì, apertura**: un vocale di benvenuto (fino a 90 s) caricato dal Filo prima dell'apertura. Presenta le 12 persone **solo con il nome di battesimo** e ricorda le regole. Schermata «Il Filo apre la stanza» (`#madrina-apre`): scheda con il simbolo «!» nel cerchio rosso, onda grande, elenco dei nomi (tu in rosso), regole in una riga, «Entra nella stanza». Il vocale resta riascoltabile dalla stanza per tutta la settimana.
+    - **Domenica, prima delle 21**: un secondo vocale del Filo con **quante** porte si sono aperte, mai chi (schermata `#madrina-domenica`). Il numero lo calcola il server dalle chiavi reciproche e lo vede il Filo in un pannello suo, senza nomi.
+    - **Serata della stanza (in arrivo, non per la beta)**: invito con giorno, ora e locale consigliato; il Filo presenta tutti, anche chi non ha scelto nessuno; «Non vengo» / «Ci sarò» (`#serata-stanza`).
+    - **Video per i social**: il Filo fa video alle serate. In app serve un **consenso separato e facoltativo, spento di base**, per comparire nei video; senza consenso la persona non compare. Testo del consenso e informativa: decisione di Giuseppe (privacy) prima di svilupparlo.
+    - Ruolo «filo» lato server: vede la sua stanza solo con nomi di battesimo, carica i due vocali, legge il numero delle porte aperte; **mai** numeri di telefono, foto, voci, diari, chiavi date da chi a chi.
 
 ## Elenco delle schermate
 
@@ -66,7 +66,7 @@
 | 15 | Coin caricati · **nuova** | `schermate/15-coin-caricati.png` | `#coin-fatto` | Nuova schermata: conferma del pagamento, con il saldo che sale. Il saldo resta sempre visibile in alto a sinistra. |
 | 16 | La home | `schermate/16-la-home.png` | `#n13` | Prima della stanza: il conto alla rovescia al lunedì. L'elenco delle persone sta solo nella stanza, «Elimina account» solo nel profilo. |
 | 17 | Scegli la stanza · **nuova** | `schermate/17-scegli-la-stanza.png` | `#scegli-stanza` | Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le persone più affini, sotto le stanze con un'esperienza. Le esperienze sono in arrivo. |
-| 18 | La madrina apre la stanza · **nuova** | `schermate/18-la-madrina-apre-la-stanza.png` | `#madrina-apre` | Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana. |
+| 18 | Il Filo apre la stanza · **nuova** | `schermate/18-il-filo-apre-la-stanza.png` | `#madrina-apre` | Nuova schermata, il lunedì all'apertura: il vocale di benvenuto del Filo della stanza (la persona vera della città che la accompagna). Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana. |
 | 19 | La stanza | `schermate/19-la-stanza.png` | `#n14` | Il cerchio si muove: vedi chi è online, chi è in chiamata e con chi (la linea rossa tra i due). Se una persona è occupata o non c'è, al posto di «Chiama» trovi «Fissa» per darvi un appuntamento. |
 | 20 | Fissa una chiamata · **nuova** | `schermate/20-fissa-una-chiamata.png` | `#fissa-chiamata` | Nuova schermata: quando una persona è occupata o non in linea, le proponi un giorno e un'ora. Lei conferma e vi avvisiamo 10 minuti prima. |
 | 21 | Coin quasi finiti · **nuova** | `schermate/21-coin-quasi-finiti.png` | `#coin-quasi-finiti` | Nuova schermata: quando i Coin non bastano per la prossima stanza, il saldo in alto diventa rosso e arriva un invito a ricaricare. |
@@ -84,12 +84,12 @@
 | 33 | Le chiavi | `schermate/33-le-chiavi.png` | `#n23` | La chiave si dà da una schermata sua, con la frase e i pulsanti allineati. |
 | 34 | Chiave data | `schermate/34-chiave-data.png` | `#n24` | Conferma breve; si torna alla stanza. |
 | 35 | Domenica sera | `schermate/35-domenica-sera.png` | `#n25` | Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che aspetta. Sopra, il conto alla rovescia alle 21. |
-| 36 | La madrina · le porte aperte · **nuova** | `schermate/36-la-madrina-le-porte-aperte.png` | `#madrina-domenica` | Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi. |
+| 36 | Il Filo · le porte aperte · **nuova** | `schermate/36-il-filo-le-porte-aperte.png` | `#madrina-domenica` | Nuova schermata, domenica poco prima delle 21: il vocale del Filo annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi. |
 | 37 | La porta | `schermate/37-la-porta.png` | `#n26` | Le ante scorrono una volta sola, morbide, fino in fondo. Dietro, una luce calda e la sagoma di chi ti ha scelto, con una rosa in mano. Maschile se tu sei donna, femminile se sei uomo. |
 | 38 | La porta · se sei un uomo · **nuova** | `schermate/38-la-porta-se-sei-un-uomo.png` | `#n26b` | La stessa porta vista da un uomo (qui Luca): dietro le ante, la sagoma di lei con una rosa in mano, nella stessa luce calda. Mai un volto a fuoco. |
 | 39 | Lo svelamento | `schermate/39-lo-svelamento.png` | `#n27` | La caparra spiegata in tre righe, pulsanti allineati. |
 | 40 | Lo svelamento · Come | `schermate/40-lo-svelamento-come.png` | `#n28` | Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secondi, le foto sfocate) e l'orario in un selettore unico. |
-| 41 | La serata della stanza · **nuova** | `schermate/41-la-serata-della-stanza.png` | `#serata-stanza` | Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì. |
+| 41 | La serata della stanza · **nuova** | `schermate/41-la-serata-della-stanza.png` | `#serata-stanza` | Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. Il Filo presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì. |
 
 ## Dettaglio, schermata per schermata
 
@@ -241,13 +241,13 @@ Nuova schermata, per quando ci saranno più stanze: in cima la stanza con le per
 - Prima proposta: la stanza con le persone più affini
 - Sotto: stanze Esperienza e VIP (in arrivo)
 - Il costo in Coin su ogni stanza
-### 18 · La madrina apre la stanza · nuova
+### 18 · Il Filo apre la stanza · nuova
 
-![La madrina apre la stanza](schermate/18-la-madrina-apre-la-stanza.png)
+![Il Filo apre la stanza](schermate/18-il-filo-apre-la-stanza.png)
 
-Nuova schermata, il lunedì all'apertura: il vocale di benvenuto della madrina (o del padrino) della stanza. Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.
+Nuova schermata, il lunedì all'apertura: il vocale di benvenuto del Filo della stanza (la persona vera della città che la accompagna). Dice i nomi di tutti e ricorda le regole. Si può riascoltare dalla stanza per tutta la settimana.
 
-- Scheda della madrina con il simbolo «!» nel cerchio rosso (mai la sua foto qui)
+- Scheda del Filo con il simbolo «!» nel cerchio rosso (mai la sua foto qui)
 - Vocale con l'onda grande, si riascolta quando vuoi
 - Solo i nomi di battesimo delle 12 persone, tu evidenziata in rosso
 - Le regole in una riga, poi si entra nella stanza
@@ -404,11 +404,11 @@ Domenica sera: una porta scorrevole socchiusa con la luce calda di un tavolo che
 - Immagine nuova, calda e accogliente al posto di quella scura
 - La luce oltre la porta respira piano
 - Pulsanti con il nuovo carattere
-### 36 · La madrina · le porte aperte · nuova
+### 36 · Il Filo · le porte aperte · nuova
 
-![La madrina · le porte aperte](schermate/36-la-madrina-le-porte-aperte.png)
+![Il Filo · le porte aperte](schermate/36-il-filo-le-porte-aperte.png)
 
-Nuova schermata, domenica poco prima delle 21: il vocale della madrina annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.
+Nuova schermata, domenica poco prima delle 21: il vocale del Filo annuncia quante porte si sono aperte nella stanza. Solo il numero, mai chi.
 
 - Vocale della domenica con l'onda
 - Il numero grande in rosso
@@ -453,9 +453,9 @@ Ridisegnata: due grandi scelte con un'immagine ciascuna (il cerchio dei 10 secon
 
 ![La serata della stanza](schermate/41-la-serata-della-stanza.png)
 
-Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. La madrina presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.
+Nuova schermata (in arrivo): l'invito alla serata in cui le persone della stanza si incontrano dal vivo, anche senza porte aperte. Il Filo presenta tutti, uno per uno, e racconta la serata sui social solo con chi ha detto sì.
 
 - Invito alla serata con giorno, ora e locale consigliato
-- La madrina presenta tutti, anche chi non ha scelto nessuno
+- Il Filo presenta tutti, anche chi non ha scelto nessuno
 - Consenso separato e facoltativo per comparire nei video (spento di base)
 - «Non vengo» e «Ci sarò» allineati, in 3D
