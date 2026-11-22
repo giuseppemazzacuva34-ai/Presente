@@ -17,11 +17,11 @@ test("flusso: righe del riepilogo nel profilo, lette una volta, solo con l'acces
 test("avvio: riepilogo col proprio token", () => {
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /creaRiepilogo\(\{ token: \(\) => accesso\.token\(\)/);
-  assert.match(avvio, /vostriIncontri, incontro, valutazione, riepilogo \}/);
+  assert.match(avvio, /vostriIncontri, incontro, valutazione, riepilogo, regali \}/);
 });
 
 test("service worker: modulo nella cache, versione aumentata", () => {
   const sw = leggi("../landing/app/sw.js");
   assert.ok(sw.includes('"/app/moduli/riepilogo_valutazioni.js"'));
-  assert.ok(!sw.includes('"presente-app-40"'), "versione della cache aumentata");
+  assert.ok(!sw.includes('"presente-app-41"'), "versione della cache aumentata");
 });

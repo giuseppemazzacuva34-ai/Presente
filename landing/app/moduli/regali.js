@@ -66,12 +66,12 @@ export function statoFoglio({ nome, saldo = null, scelto = null, inChiamata = fa
 
 // Richieste al Worker con il token di chi usa l'app. Mai un saldo o un esito inventato.
 export function creaRegali({ token, fetch: f = globalThis.fetch } = {}) {
-  async function chiedi(init) {
+  async function chiedi({ percorso = PERCORSO, ...init }) {
     const t = await Promise.resolve().then(token).catch(() => null);
     if (!t) return { ok: false, motivo: "accesso", testo: TESTI_FOGLIO.generico };
     let r;
     try {
-      r = await f(PERCORSO, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${t}` } });
+      r = await f(percorso, { ...init, headers: { ...(init.headers || {}), authorization: `Bearer ${t}` } });
     } catch {
       return { ok: false, motivo: "rete", testo: TESTI_FOGLIO.rete };
     }
@@ -93,6 +93,13 @@ export function creaRegali({ token, fetch: f = globalThis.fetch } = {}) {
       const c = await chiedi({ method: "GET" });
       if (c.ok !== true) return { ok: false, motivo: c.motivo || "riprova" };
       return { ok: true, saldo: saldoValido(c.saldo) ? c.saldo : null, avvisi: Array.isArray(c.avvisi) ? c.avvisi : [] };
+    },
+    // Scheda di chi riceve: «Ti ha mandato: 1 rosa, …» (testo del server) o null se non ci sono regali.
+    async ricevutiDa(da) {
+      if (typeof da !== "string" || !da) return { ok: false, motivo: "riprova" };
+      const c = await chiedi({ method: "GET", percorso: `${PERCORSO}?da=${encodeURIComponent(da)}` });
+      if (c.ok !== true) return { ok: false, motivo: c.motivo || "riprova" };
+      return { ok: true, testo: typeof c.testo === "string" && c.testo.trim() ? c.testo.trim() : null };
     },
     async visti(ids) {
       const c = await chiedi(json({ azione: "visti", ids }));
