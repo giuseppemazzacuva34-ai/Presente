@@ -51,8 +51,10 @@ let avvisiAvviati = false;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Piccolo aiuto per creare elementi senza HTML in stringa (niente innerHTML: niente codice iniettabile).
+// Gli elementi SVG (cerchio della stanza, #380) nascono nel loro spazio dei nomi: con createElement non si disegnerebbero.
+const SVG = new Set(["svg", "line", "circle"]);
 function h(tag, attributi = {}, ...figli) {
-  const el = document.createElement(tag);
+  const el = SVG.has(tag) ? document.createElementNS("http://www.w3.org/2000/svg", tag) : document.createElement(tag);
   for (const [nome, valore] of Object.entries(attributi || {})) {
     if (valore === false || valore === null || valore === undefined) continue;
     if (nome.startsWith("on") && typeof valore === "function") el.addEventListener(nome.slice(2), valore);
