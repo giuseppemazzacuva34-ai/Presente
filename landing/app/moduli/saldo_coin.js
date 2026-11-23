@@ -15,9 +15,9 @@ const SCELTO = "coin500"; // «Il più scelto»
 
 export const TESTI_SALDO = Object.freeze({
   // Schermata 13 (testi del design v4).
-  passo: "Passo 10 di 10 · I tuoi Coin",
-  titolo: Object.freeze(["I tuoi Coin", "per la stanza e i regali."]),
-  hai: "Hai <n> Coin. La tua prima stanza è in regalo.",
+  passo: "Passo 10 di 10 · I tuoi crediti",
+  titolo: Object.freeze(["I tuoi crediti", "per la stanza e i regali."]),
+  hai: "Hai <n> crediti. La tua prima stanza è in regalo.",
   primaStanza: "La tua prima stanza è in regalo.",
   descrizione200: "2 stanze, o 1 stanza e regali",
   inRegalo: "+<n> in regalo",
@@ -29,15 +29,18 @@ export const TESTI_SALDO = Object.freeze({
   piuTardi: "Più tardi",
   paga: "Paga <euro>",
   // Come moduli/coin.js (spec #331 B.3): in beta i Coin sono di prova.
-  notaBeta: "Nella beta i Coin sono di prova: li trovi già nel tuo saldo. Non paghi niente.",
+  notaBeta: "Nella beta i crediti sono di prova: li trovi già nel tuo saldo. Non paghi niente.",
   // Schermata 21. La frase con 15 Coin è del design; le altre due sono provvisorie, da rivedere con «contenuti».
-  etichetta: "I tuoi Coin",
+  etichetta: "I tuoi crediti",
   restano: "Ti restano",
   resta: "Ti resta",
-  finiti: Object.freeze(["Hai finito", "i Coin."]),
-  bastanoRegali: "Bastano per qualche regalo, non per la prossima stanza (<stanza> Coin).",
-  nonBastano: "Non bastano per la prossima stanza (<stanza> Coin) né per un regalo.",
+  finiti: Object.freeze(["Hai finito", "i crediti."]),
+  bastanoRegali: "Bastano per qualche regalo, non per la prossima stanza (<stanza> crediti).",
+  nonBastano: "Non bastano per la prossima stanza (<stanza> crediti) né per un regalo.",
   dopo: "Dopo",
+  // Decisione di Giuseppe del 23/11 (decisioni_giuseppe_23_11_crediti): nei testi visibili «crediti», non «Coin».
+  unita: "crediti",
+  unitaUno: "credito",
   ricarica: "Ricarica",
 });
 const T = TESTI_SALDO;
@@ -45,7 +48,7 @@ const T = TESTI_SALDO;
 const valido = (n) => Number.isInteger(n) && n >= 0;
 const euro = (n) => `${n} €`;
 function pacchetto(o) {
-  return { id: o.id, coin: o.coin, euro: euro(o.euro), sotto: o.inPiu > 0 ? T.inRegalo.replace("<n>", String(o.inPiu)) : "Coin" };
+  return { id: o.id, coin: o.coin, euro: euro(o.euro), sotto: o.inPiu > 0 ? T.inRegalo.replace("<n>", String(o.inPiu)) : T.unita };
 }
 
 // Schermata 13. saldo: il numero del server; se manca, nessun numero. scelto: il pacchetto toccato (di base il 500).
@@ -59,8 +62,8 @@ export function schermataTuoiCoin(saldo, { scelto = SCELTO } = {}) {
     pacchetti: OFFERTE.map((o) => ({ ...pacchetto(o), descrizione: o.inPiu > 0 ? null : T.descrizione200, piuScelto: o.id === SCELTO })),
     scelto: id,
     costi: [
-      { voce: T.stanza, costo: `${STANZA} Coin` },
-      { voce: T.caparra, costo: `${CAPARRA} Coin` },
+      { voce: T.stanza, costo: `${STANZA} ${T.unita}` },
+      { voce: T.caparra, costo: `${CAPARRA} ${T.unita}` },
       { voce: T.regali, costo: REGALI_COIN.join(" · ") },
     ],
     gomry: T.gomry,
@@ -74,7 +77,7 @@ export function schermataTuoiCoin(saldo, { scelto = SCELTO } = {}) {
 export function quasiFiniti(saldo) {
   if (!valido(saldo) || saldo >= STANZA) return null;
   const testo = saldo >= Math.min(...REGALI_COIN) ? T.bastanoRegali : T.nonBastano;
-  const titolo = saldo === 0 ? [...T.finiti] : [saldo === 1 ? T.resta : T.restano, `${saldo} Coin.`];
+  const titolo = saldo === 0 ? [...T.finiti] : [saldo === 1 ? T.resta : T.restano, `${saldo} ${saldo === 1 ? T.unitaUno : T.unita}.`];
   return {
     etichetta: T.etichetta,
     titolo,
