@@ -94,6 +94,47 @@ export function avvisoPermesso({ saldo, primaStanzaUsata, momento } = {}) {
   return valido(saldo) && saldo < STANZA && primaStanzaUsata === true && MOMENTI_AVVISO.has(momento);
 }
 
+// Passo 5c: lettura dal nuovo indirizzo GET /app/api/coin (worker/coin_api.js), che oltre al saldo dice se la prima
+// stanza in regalo è già stata usata e se l'interruttore dei pagamenti è acceso (in beta spento: solo true esatto).
+// Risposta: { ok: true, saldo, primaStanzaUsata, pagamenti } oppure { ok: false, motivo: "accesso" | "rete" | "riprova" }.
+const PERCORSO_COIN = "/app/api/coin";
+export function creaCoinServer({ token, fetch: f = globalThis.fetch } = {}) {
+  return {
+    async saldo() {
+      const t = await Promise.resolve().then(token).catch(() => null);
+      if (!t) return { ok: false, motivo: "accesso" };
+      let r;
+      try {
+        r = await f(PERCORSO_COIN, { method: "GET", headers: { authorization: `Bearer ${t}` } });
+      } catch {
+        return { ok: false, motivo: "rete" };
+      }
+      if (r.status === 401) return { ok: false, motivo: "accesso" };
+      if (!r.ok) return { ok: false, motivo: "riprova" };
+      let c;
+      try { c = await r.json(); } catch { return { ok: false, motivo: "riprova" }; }
+      if (!c || c.ok !== true || !valido(c.saldo) || typeof c.primaStanzaUsata !== "boolean") return { ok: false, motivo: "riprova" };
+      return { ok: true, saldo: c.saldo, primaStanzaUsata: c.primaStanzaUsata, pagamenti: c.pagamenti === true };
+    },
+  };
+}
+
+// Dove si trova la persona, per la regola della schermata 21: qualunque schermata della chiamata (anche «dopo» e
+// «segnala») → «chiamata»; porta dello svelamento aperta → «svelamento»; sera delle chiavi (domenica 21:00 → lunedì
+// 9:00) → «porte»; altrimenti «home». Legge solo i modelli pubblici di telefono.js, svelamento.js e chiavi_stanza.js;
+// se uno si rompe il momento è «sconosciuto» e l'avviso non parte.
+export function momentoApp({ telefono = null, porta = null, chiavi = null } = {}) {
+  try {
+    const sc = telefono ? telefono.modello().schermo : null;
+    if (sc && sc.tipo !== "nessuna") return "chiamata";
+    if (porta && porta.modello().aperta === true) return "svelamento";
+    if (chiavi && chiavi.modello().sera) return "porte";
+    return "home";
+  } catch {
+    return "sconosciuto";
+  }
+}
+
 // Saldo nella testata: coin = creaCoin() di moduli/coin.js; testata(dati) = aggiornaTestata(document, dati).
 export function creaSaldo({ coin, testata }) {
   return {
