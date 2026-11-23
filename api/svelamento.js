@@ -6,7 +6,7 @@
 // In beta i crediti sono un contatore interno, senza soldi veri (Stripe in Fase 4).
 
 export const SVELAMENTO = Object.freeze({
-  caparra: 100, // Coin a testa (#331: 1 € = 10 Coin)
+  caparra: 100, // crediti a testa (1 € = 10 crediti, decisioni_giuseppe_23_11_crediti)
   finestraOre: 48, // dall'apertura della porta (domenica 21:00 → martedì 21:00)
   rispostaOre: 48, // dalla fine dello svelamento
   durata: 10, // secondi di video
@@ -34,14 +34,14 @@ export const TESTI_SVELAMENTO = Object.freeze({
   annulla: "Annulla",
   inAttesa: "Hai risposto. Saprai com'è andata entro <quando>.",
   doppioSi: "Vi siete detti sì. Ora fissate l'incontro.",
-  chiusa: "Questa volta non vi incontrerete. I tuoi 100 Coin sono tornati nel tuo saldo.",
-  scaduta: "Il tempo per lo svelamento è finito. I tuoi Coin sono di nuovo disponibili.",
+  chiusa: "Questa volta non vi incontrerete. I tuoi 100 crediti sono tornati nel tuo saldo.",
+  scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
   // Caparra (spec v1, passo 2). Per una porta chiusa da un blocco o da una sospensione non si dice mai il motivo.
-  blocca: "Blocca 100 Coin",
-  spiegazioneCaparra: "I tuoi 100 Coin restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
+  blocca: "Blocca 100 crediti",
+  spiegazioneCaparra: "I tuoi 100 crediti restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
   aspettaCaparra: "Aspettiamo che anche <nome> blocchi la caparra.",
   ricarica: "Ricarica",
-  beta: "In beta i Coin sono di prova",
+  beta: "In beta i crediti sono di prova",
   portaChiusa: "Questa porta si è chiusa.",
   // «Come vuoi lo svelamento» (spec v1, passo 3). Si cambia fino all'inizio dello svelamento.
   sceltaVideo: "Videochiamata di 10 secondi",
@@ -79,7 +79,7 @@ export function bloccaCaparra({ porta, chi, crediti, adesso }) {
   const disponibili = Number.isFinite(crediti) ? crediti : 0;
   if (disponibili < SVELAMENTO.caparra) {
     const mancano = SVELAMENTO.caparra - disponibili;
-    return no("crediti_insufficienti", { mancano, testo: mancano === 1 ? "Ti manca 1 Coin" : `Ti mancano ${mancano} Coin` });
+    return no("crediti_insufficienti", { mancano, testo: mancano === 1 ? "Ti manca 1 credito" : `Ti mancano ${mancano} crediti` });
   }
   return { ok: true, blocca: SVELAMENTO.caparra };
 }

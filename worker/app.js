@@ -11,6 +11,7 @@ import { svelamentoApi, PERCORSO_SVELAMENTO } from "./svelamento_api.js";
 import { incontroApi, PERCORSO_INCONTRO } from "./incontro_api.js";
 import { regaliApi, PERCORSO_REGALI } from "./regali_api.js";
 import { accessoTester, cancelloTester, PERCORSO_ACCESSO_TESTER, modoAccesso } from "./accesso_tester.js";
+import { coinApi, PERCORSO_COIN } from "./coin_api.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -75,6 +76,7 @@ export async function app(request, env, f = fetch) {
   if (url.pathname.startsWith(PERCORSO_SUPPORTO + "/")) return conIntestazioniApp(await supportoOperatoreApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_INCONTRO) return conIntestazioniApp(await incontroApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_REGALI) return conIntestazioniApp(await regaliApi(request, env), url.pathname);
+  if (url.pathname === PERCORSO_COIN) return conIntestazioniApp(await coinApi(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }

@@ -34,8 +34,9 @@ import { creaRegali } from "/app/moduli/regali.js";
 import { creaRegaliStanza } from "/app/moduli/regali_stanza.js";
 import { creaRiepilogo } from "/app/moduli/riepilogo_valutazioni.js";
 import { creaSaldo, collegaSaldo } from "/app/moduli/saldo_coin.js";
-import { creaCoin } from "/app/moduli/coin.js";
 import { aggiornaTestata } from "/app/moduli/testata.js";
+import { apriFoglioQuasiFiniti, quasiFiniti } from "/app/moduli/saldo_coin.js";
+import { creaCoinServer, momentoApp } from "/app/moduli/saldo_coin.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -148,8 +149,11 @@ async function preparaAccesso() {
     const regali = creaRegaliStanza({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       contenitore: document.querySelector(".pagina.app"), aggiorna: () => regaliCambiati() });
     // Saldo dei Coin nella testata (#349, linea B): dal server col proprio token, all'avvio e al ritorno sull'app.
-    collegaSaldo({ saldo: creaSaldo({ coin: creaCoin({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
-      testata: (dati) => aggiornaTestata(document, dati) }), pagina: document });
+    // Passo 5c: nuovo indirizzo /app/api/coin (saldo + prima stanza usata) e momento (mai in chiamata, svelamento, porte).
+    collegaSaldo({ saldo: creaSaldo({ coin: creaCoinServer({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
+      testata: (dati) => aggiornaTestata(document, dati) }), pagina: document,
+      avviso: (n) => apriFoglioQuasiFiniti(document.querySelector(".pagina.app"), quasiFiniti(n)),
+      momento: () => momentoApp({ telefono, porta, chiavi }) });
     return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali };
   } catch {
     return {}; // senza configurazione si resta in anteprima

@@ -4,7 +4,7 @@ Versione 0.4 · 8 novembre 2026 · autore: CTO. Specifica: issue #3, v1 e v1.1 d
 
 ## In parole semplici
 
-Ogni lunedì alle 9 (ora di Roma) un lavoro automatico mette le persone con profilo completo in stanze da 6 a 12.
+Ogni lunedì alle 00:30 (ora di Roma, D151 A) un lavoro automatico mette le persone con profilo completo in stanze da 6 a 12.
 Questo primo pezzo (`api/stanze.js`) contiene solo i calcoli, provati con profili inventati: nessun database, nessun dato reale.
 Il lavoro del lunedì che legge Supabase e scrive le stanze arriva nei prossimi passi.
 
@@ -150,7 +150,8 @@ nessun contatore. La home (`landing/app/moduli/zona.js`) aspetta al massimo 2 se
 
 ## Lavoro del lunedì (8/11)
 
-Ogni lunedì alle 9 di Roma la GitHub Action **«Stanze»** (`.github/workflows/stanze.yml`, costo zero) esegue
+Ogni lunedì alle 00:30 di Roma (D151 A, dal 23/11; prima alle 9) la GitHub Action **«Stanze»**
+(`.github/workflows/stanze.yml`, costo zero) esegue
 `scripts/lavoro_lunedi.mjs`:
 
 1. `righe_settimana(apre)` (solo server): legge **solo chi ha confermato** per quel lunedì e solo i campi dei calcoli
@@ -161,8 +162,10 @@ Ogni lunedì alle 9 di Roma la GitHub Action **«Stanze»** (`.github/workflows/
 4. `scrivi_settimana()` (solo server) scrive **tutto o niente** in una sola transazione; rifiuta chi non ha confermato e
    un'apertura che non è lunedì alle 9 di Roma; **se le stanze di quel lunedì ci sono già non scrive nulla**.
 
-La Action parte alle 7:05 e alle 8:05 UTC: una delle due cade sempre alle 9 di Roma (estate e inverno), l'altra si
-ferma da sola. A mano: Actions → «Stanze» → «prova» calcola la prossima apertura e scrive nel log **solo numeri**
+Le stanze **aprono sempre alle 9:00**: comporle alle 00:30 lascia al Filo (#360) il tempo di registrare il vocale di
+benvenuto. La Action parte domenica alle 22:35 e alle 23:35 UTC (una delle due cade sempre alle 00:35 di Roma, estate e
+inverno) e lunedì alle 6:05 UTC come riserva; scrive solo lunedì tra le 00:00 e le 8:59 di Roma (le conferme si chiudono
+domenica alle 23:59) e le partenze dopo la prima trovano le stanze già scritte. A mano: Actions → «Stanze» → «prova» calcola la prossima apertura e scrive nel log **solo numeri**
 (stanze, persone, motivi di attesa). **Spento finché `ACCESSO_APP` non vale «si».** Mancano ancora: il blocco (#7, oggi
 nessuna coppia bloccata) e il conteggio dei crediti (contatore interno, dopo la #6). Prove: `test/lavoro_lunedi.test.mjs`
 e i controlli «lunedì:» in `supabase/test/regole_per_riga.sql`.

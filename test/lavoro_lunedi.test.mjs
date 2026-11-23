@@ -1,12 +1,13 @@
 // Lavoro del lunedì (issue #3): dalla lettura del database alla scrittura delle stanze. Database finto, dati inventati.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { eseguiLunedi, alleNoveDiLunedi } from "../scripts/lavoro_lunedi.mjs";
+import { eseguiLunedi, primaDellApertura } from "../scripts/lavoro_lunedi.mjs";
 import { oraDiRoma } from "../api/stanze.js";
 import { DOMANDE } from "../api/questionario.js";
 
 const LUNEDI = oraDiRoma(2026, 11, 9, 9);
-const ALLE_9_05 = new Date(LUNEDI.getTime() + 5 * 60000);
+// D151 A: le stanze si compongono lunedì alle 00:30 di Roma; l'apertura resta alle 9:00.
+const ALLE_0_35 = oraDiRoma(2026, 11, 9, 0, 35);
 
 function questionario(i) {
   const risposte = {};
@@ -46,26 +47,30 @@ function databaseFinto({ righe = 16, giaFatta = false } = {}) {
 
 test("spento finché ACCESSO_APP non vale «si»: nessuna chiamata al database", async () => {
   const db = databaseFinto();
-  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_9_05, accessoApp: "no", modo: "automatico" });
+  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_0_35, accessoApp: "no", modo: "automatico" });
   assert.equal(esito.esito, "spento");
   assert.equal(db.chiamate.length, 0);
 });
 
-test("in automatico gira solo lunedì tra le 9:00 e le 9:59 di Roma (giusto anche col cambio d'ora)", async () => {
-  assert.equal(alleNoveDiLunedi(ALLE_9_05), true);
-  assert.equal(alleNoveDiLunedi(new Date(LUNEDI.getTime() - 55 * 60000)), false); // 8:05
-  assert.equal(alleNoveDiLunedi(new Date(LUNEDI.getTime() + 65 * 60000)), false); // 10:05
-  assert.equal(alleNoveDiLunedi(new Date(oraDiRoma(2027, 4, 5, 9, 5))), true); // lunedì d'estate (7:05 UTC)
-  assert.equal(alleNoveDiLunedi(new Date(oraDiRoma(2026, 11, 10, 9, 5))), false); // martedì
+test("in automatico gira solo lunedì tra le 00:00 e le 8:59 di Roma, prima dell'apertura (D151 A, anche col cambio d'ora)", async () => {
+  assert.equal(primaDellApertura(ALLE_0_35), true);
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 9, 1, 35)), true); // seconda partenza della notte: poi «gia_fatta»
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 9, 8, 59)), true); // ritardo di GitHub: compone comunque prima delle 9
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 9, 9, 0)), false); // la stanza è già aperta
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 9, 9, 5)), false);
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 8, 23, 35)), false); // domenica: le conferme valgono fino alle 23:59
+  assert.equal(primaDellApertura(oraDiRoma(2027, 4, 5, 0, 35)), true); // lunedì d'estate (22:35 UTC di domenica)
+  assert.equal(primaDellApertura(oraDiRoma(2027, 4, 4, 23, 35)), false); // domenica d'estate
+  assert.equal(primaDellApertura(oraDiRoma(2026, 11, 10, 0, 35)), false); // martedì
   const db = databaseFinto();
-  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: new Date(LUNEDI.getTime() + 65 * 60000), accessoApp: "si", modo: "automatico" });
+  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: oraDiRoma(2026, 11, 9, 9, 5), accessoApp: "si", modo: "automatico" });
   assert.equal(esito.esito, "fuori_orario");
   assert.equal(db.chiamate.length, 0);
 });
 
-test("lunedì alle 9:05: legge le righe dell'apertura, conta le aree dal database e scrive le stanze", async () => {
+test("lunedì alle 00:35: legge le righe dell'apertura, conta le aree dal database e scrive le stanze", async () => {
   const db = databaseFinto();
-  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_9_05, accessoApp: "si", modo: "automatico" });
+  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_0_35, accessoApp: "si", modo: "automatico" });
   assert.deepEqual(db.chiamate.map((c) => c.nome), ["righe_settimana", "conteggi_aree", "pulisci_stanze_chiuse", "scrivi_settimana"]);
   assert.deepEqual(esito.pulizia, { carte_viste: 4, richiameresti: 3 }); // solo numeri: carte viste e «La richiameresti?» delle stanze chiuse
   assert.equal(db.chiamate[0].argomenti.apre, LUNEDI.toISOString());
@@ -95,13 +100,13 @@ test("modo prova: calcola ma non scrive nulla", async () => {
 
 test("seconda esecuzione nella stessa settimana: il database dice «già fatta» e il riassunto lo riporta", async () => {
   const db = databaseFinto({ giaFatta: true });
-  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_9_05, accessoApp: "si", modo: "automatico" });
+  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_0_35, accessoApp: "si", modo: "automatico" });
   assert.equal(esito.esito, "gia_fatta");
 });
 
 test("il riassunto ha solo numeri: nessun id, nome o data di nascita", async () => {
   const db = databaseFinto({ righe: 15 });
-  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_9_05, accessoApp: "si", modo: "automatico" });
+  const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_0_35, accessoApp: "si", modo: "automatico" });
   const testo = JSON.stringify(esito);
   assert.ok(!/00000000-0000-4000/.test(testo), testo);
   assert.ok(!/Prova|1990-05-05/.test(testo), testo);

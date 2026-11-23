@@ -11,6 +11,7 @@
 
 import { TESTI_SALA, vistaSala } from "./sala_attesa.js";
 import { vistaSchermata } from "./schermata_svelamento.js";
+import { vistaCome } from "./svelamento_come.js";
 
 const PERCORSO = "/app/api/svelamento";
 const ATTESA_MS = 8000;
@@ -21,15 +22,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const TESTI = Object.freeze({
   aperta: "Una porta si è aperta. Hai 48 ore per lo svelamento.",
-  blocca: "Blocca 100 Coin",
-  spiegazioneCaparra: "I tuoi 100 Coin restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
+  blocca: "Blocca 100 crediti",
+  spiegazioneCaparra: "I tuoi 100 crediti restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
   aspettaCaparra: "Aspettiamo che anche <nome> blocchi la caparra.",
   ricarica: "Ricarica",
-  beta: "In beta i Coin sono di prova",
+  beta: "In beta i crediti sono di prova",
   portaChiusa: "Questa porta si è chiusa.",
-  scaduta: "Il tempo per lo svelamento è finito. I tuoi Coin sono di nuovo disponibili.",
+  scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
   // Provvisorio, da rivedere con «contenuti»: il passo 3 della spec (video o foto, quando) arriva con il passo 5.
-  entrambe: "Avete bloccato entrambi i Coin. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
+  entrambe: "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
   torna: "Torna alla stanza",
   // Passo 3 della spec: «Come vuoi lo svelamento». Si cambia fino all'inizio; la scelta dell'altra persona non si vede.
   sceltaTitolo: "Come vuoi lo svelamento?",
@@ -179,7 +180,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   } else if (saldo >= CAPARRA) caparra = { tipo: "blocca", bottone: TESTI.blocca, spiegazione: TESTI.spiegazioneCaparra };
   else {
     const mancano = CAPARRA - saldo;
-    caparra = { tipo: "ricarica", testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} Coin`,
+    caparra = { tipo: "ricarica", testo: mancano === 1 ? "Ti manca 1 credito" : `Ti mancano ${mancano} crediti`,
       bottone: TESTI.ricarica, beta: TESTI.beta, spiegazione: TESTI.spiegazioneCaparra };
   }
   // Passo 3: dopo la propria caparra. «video» è la predefinita; un valore non previsto vale come «video».
@@ -190,7 +191,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   return {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
-    conto, saldo: `I tuoi Coin: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
+    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
     // Passo 6b: «momento» e «tipo» solo come li dà il server (passo 6a); un tipo sconosciuto non accende la fotocamera.
     momento: p.momento === true,
     tipoSvelamento: p.momento === true && SCELTE.includes(p.tipo) ? p.tipo : null,
@@ -723,13 +724,8 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
     } else {
       parti.push(h("p", { role: "status" }, c.testo));
     }
-    if (s.scelta) {
-      parti.push(h("div", { classe: "scelta-svelamento", role: "group", "aria-labelledby": "scelta-titolo" },
-        h("h2", { id: "scelta-titolo" }, TESTI.sceltaTitolo),
-        s.scelta.opzioni.map((o) => h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso,
-          "aria-pressed": o.valore === s.scelta.attuale ? "true" : "false", onclick: () => ps.scegli(o.valore) }, o.testo))));
-    }
-    if (s.quando) parti.push(vistaQuando(h, ps, m, s.quando));
+    // Design v4 (#349, schermata 40): la scelta e l'orario nelle due schede di svelamento_come.js.
+    parti.push(vistaCome(h, ps, m, s));
     const sala = ps.sala ? ps.sala() : null;
     if (s.momento && sala) {
       parti.push(sala.modello().stato === "chiusa"
@@ -777,25 +773,3 @@ function vistaRisposta(h, ps, m, s) {
     h("h2", { id: "risposta-titolo" }, s.domanda), parti);
 }
 
-// Passo 5b: «Quando?». Gli orari si scelgono con 3 menu (uno per mezz'ora), ognuno con la sua etichetta.
-function vistaQuando(h, ps, m, q) {
-  const stato = [q.entrambi, q.mioPronto, q.pronta, q.fissata, q.nessuna].filter(Boolean)
-    .map((t) => h("p", { role: "status" }, t));
-  const menu = m.orari ? h("div", { classe: "orari-svelamento" },
-    h("p", { classe: "nota", id: "orari-spiegazione" }, TESTI.orariSpiegazione),
-    [0, 1, 2].map((i) => h("div", { classe: "campo" },
-      h("label", { for: `fascia-${i + 1}` }, `${TESTI.orario} ${i + 1}`),
-      h("select", { id: `fascia-${i + 1}`, "aria-describedby": "orari-spiegazione", disabled: m.inCorso,
-        onchange: (e) => ps.impostaFascia(i, e.target.value) },
-        h("option", { value: "", selected: !m.bozza[i] }, TESTI.nessunOrario),
-        q.opzioni.map((o) => h("option", { value: o.valore, selected: o.valore === m.bozza[i] }, o.testo))))),
-    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.inviaFasce() },
-      m.inCorso ? "Un attimo…" : TESTI.salvaOrari)) : null;
-  return h("div", { classe: "quando-svelamento", role: "group", "aria-labelledby": "quando-titolo" },
-    h("h2", { id: "quando-titolo" }, q.titolo),
-    stato,
-    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.pronto() }, q.ora),
-    h("button", { classe: "bottone-secondario", type: "button", "aria-expanded": m.orari ? "true" : "false",
-      onclick: () => ps.mostraOrari() }, q.orario),
-    menu);
-}

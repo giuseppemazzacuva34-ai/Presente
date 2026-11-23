@@ -36,7 +36,7 @@ test("caparra: con meno di 100 Coin «Ti mancano N Coin» e non si blocca nulla"
   assert.equal(r.ok, false);
   assert.equal(r.motivo, "crediti_insufficienti");
   assert.equal(r.mancano, 30);
-  assert.equal(r.testo, "Ti mancano 30 Coin");
+  assert.equal(r.testo, "Ti mancano 30 crediti");
   assert.equal(r.blocca, undefined);
 });
 
@@ -154,7 +154,7 @@ test("regola CPO 21/11: un no, due no o il silenzio danno l'esito solo a fine 48
   for (const r of risultati) {
     assert.equal(r.esito, "chiusa");
     assert.deepEqual(r.restituisci, ["a", "b"]);
-    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 100 Coin sono tornati nel tuo saldo.");
+    assert.equal(r.testo, "Questa volta non vi incontrerete. I tuoi 100 crediti sono tornati nel tuo saldo.");
     assert.deepEqual(r, risultati[0]);
   }
 });
