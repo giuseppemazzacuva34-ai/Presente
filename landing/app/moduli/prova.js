@@ -434,7 +434,7 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
     async blocca(porta) {
       return conPorta(porta, (v) => {
         if (v.mia_caparra) return null;
-        if (saldo < 100) return no("crediti_insufficienti", `Ti mancano ${100 - saldo} Coin`);
+        if (saldo < 100) return no("crediti_insufficienti", 100 - saldo === 1 ? "Ti manca 1 credito" : `Ti mancano ${100 - saldo} crediti`);
         saldo -= 100;
         v.mia_caparra = true;
         return null;
