@@ -219,7 +219,8 @@ export function vistaSera(h, ks, { svelamento = null } = {}) {
         h("p", { classe: "passo" }, TESTI.portaOcchiello),
         h("h2", {}, TESTI.portaTitolo[0], h("br", {}), h("em", {}, TESTI.portaTitolo[1]))),
       h("div", { classe: "porta-v4-piede" },
-        h("p", { classe: "porta-v4-chi" }, h("strong", {}, p.nome)),
+        h("p", { classe: "porta-v4-chi" }, h("strong", {}, p.eta ? `${p.nome}, ${p.eta}` : p.nome),
+          p.provincia ? h("span", { classe: "nota" }, ` · ${p.provincia}`) : null),
         p.frase ? [h("p", { classe: "nascosto" }, p.scritto), h("blockquote", { classe: "frase" }, p.frase)] : null,
         typeof svelamento === "function" ? h("button", { classe: "bottone", type: "button", "aria-label": p.etichetta, onclick: () => svelamento(p.porta) }, p.bottone) : null))));
 }

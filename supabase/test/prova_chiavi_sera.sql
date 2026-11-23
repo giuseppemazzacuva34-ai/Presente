@@ -92,7 +92,8 @@ create temp table dopo on commit drop as select n, public.sera_di(pg_temp.p(n)) 
 reset role;
 select pg_temp.ok((select s from dopo where n = 1) = jsonb_build_object('stato', 'pronta', 'porte', jsonb_build_array(
     jsonb_build_object('id', (select id from public.porte where a = least(pg_temp.p(1), pg_temp.p(2)) and b = greatest(pg_temp.p(1), pg_temp.p(2))),
-      'con', pg_temp.p(2), 'nome', 'Giulia', 'frase_per_te', 'Il treno, ancora.', 'sagoma', 'donna'))),
+      'con', pg_temp.p(2), 'nome', 'Giulia', 'frase_per_te', 'Il treno, ancora.', 'sagoma', 'donna',
+      'eta', extract(year from age(current_date, date '1990-01-01'))::integer, 'provincia', 'Milano'))),
   'sera: 1 vede la porta con 2, il suo nome, la frase che 2 gli ha lasciato e la sagoma (design v4, schermate 37-38)');
 select pg_temp.ok((select s->'porte'->0->>'sagoma' from dopo where n = 2) = 'uomo',
   'sera: 2 vede dietro la porta la sagoma di un uomo (1 si presenta come uomo)');
@@ -114,9 +115,20 @@ reset role;
 update public.profili set mi_presento_come = null where id = pg_temp.p(2);
 set local role service_role;
 select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'neutra', 'sera: senza risposta → sagoma neutra');
--- Mai età, città o altro del profilo nella sera.
-select pg_temp.ok(not (public.sera_di(pg_temp.p(1))->'porte'->0 ?| array['eta', 'citta', 'data_nascita', 'mi_presento_come', 'foto']),
-  'sera: mai età, città, data di nascita, genere grezzo o foto');
+-- Design v4 (#349, D149, risposta del CPO del 23/11): dietro la porta «Nome, età · provincia», gli stessi dati già
+-- visibili nella stanza (compagni_di_stanza). Mai data di nascita, città grezza, genere grezzo, foto o voce.
+select pg_temp.ok((public.sera_di(pg_temp.p(1))->'porte'->0->>'eta')::int
+    = extract(year from age(current_date, date '1990-01-01'))::int,
+  'sera: l''età di chi c''è dietro la porta, come nella stanza');
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'provincia' = 'Milano',
+  'sera: senza provincia scelta la città, come nella stanza');
+select pg_temp.ok(not (public.sera_di(pg_temp.p(1))->'porte'->0 ?| array['citta', 'data_nascita', 'mi_presento_come', 'foto', 'voce']),
+  'sera: mai data di nascita, città grezza, genere grezzo, foto o voce');
+reset role;
+update public.profili set provincia = 'EE' where id = pg_temp.p(2);
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'provincia' = 'Dall''estero',
+  'sera: chi vive all''estero → «Dall''estero», mai la sigla');
 reset role;
 
 -- Un blocco dopo la sera: per il server la porta non c'è più.

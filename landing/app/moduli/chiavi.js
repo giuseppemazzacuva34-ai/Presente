@@ -25,6 +25,9 @@ export const TESTI = Object.freeze({
 // che arriva dalla rete.
 const IMMAGINI_PORTA = Object.freeze({ uomo: "/app/img/porta-uomo-rosa.jpg", donna: "/app/img/porta-donna-rosa.jpg", neutra: "/app/img/porta-calda.jpg" });
 const sagomaDa = (x) => (x === "uomo" || x === "donna" ? x : "neutra");
+// D149: «Nome, età · provincia», gli stessi dati della stanza. Solo valori sensati, altrimenti non si mostrano.
+const etaDa = (x) => (Number.isInteger(x) && x >= 18 && x <= 120 ? x : null);
+const provinciaDa = (x) => (typeof x === "string" && x.trim() && x.trim().length <= 60 ? x.trim() : null);
 
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "");
 const dateDa = (stato) => (Array.isArray(stato?.date) ? stato.date : []);
@@ -85,7 +88,8 @@ export function schermataSera(sera) {
       const frase = typeof p.frase_per_te === "string" && p.frase_per_te.trim() ? p.frase_per_te.trim() : null;
       return { porta: p.id, testo: `Una porta si è aperta: ${nome}.`, scritto: frase ? `${nome} ti ha scritto:` : null, frase,
         bottone: "Vai allo svelamento", etichetta: `Vai allo svelamento con ${nome}`,
-        nome, sagoma: sagomaDa(p.sagoma), immagine: IMMAGINI_PORTA[sagomaDa(p.sagoma)] };
+        nome, eta: etaDa(p.eta), provincia: provinciaDa(p.provincia),
+        sagoma: sagomaDa(p.sagoma), immagine: IMMAGINI_PORTA[sagomaDa(p.sagoma)] };
     });
   // Chi non ha porte vede sempre lo stesso testo, che abbia dato chiavi o no.
   return schede.length ? { tipo: "porte", schede } : { tipo: "nessuna_porta", testo: TESTI.nessunaPorta };
