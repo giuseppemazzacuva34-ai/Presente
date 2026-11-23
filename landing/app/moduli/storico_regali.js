@@ -12,6 +12,8 @@ export const TESTI_STORICO = Object.freeze({
   questaStanza: "Questa stanza",
   stanzePassate: "Stanze passate",
   torna: "Torna al profilo",
+  link: "I tuoi regali",
+  carica: "Un attimo…",
 });
 
 const intero = (n) => Number.isInteger(n) && n >= 0;
@@ -72,4 +74,33 @@ export function vistaStoricoRegali(h, v, { torna }) {
         riga(h, v.passate.persone, v.passate.dettaglio, ""),
       ] : null),
     h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI_STORICO.torna)));
+}
+
+// Passo 4: la schermata aperta dal profilo. Tiene solo lo stato della schermata (aperta, in lettura, vista o errore);
+// il flusso la disegna a tutta pagina e la richiude con «Torna al profilo». Gli errori usano i messaggi del flusso.
+export function creaSchermoRegali({ storico, disegna, errore }) {
+  const st = { aperto: false, carica: false, vista: null, errore: "", giro: 0 };
+  const chiudi = () => { Object.assign(st, { aperto: false, carica: false, vista: null, errore: "" }); st.giro++; disegna(); };
+  return {
+    aperto: () => st.aperto,
+    async apri() {
+      const giro = ++st.giro;
+      Object.assign(st, { aperto: true, carica: true, vista: null, errore: "" });
+      disegna();
+      const r = await Promise.resolve().then(() => storico.leggi()).catch(() => ({ ok: false, motivo: "rete" }));
+      if (giro !== st.giro || !st.aperto) return;
+      st.carica = false;
+      if (r && r.ok) st.vista = r.vista; else st.errore = errore((r && r.motivo) || "rete");
+      disegna();
+    },
+    schermo(h) {
+      const contenuto = st.vista ? vistaStoricoRegali(h, st.vista, { torna: chiudi })
+        : h("div", { classe: "storico-regali" },
+          h("div", { classe: "corpo" },
+            h("div", { classe: "passo" }, TESTI_STORICO.etichetta),
+            st.carica ? h("p", { classe: "nota", role: "status" }, TESTI_STORICO.carica) : h("p", { classe: "errore", role: "alert" }, st.errore)),
+          h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: chiudi }, TESTI_STORICO.torna)));
+      return h("section", { classe: "schermata", "aria-label": TESTI_STORICO.link }, contenuto);
+    },
+  };
 }

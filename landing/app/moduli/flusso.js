@@ -23,6 +23,7 @@ import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { vistaRegaliScheda } from "./regali_stanza.js";
+import { creaSchermoRegali, TESTI_STORICO as TESTI_REGALI_PROFILO } from "./storico_regali.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
 import { vistaPorta, segnalaDaPorta } from "./svelamento.js";
@@ -38,6 +39,7 @@ let chiaviStanza = null;
 let appuntiStanza = null;
 // «Manda un regalo» sulla scheda (#331 parte C, linea «sviluppatore-c»): solo con il telefono acceso, solo stanza aperta.
 let regaliStanza = null;
+let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
@@ -181,6 +183,8 @@ export function avvia(elemento, opzioni = {}) {
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   regaliStanza = (telefono && opzioni.regali) || null;
+  regaliProfilo = telefono && opzioni.storicoRegali ? creaSchermoRegali({ storico: opzioni.storicoRegali, disegna: () => disegna(),
+    errore: (m) => MESSAGGI_SALVATAGGIO[m] || "Non riusciamo a leggere i tuoi regali. Riprova tra poco." }) : null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
   supporto = (telefono && opzioni.aiuto) || null;
@@ -652,6 +656,7 @@ function disegna() {
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
+  if (regaliProfilo && regaliProfilo.aperto()) { radice.replaceChildren(regaliProfilo.schermo(h)); return; }
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
   if (portaSvelamento && segnalaDaPorta(portaSvelamento.modello().segnala)) { radice.replaceChildren(schermoSegnalaPorta()); return; }
   if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
@@ -1054,6 +1059,7 @@ const SCHERMATE = {
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
         storicoChiamate ? h("button", { classe: "link", type: "button", onclick: apriStorico }, TESTI_STORICO.titolo) : null,
+        regaliProfilo ? h("button", { classe: "link", type: "button", onclick: () => regaliProfilo.apri() }, TESTI_REGALI_PROFILO.link) : null,
         supporto ? h("button", { classe: "link", type: "button", onclick: apriAiuto }, TESTI_AIUTO.titolo) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
