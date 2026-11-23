@@ -87,7 +87,7 @@ const attesa = () => new Promise((r) => setImmediate(r));
 
 test("l'avviso arriva una volta per visita quando i Coin non bastano", async () => {
   const visti = [];
-  const saldo = { async aggiorna() { return { ok: true, saldo: 15, quasiFiniti: true }; } };
+  const saldo = { async aggiorna() { return { ok: true, saldo: 15, quasiFiniti: true, primaStanzaUsata: true }; } };
   const pagina = paginaFinta();
   await collegaSaldo({ saldo, pagina, avviso: (n) => visti.push(n) });
   pagina.lancia("visibilitychange");

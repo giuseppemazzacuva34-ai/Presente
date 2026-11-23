@@ -35,7 +35,6 @@ export const TESTI_SALDO = Object.freeze({
   restano: "Ti restano",
   resta: "Ti resta",
   finiti: Object.freeze(["Hai finito", "i Coin."]),
-  bastanoCaparra: "Bastano per una caparra o qualche regalo, non per la prossima stanza (<stanza> Coin).",
   bastanoRegali: "Bastano per qualche regalo, non per la prossima stanza (<stanza> Coin).",
   nonBastano: "Non bastano per la prossima stanza (<stanza> Coin) né per un regalo.",
   dopo: "Dopo",
@@ -74,7 +73,7 @@ export function schermataTuoiCoin(saldo, { scelto = SCELTO } = {}) {
 // Schermata 21: solo quando il saldo non basta per la prossima stanza. Dice cosa si può ancora fare.
 export function quasiFiniti(saldo) {
   if (!valido(saldo) || saldo >= STANZA) return null;
-  const testo = saldo >= CAPARRA ? T.bastanoCaparra : saldo >= Math.min(...REGALI_COIN) ? T.bastanoRegali : T.nonBastano;
+  const testo = saldo >= Math.min(...REGALI_COIN) ? T.bastanoRegali : T.nonBastano;
   const titolo = saldo === 0 ? [...T.finiti] : [saldo === 1 ? T.resta : T.restano, `${saldo} Coin.`];
   return {
     etichetta: T.etichetta,
@@ -87,6 +86,14 @@ export function quasiFiniti(saldo) {
   };
 }
 
+// Spec #331 v1.1, punto 5: il foglio della schermata 21 può comparire solo con saldo del server sotto 80, nella home
+// o all'ingresso nella stanza (mai in chiamata, nello svelamento o nella sera delle porte) e solo a chi ha già usato
+// la prima stanza in regalo. Se un dato manca, niente avviso.
+const MOMENTI_AVVISO = new Set(["home", "stanza"]);
+export function avvisoPermesso({ saldo, primaStanzaUsata, momento } = {}) {
+  return valido(saldo) && saldo < STANZA && primaStanzaUsata === true && MOMENTI_AVVISO.has(momento);
+}
+
 // Saldo nella testata: coin = creaCoin() di moduli/coin.js; testata(dati) = aggiornaTestata(document, dati).
 export function creaSaldo({ coin, testata }) {
   return {
@@ -95,7 +102,7 @@ export function creaSaldo({ coin, testata }) {
       try { r = await coin.saldo(); } catch { return { ok: false, motivo: "rete" }; }
       if (!r || r.ok !== true || !valido(r.saldo)) return { ok: false, motivo: (r && r.motivo) || "riprova" };
       try { testata({ saldo: r.saldo }); } catch { /* la testata non deve fermare la lettura */ }
-      return { ok: true, saldo: r.saldo, quasiFiniti: r.saldo < STANZA };
+      return { ok: true, saldo: r.saldo, quasiFiniti: r.saldo < STANZA, primaStanzaUsata: r.primaStanzaUsata === true };
     },
   };
 }
@@ -104,11 +111,16 @@ export function creaSaldo({ coin, testata }) {
 // timer: il numero cambia solo con una stanza o un regalo, e chi torna sull'app vede quello aggiornato.
 // Passo 3: avviso(n) apre la schermata 21 quando i Coin non bastano per la prossima stanza, una sola volta per visita
 // (in memoria, niente salvataggi locali): chi chiude con «Dopo» non lo rivede a ogni ritorno sull'app.
-export async function collegaSaldo({ saldo, pagina, avviso } = {}) {
+// Passo 4 (spec #331 v1.1): momento() dice dove si è («home», «stanza», «chiamata», «svelamento», «porte»); se adesso
+// l'avviso non è permesso non si consuma e può comparire a una lettura successiva della stessa sessione.
+export async function collegaSaldo({ saldo, pagina, avviso, momento = () => "home" } = {}) {
   if (!saldo || typeof saldo.aggiorna !== "function" || !pagina) return { ok: false, motivo: "manca" };
   let avvisato = false;
   const avvisa = (r) => {
     if (avvisato || typeof avviso !== "function" || !r || r.ok !== true || r.quasiFiniti !== true) return;
+    let dove;
+    try { dove = momento(); } catch { return; }
+    if (!avvisoPermesso({ saldo: r.saldo, primaStanzaUsata: r.primaStanzaUsata, momento: dove })) return;
     avvisato = true;
     try { avviso(r.saldo); } catch { /* la vista non deve fermare il saldo */ }
   };
