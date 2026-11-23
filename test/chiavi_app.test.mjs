@@ -61,9 +61,9 @@ test("sera con porte: «Una porta si è aperta: <nome>.», la frase dell'altra p
   ] });
   assert.deepEqual(s, { tipo: "porte", schede: [
     { porta: PORTA, testo: "Una porta si è aperta: Giulia.", scritto: "Giulia ti ha scritto:", frase: "Il treno, ancora.", bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Giulia",
-      nome: "Giulia", sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
+      nome: "Giulia", eta: null, provincia: null, sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
     { porta: "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee", testo: "Una porta si è aperta: Marco.", scritto: null, frase: null, bottone: "Vai allo svelamento", etichetta: "Vai allo svelamento con Marco",
-      nome: "Marco", sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
+      nome: "Marco", eta: null, provincia: null, sagoma: "neutra", immagine: "/app/img/porta-calda.jpg" },
   ] });
 });
 

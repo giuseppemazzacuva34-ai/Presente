@@ -93,3 +93,24 @@ test("stile: ante che scorrono una volta sola (6 s, morbide), luce che respira, 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.app \.porta-v4-anta\.sx \{ animation: none; transform: translateX\(-96%\); \} \.app \.porta-v4-anta\.dx \{ animation: none; transform: translateX\(96%\); \} \.app \.porta-v4-luce \{ animation: none; \} \}/);
   assert.match(regole(".app .porta-v4 .frase"), /border-left: 2px solid #E8432B/);
 });
+
+// D149 e risposta del CPO del 23/11: «Nome, età · provincia» come nel disegno (Marco, 35 · Milano), gli stessi dati
+// della stanza. Senza età o provincia valide si mostra solo quello che c'è.
+test("porta v4: «Marco, 35 · Milano»; dati mancanti o strani non si mostrano", async () => {
+  const c = await sera([{ id: PORTA, con: LEI, nome: "Marco", frase_per_te: null, sagoma: "uomo", eta: 35, provincia: "Milano" }]);
+  const v = vistaSera(h, c, { svelamento: () => {} });
+  const chi = conClasse(v, "porta-v4-chi")[0];
+  assert.equal(testo(chi), "Marco, 35 · Milano");
+  assert.equal(testo(tutti(chi, (x) => x.tag === "strong")[0]), "Marco, 35");
+  assert.equal(testo(conClasse(chi, "nota")[0]), " · Milano");
+  for (const [eta, provincia, atteso] of [[null, null, "Marco"], [17, "Milano", "Marco · Milano"], ["35", " ", "Marco"],
+    [35.5, "x".repeat(61), "Marco"], [120, "Dall'estero", "Marco, 120 · Dall'estero"]]) {
+    const d = await sera([{ id: PORTA, con: LEI, nome: "Marco", sagoma: "uomo", eta, provincia }]);
+    assert.equal(testo(conClasse(vistaSera(h, d, { svelamento: () => {} }), "porta-v4-chi")[0]), atteso, `${eta} ${provincia}`);
+  }
+});
+
+test("service worker: versione nuova per età e provincia dietro la porta", () => {
+  const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
+  assert.ok(!sw.includes('"presente-app-45"'));
+});

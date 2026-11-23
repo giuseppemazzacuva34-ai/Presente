@@ -46,3 +46,17 @@ test("sera_di con il nome: solo il nome del profilo, chiusa al telefono", () => 
   assert.doesNotMatch(sqlNome, /grant [^;]* to (anon|authenticated)/);
   assert.doesNotMatch(sqlNome, /\b(drop|truncate|delete|alter system)\b/i);
 });
+
+// Design v4 (#349, D149, risposta del CPO del 23/11): dietro la porta anche età e provincia, come nella stanza.
+const fileEta = readdirSync(cartella).find((n) => /^\d{14}_sera_eta_provincia\.sql$/.test(n));
+const sqlEta = fileEta ? readFileSync(new URL(fileEta, cartella), "utf8") : "";
+
+test("sera_di con età e provincia: gli stessi dati della stanza, chiusa al telefono", () => {
+  assert.ok(fileEta, "manca supabase/migrations/*_sera_eta_provincia.sql");
+  assert.match(sqlEta, /'eta', extract\(year from age\(current_date, pr\.data_nascita\)\)::integer/);
+  assert.match(sqlEta, /'provincia', case when pr\.provincia = 'EE' then 'Dall''estero' else coalesce\(pv\.nome, pr\.citta\) end/);
+  assert.doesNotMatch(sqlEta, /'(data_nascita|citta|foto|voce|email|cognome)',/);
+  assert.match(sqlEta, /revoke all on function public\.sera_di\(uuid\) from public, anon, authenticated/);
+  assert.doesNotMatch(sqlEta, /grant [^;]* to (anon|authenticated)/);
+  assert.doesNotMatch(sqlEta, /\b(drop|truncate|delete|alter system)\b/i);
+});
