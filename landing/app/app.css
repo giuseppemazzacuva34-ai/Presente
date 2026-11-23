@@ -389,3 +389,20 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .foglio-coin .pacco .q { font-family: var(--serif); font-size: 30px; line-height: 1; }
 .app .foglio-coin .pacco .q small { font-family: inherit; font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
 .app .foglio-coin .pacco .e { font-weight: 700; font-size: 17px; }
+
+/* ===== Linea B (#349): «I tuoi regali», design v4 schermata 28 =====
+   Valori dal prototipo docs/design/v4/prototipo (#storico-regali: .passo, h2, .conteggi, .lista-t, .persona). */
+.app .storico-regali .corpo { display: flex; flex-direction: column; gap: 12px; }
+.app .storico-regali .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .storico-regali h2 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+.app .storico-regali h2 em { color: #E8432B; }
+.app .storico-regali .conteggi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.app .storico-regali .conteggi > div { border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 16px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: #151217; }
+.app .storico-regali .conteggi .regalo-icona { width: 48px; height: 48px; }
+.app .storico-regali .conteggi b { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 30px; line-height: 1; }
+.app .storico-regali .conteggi span:last-child { font-size: 11.5px; color: #A8A29A; }
+.app .storico-regali .lista-t { display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; border-bottom: 1px solid rgba(242, 237, 228, 0.12); padding-bottom: 5px; margin-top: 4px; }
+.app .storico-regali .persona { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(242, 237, 228, 0.08); }
+.app .storico-regali .persona b { font-weight: 600; font-size: 14px; display: block; }
+.app .storico-regali .persona small { font-size: 11px; color: #A8A29A; }
+.app .storico-regali .nota { color: #A8A29A; font-size: 12px; margin: 0; }
