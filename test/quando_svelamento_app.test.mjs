@@ -197,7 +197,7 @@ test("vista: «Quando?» con i due pulsanti; gli orari in 3 menu con etichetta; 
   let v = vistaPorta(h, ps);
   const gruppo = tutti(v, (x) => x.a.role === "group" && x.a["aria-labelledby"] === "quando-titolo")[0];
   assert.ok(gruppo);
-  assert.ok(testo(gruppo).includes(TESTI.quandoTitolo));
+  assert.equal(testo(tutti(v, (x) => x.a.id === "quando-titolo")[0]), "Quando", "design v4 (#349, schermata 40)");
   sv.risposte.pronto = { ok: true, esito: "pronto", stato: stato([porta({ mio_pronto: true, pronto_scade_il: "2026-11-16T09:45:00Z" })]) };
   await bottone(v, "Ci sono adesso").a.onclick();
   v = vistaPorta(h, ps);

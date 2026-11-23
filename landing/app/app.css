@@ -157,10 +157,6 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 /* Schermata della porta (#65 passi 1-2): nome ed età grandi, poi conto, crediti e caparra. */
 .porta-svelamento .porta-chi { font-size: 1.4rem; margin: 0.25rem 0; }
 .porta-svelamento .bottone, .porta-svelamento .bottone-secondario { min-height: 44px; }
-.scelta-svelamento { display: grid; gap: 0.5rem; margin: 1rem 0; }
-.scelta-svelamento h2 { font-size: 1.1rem; margin: 0; }
-.scelta-svelamento [aria-pressed="true"] { border-color: #E8432B; box-shadow: inset 0 0 0 2px #E8432B; }
-.scelta-svelamento [aria-pressed="true"]::before { content: "✓ "; content: "✓ " / ""; }
 /* Messaggi «Scrivici» per chi risponde (#10, passo 5b della linea «sviluppatore-c»). */
 #supporto textarea { font: inherit; font-size: max(16px, 1rem); color: var(--avorio); background: transparent; border: 1px solid var(--linea); border-radius: 0.5rem; padding: 0.6rem; width: 100%; box-sizing: border-box; }
 #supporto textarea:focus-visible { border-color: var(--avorio); outline: 2px solid var(--avorio); outline-offset: 2px; }
