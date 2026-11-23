@@ -13,6 +13,7 @@ import { regaliApi, PERCORSO_REGALI } from "./regali_api.js";
 import { coinApi, PERCORSO_COIN } from "./coin_api.js";
 import { filoApi, PERCORSO_FILO } from "./filo_api.js";
 import { filoVocaleApi, PERCORSO_FILO_VOCALE } from "./filo_vocale_api.js";
+import { filoAscoltoApi, PERCORSO_FILO_ASCOLTO } from "./filo_ascolto_api.js";
 import { storicoRegaliApi, PERCORSO_STORICO_REGALI } from "./storico_regali_api.js";
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
@@ -73,6 +74,7 @@ export async function app(request, env) {
   if (url.pathname === PERCORSO_COIN) return conIntestazioniApp(await coinApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_FILO) return conIntestazioniApp(await filoApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_FILO_VOCALE) return conIntestazioniApp(await filoVocaleApi(request, env), url.pathname);
+  if (url.pathname === PERCORSO_FILO_ASCOLTO) return conIntestazioniApp(await filoAscoltoApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_STORICO_REGALI) return conIntestazioniApp(await storicoRegaliApi(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
