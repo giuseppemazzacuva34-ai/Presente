@@ -69,7 +69,9 @@ test("21: solo sotto il costo di una stanza, con cosa si può ancora fare", () =
 test("saldo nella testata: legge dal server e aggiorna la pillola; errore → pillola invariata", async () => {
   const viste = [];
   const s = creaSaldo({ coin: { saldo: async () => ({ ok: true, saldo: 15 }) }, testata: (d) => viste.push(d) });
-  assert.deepEqual(await s.aggiorna(), { ok: true, saldo: 15, quasiFiniti: true });
+  assert.deepEqual(await s.aggiorna(), { ok: true, saldo: 15, quasiFiniti: true, primaStanzaUsata: false });
+  const p = creaSaldo({ coin: { saldo: async () => ({ ok: true, saldo: 15, primaStanzaUsata: true }) }, testata: () => {} });
+  assert.equal((await p.aggiorna()).primaStanzaUsata, true);
   assert.deepEqual(viste, [{ saldo: 15 }]);
   const e = creaSaldo({ coin: { saldo: async () => ({ ok: false, motivo: "rete" }) }, testata: (d) => viste.push(d) });
   assert.deepEqual(await e.aggiorna(), { ok: false, motivo: "rete" });
