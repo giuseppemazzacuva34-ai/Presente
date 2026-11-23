@@ -51,11 +51,11 @@ test("senza saldo o pagina non fa niente", async () => {
   assert.equal((await collegaSaldo()).ok, false);
 });
 
-test("avvio: il saldo si collega con creaCoin e aggiornaTestata, solo dopo l'accesso", () => {
+test("avvio: il saldo si collega con creaCoinServer (passo 5c) e aggiornaTestata, solo dopo l'accesso", () => {
   const avvio = readFileSync(new URL("../landing/app/avvio.js", import.meta.url), "utf8");
   assert.match(avvio, /import \{ creaSaldo, collegaSaldo \} from "\/app\/moduli\/saldo_coin\.js";/);
   assert.match(avvio, /import \{ aggiornaTestata \} from "\/app\/moduli\/testata\.js";/);
-  assert.match(avvio, /collegaSaldo\(\{ saldo: creaSaldo\(\{ coin: creaCoin\(\{ token: \(\) => accesso\.token\(\)/);
+  assert.match(avvio, /collegaSaldo\(\{ saldo: creaSaldo\(\{ coin: creaCoinServer\(\{ token: \(\) => accesso\.token\(\)/);
   assert.match(avvio, /testata: \(dati\) => aggiornaTestata\(document, dati\)/);
   // dentro preparaAccesso, dopo il controllo di ACCESSO_APP: prima del «return {}» dell'anteprima non c'è
   const i = avvio.indexOf("collegaSaldo({");
