@@ -319,6 +319,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
         },
         schermo: schermo(),
         nome: rifAltra() ? nomeInChiamata(rifAltra(), s.persone) : "",
+        inCorsoCon: s.vista && s.vista.fase === "in_corso" && s.vista.altra ? s.vista.altra : null, // tasto «Regalo» (#349, linea B)
         segnala: s.segnala ? { ...s.segnala } : null,
         errore: s.errore,
         attesa: s.attesa,

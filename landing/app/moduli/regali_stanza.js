@@ -36,17 +36,18 @@ export function creaRegaliStanza({ regali, contenitore, aggiorna = () => {}, alS
       return letto;
     },
     testoDi: (persona) => testi[persona] ?? null,
-    async apriFoglio(persona, nome) {
+    // In chiamata (#349, linea B): inChiamata true e il fuoco torna sul tasto «Regalo» dello schermo di chiamata.
+    async apriFoglio(persona, nome, { inChiamata = false, ritorno = `regalo-${persona}` } = {}) {
       if (aperto) return; // secondo tocco: il foglio è già aperto
       aperto = true;
       const s = await regali.avvisi().catch(() => null);
       const saldo = s && s.ok && Number.isInteger(s.saldo) ? s.saldo : null;
       apri(contenitore, {
-        a: persona, nome, saldo, inChiamata: false, regali,
+        a: persona, nome, saldo, inChiamata: inChiamata === true, regali,
         alRegalo: (nuovo) => { try { alSaldo(nuovo); } catch { /* il saldo in testata non ferma il foglio */ } },
         alChiudi: () => {
           aperto = false;
-          contenitore.ownerDocument?.getElementById(`regalo-${persona}`)?.focus();
+          contenitore.ownerDocument?.getElementById(ritorno)?.focus();
         },
       });
     },
