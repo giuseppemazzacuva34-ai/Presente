@@ -23,6 +23,7 @@ import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { vistaRegaliScheda } from "./regali_stanza.js";
+import { vistaRegaloChiamata } from "./regalo_chiamata.js";
 import { creaSchermoRegali, TESTI_STORICO as TESTI_REGALI_PROFILO } from "./storico_regali.js";
 import { TESTI_ESITO } from "./esiti_segnalazioni.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
@@ -572,6 +573,7 @@ function schermoChiamata(m) {
       h("div", { classe: "azioni-chiamata" },
         bottone(m.muto ? "Microfono spento" : "Microfono acceso", () => t.microfono(), { "aria-pressed": m.muto ? "true" : "false", disabled: m.riconnetti }),
         sc.carte ? bottone(sc.carte.etichetta, () => t.carta(), { id: "chiamata-carte", disabled: !sc.carte.attiva }) : null,
+        vistaRegaloChiamata(h, regaliStanza, { a: m.inCorsoCon, nome: m.nome }),
         bottone("Chiudi", () => t.chiudi(false)),
         bottone("Chiudi e segnala", () => t.chiudi(true), { classe: "bottone-pericolo" })),
     ];
