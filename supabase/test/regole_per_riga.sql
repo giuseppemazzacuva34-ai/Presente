@@ -130,8 +130,9 @@ select pg_temp.ok((select count(*) from public.profili) = 0 and (select count(*)
 select pg_temp.ok(not exists (
   select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
   where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity), 'tutte le tabelle pubbliche hanno le regole per riga attive');
-select pg_temp.ok((select bool_and(not public) from storage.buckets where id in ('voci', 'foto')) and (select count(*) from storage.buckets) = 2,
-  'voci e foto sono cartelle private');
+select pg_temp.ok((select bool_and(not public) from storage.buckets) and (select count(*) from storage.buckets) = 3
+  and (select count(*) from storage.buckets where id in ('voci', 'foto', 'vocali_filo')) = 3,
+  'voci, foto e vocali del Filo (#360) sono cartelle private');
 
 -- Requisito 3 del CISO: la data del consenso a «cerco» la decide il server.
 begin;
