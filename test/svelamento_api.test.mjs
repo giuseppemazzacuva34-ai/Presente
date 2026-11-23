@@ -74,7 +74,7 @@ test("GET: saldo e porte da svelamento_di per la persona del token, con i testi 
   assert.equal(j.caparra, 100);
   assert.equal(j.beta, true);
   assert.deepEqual(j.porte, [{ ...UNA_PORTA, aspetta: null, ...QUANDO_VUOTO }]);
-  assert.equal(j.testi.blocca, "Blocca 100 Coin");
+  assert.equal(j.testi.blocca, "Blocca 100 crediti");
   assert.equal(j.testi.spiegazione, TESTI_SVELAMENTO.spiegazioneCaparra);
   assert.deepEqual(j.testi.scelta, { video: "Videochiamata di 10 secondi", foto: "Preferisco le foto" });
   assert.deepEqual(s.rpc("svelamento_di")[0].corpo, { p_utente: ID });
@@ -122,8 +122,8 @@ test("POST con crediti insufficienti: «Ti mancano N crediti», «Ricarica» e i
   const s = supabaseFinto({ rpc: { caparra_svelamento: "crediti_insufficienti", svelamento_di: { saldo: 70, porte: [UNA_PORTA] } } });
   const j = await (await svelamentoApi(caparra(), ENV, s.f)).json();
   assert.deepEqual(j, {
-    ok: false, motivo: "crediti_insufficienti", mancano: 30, testo: "Ti mancano 30 Coin",
-    ricarica: "Ricarica", beta: "In beta i Coin sono di prova",
+    ok: false, motivo: "crediti_insufficienti", mancano: 30, testo: "Ti mancano 30 crediti",
+    ricarica: "Ricarica", beta: "In beta i crediti sono di prova",
   });
 });
 
@@ -131,7 +131,7 @@ test("POST con un solo credito mancante: «Ti manca 1 Coin»", async () => {
   const s = supabaseFinto({ rpc: { caparra_svelamento: "crediti_insufficienti", svelamento_di: { saldo: 99, porte: [] } } });
   const j = await (await svelamentoApi(caparra(), ENV, s.f)).json();
   assert.equal(j.mancano, 1);
-  assert.equal(j.testo, "Ti manca 1 Coin");
+  assert.equal(j.testo, "Ti manca 1 credito");
 });
 
 test("POST su porta scaduta: testo della scadenza; porta chiusa: nessun motivo rivelato", async () => {

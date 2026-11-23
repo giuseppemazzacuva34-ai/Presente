@@ -37,7 +37,7 @@ test("porta aperta: 48 ore, caparra di 100 Coin, la persona finta blocca anche l
   const r = await p.svelamentoServer.blocca(porta);
   assert.equal(r.ok, true);
   s = schermataPorta(r.stato, porta, adesso());
-  assert.equal(s.saldo, "I tuoi Coin: 100");
+  assert.equal(s.saldo, "I tuoi crediti: 100");
   assert.equal(s.caparra.tipo, "entrambe");
   assert.equal(s.scelta.attuale, "video");
   assert.ok(s.quando.opzioni.length > 0);

@@ -22,15 +22,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const TESTI = Object.freeze({
   aperta: "Una porta si è aperta. Hai 48 ore per lo svelamento.",
-  blocca: "Blocca 100 Coin",
-  spiegazioneCaparra: "I tuoi 100 Coin restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
+  blocca: "Blocca 100 crediti",
+  spiegazioneCaparra: "I tuoi 100 crediti restano bloccati. Se uno dei due dice no o non risponde, tornano a entrambi. Li perdi solo se dai buca a un appuntamento confermato.",
   aspettaCaparra: "Aspettiamo che anche <nome> blocchi la caparra.",
   ricarica: "Ricarica",
-  beta: "In beta i Coin sono di prova",
+  beta: "In beta i crediti sono di prova",
   portaChiusa: "Questa porta si è chiusa.",
-  scaduta: "Il tempo per lo svelamento è finito. I tuoi Coin sono di nuovo disponibili.",
+  scaduta: "Il tempo per lo svelamento è finito. I tuoi crediti sono di nuovo disponibili.",
   // Provvisorio, da rivedere con «contenuti»: il passo 3 della spec (video o foto, quando) arriva con il passo 5.
-  entrambe: "Avete bloccato entrambi i Coin. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
+  entrambe: "Avete bloccato entrambi i crediti. Ora scegliete insieme come e quando fare lo svelamento.", // testo di Contenuti, 17/11
   torna: "Torna alla stanza",
   // Passo 3 della spec: «Come vuoi lo svelamento». Si cambia fino all'inizio; la scelta dell'altra persona non si vede.
   sceltaTitolo: "Come vuoi lo svelamento?",
@@ -180,7 +180,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   } else if (saldo >= CAPARRA) caparra = { tipo: "blocca", bottone: TESTI.blocca, spiegazione: TESTI.spiegazioneCaparra };
   else {
     const mancano = CAPARRA - saldo;
-    caparra = { tipo: "ricarica", testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} Coin`,
+    caparra = { tipo: "ricarica", testo: mancano === 1 ? "Ti manca 1 credito" : `Ti mancano ${mancano} crediti`,
       bottone: TESTI.ricarica, beta: TESTI.beta, spiegazione: TESTI.spiegazioneCaparra };
   }
   // Passo 3: dopo la propria caparra. «video» è la predefinita; un valore non previsto vale come «video».
@@ -191,7 +191,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   return {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
-    conto, saldo: `I tuoi Coin: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
+    conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
     // Passo 6b: «momento» e «tipo» solo come li dà il server (passo 6a); un tipo sconosciuto non accende la fotocamera.
     momento: p.momento === true,
     tipoSvelamento: p.momento === true && SCELTE.includes(p.tipo) ? p.tipo : null,

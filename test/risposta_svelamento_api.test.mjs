@@ -142,7 +142,7 @@ test("GET: «esiti» solo doppio sì o chiusa, con il loro testo; valori sconosc
   assert.equal(j.esiti.length, 2);
   assert.deepEqual(j.esiti[0], { porta: PORTA, con: LEI, nome: "Giulia", eta: 31, esito: "doppio_si", esito_il: "2026-11-22T10:00:00.000Z", testo: TESTI_SVELAMENTO.doppioSi });
   assert.equal(j.esiti[1].esito, "chiusa");
-  assert.equal(j.esiti[1].testo, "Questa volta non vi incontrerete. I tuoi 100 Coin sono tornati nel tuo saldo.");
+  assert.equal(j.esiti[1].testo, "Questa volta non vi incontrerete. I tuoi 100 crediti sono tornati nel tuo saldo.");
   assert.equal("motivo" in j.esiti[1], false);
 });
 
