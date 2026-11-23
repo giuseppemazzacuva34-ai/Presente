@@ -39,19 +39,19 @@ test("foglio: titolo, testo, pacchetto da 500 e «Dopo» e «Ricarica» sulla st
   assert.equal(f.getAttribute("role"), "dialog");
   assert.equal(f.getAttribute("aria-modal"), "true");
   assert.match(f.className, /foglio-coin/);
-  assert.match(f.textContent, /Ti restano15 Coin\./);
-  assert.match(f.textContent, /Bastano per qualche regalo, non per la prossima stanza \(80 Coin\)\./);
+  assert.match(f.textContent, /Ti restano15 crediti\./);
+  assert.match(f.textContent, /Bastano per qualche regalo, non per la prossima stanza \(80 crediti\)\./);
   assert.match(f.textContent, /500\+50 in regalo45 €/);
   const riga = f.tutti((n) => n.className === "azioni")[0];
   assert.deepEqual(riga.pulsanti().map((b) => b.textContent), ["Dopo", "Ricarica"]);
 });
 
-test("in beta «Ricarica» è spento e la nota dice che i Coin sono di prova", () => {
+test("in beta «Ricarica» è spento e la nota dice che i crediti sono di prova", () => {
   const doc = documento();
   apriFoglioQuasiFiniti(doc.body, quasiFiniti(0));
   assert.equal(pulsante(doc.body, "Ricarica").disabled, true);
   assert.match(doc.body.textContent, new RegExp(TESTI_SALDO.notaBeta));
-  assert.match(doc.body.textContent, /Hai finitoi Coin\./);
+  assert.match(doc.body.textContent, /Hai finitoi crediti\./);
 });
 
 test("«Dopo» chiude il foglio e avvisa; l'attenzione parte da «Dopo»", () => {

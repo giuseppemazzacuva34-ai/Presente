@@ -32,10 +32,10 @@ test("chi non ha ancora usato la prima stanza in regalo non lo vede (anche se il
 });
 
 test("testi approvati del CPO per 15, 1 e 0 Coin; nessuna frase sulla caparra (non basta mai sotto 80)", () => {
-  assert.equal(quasiFiniti(15).testo, "Bastano per qualche regalo, non per la prossima stanza (80 Coin).");
-  assert.deepEqual(quasiFiniti(1).titolo, ["Ti resta", "1 Coin."]);
-  assert.deepEqual(quasiFiniti(0).titolo, ["Hai finito", "i Coin."]);
-  assert.equal(quasiFiniti(0).testo, "Non bastano per la prossima stanza (80 Coin) né per un regalo.");
+  assert.equal(quasiFiniti(15).testo, "Bastano per qualche regalo, non per la prossima stanza (80 crediti\).");
+  assert.deepEqual(quasiFiniti(1).titolo, ["Ti resta", "1 credito."]);
+  assert.deepEqual(quasiFiniti(0).titolo, ["Hai finito", "i crediti."]);
+  assert.equal(quasiFiniti(0).testo, "Non bastano per la prossima stanza (80 crediti\) né per un regalo.");
   assert.equal(Object.hasOwn(TESTI_SALDO, "bastanoCaparra"), false);
 });
 
