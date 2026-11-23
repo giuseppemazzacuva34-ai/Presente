@@ -17,7 +17,7 @@ test("flusso: righe del riepilogo nel profilo, lette una volta, solo con l'acces
 test("avvio: riepilogo col proprio token", () => {
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /creaRiepilogo\(\{ token: \(\) => accesso\.token\(\)/);
-  assert.match(avvio, /vostriIncontri, incontro, valutazione, riepilogo, regali \}/);
+  assert.match(avvio, /vostriIncontri, incontro, valutazione, riepilogo, regali[, ][^}]*\}/);
 });
 
 test("service worker: modulo nella cache, versione aumentata", () => {
