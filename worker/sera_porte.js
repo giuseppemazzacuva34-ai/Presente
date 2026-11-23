@@ -4,15 +4,16 @@
 // stanza le porte dove la chiave è reciproca, tutte all'ora della chiusura (21:00 di Roma), e cancella le chiavi.
 // Parte la domenica alle 19:00 e alle 20:00 UTC (una delle due è sempre le 21:00 di Roma, d'estate e d'inverno) e
 // ogni ora come riserva: rifarla non apre porte doppie e una stanza ancora aperta non si tocca.
-// Spento finché ACCESSO_APP non vale «si». Nei log solo numeri, mai persone: nessuno scopre un no.
+// Spento finché ACCESSO_APP non vale «si» o «tester». Nei log solo numeri, mai persone: nessuno scopre un no.
 
 const ATTESA_MS = 10000; // lavoro in sottofondo: si può aspettare più di una richiesta del telefono
 
 const numero = (x) => Math.max(0, Math.trunc(Number(x)) || 0);
 
 // Restituisce { esito: "spento" | "fatto" | "errore", ...numeri }. Mai eccezioni verso chi la chiama.
+import { accessoAperto } from "./accesso_tester.js";
 export async function apriPorteDellaSera(env, f = fetch) {
-  if (!env || env.ACCESSO_APP !== "si" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
+  if (!env || !accessoAperto(env) || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
   const chiave = env.SUPABASE_SERVICE_ROLE_KEY;
   try {
     const r = await f(`${String(env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1/rpc/apri_porte`, {

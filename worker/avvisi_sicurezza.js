@@ -5,7 +5,7 @@
 //  2. legge la coda non ancora spedita e manda UNA email via Brevo (piano gratuito) alla casella della sicurezza;
 //  3. solo se Brevo risponde bene, segna gli avvisi come spediti. Se qualcosa va storto restano in coda per il minuto dopo.
 // Nel testo solo tipi e numeri: mai nomi, email, racconti o id (D139 A). Nei log solo numeri e codici di stato.
-// Spento finché ACCESSO_APP non vale «si» o mancano i segreti BREVO_API_KEY (chiave Brevo) ed EMAIL_SICUREZZA
+// Spento finché ACCESSO_APP non vale «si» o «tester», o mancano i segreti BREVO_API_KEY (chiave Brevo) ed EMAIL_SICUREZZA
 // (casella di destinazione): li inserisce Giuseppe su Cloudflare, mai nel repository.
 
 export const CRON_AVVISI = "* * * * *";
@@ -44,8 +44,9 @@ export function testoAvviso(avvisi) {
 }
 
 // Restituisce { esito: "spento" | "niente" | "spedito" | "errore", avvisi? }. Mai eccezioni verso chi la chiama.
+import { accessoAperto } from "./accesso_tester.js";
 export async function spedisciAvvisiSicurezza(env, f = fetch) {
-  if (!env || env.ACCESSO_APP !== "si" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.EMAIL_SICUREZZA) {
+  if (!env || !accessoAperto(env) || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.BREVO_API_KEY || !env.EMAIL_SICUREZZA) {
     return { esito: "spento" };
   }
   const base = `${String(env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1`;

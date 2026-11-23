@@ -24,7 +24,7 @@ export function primaDellApertura(adesso) {
 
 // rpc(nome, argomenti) → risultato della funzione del database. Restituisce solo un riassunto in numeri.
 export async function eseguiLunedi({ rpc, adesso = new Date(), accessoApp, modo = "automatico" }) {
-  if (accessoApp !== "si") return { esito: "spento" };
+  if (accessoApp !== "si" && accessoApp !== "tester") return { esito: "spento" };
   if (modo !== "prova" && !primaDellApertura(adesso)) return { esito: "fuori_orario" };
 
   // Lunedì notte la stanza della settimana non è ancora aperta (la vecchia ha chiuso domenica alle 21): settimanaStanza()
