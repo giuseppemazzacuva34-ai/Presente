@@ -58,11 +58,11 @@ const attesa = () => new Promise((r) => setTimeout(r, 0));
 test("stato: titolo, saldo e tre regali con nome breve, prezzo ed etichetta di testo completa", () => {
   const s = statoFoglio({ nome: "Marta", saldo: 145 });
   assert.equal(s.titolo, "Fai un regalo a Marta");
-  assert.equal(s.saldo, "Hai 145 Coin");
+  assert.equal(s.saldo, "Hai 145 crediti");
   assert.deepEqual(s.regali.map((r) => [r.id, r.nome, r.prezzo, r.etichetta]), [
-    ["rosa", "Rosa", "5 Coin", "Rosa · 5 Coin"],
-    ["spumante", "Spumante", "10 Coin", "Bicchiere di spumante · 10 Coin"],
-    ["fiori", "Fiori", "20 Coin", "Mazzo di fiori · 20 Coin"],
+    ["rosa", "Rosa", "5 crediti", "Rosa · 5 crediti"],
+    ["spumante", "Spumante", "10 crediti", "Bicchiere di spumante · 10 crediti"],
+    ["fiori", "Fiori", "20 crediti", "Mazzo di fiori · 20 crediti"],
   ]);
   assert.deepEqual(s.regali.map((r) => r.coin), REGALI.map((r) => r.coin));
   assert.equal(s.regali.filter((r) => r.scelto).length, 1);
@@ -82,8 +82,8 @@ test("stato: «Regala lo spumante» e «Regala i fiori» quando sono scelti", ()
 
 test("stato: saldo che non basta → il pulsante dice «Ti mancano N Coin» ed è spento", () => {
   const s = statoFoglio({ nome: "M", saldo: 12, scelto: "fiori" });
-  assert.deepEqual([s.primario.testo, s.primario.attivo], ["Ti mancano 8 Coin", false]);
-  assert.equal(statoFoglio({ nome: "M", saldo: 4, scelto: "rosa" }).primario.testo, "Ti manca 1 Coin");
+  assert.deepEqual([s.primario.testo, s.primario.attivo], ["Ti mancano 8 crediti", false]);
+  assert.equal(statoFoglio({ nome: "M", saldo: 4, scelto: "rosa" }).primario.testo, "Ti manca 1 credito");
 });
 
 test("stato: senza saldo dal server nessun numero inventato e nessun invio", () => {
@@ -95,7 +95,7 @@ test("stato: senza saldo dal server nessun numero inventato e nessun invio", () 
 test("stato: conferma con il testo della spec, poi «Manda» / «Annulla»", () => {
   const s = statoFoglio({ nome: "Marta", saldo: 50, scelto: "rosa", fase: "conferma" });
   assert.equal(s.domanda, conferma("rosa", "Marta"));
-  assert.equal(s.domanda, "Mandi una rosa a Marta? Costa 5 Coin.");
+  assert.equal(s.domanda, "Mandi una rosa a Marta? Costa 5 crediti.");
   assert.deepEqual([s.primario.testo, s.secondario], [TESTI_COIN.conferma, TESTI_COIN.annulla]);
 });
 
@@ -150,9 +150,9 @@ test("foglio: si apre come finestra con titolo, saldo e tre regali con etichetta
   assert.equal(foglio.getAttribute("role"), "dialog");
   assert.equal(foglio.getAttribute("aria-modal"), "true");
   assert.match(foglio.textContent, /Fai un regalo a Marta/);
-  assert.match(foglio.textContent, /Hai 145 Coin/);
+  assert.match(foglio.textContent, /Hai 145 crediti/);
   const scelte = foglio.conClasse("regalo-scelta");
-  assert.deepEqual(scelte.map((b) => b.getAttribute("aria-label")), REGALI.map((r) => `${r.nome} · ${r.coin} Coin`));
+  assert.deepEqual(scelte.map((b) => b.getAttribute("aria-label")), REGALI.map((r) => `${r.nome} · ${r.coin} crediti`));
   assert.deepEqual(scelte.map((b) => b.getAttribute("aria-pressed")), ["true", "false", "false"]);
   assert.equal(doc.activeElement, scelte[0]);
   f.chiudi();
@@ -166,16 +166,16 @@ test("foglio: scelta → conferma → un solo invio anche con due tocchi → fat
     a: A, nome: "Marta", saldo: 145, regali: creaRegali({ token: async () => "t", fetch: f }),
     chiave: () => CHIAVE, alRegalo: (s) => { saldoDopo = s; },
   });
-  doc.body.pulsanti().find((b) => b.getAttribute("aria-label") === "Bicchiere di spumante · 10 Coin").clic();
+  doc.body.pulsanti().find((b) => b.getAttribute("aria-label") === "Bicchiere di spumante · 10 crediti").clic();
   pulsante(doc.body, "Regala lo spumante").clic();
-  assert.match(doc.body.textContent, /Mandi un bicchiere di spumante a Marta\? Costa 10 Coin\./);
+  assert.match(doc.body.textContent, /Mandi un bicchiere di spumante a Marta\? Costa 10 crediti\./);
   const manda = pulsante(doc.body, "Manda");
   manda.clic(); manda.clic();
   await attesa(); await attesa();
   assert.equal(chiamate.length, 1);
   assert.deepEqual(chiamate[0].corpo, { azione: "manda", a: A, regalo: "spumante", chiave: CHIAVE });
   assert.match(doc.body.textContent, /Bicchiere di spumante mandato a Marta\./);
-  assert.match(doc.body.textContent, /Hai 135 Coin/);
+  assert.match(doc.body.textContent, /Hai 135 crediti/);
   assert.equal(saldoDopo, 135);
 });
 
@@ -202,7 +202,7 @@ test("foglio: rifiuto del server → il suo testo, Coin non scalati, nessun «fa
   pulsante(doc.body, "Manda").clic();
   await attesa(); await attesa();
   assert.match(doc.body.textContent, /La stanza è chiusa\./);
-  assert.match(doc.body.textContent, /Hai 145 Coin/);
+  assert.match(doc.body.textContent, /Hai 145 crediti/);
   assert.doesNotMatch(doc.body.textContent, /mandata a Marta/);
   assert.equal(chiamato, false);
   const err = doc.body.conClasse("foglio-regali-messaggio")[0];

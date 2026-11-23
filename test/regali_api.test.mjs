@@ -96,7 +96,7 @@ test("stanza chiusa, limiti e saldo insufficiente", async () => {
     assert.deepEqual(await (await regaliApi(manda(), ENV, s.f)).json(), { ok: false, motivo, testo: testoLimite(motivo) });
   }
   s = supabaseFinto({ rpc: { manda_regalo: "saldo", saldo_crediti: 3 } });
-  assert.deepEqual(await (await regaliApi(manda({ regalo: "spumante" }), ENV, s.f)).json(), { ok: false, motivo: "saldo", testo: "Ti mancano 7 Coin" });
+  assert.deepEqual(await (await regaliApi(manda({ regalo: "spumante" }), ENV, s.f)).json(), { ok: false, motivo: "saldo", testo: "Ti mancano 7 crediti" });
 });
 
 test("POST visti: segna solo i regali ricevuti da chi chiede", async () => {
@@ -146,7 +146,7 @@ test("il Worker instrada /app/api/regali (spento senza ACCESSO_APP)", async () =
   assert.deepEqual(await r.json(), { ok: false, motivo: "spento" });
 });
 
-// Passo 6c (spec B.5): la schermata «I tuoi Coin» si mostra da sola solo la prima volta; lo ricorda il server.
+// Passo 6c (spec B.5): la schermata «I tuoi crediti» si mostra da sola solo la prima volta; lo ricorda il server.
 test("schermata Coin: GET ?schermata=coin dà saldo e «già vista» di chi guarda (dal token)", async () => {
   const s = supabaseFinto({ rpc: { saldo_crediti: 200, coin_schermata_vista: false } });
   const r = await regaliApi(richiesta({ percorso: `${PERCORSO_REGALI}?schermata=coin` }), ENV, s.f);

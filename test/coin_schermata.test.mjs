@@ -1,4 +1,4 @@
-// Schermata «I tuoi Coin» nella web app (issue #331, spec v1 del CPO, parte B; D145 A). Passo 6 della linea
+// Schermata «I tuoi crediti» nella web app (issue #331, spec v1 del CPO, parte B; D145 A). Passo 6 della linea
 // «sviluppatore-c». Testi della spec, offerte sempre disattivate in beta, saldo letto dal Worker con il token di chi
 // guarda (GET /app/api/regali), nessuna chiamata a servizi di pagamento. Rete finta: nessun dato reale.
 import { test } from "node:test";
@@ -20,37 +20,37 @@ function rete(risposte) {
 
 test("schermata: titolo, saldo grande e testi della spec (B.1-B.5)", () => {
   const s = schermataCoin(200);
-  assert.equal(s.titolo, "I tuoi Coin");
-  assert.equal(s.saldo, "200 Coin");
-  assert.equal(s.notaBeta, "Nella beta i Coin sono di prova: li trovi già nel tuo saldo. Non paghi niente.");
-  assert.equal(s.riga, "1 € = 10 Coin. La stanza Al buio costa 80 Coin, la prima è in regalo.");
+  assert.equal(s.titolo, "I tuoi crediti");
+  assert.equal(s.saldo, "200 crediti");
+  assert.equal(s.notaBeta, "Nella beta i crediti sono di prova: li trovi già nel tuo saldo. Non paghi niente.");
+  assert.equal(s.riga, "1 € = 10 crediti. La stanza Al buio costa 80 crediti, la prima è in regalo.");
   assert.equal(s.continua, "Continua");
-  assert.equal(TESTI_SCHERMATA_COIN.titolo, "I tuoi Coin");
+  assert.equal(TESTI_SCHERMATA_COIN.titolo, "I tuoi crediti");
 });
 
-test("offerte: «200 Coin · 20 €» e «500 Coin · 45 €» con «50 Coin in più», tutte disattivate in beta", () => {
+test("offerte: «200 crediti · 20 €» e «500 crediti · 45 €» con «50 crediti in più», tutte disattivate in beta", () => {
   const s = schermataCoin(200);
   assert.deepEqual(s.offerte.map((o) => [o.testo, o.etichetta, o.attiva]), [
-    ["200 Coin · 20 €", null, false],
-    ["500 Coin · 45 €", "50 Coin in più", false],
+    ["200 crediti · 20 €", null, false],
+    ["500 crediti · 45 €", "50 crediti in più", false],
   ]);
   // Ogni pulsante spento dice perché (non solo il grigio), per chi usa un lettore di schermo.
   for (const o of s.offerte) assert.equal(o.descrizione, TESTI_SCHERMATA_COIN.notaBeta);
   assert.ok(Object.isFrozen(OFFERTE));
 });
 
-test("offerte: i conti tornano con 1 € = 10 Coin (il «in più» è la differenza vera)", () => {
+test("offerte: i conti tornano con 1 € = 10 crediti (il «in più» è la differenza vera)", () => {
   for (const o of OFFERTE) {
     const pieno = o.euro * COIN.perEuro;
     assert.equal(o.coin - pieno, o.inPiu);
   }
-  assert.ok(TESTI_SCHERMATA_COIN.riga.includes(`1 € = ${COIN.perEuro} Coin`));
-  assert.ok(TESTI_SCHERMATA_COIN.riga.includes(`costa ${COIN.stanzaAlBuio} Coin`));
+  assert.ok(TESTI_SCHERMATA_COIN.riga.includes(`1 € = ${COIN.perEuro} crediti`));
+  assert.ok(TESTI_SCHERMATA_COIN.riga.includes(`costa ${COIN.stanzaAlBuio} crediti`));
 });
 
-test("saldo: «1 Coin» al singolare; saldo mancante o non valido non mostra un numero inventato", () => {
-  assert.equal(schermataCoin(1).saldo, "1 Coin");
-  assert.equal(schermataCoin(0).saldo, "0 Coin");
+test("saldo: «1 credito» al singolare; saldo mancante o non valido non mostra un numero inventato", () => {
+  assert.equal(schermataCoin(1).saldo, "1 credito");
+  assert.equal(schermataCoin(0).saldo, "0 crediti");
   for (const x of [null, undefined, -5, 2.5, "200", NaN]) assert.equal(schermataCoin(x).saldo, null);
 });
 
@@ -87,7 +87,7 @@ test("nessun pagamento in beta: il modulo non nomina servizi di pagamento né in
   const codice = readFileSync(new URL("../landing/app/moduli/coin.js", import.meta.url), "utf8");
   assert.doesNotMatch(codice, /stripe|gomry|checkout|paypal|https?:\/\//i);
   assert.doesNotMatch(codice, /localStorage|sessionStorage|indexedDB/);
-  // Criterio A: nessuna parola «crediti» nei testi mostrati (i nomi interni delle funzioni sono ammessi).
+  // decisioni_giuseppe_23_11_crediti: nei testi mostrati «crediti», mai «Coin» (i nomi interni restano).
   const s = schermataCoin(200);
-  assert.doesNotMatch(JSON.stringify(s), /crediti/i);
+  assert.doesNotMatch(JSON.stringify(s), /\bCoin\b/);
 });
