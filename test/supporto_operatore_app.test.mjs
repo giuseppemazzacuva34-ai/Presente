@@ -23,7 +23,7 @@ test("stesso tetto della risposta del server", () => {
 test("voci: categoria leggibile, email, testo, data e tempo che resta alle 48 ore", () => {
   const [v] = vociSupporto([msg(A)], ADESSO);
   assert.equal(v.id, A);
-  assert.equal(v.categoria, "Coin");
+  assert.equal(v.categoria, "Crediti");
   assert.equal(v.email, "chi@example.invalid");
   assert.equal(v.testo, "Testo di prova");
   assert.equal(v.risposto, false);
