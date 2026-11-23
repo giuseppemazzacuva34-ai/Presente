@@ -202,7 +202,7 @@ export async function svelamentoApi(request, env, f = fetch) {
     const mancano = st ? Math.max(1, SVELAMENTO.caparra - st.saldo) : SVELAMENTO.caparra;
     return risposta(200, {
       ok: false, motivo: esito, mancano,
-      testo: `${mancano === 1 ? "Ti manca" : "Ti mancano"} ${mancano} Coin`,
+      testo: mancano === 1 ? "Ti manca 1 credito" : `Ti mancano ${mancano} crediti`,
       ricarica: TESTI_SVELAMENTO.ricarica, beta: TESTI_SVELAMENTO.beta,
     });
   }
