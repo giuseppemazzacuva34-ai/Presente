@@ -379,7 +379,7 @@ function bloccoStanza() {
       ? [h("p", { role: "status", id: "conferma-stanza" }, conferma),
         h("button", { classe: "link", type: "button", disabled: ingresso.inCorso, onclick: ciRipenso }, "Ci ripenso")]
       : [h("button", { classe: "bottone", type: "button", disabled: ingresso.inCorso || !ingresso.letto, onclick: entraNellaStanza }, "Entra nella stanza"),
-        h("p", { classe: "nota" }, "La prima stanza è in regalo, poi 80 Coin a stanza. Si conferma entro domenica alle 23:59.")],
+        h("p", { classe: "nota" }, "La prima stanza è in regalo, poi 80 crediti a stanza. Si conferma entro domenica alle 23:59.")],
     ingresso.inCorso ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
     ingresso.avviso ? h("p", { classe: "nota", role: "status" }, ingresso.avviso) : null,
     errore(ingresso.errore));
@@ -864,7 +864,7 @@ const SCHERMATE = {
       ["Niente numeri né social prima della porta.", "Ci si scambia i contatti solo dopo il sì reciproco della domenica."],
       ["Rispetto, sempre.", "Chi manca di rispetto in una chiamata viene segnalato e bloccato."],
       ["Foto vere.", "Le tue, recenti, con il volto visibile in almeno una."],
-      ["Chi dà buca paga.", "Se all'appuntamento non ti presenti, i tuoi Coin bloccati vanno a chi ti ha aspettato."],
+      ["Chi dà buca paga.", "Se all'appuntamento non ti presenti, i tuoi crediti bloccati vanno a chi ti ha aspettato."],
     ];
     const casella = h("input", { type: "checkbox", id: "accetto", checked: stato.regole, onchange: (e) => { stato.regole = e.target.checked; disegna(); } });
     return schermata("Quattro regole", null,

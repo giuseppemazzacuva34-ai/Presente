@@ -19,7 +19,7 @@ for (const pagina of ["index.html", "prova.html"]) {
     const onda = t.match(/<div class="onda" aria-hidden="true">([\s\S]*?)<\/div>/);
     assert.ok(onda, "manca l'onda");
     assert.equal((onda[1].match(/<span><\/span>/g) || []).length, 21);
-    assert.match(t, /<p class="saldo-coin" id="saldo-coin" role="img" aria-label="Saldo Coin" hidden>/);
+    assert.match(t, /<p class="saldo-coin" id="saldo-coin" role="img" aria-label="Saldo crediti" hidden>/);
     assert.match(t, /<button class="icona-profilo" id="apri-profilo" type="button" aria-label="Il tuo profilo" hidden>/);
   });
   test(`${pagina}: nessun attributo style (CSP style-src 'self')`, () => {
@@ -102,7 +102,7 @@ test("aggiornaTestata mostra saldo e profilo solo con dati validi", () => {
   assert.equal(f.saldo.hidden, false);
   assert.equal(f.numero.textContent, "45");
   assert.ok(f.saldo.classi.has("basso"));
-  assert.equal(f.saldo.attr["aria-label"], "Saldo: 45 Coin, non bastano per la prossima stanza");
+  assert.equal(f.saldo.attr["aria-label"], "Saldo: 45 crediti, non bastano per la prossima stanza");
   assert.equal(f.profilo.hidden, false);
   assert.equal(f.profilo.textContent, "M");
   aggiornaTestata(f.doc, { saldo: null, nome: "" });

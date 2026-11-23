@@ -24,7 +24,7 @@ test("testi della spec: «Sono in difficoltà» in alto, «Scrivici» in fondo, 
 });
 
 test("le 7 categorie della spec, nello stesso ordine e con gli stessi codici del server", () => {
-  assert.deepEqual(CATEGORIE_SCRIVICI.map(([, t]) => t), ["Account e accesso", "Stanza e chiamate", "Chiavi e porte", "Coin", "Incontro", "Test", "Altro"]);
+  assert.deepEqual(CATEGORIE_SCRIVICI.map(([, t]) => t), ["Account e accesso", "Stanza e chiamate", "Chiavi e porte", "Crediti", "Incontro", "Test", "Altro"]);
   assert.deepEqual(CATEGORIE_SCRIVICI.map(([v]) => v), Object.keys(CATEGORIE));
 });
 

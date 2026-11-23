@@ -1,4 +1,4 @@
-// Testata del design v4 (#349, base comune della linea A): pillola del saldo Coin in alto a sinistra e cerchio del
+// Testata del design v4 (#349, base comune della linea A): pillola del saldo dei crediti in alto a sinistra e cerchio del
 // profilo in alto a destra. Il saldo lo dà sempre il server (mai un numero inventato al telefono): se manca, la
 // pillola resta nascosta. Diventa rossa sotto il costo di una stanza (api/coin.js, stanzaAlBuio = 80).
 // Le altre linee chiamano aggiornaTestata(document, { saldo, nome }) quando hanno i dati; il clic sul profilo lo
@@ -26,7 +26,7 @@ export function aggiornaTestata(doc, { saldo = null, nome = null } = {}) {
       const numero = pillola.querySelector("span");
       if (numero) numero.textContent = s.testo;
       pillola.classList.toggle("basso", s.basso);
-      pillola.setAttribute("aria-label", `Saldo: ${s.testo} Coin${s.basso ? ", non bastano per la prossima stanza" : ""}`);
+      pillola.setAttribute("aria-label", `Saldo: ${s.testo} ${saldo === 1 ? "credito" : "crediti"}${s.basso ? ", non bastano per la prossima stanza" : ""}`);
     }
   }
   const profilo = doc.getElementById("apri-profilo");
