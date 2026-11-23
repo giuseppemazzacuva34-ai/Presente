@@ -7,9 +7,9 @@
 // I numeri restano uguali a api/coin.js (1 € = 10 Coin, stanza Al buio 80): lo controlla test/coin_schermata.test.mjs.
 
 export const TESTI_SCHERMATA_COIN = Object.freeze({
-  titolo: "I tuoi Coin",
-  notaBeta: "Nella beta i Coin sono di prova: li trovi già nel tuo saldo. Non paghi niente.",
-  riga: "1 € = 10 Coin. La stanza Al buio costa 80 Coin, la prima è in regalo.",
+  titolo: "I tuoi crediti",
+  notaBeta: "Nella beta i crediti sono di prova: li trovi già nel tuo saldo. Non paghi niente.",
+  riga: "1 € = 10 crediti. La stanza Al buio costa 80 crediti, la prima è in regalo.",
   continua: "Continua",
 });
 
@@ -21,7 +21,7 @@ export const OFFERTE = Object.freeze([
 
 const PERCORSO = "/app/api/regali";
 const saldoValido = (n) => Number.isInteger(n) && n >= 0;
-const coin = (n) => `${n} Coin`;
+const coin = (n) => (n === 1 ? "1 credito" : `${n} crediti`); // decisioni_giuseppe_23_11_crediti
 
 // Cosa mostra la schermata. saldo: il numero dato dal server; se manca, null (mai un numero inventato).
 export function schermataCoin(saldo) {

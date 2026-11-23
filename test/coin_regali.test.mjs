@@ -20,7 +20,7 @@ const base = () => ({
   oggiInTutto: 0,
 });
 
-test("valori decisi: 1 € = 10 Coin, Al buio 80, rosa 5, spumante 10, fiori 20 (D145 A)", () => {
+test("valori decisi: 1 € = 10 crediti, Al buio 80, rosa 5, spumante 10, fiori 20 (D145 A)", () => {
   assert.equal(COIN.perEuro, 10);
   assert.equal(COIN.stanzaAlBuio, 80);
   assert.deepEqual(REGALI.map((r) => [r.id, r.coin]), [["rosa", 5], ["spumante", 10], ["fiori", 20]]);
@@ -30,13 +30,13 @@ test("valori decisi: 1 € = 10 Coin, Al buio 80, rosa 5, spumante 10, fiori 20 
   assert.ok(Object.isFrozen(REGALI) && REGALI.every(Object.isFrozen));
 });
 
-test("singolare e plurale: «1 Coin», «80 Coin»", () => {
-  assert.equal(coin(1), "1 Coin");
-  assert.equal(coin(80), "80 Coin");
-  assert.equal(coin(0), "0 Coin");
+test("singolare e plurale: «1 credito», «80 crediti»", () => {
+  assert.equal(coin(1), "1 credito");
+  assert.equal(coin(80), "80 crediti");
+  assert.equal(coin(0), "0 crediti");
 });
 
-test("regalo permesso: costo scalato a chi manda, 0 Coin a chi riceve", () => {
+test("regalo permesso: costo scalato a chi manda, 0 crediti a chi riceve", () => {
   for (const [id, costo] of [["rosa", 5], ["spumante", 10], ["fiori", 20]]) {
     assert.deepEqual(regaloPermesso({ ...base(), regalo: id }), { ok: true, costo, aChiRiceve: 0 });
   }
@@ -52,8 +52,8 @@ test("rifiuti con il testo della spec e Coin non scalati", () => {
     [{ bloccati: true }, "blocco", nonPuoi],
     [{ segnalati: true }, "segnalazione", nonPuoi],
     [{ sospeso: true }, "sospensione", nonPuoi],
-    [{ saldo: 4 }, "saldo", "Ti manca 1 Coin"],
-    [{ saldo: 0, regalo: "fiori" }, "saldo", "Ti mancano 20 Coin"],
+    [{ saldo: 4 }, "saldo", "Ti manca 1 credito"],
+    [{ saldo: 0, regalo: "fiori" }, "saldo", "Ti mancano 20 crediti"],
   ];
   for (const [cambio, motivo, testo] of casi) {
     const r = regaloPermesso({ ...base(), ...cambio });
@@ -81,9 +81,9 @@ test("dati mancanti o regalo sconosciuto: sempre rifiuto, mai un regalo per sbag
 });
 
 test("testi della spec: conferma, fatto, avviso a chi riceve", () => {
-  assert.equal(conferma("rosa", "Giulia"), "Mandi una rosa a Giulia? Costa 5 Coin.");
-  assert.equal(conferma("spumante", "Marco"), "Mandi un bicchiere di spumante a Marco? Costa 10 Coin.");
-  assert.equal(conferma("fiori", "Sara"), "Mandi un mazzo di fiori a Sara? Costa 20 Coin.");
+  assert.equal(conferma("rosa", "Giulia"), "Mandi una rosa a Giulia? Costa 5 crediti.");
+  assert.equal(conferma("spumante", "Marco"), "Mandi un bicchiere di spumante a Marco? Costa 10 crediti.");
+  assert.equal(conferma("fiori", "Sara"), "Mandi un mazzo di fiori a Sara? Costa 20 crediti.");
   assert.equal(fatto("rosa", "Giulia"), "Rosa mandata a Giulia.");
   assert.equal(fatto("spumante", "Marco"), "Bicchiere di spumante mandato a Marco.");
   assert.equal(fatto("fiori", "Sara"), "Mazzo di fiori mandato a Sara.");
@@ -97,11 +97,11 @@ test("testi della spec: conferma, fatto, avviso a chi riceve", () => {
 test("foglio dei regali: nome e prezzo come testo, saldo sotto, «Ti mancano» se non basta", () => {
   assert.deepEqual(foglioRegali(12), {
     regali: [
-      { id: "rosa", etichetta: "Rosa · 5 Coin", attivo: true, mancano: null },
-      { id: "spumante", etichetta: "Bicchiere di spumante · 10 Coin", attivo: true, mancano: null },
-      { id: "fiori", etichetta: "Mazzo di fiori · 20 Coin", attivo: false, mancano: "Ti mancano 8 Coin" },
+      { id: "rosa", etichetta: "Rosa · 5 crediti", attivo: true, mancano: null },
+      { id: "spumante", etichetta: "Bicchiere di spumante · 10 crediti", attivo: true, mancano: null },
+      { id: "fiori", etichetta: "Mazzo di fiori · 20 crediti", attivo: false, mancano: "Ti mancano 8 crediti" },
     ],
-    saldo: "Hai 12 Coin",
+    saldo: "Hai 12 crediti",
   });
-  assert.equal(foglioRegali(-3).saldo, "Hai 0 Coin");
+  assert.equal(foglioRegali(-3).saldo, "Hai 0 crediti");
 });

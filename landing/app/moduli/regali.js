@@ -28,10 +28,10 @@ export const TESTI_FOGLIO = Object.freeze({
   rete: "Sei senza connessione. Riprova tra poco.",
 });
 
-const coin = (n) => `${n} Coin`;
+const coin = (n) => (n === 1 ? "1 credito" : `${n} crediti`); // decisioni_giuseppe_23_11_crediti
 const REGALI_ALLA_PERSONA_AL_GIORNO = 3; // come COIN.regaliAllaPersonaAlGiorno in api/coin.js (lo controlla il test)
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona");
-const mancano = (n) => (n === 1 ? "Ti manca 1 Coin" : `Ti mancano ${n} Coin`);
+const mancano = (n) => (n === 1 ? "Ti manca 1 credito" : `Ti mancano ${n} crediti`);
 const saldoValido = (n) => Number.isInteger(n) && n >= 0;
 const regaloDa = (id) => CATALOGO.find((r) => r.id === id) ?? null;
 

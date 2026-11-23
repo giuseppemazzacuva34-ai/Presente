@@ -28,7 +28,7 @@ test("foglio: un limite è un messaggio (non un errore), con «Chiudi» e nessun
   assert.equal(s.messaggio, PERSONA);
   assert.equal(s.errore, null);
   assert.deepEqual([s.primario.testo, s.primario.attivo, s.secondario], ["Chiudi", true, null]);
-  assert.equal(s.saldo, "Hai 145 Coin", "saldo invariato");
+  assert.equal(s.saldo, "Hai 145 crediti", "saldo invariato");
 });
 
 // documento finto minimo
@@ -63,7 +63,7 @@ for (const [motivo, atteso] of [["limite_persona", PERSONA], ["limite_giorno", G
     assert.equal(m.textContent, atteso);
     assert.equal(m.getAttribute("role"), "status");
     assert.ok(pul("Chiudi"));
-    assert.equal(box.tutti((n) => n.className === "foglio-regali-saldo")[0].textContent, "Hai 145 Coin");
+    assert.equal(box.tutti((n) => n.className === "foglio-regali-saldo")[0].textContent, "Hai 145 crediti");
     assert.equal(regalati, 0);
   });
 }

@@ -32,8 +32,8 @@ const regaloDa = (id) => REGALI.find((r) => r.id === id) ?? null;
 const intero = (n) => Number.isInteger(n) && n >= 0;
 const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona");
 
-export const coin = (n) => `${n} Coin`;
-const mancano = (n) => (n === 1 ? "Ti manca 1 Coin" : `Ti mancano ${n} Coin`);
+export const coin = (n) => (n === 1 ? "1 credito" : `${n} crediti`); // decisioni_giuseppe_23_11_crediti
+const mancano = (n) => (n === 1 ? "Ti manca 1 credito" : `Ti mancano ${n} crediti`);
 const no = (motivo, testo = null) => ({ ok: false, motivo, testo });
 
 // Testi dei due limiti giornalieri (CPO, 22/11; giorno di calendario di Roma). <nome> = nome di battesimo nella stanza.
