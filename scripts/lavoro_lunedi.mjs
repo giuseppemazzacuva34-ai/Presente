@@ -1,6 +1,6 @@
 // Lavoro del lunedì (Fase 2, issue #3): legge chi ha confermato, forma le stanze, le scrive. Gira dalla GitHub Action
-// «Stanze» (.github/workflows/stanze.yml) ogni lunedì alle 9 di Roma, costo zero.
-//   node scripts/lavoro_lunedi.mjs            modo da MODO: «automatico» (solo lunedì 9:00–9:59 di Roma) o «prova»
+// «Stanze» (.github/workflows/stanze.yml) ogni lunedì alle 00:30 di Roma (D151 A), costo zero; le stanze aprono alle 9:00.
+//   node scripts/lavoro_lunedi.mjs            modo da MODO: «automatico» (solo lunedì 00:00–8:59 di Roma) o «prova»
 // Spento finché ACCESSO_APP in wrangler.jsonc non vale «si». Il modo «prova» calcola e non scrive nulla.
 // Nel log solo numeri (stanze, persone, motivi di attesa): mai id, nomi, età o province.
 // I calcoli sono in api/settimana.js e api/stanze.js; la lettura e la scrittura nel database sono
@@ -11,22 +11,26 @@ import { fileURLToPath } from "node:url";
 import { preparaSettimana } from "../api/settimana.js";
 import { settimanaStanza, FUSO } from "../api/stanze.js";
 
-// Lunedì tra le 9:00 e le 9:59 di Roma: la Action parte alle 7:05 e alle 8:05 UTC, così una delle due cade sempre
-// alle 9 di Roma, d'estate e d'inverno; l'altra si ferma qui.
-export function alleNoveDiLunedi(adesso) {
+// D151 A: le stanze si compongono lunedì alle 00:30 di Roma, così il Filo ha il tempo di registrare il vocale di
+// benvenuto prima dell'apertura delle 9:00 (che non cambia). Vale tutto il lunedì prima delle 9: le conferme si chiudono
+// domenica alle 23:59, e se GitHub ritarda la partenza le stanze si compongono comunque prima dell'apertura.
+// La Action parte alle 22:35 e alle 23:35 UTC di domenica (una delle due è sempre alle 00:35 di Roma, estate e inverno)
+// e alle 6:05 UTC di lunedì come riserva; le partenze dopo la prima trovano le stanze già scritte e non fanno nulla.
+export function primaDellApertura(adesso) {
   const parti = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: FUSO, weekday: "short", hour: "2-digit", hourCycle: "h23" })
     .formatToParts(adesso).map((p) => [p.type, p.value]));
-  return parti.weekday === "Mon" && parti.hour === "09";
+  return parti.weekday === "Mon" && Number(parti.hour) < 9;
 }
 
 // rpc(nome, argomenti) → risultato della funzione del database. Restituisce solo un riassunto in numeri.
 export async function eseguiLunedi({ rpc, adesso = new Date(), accessoApp, modo = "automatico" }) {
   if (accessoApp !== "si") return { esito: "spento" };
-  if (modo !== "prova" && !alleNoveDiLunedi(adesso)) return { esito: "fuori_orario" };
+  if (modo !== "prova" && !primaDellApertura(adesso)) return { esito: "fuori_orario" };
 
-  // Automatico (lunedì alle 9): la stanza che apre adesso. Prova in un altro momento: la prossima apertura.
+  // Lunedì notte la stanza della settimana non è ancora aperta (la vecchia ha chiuso domenica alle 21): settimanaStanza()
+  // dà l'apertura delle 9:00 di oggi. Prova durante una stanza aperta: la prossima apertura.
   let { apre, aperta } = settimanaStanza(adesso);
-  if (aperta && !alleNoveDiLunedi(adesso)) apre = settimanaStanza(new Date(apre.getTime() + 7 * 86400000)).apre;
+  if (aperta) apre = settimanaStanza(new Date(apre.getTime() + 7 * 86400000)).apre;
   const letto = await rpc("righe_settimana", { apre: apre.toISOString() });
   const aree = await rpc("conteggi_aree", {});
   const completiPerZona = Object.fromEntries((aree || []).map((a) => [a.codice, { totale: a.totale, donne: a.donne }]));
