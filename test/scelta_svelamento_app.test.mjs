@@ -111,25 +111,27 @@ test("controllo: svelamento già iniziato → testo e si rilegge; porta chiusa �
   assert.equal(ps.modello().errore, null);
 });
 
-test("vista: gruppo «Come vuoi lo svelamento?» con due pulsanti a pressione, il tocco salva la scelta", async () => {
+// Design v4 (#349, schermata 40): la scelta è nelle due schede di vistaCome; il comportamento resta lo stesso.
+const scheda = (n, t) => tutti(n, (x) => x.tag === "button" && tutti(x, (y) => y.tag === "b" && testo(y) === t).length > 0)[0];
+
+test("vista: gruppo «Come vi volete vedere?» con due schede a pressione, il tocco salva la scelta", async () => {
   const sv = svelamentoFinto({ ok: true, stato: stato() });
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
   await ps.apri(PORTA);
   let v = vistaPorta(h, ps);
-  const gruppo = tutti(v, (x) => x.a.role === "group")[0];
+  const gruppo = tutti(v, (x) => x.a.role === "group" && x.a["aria-labelledby"] === "come-titolo")[0];
   assert.ok(gruppo, "gruppo presente");
-  assert.equal(gruppo.a["aria-labelledby"], "scelta-titolo");
-  assert.ok(testo(v).includes("Come vuoi lo svelamento?"));
-  const video = bottone(v, "Videochiamata di 10 secondi");
-  const foto = bottone(v, "Preferisco le foto");
+  assert.ok(testo(v).includes("Come vi volete vedere?"));
+  const video = scheda(v, "Videochiamata");
+  const foto = scheda(v, "Le foto");
   assert.equal(video.a["aria-pressed"], "true");
   assert.equal(foto.a["aria-pressed"], "false");
   sv.risposte.scegli = { ok: true, esito: "salvata", stato: stato([porta({ mia_scelta: "foto" })]) };
   await foto.a.onclick();
   assert.deepEqual(sv.chiamate.at(-1), ["scegli", PORTA, "foto"]);
   v = vistaPorta(h, ps);
-  assert.equal(bottone(v, "Preferisco le foto").a["aria-pressed"], "true");
-  assert.equal(bottone(v, "Videochiamata di 10 secondi").a["aria-pressed"], "false");
+  assert.equal(scheda(v, "Le foto").a["aria-pressed"], "true");
+  assert.equal(scheda(v, "Videochiamata").a["aria-pressed"], "false");
   assert.ok(!testo(v).toLowerCase().includes("giulia ha scelto"), "mai la scelta dell'altra persona");
 });
 
@@ -138,13 +140,15 @@ test("vista prima della caparra: nessuna scelta", async () => {
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
   await ps.apri(PORTA);
   const v = vistaPorta(h, ps);
-  assert.equal(bottone(v, "Preferisco le foto"), undefined);
-  assert.ok(!testo(v).includes("Come vuoi lo svelamento?"));
+  assert.equal(scheda(v, "Le foto"), undefined);
+  assert.ok(!testo(v).includes("Come vi volete vedere?"));
 });
 
 test("service worker: versione nuova per il modulo cambiato; stile dei pulsanti a pressione", () => {
   const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
-  assert.ok(!sw.includes('"presente-app-32"'));
+  assert.ok(!sw.includes('"presente-app-44"'));
+  assert.ok(sw.includes('"/app/moduli/svelamento_come.js"'), "il modulo della schermata 40 funziona anche senza rete");
   const css = readFileSync(new URL("../landing/app/app.css", import.meta.url), "utf8");
-  assert.match(css, /\.scelta-svelamento \[aria-pressed="true"\]/);
+  assert.match(css, /\.come-svelamento \.opz\[aria-pressed="true"\]/);
+  assert.ok(!css.includes(".scelta-svelamento"), "lo stile vecchio non serve più");
 });
