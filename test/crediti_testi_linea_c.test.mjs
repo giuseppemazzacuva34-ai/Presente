@@ -8,12 +8,16 @@ import { readFileSync } from "node:fs";
 import { schermataCoin, TESTI_SCHERMATA_COIN } from "../landing/app/moduli/coin.js";
 import { statoFoglio } from "../landing/app/moduli/regali.js";
 import { foglioRegali, tiMancano, conferma, coin } from "../api/coin.js";
+import { CATEGORIE } from "../api/supporto.js";
+import { CATEGORIE_SCRIVICI } from "../landing/app/moduli/aiuto.js";
 
 const FILE = [
   "landing/app/moduli/coin.js",
   "landing/app/moduli/regali.js",
   "api/coin.js",
   "worker/regali_api.js",
+  "landing/app/moduli/prova.js",
+  "api/supporto.js",
 ];
 
 const senzaCommenti = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "")
@@ -51,4 +55,9 @@ test("server: stessi testi in crediti", () => {
   assert.equal(tiMancano(5), "Ti mancano 5 crediti");
   assert.equal(foglioRegali(0).saldo, "Hai 0 crediti");
   assert.match(conferma("rosa", "Anna"), /Costa \d+ crediti\.$/);
+});
+
+test("Scrivici: la categoria dei crediti si chiama «Crediti» sul server come nella pagina Aiuto", () => {
+  assert.equal(CATEGORIE.crediti, "Crediti");
+  assert.deepEqual(Object.entries(CATEGORIE), CATEGORIE_SCRIVICI.map(([k, v]) => [k, v]));
 });
