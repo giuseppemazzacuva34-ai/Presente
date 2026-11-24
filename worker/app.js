@@ -142,6 +142,14 @@ export function configurazione(env) {
   const corpo = problemi.length
     ? { pronta: false, accesso: false, problemi }
     : { pronta: true, accesso: modo !== "no", modo, supabaseUrl: indirizzo, supabaseAnonKey: chiave };
+  // Con accesso acceso dice solo SE ci sono la chiave server e l'elenco dei tester (sì/no, mai i valori):
+  // serve a «Verifica segreti» per spiegare un «Qualcosa non ha funzionato» senza aprire i log.
+  if (!problemi.length && modo !== "no") {
+    corpo.controlli = {
+      chiaveServer: String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim() !== "",
+      elencoTester: String(env.EMAIL_TESTER || "").trim() !== "",
+    };
+  }
   return new Response(JSON.stringify(corpo), {
     // Sempre 200: la web app (e chi controlla) legge «pronta»; così il motivo si vede anche da un browser qualsiasi.
     status: 200,

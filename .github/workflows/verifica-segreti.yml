@@ -1,5 +1,5 @@
 # Verifica segreti (solo a mano, da Actions → «Verifica segreti» → Run workflow).
-# Controlla che gli 8 segreti della Fase 2 esistano e che Supabase e Cloudflare Realtime li accettino,
+# Controlla che gli 8 segreti della Fase 2 esistano (e, con l'accesso acceso, chiave server, EMAIL_TESTER, impostazioni e ultimi errori di Supabase Auth) e che Supabase e Cloudflare Realtime li accettino,
 # e che i 2 secret del Worker «presente» (SUPABASE_URL, SUPABASE_ANON_KEY) siano messi in Cloudflare e giusti.
 # Non stampa MAI un valore: solo il NOME del segreto e «ok» / «manca» / «rifiutato».
 # GitHub oscura comunque i segreti nei log; in più qui niente echo dei valori e niente set -x.
@@ -126,6 +126,72 @@ jobs:
           print("ok" if d.get("pronta") is True else "; ".join(d.get("problemi") or ["risposta inattesa"]))')
           if [ "$esito_worker" = ok ]; then bene "Worker presente: SUPABASE_URL + SUPABASE_ANON_KEY" "messi in Cloudflare e giusti"
           else male "Worker presente: SUPABASE_URL + SUPABASE_ANON_KEY" "$esito_worker"; fi
+
+          # 9. Accesso dei tester (solo sì/no, mai valori): chiave server ed elenco EMAIL_TESTER nel Worker.
+          controlli=$(printf '%s' "$risposta" | python3 -c 'import json,sys
+          try: d = json.load(sys.stdin)
+          except Exception: d = {}
+          c = d.get("controlli")
+          if not isinstance(c, dict): print("assenti")
+          else: print(("si" if c.get("chiaveServer") else "no") + " " + ("si" if c.get("elencoTester") else "no"))')
+          case "$controlli" in
+            assenti) esito "Accesso tester" "ℹ️ ACCESSO_APP spento o versione vecchia: nessun controllo" ;;
+            *)
+              set -- $controlli
+              [ "$1" = si ] && bene "Worker presente: SUPABASE_SERVICE_ROLE_KEY" "c'è" || male "Worker presente: SUPABASE_SERVICE_ROLE_KEY" "manca nel Worker (Cloudflare → presente → Settings → Variables and Secrets)"
+              [ "$2" = si ] && bene "Worker presente: EMAIL_TESTER" "c'è" || male "Worker presente: EMAIL_TESTER" "manca o è vuoto nel Worker"
+              ;;
+          esac
+
+          # 10. Impostazioni di accesso di Supabase (solo sì/no e numeri, mai indirizzi o chiavi).
+          if [ -n "$REF" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            cfg=$(curl -sS --max-time 20 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$REF/config/auth" 2>/dev/null || echo '{}')
+            printf '%s' "$cfg" | python3 -c 'import json,sys,os
+          try: d = json.load(sys.stdin)
+          except Exception: d = {}
+          def riga(nome, testo):
+              print(f"{nome}: {testo}")
+              open(os.environ["GITHUB_STEP_SUMMARY"], "a").write(f"| {nome} | {testo} |\n")
+          if not d: riga("Supabase Auth", "❌ impostazioni non leggibili"); sys.exit()
+          riga("Iscrizioni libere", "✅ spente" if d.get("disable_signup") else "❌ ancora accese (Authentication → Sign In / Providers)")
+          riga("Accesso con email", "✅ attivo" if d.get("external_email_enabled", True) else "❌ spento: nessuna email può partire")
+          smtp = bool(d.get("smtp_host"))
+          riga("Servizio email", "✅ personalizzato (SMTP)" if smtp else "⚠️ quello di prova di Supabase: manda email SOLO agli indirizzi del team del progetto, poche all ora")
+          riga("Limite email all ora", str(d.get("rate_limit_email_sent", "?")))
+          sito = str(d.get("site_url") or "")
+          riga("Site URL", "✅ presenteincontri.app" if "presenteincontri.app" in sito else "⚠️ non è presenteincontri.app")
+          lista = str(d.get("uri_allow_list") or "")
+          riga("Redirect URL", "✅ presenteincontri.app/app ammesso" if "presenteincontri.app" in lista else "⚠️ presenteincontri.app/app non è tra i Redirect URL")'
+          fi
+
+          # 11. Ultimi errori di accesso di Supabase (3 ore). Solo percorso, stato e messaggio, email e indirizzi oscurati.
+          if [ -n "$REF" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            fine=$(date -u +%Y-%m-%dT%H:%M:%SZ); inizio=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ)
+            sql="select timestamp, event_message from auth_logs order by timestamp desc limit 100"
+            log=$(curl -sS --max-time 30 -G -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              --data-urlencode "sql=$sql" --data-urlencode "iso_timestamp_start=$inizio" --data-urlencode "iso_timestamp_end=$fine" \
+              "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" 2>/dev/null || echo '{}')
+            printf '%s' "$log" | python3 -c 'import json,sys,re
+          try: righe = json.load(sys.stdin).get("result") or []
+          except Exception: righe = None
+          if righe is None: print("Log di Supabase: non leggibili"); sys.exit()
+          def pulisci(t):
+              t = re.sub(r"[^\s@\"]+@[^\s@\"]+", "<email>", str(t))
+              t = re.sub(r"\b\d{1,3}(\.\d{1,3}){3}\b", "<ip>", t)
+              t = re.sub(r"[A-Za-z0-9_-]{24,}", "<codice>", t)
+              return t[:160]
+          trovati = 0
+          for r in righe:
+              try: e = json.loads(r.get("event_message") or "{}")
+              except Exception: continue
+              stato = e.get("status") or 0
+              livello = e.get("level") or ""
+              if livello not in ("error", "warning") and not (isinstance(stato, int) and stato >= 400): continue
+              trovati += 1
+              if trovati > 15: break
+              print("Log Supabase:", pulisci(e.get("path", "")), stato, pulisci(e.get("msg", "")), pulisci(e.get("error", "") or e.get("error_code", "")))
+          if not trovati: print("Log Supabase: nessun errore di accesso nelle ultime 3 ore")'
+          fi
 
           echo
           if [ "$errori" -gt 0 ]; then
