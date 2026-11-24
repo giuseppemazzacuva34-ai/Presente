@@ -447,12 +447,30 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 
 /* Benvenuto, design v4 schermata 01 (Giuseppe, 24/11): onda grande, titolo centrato con «Poi il resto.» in corsivo rosso. */
 .benvenuto-v4 { display: flex; flex-direction: column; justify-content: center; gap: 18px; text-align: center; min-height: calc(100vh - 220px); }
-.benvenuto-v4 h1 { font-family: var(--serif); font-weight: 400; font-size: 36px; line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
-.benvenuto-v4 h1 em { color: #E8432B; }
-.benvenuto-v4 .sottotitolo { color: #A8A29A; font-size: 15px; line-height: 1.5; margin: 0; }
+.app .benvenuto-v4 h1 { font-family: var(--serif); font-weight: 400; font-size: 36px; line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
+.app .benvenuto-v4 h1 em { color: #E8432B; }
+.app .benvenuto-v4 .sottotitolo { color: #A8A29A; font-size: 15px; line-height: 1.5; margin: 0; }
 .benvenuto-v4 .nota { font-size: 12px; margin: 0; }
 .benvenuto-v4 .azioni { margin-top: auto; }
 .onda-grande { display: flex; gap: 4px; align-items: center; justify-content: center; height: 110px; }
 .onda-grande span { width: 6px; border-radius: 6px; filter: drop-shadow(0 0 6px rgba(232, 67, 43, 0.45)); animation: attesa 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 @keyframes attesa { 0%, 100% { transform: scaleY(0.15); opacity: 0.4; } 50% { transform: scaleY(0.9); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .onda-grande span { animation: none; } }
+
+/* ===== Iscrizione come il design v4, schermate 02-12 (Giuseppe, 24/11, punto 1) =====
+   Valori del prototipo «Dentro Presente»: .app h2 31px, .sub 15px grigio, .passo/.barra, .campo, .regola, .motivo, .foto3. */
+.app .schermata h1 { font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; margin: 0 0 0.5rem; }
+.app .sottotitolo { font-size: 15px; line-height: 1.45; color: #A8A29A; margin: 0 0 1rem; }
+.app .avanzamento-testo { font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .avanzamento-barra { height: 3px; background: rgba(242, 237, 228, 0.12); }
+.app .corpo input:not([type="checkbox"]), .app .corpo select { background-color: #1A171D; border: 1px solid rgba(242, 237, 228, 0.3); border-radius: 12px; }
+.app .regole { gap: 0; margin: 0 0 0.75rem; padding-left: 0; }
+.app .regole li { padding: 10px 0 10px 34px; font-size: 12.5px; line-height: 1.4; color: #A8A29A; border-top: 1px solid rgba(242, 237, 228, 0.12); }
+.app .regole li::before { top: 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: #E8432B; }
+.app .regole strong { font-size: 18px; line-height: 1.2; color: #F2EDE4; margin-bottom: 2px; }
+.app .casella { align-items: center; border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 12px; padding: 11px 12px; font-size: 14px; }
+.app .casella:has(input:checked) { border-color: #F2EDE4; }
+.app .consenso .casella { border: 0; padding: 0; }
+.app .casella-foto { border: 1px solid rgba(242, 237, 228, 0.15); border-radius: 12px; background: radial-gradient(circle at 40% 35%, #5a2a2a, #1a1116 70%); }
+.app .casella-foto img { filter: blur(6px); transform: scale(1.08); }
+.app .casella-foto .bottone-secondario { min-height: 34px; height: 34px; font-size: 12px; padding: 0 12px; border-radius: 10px; box-shadow: 0 3px 0 #050406, inset 0 1px 0 rgba(255, 255, 255, 0.1); }
