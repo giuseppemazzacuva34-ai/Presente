@@ -41,6 +41,7 @@ let appuntiStanza = null;
 // «Manda un regalo» sulla scheda (#331 parte C, linea «sviluppatore-c»): solo con il telefono acceso, solo stanza aperta.
 let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
+let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
@@ -186,6 +187,7 @@ export function avvia(elemento, opzioni = {}) {
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   regaliStanza = (telefono && opzioni.regali) || null;
+  regaloRicevuto = (telefono && opzioni.regaloRicevuto) || null;
   regaliProfilo = telefono && opzioni.storicoRegali ? creaSchermoRegali({ storico: opzioni.storicoRegali, disegna: () => disegna(),
     errore: (m) => MESSAGGI_SALVATAGGIO[m] || "Non riusciamo a leggere i tuoi regali. Riprova tra poco." }) : null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
@@ -560,6 +562,7 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo", id: "chiamata-testo" }, sc.testo),
       h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false)))];
   } else if (sc.tipo === "in_corso") {
+    if (regaloRicevuto) regaloRicevuto.avvia(() => telefono && telefono.modello().inCorsoCon);
     parti = [
       sc.banner ? h("p", { classe: "banner-chiamata", role: "note" }, sc.banner) : null,
       h("h1", {}, m.nome || "In chiamata"),
