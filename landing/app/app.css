@@ -58,6 +58,11 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 .bottone-rec { margin-left: 0; }
 .timer { font-family: var(--serif); font-size: 2rem; margin: 0; }
 .risposta-voce { margin-top: 0.6rem; }
+/* Registratore (Giuseppe, 24/11): «Riascolta» e «Rifai» sulla stessa riga, alti uguali. */
+.riga-registratore { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.riga-registratore > button { width: 100%; margin: 0; }
+/* Tre risposte a voce, una schermata per domanda: «Domanda 1 di 3» come etichetta maiuscola sopra il testo. */
+.passo-domanda { font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; margin: 0 0 0.5rem; }
 
 .griglia-foto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
 .casella-foto { aspect-ratio: 3 / 4; border: 1px dashed var(--linea); border-radius: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; overflow: hidden; position: relative; }
@@ -253,7 +258,7 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 /* Piede: pulsanti sempre in basso nello stesso punto, secondario a sinistra e primario a destra. */
 #app .azioni { display: grid; grid-template-columns: 1fr 1.7fr; gap: 12px; align-items: stretch; padding: 14px 0 calc(30px + env(safe-area-inset-bottom)); }
 #app .azioni > :only-child { grid-column: 1 / -1; }
-#app .azioni > .bottone, #app .azioni > .bottone-secondario { margin-left: 0; width: 100%; white-space: normal; }
+#app .azioni > .bottone, #app .azioni > .bottone-secondario { margin: 0; width: 100%; white-space: normal; } /* margin: 0 toglie il margin-top della landing: pulsanti alti uguali e sulla stessa riga */
 #app .azioni > .bottone-secondario { order: -1; } /* qualunque sia l'ordine nel codice, il secondario va a sinistra */
 
 /* ===== Linea C (#331): foglio dei regali e avviso del regalo ricevuto, design v4 schermate 26 e 27 =====

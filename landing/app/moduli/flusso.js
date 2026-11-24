@@ -89,6 +89,7 @@ const stato = {
   cerco: "", consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
   voce: null,                 // { url, secondi }
   domandeVoce: [],            // indici scelti in DOMANDE_VOCE
+  rispostaInCorso: null,      // tre risposte a voce: null = scelta delle 3 domande, 0–2 = schermata della domanda
   risposteVoce: {},           // indice → { url, secondi }
   questionario: { domanda: 1, risposte: {}, importanza: {} },
   foto: [null, null, null],   // { url }
@@ -304,6 +305,9 @@ function vai(passo) {
   const titolo = radice.querySelector("h1");
   if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: true }); }
 }
+
+// Tre risposte a voce: si cambia domanda restando nello stesso passo (ferma una registrazione in corso, titolo a fuoco).
+function vaiRisposta() { vai(stato.passo); }
 
 // Spec v1.3: se la lista d'attesa ha la provincia (stessa email del login) il campo arriva già scelto, da confermare.
 // Solo se il campo è ancora vuoto e la persona non ha iniziato a scrivere; se il Worker tarda (2 s) si resta col campo vuoto.
@@ -988,21 +992,39 @@ const SCHERMATE = {
 
   risposte() {
     const scelte3 = stato.domandeVoce;
-    const tutteFatte = scelte3.length === 3 && scelte3.every((i) => stato.risposteVoce[i]);
-    return schermata("Tre risposte a voce",
-      "Scegli 3 domande e rispondi a voce, massimo 30 secondi ciascuna.",
-      [scelte("domande-voce", DOMANDE_VOCE.map((d, i) => [i, d]), scelte3, (i) => {
-          if (scelte3.includes(i)) { stato.domandeVoce = scelte3.filter((x) => x !== i); delete stato.risposteVoce[i]; }
-          else if (scelte3.length < 3) stato.domandeVoce = [...scelte3, i];
-          disegna();
-        }, { multipla: true }),
-        h("p", { classe: "nota" }, `${scelte3.length} di 3 scelte`),
-        scelte3.map((i) => h("div", { classe: "risposta-voce" },
-          h("p", { classe: "etichetta" }, DOMANDE_VOCE[i]),
-          registratoreVoce(stato.risposteVoce[i], 30, (esito) => { stato.risposteVoce[i] = esito; disegna(); })))],
-      [indietro(), avanti("Continua", tutteFatte, () => salvaEVai(8,
-        ...scelte3.map((i, k) => caricaSeServe("voci", fileRisposta(k), stato.risposteVoce[i])),
-        () => archivio.salvaProfilo({ domande_voce: scelte3 })))]);
+    if (stato.rispostaInCorso === null || scelte3[stato.rispostaInCorso] === undefined) {
+      if (stato.rispostaInCorso !== null) stato.rispostaInCorso = null;
+      return schermata("Tre risposte a voce",
+        "Scegli 3 domande e rispondi a voce, massimo 30 secondi ciascuna.",
+        [scelte("domande-voce", DOMANDE_VOCE.map((d, i) => [i, d]), scelte3, (i) => {
+            if (scelte3.includes(i)) { stato.domandeVoce = scelte3.filter((x) => x !== i); delete stato.risposteVoce[i]; }
+            else if (scelte3.length < 3) stato.domandeVoce = [...scelte3, i];
+            disegna();
+          }, { multipla: true }),
+          h("p", { classe: "nota" }, `${scelte3.length} di 3 scelte`)],
+        [indietro(), avanti("Registra le risposte", scelte3.length === 3, () => { stato.rispostaInCorso = 0; vaiRisposta(); })]);
+    }
+    // Una schermata per domanda (Giuseppe, 24/11): «Domanda 1 di 3», il testo una volta sola, Registra / Riascolta /
+    // Rifai, poi Avanti. All'ultima, «Continua» salva le tre risposte (come prima) e porta al questionario.
+    const k = stato.rispostaInCorso;
+    const i = scelte3[k];
+    const pronta = Boolean(stato.risposteVoce[i]);
+    const prossima = () => {
+      if (k < 2) { stato.rispostaInCorso = k + 1; vaiRisposta(); return; }
+      salvaEVai(8,
+        ...scelte3.map((d, n) => caricaSeServe("voci", fileRisposta(n), stato.risposteVoce[d])),
+        () => archivio.salvaProfilo({ domande_voce: scelte3 }));
+    };
+    return h("section", { classe: "schermata risposta-una" },
+      h("p", { classe: "passo-domanda" }, `Domanda ${k + 1} di 3`),
+      h("h1", {}, DOMANDE_VOCE[i]),
+      h("p", { classe: "sottotitolo" }, "Rispondi a voce, massimo 30 secondi."),
+      h("div", { classe: "corpo" }, registratoreVoce(stato.risposteVoce[i], 30, (esito) => { stato.risposteVoce[i] = esito; disegna(); })),
+      errore(salvataggio.errore),
+      salvataggio.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
+      h("div", { classe: "azioni" },
+        h("button", { classe: "bottone-secondario", type: "button", onclick: () => { stato.rispostaInCorso = k === 0 ? null : k - 1; vaiRisposta(); } }, "Indietro"),
+        avanti(k < 2 ? "Avanti" : "Continua", pronta, prossima)));
   },
 
   questionario() {
@@ -1113,9 +1135,17 @@ function registratoreVoce(esistente, massimo, onFatto) {
     box.replaceChildren();
     if (stato.errore) aggiungi(box, errore(messaggi[stato.errore] || messaggi.altro));
     if (esistente && !stato.registrando) {
-      aggiungi(box, h("audio", { controls: true, src: esistente.url }),
+      // «Riascolta» e «Rifai» sulla stessa riga (design v4, schermata 08): l'audio suona dal pulsante, senza i comandi del browser.
+      const audio = h("audio", { src: esistente.url, preload: "metadata" });
+      const riascolta = h("button", { classe: "bottone-secondario", type: "button", "aria-pressed": "false",
+        onclick: () => { if (audio.paused) { audio.currentTime = 0; audio.play().catch(() => {}); } else audio.pause(); } }, "Riascolta");
+      audio.addEventListener("play", () => { riascolta.textContent = "Pausa"; riascolta.setAttribute("aria-pressed", "true"); });
+      const fermo = () => { riascolta.textContent = "Riascolta"; riascolta.setAttribute("aria-pressed", "false"); };
+      audio.addEventListener("pause", fermo); audio.addEventListener("ended", fermo);
+      aggiungi(box, audio,
         esistente.secondi ? h("p", { classe: "nota" }, `${esistente.secondi.toFixed(0)} secondi`) : null,
-        h("button", { classe: "bottone-secondario", type: "button", onclick: inizia }, "Rifai"));
+        h("div", { classe: "riga-registratore" }, riascolta,
+          h("button", { classe: "bottone-secondario", type: "button", onclick: () => { audio.pause(); inizia(); } }, "Rifai")));
       return;
     }
     if (stato.registrando) {
