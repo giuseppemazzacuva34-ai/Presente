@@ -77,7 +77,7 @@ test("flusso e avvio: aggiunte minime per la schermata 18 nella home", () => {
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /import \{ creaFiloLunedi \} from "\/app\/moduli\/filo_lunedi\.js";/);
   assert.match(avvio, /creaFiloLunedi\(\{ token: \(\) => accesso\.token\(\), fetch: window\.fetch\.bind\(window\), aggiorna: \(\) => filoCambiato\(\) \}\)/);
-  assert.match(avvio, /filoDomenica, filoLunedi \};/);
+  assert.match(avvio, /filoDomenica, filoLunedi[,}]/);
 });
 
 test("service worker: il modulo della schermata 18 è tra i file dell'app e la versione è cambiata", () => {

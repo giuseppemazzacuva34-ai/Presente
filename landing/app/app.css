@@ -474,3 +474,7 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .casella-foto { border: 1px solid rgba(242, 237, 228, 0.15); border-radius: 12px; background: radial-gradient(circle at 40% 35%, #5a2a2a, #1a1116 70%); }
 .app .casella-foto img { filter: blur(6px); transform: scale(1.08); }
 .app .casella-foto .bottone-secondario { min-height: 34px; height: 34px; font-size: 12px; padding: 0 12px; border-radius: 10px; box-shadow: 0 3px 0 #050406, inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+/* Voce «Il vocale del Filo» nella stanza (#360, linea C): pallino rosso fino al primo ascolto. */
+.app .filo-riascolto { margin: 8px 0 12px; }
+.app .filo-voce { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; background: none; border: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.app .filo-pallino { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--rosso); }

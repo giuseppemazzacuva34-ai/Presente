@@ -36,6 +36,7 @@ import { vistaVostriIncontri } from "./vostri_incontri.js";
 import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
 import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
 import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
+import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
@@ -47,6 +48,7 @@ let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
 let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
 let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
+let filoRiascolto = null; // voce «Il vocale del Filo» nella stanza (#360, linea C)
 let uscitaStanza = null; // «Lascia la stanza», schermata 22 (#381, linea B)
 const uscita = { nodo: null, fatto: "" }; // schermata aperta (resta tra un ridisegno e l'altro) e testo dopo l'uscita
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
@@ -207,6 +209,7 @@ export function avvia(elemento, opzioni = {}) {
   riepilogoMio = (telefono && opzioni.riepilogo) || null;
   filoDomenica = (telefono && opzioni.filoDomenica) || null;
   filoLunedi = (telefono && opzioni.filoLunedi) || null;
+  filoRiascolto = (telefono && opzioni.filoRiascolto) || null;
   uscitaStanza = telefono && accesso ? creaUscita({ token: () => accesso.token() }) : null; // col token di chi è entrato
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
@@ -578,6 +581,7 @@ function bloccoTuaStanza() {
     chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null,
     avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
     chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
+    st.stato === "pronta" && !st.chiusa && filoRiascolto ? vistaFiloRiascolto(h, filoRiascolto) : null,
     contenuto,
     st.stato === "pronta" && st.chiusa ? h("p", { classe: "nota" }, "La stanza è chiusa: puoi rileggere le schede e i tuoi appunti fino a lunedì alle 9:00, quando apre una nuova stanza.") : null,
     st.stato === "pronta" && !st.chiusa ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
@@ -1680,7 +1684,7 @@ function apriUscita() {
 
 // Il Filo della stanza (#360 passo 9b, linea C): la schermata 18 si ridisegna quando arrivano i dati o si entra.
 export function filoCambiato() {
-  if (!radice || !filoLunedi || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  if (!radice || (!filoLunedi && !filoRiascolto) || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
   disegna();
 }
 
