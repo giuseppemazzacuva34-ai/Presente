@@ -2,6 +2,8 @@
 //
 //   GET  /app/api/stanza/appuntamenti → 200 { ok, appuntamenti: [{ id, altra, propostoDaMe, stato, quando, messaggio,
 //                                        fase, puoControproporre, annullatoDallAltra, testo? }] }
+//   GET  /app/api/stanza/appuntamenti?con=<persona> → 200 { ok, ore: [ISO] } — orari proponibili (passo 5b, schermata
+//                                        20): solo per una persona che chi guarda vede nella stanza, altrimenti []
 //   POST /app/api/stanza/appuntamenti → 200 { ok: true } | 200 { ok: false, motivo, testo }
 //     { azione: "proponi", con, quando, messaggio? } · { azione: "conferma" | "no" | "annulla", id }
 //     { azione: "altro", id, quando, messaggio? }   («Un altro orario»)
@@ -218,6 +220,22 @@ async function scrivi(s, chi, richiesta, adesso, f) {
     { p_persona: chi, p_id: a.id, p_azione: "altro", p_quando: ok.quando, p_messaggio: ok.messaggio }));
 }
 
+// Orari proponibili con una persona (schermata 20). Prima si controlla che chi guarda la veda nella stanza
+// (stati_stanza: stessa stanza aperta, compatibili, senza blocchi, non sospese): per chiunque altro un elenco vuoto,
+// senza leggere fasce e senza dire perché. Le fasce si leggono solo da e a: la pausa non conta e non si scopre.
+async function orePer(s, chi, con, adesso, f) {
+  const visibili = await chiedi(s, "rpc/stati_stanza", f, { p_persona: chi });
+  if (!Array.isArray(visibili)) return riprova();
+  if (con === chi || !visibili.some((r) => r && r.utente_id === con)) return risposta(200, { ok: true, ore: [] });
+  const stanza = await stanzaAperta(s, chi, adesso, f);
+  if (stanza === undefined) return riprova();
+  if (!stanza) return risposta(200, { ok: true, ore: [] });
+  const fasce = await fasceDi(s, chi, con, f);
+  if (!fasce) return riprova();
+  const ore = oreProponibili({ adesso, stanza, fasciaMia: fasce.mia, fasciaSua: fasce.sua }).map((o) => o.toISOString());
+  return risposta(200, { ok: true, ore });
+}
+
 export async function appuntamentiApi(request, env, f = fetch, orologio = () => new Date()) {
   const url = new URL(request.url);
   if (url.pathname !== PERCORSO_APPUNTAMENTI) return risposta(404, { ok: false, motivo: "non_trovato" });
@@ -231,6 +249,11 @@ export async function appuntamentiApi(request, env, f = fetch, orologio = () => 
   if (chi.errore) return chi.errore;
   const adesso = orologio();
 
+  if (request.method === "GET" && url.searchParams.has("con")) {
+    const con = url.searchParams.get("con");
+    if (!UUID.test(con)) return malformata();
+    return orePer(s, chi.id, con, adesso, f);
+  }
   if (request.method === "GET") {
     const lista = appuntamentiDaRighe(await chiedi(s, "rpc/appuntamenti_di", f, { p_persona: chi.id }), adesso);
     if (!lista) return riprova();

@@ -22,7 +22,7 @@ const ADESSO = new Date("2026-11-24T10:00:00Z");
 const orologio = () => ADESSO;
 const BUONO = "2026-11-24T17:00:00.000Z"; // 18:00 di Roma, dentro 9–23
 
-function supabaseFinto({ utente = 200, stanza = true, fasce = [], miei = [], esito = "ok", rpcStato = 200 } = {}) {
+function supabaseFinto({ utente = 200, stanza = true, fasce = [], miei = [], esito = "ok", rpcStato = 200, visibili = [B] } = {}) {
   const viste = [];
   const f = async (url, opzioni = {}) => {
     const u = new URL(url);
@@ -36,14 +36,17 @@ function supabaseFinto({ utente = 200, stanza = true, fasce = [], miei = [], esi
     }
     if (u.pathname === "/rest/v1/profili") return Response.json(fasce);
     if (u.pathname === "/rest/v1/rpc/appuntamenti_di") return Response.json(miei);
+    if (u.pathname === "/rest/v1/rpc/stati_stanza") {
+      return Response.json(visibili.map((id) => ({ utente_id: id, ultimo_segnale: null, in_chiamata: false, in_chiamata_con: null })));
+    }
     if (/\/rest\/v1\/rpc\/(proponi|rispondi|annulla)_appuntamento$/.test(u.pathname)) return Response.json(esito);
     return new Response("{}", { status: 404 });
   };
   return { f, viste, dove: (p) => viste.filter((v) => v.percorso.startsWith(p)) };
 }
 
-const richiesta = ({ metodo = "GET", token = TOKEN, corpo } = {}) =>
-  new Request(`${SITO}${PERCORSO_APPUNTAMENTI}`, {
+const richiesta = ({ metodo = "GET", token = TOKEN, corpo, query = "" } = {}) =>
+  new Request(`${SITO}${PERCORSO_APPUNTAMENTI}${query}`, {
     method: metodo,
     headers: token ? { authorization: `Bearer ${token}`, "content-type": "application/json" } : {},
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
@@ -240,6 +243,46 @@ test("un altro orario: solo su una proposta ricevuta e ancora aperta, al massimo
 
 test("database giù durante una proposta: 503 riprova", async () => {
   assert.equal((await chiama(supabaseFinto({ rpcStato: 500 }), proponi())).status, 503);
+});
+
+// Passo 5b: la schermata 20 mostra solo gli orari che il server accetterebbe (dentro le fasce di tutte e due, ≥ 30 min
+// da adesso, dentro la settimana, domenica max 20:30). GET ?con=<persona> li dà SOLO per una persona che chi guarda
+// vede nella stanza (stati_stanza); per chiunque altro un elenco vuoto, senza dire perché. Mai la pausa.
+const FASCE = [{ id: ID, fascia_da: "18:00", fascia_a: "22:00" }, { id: B, fascia_da: "20:00", fascia_a: "23:00", pausa_fino: "x" }];
+
+test("ore: GET ?con= → orari proponibili dentro le fasce di tutte e due, a passi di 30 minuti", async () => {
+  const s = supabaseFinto({ fasce: FASCE });
+  const r = await chiama(s, { query: `?con=${B}` });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  const { ok, ore } = await r.json();
+  assert.equal(ok, true);
+  // Da martedì 24 a domenica 29: 20:00, 20:30, 21:00, 21:30 di Roma; domenica solo fino alle 20:30.
+  assert.equal(ore[0], "2026-11-24T19:00:00.000Z");
+  assert.equal(ore[3], "2026-11-24T20:30:00.000Z");
+  assert.equal(ore.at(-1), "2026-11-29T19:30:00.000Z");
+  assert.equal(ore.length, 5 * 4 + 2);
+  const [stati] = s.dove("/rest/v1/rpc/stati_stanza");
+  assert.deepEqual(stati.corpo, { p_persona: ID }, "chi guarda lo dice il token");
+  const [profili] = s.dove("/rest/v1/profili");
+  assert.match(decodeURIComponent(profili.query), /select=id,fascia_da,fascia_a$/, "dei profili solo le fasce, mai la pausa");
+});
+
+test("ore: persona che non si vede nella stanza (o sé stessi) → elenco vuoto, fasce non lette", async () => {
+  for (const [visibili, con] of [[[], B], [[B], ID], [[B], "cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee"]]) {
+    const s = supabaseFinto({ fasce: FASCE, visibili });
+    const r = await chiama(s, { query: `?con=${con}` });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true, ore: [] });
+    assert.equal(s.dove("/rest/v1/profili").length, 0);
+  }
+});
+
+test("ore: id non valido → 400; fuori da una stanza aperta → elenco vuoto; database giù → 503", async () => {
+  assert.equal((await chiama(supabaseFinto(), { query: "?con=x" })).status, 400);
+  const r = await chiama(supabaseFinto({ fasce: FASCE, stanza: false }), { query: `?con=${B}` });
+  assert.deepEqual(await r.json(), { ok: true, ore: [] });
+  assert.equal((await chiama(supabaseFinto({ rpcStato: 500 }), { query: `?con=${B}` })).status, 503);
 });
 
 test("il Worker instrada /app/api/stanza/appuntamenti (spento senza ACCESSO_APP)", async () => {
