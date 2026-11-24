@@ -36,7 +36,7 @@ export const CSP_APP = [
   "style-src 'self'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
-  "media-src 'self' blob:",
+  "media-src 'self' blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://rtc.live.cloudflare.com",
   "worker-src 'self'",
   "manifest-src 'self'",
