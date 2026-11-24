@@ -9,6 +9,8 @@
 //        (passo 15b, D144 A: testo pronto e indirizzo per l'email che Giuseppe manda a mano; nessun invio da qui)
 //        + mandata_il: data e ora di «Ho mandato l'email» se già segnata, altrimenti null (passo 15e, spec v1.3)
 //   POST /app/api/pannello/mandata { id: sanzione }             → { ok: true, mandata_il }   («Ho mandato l'email», passo 15e)
+//   GET  /app/api/pannello/uscite                               → { ok: true, uscite: [{ settimana, motivo, quante, testi }] }
+//        (#381 passo 6b: motivi di «Lascia la stanza» per settimana, ultime 8; testi liberi senza nome)
 //
 // Chi decide lo dicono SOLO il token di Supabase e la tabella «moderatori» (in beta Giuseppe): un campo nel corpo
 // non conta. Le regole stanno nel database (migrazioni 20261116094039 e 20261116144014): qui solo accesso, forma
@@ -83,6 +85,22 @@ function soloData(d) {
   return typeof d === "string" && d.length <= 40 && !Number.isNaN(Date.parse(d)) ? d : null;
 }
 
+// #381: motivi di «Lascia la stanza». Passa solo questa forma (mai persona, stanza o nome); altro → null (guasto).
+const MOTIVI_USCITA = ["tempo", "persone", "conosciuto", "app", "altro"];
+function soloUscite(d) {
+  if (!Array.isArray(d) || d.length > 200) return null;
+  const fuori = [];
+  for (const riga of d) {
+    if (!riga || typeof riga !== "object") return null;
+    const { settimana, motivo, quante, testi } = riga;
+    if (typeof settimana !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(settimana)) return null;
+    if (!MOTIVI_USCITA.includes(motivo) || !Number.isInteger(quante) || quante < 0) return null;
+    if (!Array.isArray(testi) || !testi.every((t) => typeof t === "string" && t.length <= 300)) return null;
+    fuori.push({ settimana, motivo, quante, testi: [...testi] });
+  }
+  return fuori;
+}
+
 function operazioniVere(env, f) {
   const s = server(env);
   return {
@@ -134,6 +152,10 @@ function operazioniVere(env, f) {
       const r = s && (await rpc(s, "email_mandata", { p_moderatore: moderatore, p_sanzione: sanzione }, f));
       return r && r.stato === 200 ? soloData(r.dati) : null;
     },
+    uscite: async (id) => {
+      const r = s && (await rpc(s, "motivi_uscite", { p_moderatore: id }, f));
+      return r && r.stato === 200 ? soloUscite(r.dati) : null;
+    },
     decidiRicorso: async ({ moderatore, ricorso, esito, testo }) => {
       const r = s && (await rpc(s, "decidi_ricorso", { p_moderatore: moderatore, p_ricorso: ricorso, p_esito: esito, p_testo: testo }, f));
       if (!r) return null;
@@ -147,7 +169,7 @@ function operazioniVere(env, f) {
 export async function pannelloApi(request, env, f = fetch, operazioni = null) {
   const percorso = new URL(request.url).pathname.slice(PERCORSO_PANNELLO.length);
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
-  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST", "/email": "POST", "/mandata": "POST" };
+  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST", "/email": "POST", "/mandata": "POST", "/uscite": "GET" };
   if (!Object.hasOwn(metodi, percorso)) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (request.method !== metodi[percorso]) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodi[percorso] });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
@@ -167,6 +189,10 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
     if (percorso === "/ricorsi") {
       const ricorsi = await op.ricorsi(chi.id);
       return Array.isArray(ricorsi) ? risposta(200, { ok: true, ricorsi }) : risposta(503, { ok: false, motivo: "riprova" });
+    }
+    if (percorso === "/uscite") {
+      const uscite = op.uscite ? await op.uscite(chi.id) : null;
+      return Array.isArray(uscite) ? risposta(200, { ok: true, uscite }) : risposta(503, { ok: false, motivo: "riprova" });
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
