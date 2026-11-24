@@ -32,13 +32,13 @@ const regole = (sel) => {
   return [...css.matchAll(new RegExp(`(^|\\n)${esc} \\{([^}]*)\\}`, "g"))].map((m) => m[2]).join(";");
 };
 
-test("pulsanti 3D: primario in sfumatura rossa con bordo pieno, serif maiuscolo 19px, 52px, raggio 16px", () => {
+test("pulsanti 3D: primario in sfumatura rossa con bordo pieno, Instrument Sans 600 maiuscolo (token «pulsante»), 52px, raggio 16px", () => {
   const p = regole(".app .bottone");
   assert.match(p, /linear-gradient\(180deg, #F46A53 0%, #E8432B 55%, #D63A22 100%\)/);
   assert.match(p, /0 6px 0 #8F2414/);
   assert.match(p, /color: var\(--nero\)/);
-  const b = regole(".app .bottone, .app .bottone-secondario");
-  for (const r of [/min-height: 52px/, /border-radius: 16px/, /font-family: var\(--serif\)/, /text-transform: uppercase/, /font-size: 19px/, /letter-spacing: 0\.07em/]) assert.match(b, r);
+  const b = regole(".app .bottone, .app .bottone-secondario") + regole(".app .bottone, .app .bottone-secondario, .app .bottone-pericolo");
+  for (const r of [/min-height: 52px/, /border-radius: 16px/, /font-family: var\(--sans\)/, /font-weight: 600/, /text-transform: uppercase/, /font-size: 17\.6px/, /letter-spacing: 0\.06em/]) assert.match(b, r);
   const s = regole(".app .bottone-secondario");
   assert.match(s, /linear-gradient\(180deg, #2C282F 0%, #1C191F 100%\)/);
   assert.match(s, /0 6px 0 #050406/);
