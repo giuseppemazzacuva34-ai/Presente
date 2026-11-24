@@ -132,3 +132,46 @@ test("stile: vista nel flusso sotto la testata, pacchetto scelto col bordo rosso
   assert.match(css, /\.app \.tuoi-coin \.scelto \{[^}]*background: #E8432B;/);
   assert.match(css, /\.app \.tuoi-coin h2 em \{[^}]*color: #E8432B;/);
 });
+
+// Passo 2 (spec #331 v1.1, punto 5): «Ricarica» della schermata 21 apre la schermata 13; in beta lì «Paga» resta spento.
+import { apriFoglioQuasiFiniti, quasiFiniti } from "../landing/app/moduli/saldo_coin.js";
+
+test("schermata 21: con alRicarica «Ricarica» è acceso, chiude il foglio e apre la 13 col saldo letto", () => {
+  const doc = documento();
+  const aperti = [];
+  apriFoglioQuasiFiniti(doc.body, quasiFiniti(15), { alRicarica: () => aperti.push("13") });
+  const ricarica = pulsante(doc.body, /^Ricarica$/);
+  assert.equal(ricarica.disabled, false);
+  ricarica.clic();
+  ricarica.clic();
+  assert.equal(doc.body.children.length, 0);
+  assert.deepEqual(aperti, ["13"]);
+});
+
+test("schermata 21: senza alRicarica «Ricarica» resta spento come prima", () => {
+  const doc = documento();
+  apriFoglioQuasiFiniti(doc.body, quasiFiniti(15));
+  assert.equal(pulsante(doc.body, /^Ricarica$/).disabled, true);
+});
+
+test("avvio: «Ricarica» del foglio 21 apre la schermata 13 al posto di #app", () => {
+  const avvio = readFileSync(new URL("../landing/app/avvio.js", import.meta.url), "utf8");
+  assert.match(avvio, /import \{ apriTuoiCoin \} from "\/app\/moduli\/tuoi_coin\.js";/);
+  assert.match(avvio, /import \{ schermataTuoiCoin \} from "\/app\/moduli\/saldo_coin\.js";/);
+  assert.match(avvio, /alRicarica: \(\) => apriTuoiCoin\(document\.querySelector\("\.pagina\.app"\), schermataTuoiCoin\(n, \{ primaStanzaUsata: true \}\), \{ principale: document\.getElementById\("app"\) \}\)/);
+});
+
+test("service worker: i moduli dei crediti sono nella copia per quando manca la rete, versione nuova", () => {
+  const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
+  for (const m of ["coin.js", "saldo_coin.js", "tuoi_coin.js"]) assert.match(sw, new RegExp(`"/app/moduli/${m.replace(".", "\\.")}"`));
+  assert.match(sw, /const VERSIONE = "presente-app-58";/);
+});
+
+test("chi ha già usato la prima stanza in regalo non legge più «La tua prima stanza è in regalo»", () => {
+  assert.equal(schermataTuoiCoin(15, { primaStanzaUsata: true }).saldo, "Hai 15 crediti.");
+  assert.equal(schermataTuoiCoin(1, { primaStanzaUsata: true }).saldo, "Hai 1 credito.");
+  assert.equal(schermataTuoiCoin(0).saldo, "Hai 0 crediti. La tua prima stanza è in regalo.");
+  assert.equal(schermataTuoiCoin(null, { primaStanzaUsata: true }).saldo, null);
+  const avvio = readFileSync(new URL("../landing/app/avvio.js", import.meta.url), "utf8");
+  assert.match(avvio, /schermataTuoiCoin\(n, \{ primaStanzaUsata: true \}\)/);
+});

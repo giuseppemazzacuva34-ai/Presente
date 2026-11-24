@@ -44,6 +44,8 @@ import { creaRegaloRicevuto } from "/app/moduli/regalo_ricevuto.js";
 import { creaFiloDomenica } from "/app/moduli/filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
 import { creaFiloLunedi } from "/app/moduli/filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { creaFiloRiascolto } from "/app/moduli/filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
+import { apriTuoiCoin } from "/app/moduli/tuoi_coin.js"; // schermata 13 «I tuoi crediti» (#349, linea B)
+import { schermataTuoiCoin } from "/app/moduli/saldo_coin.js";
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -166,7 +168,8 @@ async function preparaAccesso() {
     // Passo 5c: nuovo indirizzo /app/api/coin (saldo + prima stanza usata) e momento (mai in chiamata, svelamento, porte).
     collegaSaldo({ saldo: creaSaldo({ coin: creaCoinServer({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       testata: (dati) => aggiornaTestata(document, dati) }), pagina: document,
-      avviso: (n) => apriFoglioQuasiFiniti(document.querySelector(".pagina.app"), quasiFiniti(n)),
+      avviso: (n) => apriFoglioQuasiFiniti(document.querySelector(".pagina.app"), quasiFiniti(n),
+        { alRicarica: () => apriTuoiCoin(document.querySelector(".pagina.app"), schermataTuoiCoin(n, { primaStanzaUsata: true }), { principale: document.getElementById("app") }) }),
       momento: () => momentoApp({ telefono, porta, chiavi }) });
     // Il Filo della stanza (#360, linea C): schermata 36 prima della sera delle porte; numero e vocale via Worker.
     const filoDomenica = creaFiloDomenica({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => chiaviCambiate() });

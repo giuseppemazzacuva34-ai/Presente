@@ -79,7 +79,7 @@ export function apriTuoiCoin(contenitore, dati, { alChiudi, principale = null } 
   const azioni = el(doc, "div", "azioni");
   azioni.append(tardi, paga);
 
-  vista.append(el(doc, "p", "passo", dati.passo), titolo, el(doc, "p", "sub", dati.saldo), pacchi, costi,
+  vista.append(el(doc, "p", "passo", dati.passo), titolo, ...(dati.saldo ? [el(doc, "p", "sub", dati.saldo)] : []), pacchi, costi,
     el(doc, "p", "nota", dati.gomry), el(doc, "p", "nota", dati.notaBeta), azioni);
   vista.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); chiudi(); } });
   contenitore.append(vista);
