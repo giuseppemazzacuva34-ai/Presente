@@ -52,13 +52,16 @@ function pacchetto(o) {
 }
 
 // Schermata 13. saldo: il numero del server; se manca, nessun numero. scelto: il pacchetto toccato (di base il 500).
-export function schermataTuoiCoin(saldo, { scelto = SCELTO } = {}) {
+// primaStanzaUsata: true per chi ha già usato la stanza in regalo (es. dalla schermata 21): niente frase del regalo.
+export function schermataTuoiCoin(saldo, { scelto = SCELTO, primaStanzaUsata = false } = {}) {
   const id = OFFERTE.some((o) => o.id === scelto) ? scelto : SCELTO;
   const prezzo = OFFERTE.find((o) => o.id === id).euro;
   return {
     passo: T.passo,
     titolo: [...T.titolo],
-    saldo: valido(saldo) ? T.hai.replace("<n>", String(saldo)) : T.primaStanza,
+    saldo: primaStanzaUsata === true
+      ? (valido(saldo) ? `Hai ${saldo} ${saldo === 1 ? T.unitaUno : T.unita}.` : null)
+      : (valido(saldo) ? T.hai.replace("<n>", String(saldo)) : T.primaStanza),
     pacchetti: OFFERTE.map((o) => ({ ...pacchetto(o), descrizione: o.inPiu > 0 ? null : T.descrizione200, piuScelto: o.id === SCELTO })),
     scelto: id,
     costi: [
@@ -182,8 +185,9 @@ function el(doc, tag, classe, testo) {
 }
 
 // Schermata 21 come foglio dal basso, fuori da <main id="app"> (la home si ridisegna). dati = quasiFiniti(saldo).
-// Pulsanti veri, Esc chiude, l'attenzione parte da «Dopo». «Ricarica» in beta resta spento.
-export function apriFoglioQuasiFiniti(contenitore, dati, { alChiudi } = {}) {
+// Pulsanti veri, Esc chiude, l'attenzione parte da «Dopo». Spec #331 v1.1 punto 5: con alRicarica «Ricarica» chiude il
+// foglio e apre la schermata 13 (dove in beta «Paga» resta spento); senza, «Ricarica» resta spento.
+export function apriFoglioQuasiFiniti(contenitore, dati, { alChiudi, alRicarica } = {}) {
   if (!contenitore || !dati) return null;
   const doc = contenitore.ownerDocument;
   const foglio = el(doc, "section", "foglio-regali foglio-coin");
@@ -210,7 +214,9 @@ export function apriFoglioQuasiFiniti(contenitore, dati, { alChiudi } = {}) {
   dopo.addEventListener("click", chiudi);
   const ricarica = el(doc, "button", "bottone", dati.ricarica);
   ricarica.setAttribute("type", "button");
-  ricarica.disabled = dati.attivo !== true;
+  const conRicarica = typeof alRicarica === "function";
+  ricarica.disabled = dati.attivo !== true && !conRicarica;
+  if (conRicarica) ricarica.addEventListener("click", () => { if (!aperto) return; chiudi(); alRicarica(); });
   azioni.append(dopo, ricarica);
   foglio.append(el(doc, "p", "foglio-regali-titolo", dati.etichetta), titolo, el(doc, "p", "sub", dati.testo), pacco,
     el(doc, "p", "foglio-regali-nota", T.notaBeta), azioni);

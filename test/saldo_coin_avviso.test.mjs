@@ -111,7 +111,7 @@ test("un errore dell'avviso non ferma la lettura del saldo", async () => {
 test("avvio: l'avviso apre il foglio nella .pagina.app, fuori da #app", () => {
   const avvio = readFileSync(new URL("../landing/app/avvio.js", import.meta.url), "utf8");
   assert.match(avvio, /import \{ apriFoglioQuasiFiniti, quasiFiniti \} from "\/app\/moduli\/saldo_coin\.js";/);
-  assert.match(avvio, /avviso: \(n\) => apriFoglioQuasiFiniti\(document\.querySelector\("\.pagina\.app"\), quasiFiniti\(n\)\)/);
+  assert.match(avvio, /avviso: \(n\) => apriFoglioQuasiFiniti\(document\.querySelector\("\.pagina\.app"\), quasiFiniti\(n\),/);
 });
 
 test("stile: il foglio usa la base del foglio dal basso e il pacchetto acceso del prototipo", () => {
