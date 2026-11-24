@@ -7,7 +7,7 @@
 // CON L'ACCESSO ACCESO (ACCESSO_APP = «si»): ogni «Continua» salva il passo su Supabase (salvataggio.js) e chi esce
 // a metà, al rientro, riparte dal passo lasciato.
 
-import { DOMANDE, TEMI, IMPORTANZA, DOMANDA_IMPORTANZA, DOMANDE_VOCE, erroreRisposta } from "./domande.js";
+import { DOMANDE, TEMI, IMPORTANZA, testoImportanza, DOMANDE_VOCE, erroreRisposta } from "./domande.js";
 import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registratore.js";
 import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
@@ -1049,7 +1049,7 @@ const SCHERMATE = {
       campo = [scelte(`q${d.n}`, d.opzioni.map((o, i) => [i, o]), valore, imposta)];
     }
     const conta = ultimaDelTema ? h("div", { classe: "quanto-conta" },
-      h("p", { classe: "etichetta" }, `${DOMANDA_IMPORTANZA} · ${TEMI[d.tema].nome}`),
+      h("p", { classe: "etichetta-importanza", id: `imp-tema-${d.tema}` }, testoImportanza(TEMI[d.tema].nome)),
       scelte(`imp-${d.tema}`, IMPORTANZA.map((t, i) => [i + 1, t]), q.importanza[d.tema], (v) => { q.importanza[d.tema] = v; disegna(); })) : null;
     const salvaRisposte = () => archivio.salvaQuestionario(q.risposte, q.importanza);
     const prossima = async () => {
@@ -1064,11 +1064,16 @@ const SCHERMATE = {
       q.domanda = d.n + 1; salvataggio.errore = ""; disegna(); window.scrollTo(0, 0);
     };
     const precedente = () => { if (d.n > 1) { q.domanda = d.n - 1; disegna(); } else vai(7); };
-    return schermata(d.testo,
-      `${TEMI[d.tema].nome} · domanda ${d.n} di ${DOMANDE.length}`,
-      [campo, conta, d.n === 1 ? h("p", { classe: "nota" }, "Le risposte restano private. Servono solo a scegliere la tua stanza.") : null],
-      [h("button", { classe: "bottone-secondario", type: "button", onclick: precedente }, "Indietro"),
-        avanti(d.n < DOMANDE.length ? "Avanti" : "Fine questionario", rispostaOk && importanzaOk, prossima)]);
+    // Giuseppe, 24/11: prima il TEMA in alto (etichetta maiuscola), sotto la domanda, sotto le risposte.
+    return h("section", { classe: "schermata" },
+      h("p", { classe: "tema-domanda" }, h("span", {}, TEMI[d.tema].nome), h("span", {}, `${d.n} di ${DOMANDE.length}`)),
+      h("h1", {}, d.testo),
+      h("div", { classe: "corpo" }, campo, conta, d.n === 1 ? h("p", { classe: "nota" }, "Le risposte restano private. Servono solo a scegliere la tua stanza.") : null),
+      errore(salvataggio.errore),
+      salvataggio.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
+      h("div", { classe: "azioni" },
+        h("button", { classe: "bottone-secondario", type: "button", onclick: precedente }, "Indietro"),
+        avanti(d.n < DOMANDE.length ? "Avanti" : "Fine questionario", rispostaOk && importanzaOk, prossima)));
   },
 
   foto() {

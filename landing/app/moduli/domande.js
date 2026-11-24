@@ -16,6 +16,10 @@ export const TEMI = {
 
 export const IMPORTANZA = ["Poco", "Abbastanza", "Molto"]; // valori 1, 2, 3
 export const DOMANDA_IMPORTANZA = "Quanto conta per te?";
+// Testo del «quanto conta» nella web app, alla fine di ogni tema (Giuseppe, 24/11): dice chiaro che si parla di TUTTO il
+// tema, così non sembra la stessa domanda ripetuta (nella domanda 3 «Quanto contano per te le tradizioni…» con le stesse
+// risposte Poco · Abbastanza · Molto si leggeva due volte «Quanto conta per te?»).
+export const testoImportanza = (nomeTema) => `Il tema «${nomeTema}» nel suo insieme: quanto conta per te nella scelta della stanza?`;
 
 // Tipi: "multipla" (min–max scelte), "scala" (1–5), "ordinata" (opzioni in ordine), "categorica" (opzioni senza ordine).
 export const DOMANDE = [
