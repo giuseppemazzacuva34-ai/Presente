@@ -62,7 +62,7 @@ export function statoUscita({ scelto = null, testo = "", fase = "scelta", errore
 }
 
 // Richiesta al Worker con il token di chi usa l'app. Mai un'uscita inventata.
-export function creaUscita({ token, fetch: f = globalThis.fetch } = {}) {
+export function creaUscita({ token, fetch: f = (...a) => globalThis.fetch(...a) } = {}) {
   return {
     async lascia({ motivo, testo } = {}) {
       const t = await Promise.resolve().then(token).catch(() => null);
@@ -151,7 +151,8 @@ export function apriSchermataUscita(contenitore, { uscita, alResto, alFatto, alA
   const vaiAiuto = el(doc, "button", "link", TESTI_APP.aiuto);
   vaiAiuto.setAttribute("type", "button");
   vaiAiuto.addEventListener("click", () => { if (typeof alAiuto === "function") alAiuto(); });
-  zonaAiuto.append(el(doc, "span", null, TESTI_APP.app + " "), vaiAiuto);
+  zonaAiuto.append(el(doc, "span", null, TESTI_APP.app));
+  if (typeof alAiuto === "function") zonaAiuto.append(" ", vaiAiuto); // senza Aiuto collegato, solo il testo
 
   const coin = el(doc, "p", "nota", TESTI_APP.coin);
   const errore = el(doc, "p", "errore");
@@ -201,13 +202,15 @@ export function apriSchermataUscita(contenitore, { uscita, alResto, alFatto, alA
     errore.textContent = s.errore || "";
   }
 
+  // Tutto si costruisce una volta sola: spostare i nodi (replaceChildren) toglierebbe il fuoco a chi usa la tastiera
+  // mentre sceglie con le frecce. Il campo «Altro» entra nella sua zona alla prima scelta; il resto si mostra o nasconde.
+  const zonaAltro = el(doc, "div", null);
+  schermo.append(titolo, gruppo, zonaAltro, zonaAiuto, coin, errore, azioni);
+
   function aggiorna() {
     const s = statoUscita(st);
-    const parti = [titolo, gruppo];
-    if (s.altro) parti.push(campoAltro());
-    if (s.aiuto) parti.push(zonaAiuto);
-    parti.push(coin, errore, azioni);
-    schermo.replaceChildren(...parti);
+    if (s.altro && !altro) zonaAltro.append(campoAltro());
+    zonaAiuto.hidden = !s.aiuto;
     aggiornaPulsanti();
   }
 
@@ -218,5 +221,5 @@ export function apriSchermataUscita(contenitore, { uscita, alResto, alFatto, alA
   contenitore.append(schermo);
   titolo.setAttribute("tabindex", "-1");
   titolo.focus();
-  return { chiudi };
+  return { chiudi, nodo: schermo };
 }

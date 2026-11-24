@@ -224,3 +224,46 @@ test("lascia app: Esc equivale a «Resto»", () => {
   doc.body.children[0].tasto("Escape");
   assert.equal(resto, 1);
 });
+
+// ---- passo 4b: aggancio alla stanza (schermata 19) ----
+import { readFileSync } from "node:fs";
+const leggi = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
+
+test("lascia app: la vista restituisce il suo nodo, così il flusso la tiene tra un ridisegno e l'altro", () => {
+  const doc = documento();
+  const { u } = uscita([]);
+  const s = apriSchermataUscita(doc.body, { uscita: u });
+  assert.equal(s.nodo, doc.body.children[0]);
+  assert.equal(s.nodo.tagName, "SECTION");
+});
+
+test("lascia app: il flusso apre la schermata 22 dal link in fondo alla stanza aperta", () => {
+  const flusso = leggi("../landing/app/moduli/flusso.js");
+  assert.match(flusso, /import \{ apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA \} from "\.\/lascia_stanza\.js";/);
+  // Solo con l'accesso vero: la richiesta parte col token di chi è entrato (avvio.js non cambia).
+  assert.match(flusso, /uscitaStanza = telefono && accesso \? creaUscita\(\{ token: \(\) => accesso\.token\(\) \}\) : null;/);
+  // Link solo con la stanza aperta e pronta; la schermata resta la stessa tra un ridisegno e l'altro.
+  assert.match(flusso, /st\.stato === "pronta" && !st\.chiusa && uscitaStanza \? h\("button", \{ classe: "link", type: "button"[^)]*onclick: apriUscita \}, TESTI_USCITA\.lascia\)/);
+  assert.match(flusso, /if \(uscita\.nodo\) \{/);
+  // Dopo l'uscita: il testo del server nella home, come stato annunciato.
+  assert.match(flusso, /uscita\.fatto \? h\("p", \{ classe: "nota", role: "status" \}, uscita\.fatto\)/);
+});
+
+test("lascia app: service worker con il modulo e versione nuova", () => {
+  const sw = leggi("../landing/app/sw.js");
+  assert.ok(sw.includes('"/app/moduli/lascia_stanza.js"'));
+  assert.ok(!sw.includes('"presente-app-52"'));
+});
+
+test("lascia app: scegliendo con la tastiera i nodi non si spostano (il fuoco resta sul motivo)", () => {
+  const doc = documento();
+  const { u } = uscita([]);
+  const s = apriSchermataUscita(doc.body, { uscita: u, alAiuto: () => {} });
+  let spostati = 0;
+  for (const n of [s.nodo, ...s.nodo.tutti(() => true)]) {
+    const orig = n.replaceChildren.bind(n);
+    n.replaceChildren = (...x) => { spostati += 1; return orig(...x); };
+  }
+  for (const v of ["tempo", "app", "altro", "persone"]) radio(doc).find((x) => x.value === v).scegli();
+  assert.equal(spostati, 0);
+});
