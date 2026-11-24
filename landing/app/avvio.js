@@ -38,6 +38,9 @@ import { creaSaldo, collegaSaldo } from "/app/moduli/saldo_coin.js";
 import { aggiornaTestata } from "/app/moduli/testata.js";
 import { apriFoglioQuasiFiniti, quasiFiniti } from "/app/moduli/saldo_coin.js";
 import { creaCoinServer, momentoApp } from "/app/moduli/saldo_coin.js";
+import { mostraAvvisoRegalo } from "/app/moduli/regali.js"; // regalo ricevuto in chiamata (#349, linea B)
+import { creaRegaloRicevuto } from "/app/moduli/regalo_ricevuto.js";
+import { creaFiloDomenica } from "/app/moduli/filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -149,6 +152,9 @@ async function preparaAccesso() {
     // Regali (#331 parte C): «Manda un regalo» sulla scheda; il foglio sta in .pagina.app, fuori da #app che si ridisegna.
     const regali = creaRegaliStanza({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       contenitore: document.querySelector(".pagina.app"), aggiorna: () => regaliCambiati() });
+    // Regalo ricevuto in chiamata (#349, schermata 27, linea B): avviso sopra la chiamata, fuori da #app.
+    const regaloRicevuto = creaRegaloRicevuto({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
+      mostra: (avviso) => mostraAvvisoRegalo(document.querySelector(".pagina.app"), avviso) });
     // «I tuoi regali» nel profilo (#349, linea B): GET /app/api/regali/storico col proprio token.
     const storicoRegali = creaStoricoRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Saldo dei Coin nella testata (#349, linea B): dal server col proprio token, all'avvio e al ritorno sull'app.
@@ -157,7 +163,9 @@ async function preparaAccesso() {
       testata: (dati) => aggiornaTestata(document, dati) }), pagina: document,
       avviso: (n) => apriFoglioQuasiFiniti(document.querySelector(".pagina.app"), quasiFiniti(n)),
       momento: () => momentoApp({ telefono, porta, chiavi }) });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali };
+    // Il Filo della stanza (#360, linea C): schermata 36 prima della sera delle porte; numero e vocale via Worker.
+    const filoDomenica = creaFiloDomenica({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => chiaviCambiate() });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali, regaloRicevuto, filoDomenica };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }

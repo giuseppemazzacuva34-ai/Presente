@@ -46,7 +46,11 @@ export function personaAmmessa(env, persona) {
   const modo = modoAccesso(env);
   if (modo === "si") return Boolean(persona);
   if (modo !== "tester" || !persona) return false;
-  return Boolean(persona.email_confirmed_at) && emailAmmessa(env, persona.email);
+  if (!persona.email_confirmed_at) return false;
+  // Codici d'invito del test interno (D154 = B): il segno lo scrive solo il server nell'app_metadata quando l'invito
+  // viene usato (worker/inviti_tester.js). Lo user_metadata, che la persona può cambiare, non conta.
+  if (persona.app_metadata?.tester_invito === true) return true;
+  return emailAmmessa(env, persona.email);
 }
 
 function risposta(stato, corpo) {

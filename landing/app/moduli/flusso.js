@@ -34,6 +34,8 @@ import { vistaIncontro } from "./incontro.js";
 import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
 import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
+import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
+import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -41,6 +43,10 @@ let appuntiStanza = null;
 // «Manda un regalo» sulla scheda (#331 parte C, linea «sviluppatore-c»): solo con il telefono acceso, solo stanza aperta.
 let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
+let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
+let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
+let uscitaStanza = null; // «Lascia la stanza», schermata 22 (#381, linea B)
+const uscita = { nodo: null, fatto: "" }; // schermata aperta (resta tra un ridisegno e l'altro) e testo dopo l'uscita
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
@@ -186,6 +192,7 @@ export function avvia(elemento, opzioni = {}) {
   storicoChiamate = (telefono && opzioni.storico) || null;
   appuntiStanza = (telefono && opzioni.appunti) || null;
   regaliStanza = (telefono && opzioni.regali) || null;
+  regaloRicevuto = (telefono && opzioni.regaloRicevuto) || null;
   regaliProfilo = telefono && opzioni.storicoRegali ? creaSchermoRegali({ storico: opzioni.storicoRegali, disegna: () => disegna(),
     errore: (m) => MESSAGGI_SALVATAGGIO[m] || "Non riusciamo a leggere i tuoi regali. Riprova tra poco." }) : null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
@@ -195,6 +202,8 @@ export function avvia(elemento, opzioni = {}) {
   incontroVostro = (telefono && opzioni.incontro) || null;
   valutazioneVostra = (telefono && opzioni.valutazione) || null;
   riepilogoMio = (telefono && opzioni.riepilogo) || null;
+  filoDomenica = (telefono && opzioni.filoDomenica) || null;
+  uscitaStanza = telefono && accesso ? creaUscita({ token: () => accesso.token() }) : null; // col token di chi è entrato
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -535,12 +544,14 @@ function bloccoTuaStanza() {
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     h("h2", { id: "tua-stanza-titolo" }, "La tua stanza", st.chiusa ? h("span", { classe: "etichetta-chiusa" }, " · Chiusa") : null),
-    chiaviStanza ? vistaSera(h, chiaviStanza, { svelamento }) : null,
+    chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null,
     avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
     chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
     st.stato === "pronta" && st.chiusa ? h("p", { classe: "nota" }, "La stanza è chiusa: puoi rileggere le schede e i tuoi appunti fino a lunedì alle 9:00, quando apre una nuova stanza.") : null,
     st.stato === "pronta" && !st.chiusa ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
+    st.stato === "pronta" && !st.chiusa && uscitaStanza ? h("button", { classe: "link", type: "button", disabled: m.attesa, onclick: apriUscita }, TESTI_USCITA.lascia) : null,
+    uscita.fatto ? h("p", { classe: "nota", role: "status" }, uscita.fatto) : null,
     m.attesa ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
     errore(m.errore));
 }
@@ -560,6 +571,7 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo", id: "chiamata-testo" }, sc.testo),
       h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false)))];
   } else if (sc.tipo === "in_corso") {
+    if (regaloRicevuto) regaloRicevuto.avvia(() => telefono && telefono.modello().inCorsoCon);
     parti = [
       sc.banner ? h("p", { classe: "banner-chiamata", role: "note" }, sc.banner) : null,
       h("h1", {}, m.nome || "In chiamata"),
@@ -657,6 +669,8 @@ function disegna() {
     const m = telefono.modello();
     if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
   }
+  // Schermata 22 (#381): sempre lo stesso nodo, così scelta e testo restano anche se la pagina si ridisegna.
+  if (uscita.nodo) { if (radice.firstChild !== uscita.nodo || radice.childNodes.length !== 1) radice.replaceChildren(uscita.nodo); return; }
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
@@ -1581,4 +1595,19 @@ function bloccoRiepilogoMio() {
     h("h2", {}, "Dopo i tuoi incontri"),
     h("ul", {}, righe.map((t) => h("li", {}, t))),
     h("p", { classe: "nota" }, "Lo vedi solo tu."));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// «Lascia la stanza» (#381, linea «sviluppatore-b»): schermata 22 a tutta pagina dal link in fondo alla stanza.
+// Il server decide (stanza aperta, nessuna chiamata in corso); dopo l'uscita la stanza si rilegge e resta il testo.
+function apriUscita() {
+  if (!uscitaStanza || uscita.nodo) return;
+  const chiudi = () => { uscita.nodo = null; disegna(); };
+  uscita.nodo = apriSchermataUscita(radice, {
+    uscita: uscitaStanza,
+    alResto: chiudi,
+    alAiuto: supporto ? () => { uscita.nodo = null; apriAiuto(); } : null,
+    alFatto: (testo) => { uscita.fatto = testo; uscita.nodo = null; telefono.ricaricaPersone(); disegna(); },
+  }).nodo;
+  disegna();
 }
