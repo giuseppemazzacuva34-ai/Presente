@@ -150,6 +150,12 @@ select pg_temp.ok(pg_temp.non_ok($$select public.manda_regalo('1a5c1a5c-0000-400
   'lascia: nessun regalo a chi è uscito');
 reset role;
 
+-- 8b. Chiamate (#4, api/dati_chiamata.js legge sospesi_tra): chi è uscito conta come «fuori» fino alla chiusura.
+set local role service_role;
+select pg_temp.ok((select array_agg(persona order by persona) from public.sospesi_tra(array[pg_temp.p(1), pg_temp.p(2), pg_temp.p(3), pg_temp.p(4)]))
+  = array[pg_temp.p(1), pg_temp.p(3)], 'lascia: per le chiamate chi è uscito è «fuori», chi resta no');
+reset role;
+
 -- 9. Coin (D153 A): nessun movimento.
 select pg_temp.ok((select count(*) from public.crediti_movimenti) = :movimenti_prima, 'lascia: nessun movimento di Coin');
 

@@ -116,3 +116,13 @@ create trigger chiavi_mai_con_chi_ha_lasciato before insert or update on public.
   for each row execute function public.mai_con_chi_ha_lasciato();
 create trigger regali_mai_con_chi_ha_lasciato before insert on public.regali
   for each row execute function public.mai_con_chi_ha_lasciato();
+
+-- Chiamate (#4): api/dati_chiamata.js chiede sospesi_tra() chi è fuori adesso. Come in 20261117094536_sospesi_tra.sql,
+-- in più: chi ha lasciato una stanza ancora aperta, fino alla sua chiusura (non chiama e non riceve chiamate).
+create or replace function public.sospesi_tra(p_persone uuid[])
+  returns table (persona uuid) language sql stable security definer set search_path = '' as $$
+  select distinct x from unnest(coalesce(p_persone, '{}'::uuid[])) as x
+  where public.sospeso(x)
+     or exists (select 1 from public.lasciate_stanza l join public.stanze s on s.id = l.stanza_id
+                where l.persona = x and now() < s.chiude_il)
+$$;
