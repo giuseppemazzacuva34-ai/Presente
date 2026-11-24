@@ -59,7 +59,7 @@ const riga = (h, testo, azione) => (typeof azione === "function"
 
 // s = statoProfilo(...). Azioni: risposte, regali, foto, preferenze, elimina, torna; onda = l'onda grande del flusso.
 export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, elimina, torna, onda = null, errore = null } = {}) {
-  return h("section", { classe: "profilo", "aria-labelledby": "profilo-titolo" },
+  return h("section", { classe: "schermata profilo", "aria-labelledby": "profilo-titolo" },
     h("div", { classe: "corpo" },
       h("h2", { id: "profilo-titolo" }, s.titolo, s.citta ? [h("br"), h("em", {}, s.citta)] : null),
       s.voce ? h("div", { classe: "rec" }, onda, pulsanteVoce(h, s.voce)) : null,
@@ -73,4 +73,47 @@ export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, elimina
       typeof errore === "string" && errore ? h("p", { classe: "errore", role: "alert" }, errore) : null,
       typeof elimina === "function" ? h("button", { classe: "link rosso", type: "button", onclick: elimina }, T.elimina) : null),
     h("div", { classe: "azioni" }, h("button", { classe: "bottone", type: "button", onclick: torna }, s.torna)));
+}
+
+// Passo 2: la schermata aperta dal cerchio. Tiene solo lo stato (aperta o no) e i due numeri letti dal server
+// all'apertura: saldo (coin.saldo() di saldo_coin.js) e regali ricevuti (somma di storico.leggi() di storico_regali.js).
+// Se una lettura non va, quel numero resta vuoto. Una lettura arrivata dopo la chiusura non cambia niente.
+const somma = (t) => (t && ["rosa", "spumante", "fiori"].every((k) => intero(t[k])) ? t.rosa + t.spumante + t.fiori : null);
+export function creaSchermoProfilo({ coin = null, storico = null, disegna = () => {} } = {}) {
+  const st = { aperto: false, saldo: null, regali: null, giro: 0 };
+  const leggi = async (fonte, metodo) => {
+    if (!fonte) return null;
+    try { return await fonte[metodo](); } catch { return null; }
+  };
+  return {
+    aperto: () => st.aperto,
+    dati: () => ({ saldo: st.saldo, regali: st.regali }),
+    async apri() {
+      const giro = ++st.giro;
+      Object.assign(st, { aperto: true, saldo: null, regali: null });
+      disegna();
+      const [c, r] = await Promise.all([leggi(coin, "saldo"), leggi(storico, "leggi")]);
+      if (giro !== st.giro || !st.aperto) return;
+      st.saldo = c && c.ok === true && intero(c.saldo) ? c.saldo : null;
+      st.regali = r && r.ok === true && r.vista ? somma(r.vista.totale) : null;
+      disegna();
+    },
+    chiudi() {
+      st.giro++;
+      Object.assign(st, { aperto: false, saldo: null, regali: null });
+      disegna();
+    },
+  };
+}
+
+// Il cerchio della testata (#apri-profilo, base comune di testata.js): l'iniziale e il clic che apre il profilo.
+// Compare solo con un nome e un'azione (cioè nella home a profilo completo); altrimenti resta nascosto.
+export function collegaCerchio(doc, { nome = "", apri = null } = {}) {
+  const b = doc && doc.getElementById("apri-profilo");
+  if (!b) return;
+  const i = typeof nome === "string" && nome.trim() ? [...nome.trim()][0].toLocaleUpperCase("it") : null;
+  const attivo = i !== null && typeof apri === "function";
+  b.hidden = !attivo;
+  b.onclick = attivo ? apri : null;
+  if (attivo) b.textContent = i;
 }
