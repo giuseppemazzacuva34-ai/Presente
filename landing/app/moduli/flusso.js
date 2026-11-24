@@ -35,6 +35,7 @@ import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
 import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
 import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
+import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
@@ -45,6 +46,7 @@ let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
 let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
+let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
 let uscitaStanza = null; // «Lascia la stanza», schermata 22 (#381, linea B)
 const uscita = { nodo: null, fatto: "" }; // schermata aperta (resta tra un ridisegno e l'altro) e testo dopo l'uscita
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
@@ -203,6 +205,7 @@ export function avvia(elemento, opzioni = {}) {
   valutazioneVostra = (telefono && opzioni.valutazione) || null;
   riepilogoMio = (telefono && opzioni.riepilogo) || null;
   filoDomenica = (telefono && opzioni.filoDomenica) || null;
+  filoLunedi = (telefono && opzioni.filoLunedi) || null;
   uscitaStanza = telefono && accesso ? creaUscita({ token: () => accesso.token() }) : null; // col token di chi è entrato
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
@@ -505,6 +508,11 @@ function bloccoTuaStanza() {
   if (avvisiPorte && !avvisiAvviati) { avvisiAvviati = true; avvisiPorte.avvia(); }
   const m = telefono.modello();
   const st = m.stanza;
+  // #360 passo 9b: lunedì, la prima volta che si apre la stanza, la schermata 18 del Filo al posto della stanza.
+  const filo = st.stato === "pronta" && !st.chiusa && filoLunedi
+    ? vistaStanzaFilo(h, filoLunedi, { persone: st.persone.filter((p) => !scheda.bloccate.has(p.id)), mioNome: nomeMio(), entra: dopoBenvenutoFilo })
+    : null;
+  if (filo) return filo;
   let contenuto;
   if (chiaviStanza) chiaviStanza.prepara();
   if (chiaviStanza && chiaviStanza.modello().sera && st.stato === "pronta" && !st.chiusa && !stanzaRilettaDiSera) {
@@ -1610,4 +1618,16 @@ function apriUscita() {
     alFatto: (testo) => { uscita.fatto = testo; uscita.nodo = null; telefono.ricaricaPersone(); disegna(); },
   }).nodo;
   disegna();
+}
+
+// Il Filo della stanza (#360 passo 9b, linea C): la schermata 18 si ridisegna quando arrivano i dati o si entra.
+export function filoCambiato() {
+  if (!radice || !filoLunedi || !PASSI[stato.passo] || PASSI[stato.passo].id !== "fatto") return;
+  disegna();
+}
+
+// Dopo «Entra nella stanza» il fuoco va sul titolo «La tua stanza», così la tastiera non si perde.
+function dopoBenvenutoFilo() {
+  const titolo = radice && radice.querySelector("#tua-stanza-titolo");
+  if (titolo) { titolo.tabIndex = -1; titolo.focus({ preventScroll: true }); }
 }

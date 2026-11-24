@@ -177,3 +177,13 @@ export function vistaFiloLunedi(h, fl, { persone = [], mioNome = "", entra = () 
     h("p", { classe: "nota filo-regole" }, h("strong", {}, TESTI_FILO_LUNEDI.regoleTitolo), " ", TESTI_FILO_LUNEDI.regole),
     h("button", { classe: "bottone", type: "button", onclick: () => fl.entra(entra) }, TESTI_FILO_LUNEDI.bottone));
 }
+
+// Nella home, al posto di «La tua stanza» aperta (flusso.js): mentre legge «Un attimo…» (niente lampo della stanza
+// prima della schermata 18), poi la schermata 18 finché non si tocca «Entra nella stanza». null = la stanza di sempre
+// (senza modulo, stanza senza Filo, già vista, errore).
+export function vistaStanzaFilo(h, fl, opzioni = {}) {
+  if (!fl) return null;
+  fl.prepara();
+  if (!fl.modello().letto) return h("p", { classe: "nota", role: "status" }, "Un attimo…");
+  return vistaFiloLunedi(h, fl, opzioni);
+}

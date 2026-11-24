@@ -2,6 +2,7 @@
 // Nessuna libreria esterna. Se /app/config.json dice «accesso: true» l'accesso con email è vero (accesso.js);
 // altrimenti l'app resta in anteprima e nessun dato lascia il telefono.
 import { avvia, telefonoCambiato, chiaviCambiate, appuntiCambiati, portaCambiata, avvisiCambiati, nomeMio, incontroCambiato, regaliCambiati } from "/app/moduli/flusso.js";
+import { filoCambiato } from "/app/moduli/flusso.js"; // schermata 18 del Filo (#360, linea C)
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaSalvataggio } from "/app/moduli/salvataggio.js";
 import { creaLista } from "/app/moduli/lista.js";
@@ -41,6 +42,7 @@ import { creaCoinServer, momentoApp } from "/app/moduli/saldo_coin.js";
 import { mostraAvvisoRegalo } from "/app/moduli/regali.js"; // regalo ricevuto in chiamata (#349, linea B)
 import { creaRegaloRicevuto } from "/app/moduli/regalo_ricevuto.js";
 import { creaFiloDomenica } from "/app/moduli/filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
+import { creaFiloLunedi } from "/app/moduli/filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 
 const stato = document.getElementById("stato");
 function mostra(testo) {
@@ -165,7 +167,8 @@ async function preparaAccesso() {
       momento: () => momentoApp({ telefono, porta, chiavi }) });
     // Il Filo della stanza (#360, linea C): schermata 36 prima della sera delle porte; numero e vocale via Worker.
     const filoDomenica = creaFiloDomenica({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => chiaviCambiate() });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali, regaloRicevuto, filoDomenica };
+    const filoLunedi = creaFiloLunedi({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => filoCambiato() });
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali, regaloRicevuto, filoDomenica, filoLunedi };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
