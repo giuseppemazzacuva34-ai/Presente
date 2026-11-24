@@ -20,6 +20,7 @@ import { filoBenvenutoApi, PERCORSO_FILO_BENVENUTO } from "./filo_benvenuto_api.
 import { storicoRegaliApi, PERCORSO_STORICO_REGALI } from "./storico_regali_api.js";
 import { stanzaVivaApi, PERCORSO_STANZA_VIVA } from "./stanza_viva_api.js";
 import { lasciaStanzaApi, PERCORSO_LASCIA_STANZA } from "./lascia_stanza_api.js"; // #381, linea B
+import { filoRiascoltoApi, PERCORSO_FILO_RIASCOLTO } from "./filo_riascolto_api.js"; // #360, linea C
 
 // Web app installabile di Presente (Fase 2, issue #1), servita dallo stesso Worker sotto /app/ (niente Cloudflare Pages).
 // I file stanno in landing/app/. Qui il Worker aggiunge le intestazioni di sicurezza proprie dell'app, diverse da quelle
@@ -93,6 +94,7 @@ export async function app(request, env, f = fetch) {
   if (url.pathname === PERCORSO_STORICO_REGALI) return conIntestazioniApp(await storicoRegaliApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_STANZA_VIVA) return conIntestazioniApp(await stanzaVivaApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_LASCIA_STANZA) return conIntestazioniApp(await lasciaStanzaApi(request, env), url.pathname);
+  if (url.pathname === PERCORSO_FILO_RIASCOLTO) return conIntestazioniApp(await filoRiascoltoApi(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
     return conIntestazioniApp(new Response("Metodo non ammesso.", { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
   }
