@@ -209,3 +209,57 @@ export function creaStanzaViva({ token, fetch: f = (...a) => globalThis.fetch(..
     },
   };
 }
+
+// ── Il «battito» (spec punto 1, passo 5d): con l'app aperta e VISIBILE, un segnale ogni 30 secondi e la rilettura di
+// stati e appuntamenti. In secondo piano nessuna richiesta; tornando visibile si riparte subito. Mai due giri insieme.
+// Rete giù: { persa: true } con gli stati di prima (la vista li mostra grigi). Accesso scaduto o funzione spenta: si
+// ferma. Pagina e timer si passano da fuori, così si prova con node --test.
+export function creaBattito({ viva, quando, pagina, setTimeout: dopo = globalThis.setTimeout, clearTimeout: annulla = globalThis.clearTimeout }) {
+  let attivo = false;
+  let inGiro = false;
+  let timer = null;
+  let giro = 0;
+  let ultimo = { persa: false, letto: false, persone: [], appuntamenti: [] };
+  const visibile = () => !pagina || pagina.visibilityState === "visible";
+  const cancella = () => { if (timer !== null) { annulla(timer); timer = null; } };
+
+  async function battito() {
+    if (!attivo || inGiro || !visibile()) return;
+    cancella();
+    inGiro = true;
+    const questo = giro;
+    let segnale = null, stati = null, appuntamenti = null;
+    try {
+      segnale = await viva.segnale();
+      if (segnale && segnale.ok) [stati, appuntamenti] = await Promise.all([viva.stati(), viva.appuntamenti()]);
+    } catch { segnale = null; }
+    inGiro = false;
+    if (questo !== giro || !attivo) return;
+    if (segnale && (segnale.motivo === "spento" || segnale.motivo === "accesso")) { ferma(); return; }
+    const ok = segnale && segnale.ok && stati && stati.ok && appuntamenti && appuntamenti.ok;
+    ultimo = ok ? { persa: false, letto: true, persone: stati.persone, appuntamenti: appuntamenti.appuntamenti } : { ...ultimo, persa: true };
+    try { quando(ultimo); } catch { /* la vista non deve fermare il battito */ }
+    if (!attivo || !visibile()) return;
+    cancella();
+    timer = dopo(battito, TESTI_FISSA.segnaleOgni);
+  }
+  const cambio = () => { if (visibile()) battito(); else cancella(); };
+  function ferma() {
+    attivo = false;
+    giro++;
+    cancella();
+    if (pagina) pagina.removeEventListener("visibilitychange", cambio);
+  }
+  return {
+    avvia() {
+      if (attivo) return Promise.resolve();
+      attivo = true;
+      if (pagina) pagina.addEventListener("visibilitychange", cambio);
+      return battito();
+    },
+    ferma,
+    subito: () => battito(),
+    attivo: () => attivo,
+    ultimo: () => ultimo,
+  };
+}
