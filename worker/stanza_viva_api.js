@@ -1,7 +1,8 @@
 // Stanza viva (issue #380, spec v1 del CPO del 23/11, design v4 schermata 19), passo 4a della linea CTO.
 //
 //   POST /app/api/stanza/presenza   → 200 { ok, inStanza } — il segnale dell'app aperta e visibile (ogni 30 s)
-//   GET  /app/api/stanza/presenza   → 200 { ok, persone: [{ id, stato, testo, con }] } — lo stato della stanza
+//   GET  /app/api/stanza/presenza   → 200 { ok, persone: [{ id, stato, testo, con, gruppo }] } — lo stato della stanza
+//     («gruppo» = metà del cerchio, passo 5a: «uomini» | «donne» | «altre», da gruppi_stanza, migrazione 20261124212000)
 //     → 401 accesso | 404 spento | 405 metodo | 429 troppe | 503 riprova
 //
 // Chi è lo dice SOLO il token di Supabase (mai il corpo o l'indirizzo). Chi si vede lo decide il database
@@ -104,6 +105,24 @@ export function personeDaRighe(righe, adesso = new Date()) {
   return persone;
 }
 
+const GRUPPI = new Set(["uomini", "donne", "altre"]);
+
+// Righe di gruppi_stanza → Map id → gruppo. undefined se la risposta non ha la forma attesa. Un valore diverso dai tre
+// previsti diventa «altre» (mai la descrizione scritta a mano al telefono).
+export function gruppiDaRighe(righe) {
+  if (!Array.isArray(righe)) return undefined;
+  const gruppi = new Map();
+  for (const r of righe) {
+    const id = String((r || {}).utente_id || "");
+    if (!UUID.test(id)) {
+      console.error("stanza_viva: gruppo non valido");
+      return undefined;
+    }
+    gruppi.set(id, GRUPPI.has(r.gruppo) ? r.gruppo : "altre");
+  }
+  return gruppi;
+}
+
 export async function stanzaVivaApi(request, env, f = fetch) {
   const url = new URL(request.url);
   if (url.pathname !== PERCORSO_STANZA_VIVA) return risposta(404, { ok: false, motivo: "non_trovato" });
@@ -121,7 +140,9 @@ export async function stanzaVivaApi(request, env, f = fetch) {
     if (typeof fatto !== "boolean") return riprova();
     return risposta(200, { ok: true, inStanza: fatto });
   }
-  const persone = personeDaRighe(await rpc(s, "stati_stanza", chi.id, f));
-  if (!persone) return riprova();
-  return risposta(200, { ok: true, persone });
+  const [stati, righeGruppi] = await Promise.all([rpc(s, "stati_stanza", chi.id, f), rpc(s, "gruppi_stanza", chi.id, f)]);
+  const persone = personeDaRighe(stati);
+  const gruppi = gruppiDaRighe(righeGruppi);
+  if (!persone || !gruppi) return riprova();
+  return risposta(200, { ok: true, persone: persone.map((p) => ({ ...p, gruppo: gruppi.get(p.id) || "altre" })) });
 }

@@ -18,7 +18,7 @@ const SITO = "https://presenteincontri.app";
 const ENV = { ACCESSO_APP: "si", SUPABASE_URL: BASE, SUPABASE_SERVICE_ROLE_KEY: "chiave-server-finta" };
 const fa = (secondi) => new Date(Date.now() - secondi * 1000).toISOString();
 
-function supabaseFinto({ utente = 200, righe = [], segnale = true, rpcStato = 200 } = {}) {
+function supabaseFinto({ utente = 200, righe = [], gruppi = [], segnale = true, rpcStato = 200, gruppiStato = 200 } = {}) {
   const viste = [];
   const f = async (url, opzioni = {}) => {
     const u = new URL(url);
@@ -28,6 +28,7 @@ function supabaseFinto({ utente = 200, righe = [], segnale = true, rpcStato = 20
     if (u.pathname === "/auth/v1/user") return utente === 200 ? Response.json({ id: ID }) : new Response("{}", { status: utente });
     if (rpcStato !== 200) return new Response("{}", { status: rpcStato });
     if (u.pathname === "/rest/v1/rpc/stati_stanza") return Response.json(righe);
+    if (u.pathname === "/rest/v1/rpc/gruppi_stanza") return gruppiStato === 200 ? Response.json(gruppi) : new Response("{}", { status: gruppiStato });
     if (u.pathname === "/rest/v1/rpc/segnala_presenza") return Response.json(segnale);
     return new Response("{}", { status: 404 });
   };
@@ -100,9 +101,9 @@ test("GET = stati: online entro 60 s, non in linea dopo, in chiamata; mai l'ora 
   assert.deepEqual(corpo, {
     ok: true,
     persone: [
-      { id: A, stato: "online", testo: "online", con: null },
-      { id: B, stato: "non_in_linea", testo: "non in linea · da poco", con: null },
-      { id: C, stato: "in_chiamata", testo: "in chiamata", con: A },
+      { id: A, stato: "online", testo: "online", con: null, gruppo: "altre" },
+      { id: B, stato: "non_in_linea", testo: "non in linea · da poco", con: null, gruppo: "altre" },
+      { id: C, stato: "in_chiamata", testo: "in chiamata", con: A, gruppo: "altre" },
     ],
   });
   assert.ok(!JSON.stringify(corpo).includes("ultimo_segnale"));
@@ -126,7 +127,35 @@ test("mai visto o da ore: testi senza ora esatta", async () => {
 test("in chiamata con qualcuno che non si può vedere: il database manda null e resta «in chiamata»", async () => {
   const righe = [{ utente_id: A, ultimo_segnale: fa(5), in_chiamata: true, in_chiamata_con: null }];
   const { persone } = await (await stanzaVivaApi(richiesta(), ENV, supabaseFinto({ righe }).f)).json();
-  assert.deepEqual(persone, [{ id: A, stato: "in_chiamata", testo: "in chiamata", con: null }]);
+  assert.deepEqual(persone, [{ id: A, stato: "in_chiamata", testo: "in chiamata", con: null, gruppo: "altre" }]);
+});
+
+test("GET: la metà del cerchio di ogni persona (#380 punto 2) da gruppi_stanza, solo tre valori", async () => {
+  const righe = [
+    { utente_id: A, ultimo_segnale: fa(5), in_chiamata: false, in_chiamata_con: null },
+    { utente_id: B, ultimo_segnale: fa(5), in_chiamata: false, in_chiamata_con: null },
+    { utente_id: C, ultimo_segnale: fa(5), in_chiamata: false, in_chiamata_con: null },
+  ];
+  const gruppi = [
+    { utente_id: A, gruppo: "uomini" },
+    { utente_id: B, gruppo: "donne" },
+    { utente_id: C, gruppo: "mi descrivo come…" },
+    { utente_id: ID, gruppo: "donne" },
+  ];
+  const s = supabaseFinto({ righe, gruppi });
+  const { persone } = await (await stanzaVivaApi(richiesta(), ENV, s.f)).json();
+  assert.deepEqual(persone.map((p) => [p.id, p.gruppo]), [[A, "uomini"], [B, "donne"], [C, "altre"]],
+    "un valore strano diventa «altre»; chi non è tra gli stati non si aggiunge");
+  const [rpc] = s.dove("/rest/v1/rpc/gruppi_stanza");
+  assert.deepEqual(rpc.corpo, { p_persona: ID });
+});
+
+test("GET: se i gruppi non arrivano, 503 riprova (mai un cerchio sbagliato)", async () => {
+  const righe = [{ utente_id: A, ultimo_segnale: fa(5), in_chiamata: false, in_chiamata_con: null }];
+  for (const opzioni of [{ gruppiStato: 500 }, { gruppi: {} }, { gruppi: [{ utente_id: "x", gruppo: "donne" }] }]) {
+    const r = await stanzaVivaApi(richiesta(), ENV, supabaseFinto({ righe, ...opzioni }).f);
+    assert.equal(r.status, 503, JSON.stringify(opzioni));
+  }
 });
 
 test("fuori da una stanza aperta: elenco vuoto", async () => {
