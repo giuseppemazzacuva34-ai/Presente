@@ -478,3 +478,17 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .filo-riascolto { margin: 8px 0 12px; }
 .app .filo-voce { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; background: none; border: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .app .filo-pallino { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--rosso); }
+/* Il profilo, schermata 23 del design v4 (#349, linea B; prototipo #n16): .rec, .pacco, .motivo e .link.rosso del prototipo. */
+.app .profilo .corpo { display: flex; flex-direction: column; gap: 10px; }
+.app .profilo h2 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; margin: 0 0 4px; letter-spacing: -0.01em; }
+.app .profilo h2 em { color: #E8432B; }
+.app .profilo .rec { border: 1px solid rgba(242, 237, 228, 0.18); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 12px; background: #151217; }
+.app .profilo .onda-grande { height: 60px; }
+.app .profilo .rec .bottone-secondario { margin: 0; width: 100%; min-height: 44px; }
+.app .profilo .pacco { border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 16px; padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: #151217; }
+.app .profilo .pacco .q { font-family: var(--serif); font-size: 24px; line-height: 1; }
+.app .profilo .pacco .q small { font-family: var(--sans); font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
+.app .profilo .pacco .bottone { margin: 0; padding: 0 16px; min-height: 44px; }
+.app .profilo .voce-profilo { display: flex; gap: 10px; align-items: center; width: 100%; min-height: 44px; border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 13.5px; color: #F2EDE4; background: none; text-align: left; cursor: pointer; }
+.app .profilo .freccia { margin-left: auto; color: #A8A29A; }
+.app .profilo .link.rosso { color: #F05A43; align-self: center; margin-top: 2px; min-height: 44px; }
