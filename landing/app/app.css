@@ -527,3 +527,27 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .fissa-chiamata .campo label { font-size: 0.85rem; color: var(--grigio); font-weight: 400; }
 .fissa-chiamata .azioni { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
 .fissa-chiamata .azioni .bottone { flex: 1; }
+
+/* Schermata 13 «I tuoi crediti» del design v4 (#349, linea B; prototipo #coin-negozio): vista nel flusso sotto la
+   testata, al posto di #app, pacchetti da toccare (.pacco.on col bordo rosso), «Il più scelto», elenco dei costi, piede come .azioni. */
+.app .tuoi-coin { display: flex; flex-direction: column; gap: 14px; min-height: calc(100dvh - 140px); padding-top: 8px; box-sizing: border-box; }
+.app .tuoi-coin .passo { margin: 0; padding-bottom: 12px; border-bottom: 2px solid #E8432B; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; color: #A8A29A; }
+.app .tuoi-coin h2 { margin: 6px 0 0; font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.1; color: #F2EDE4; }
+.app .tuoi-coin h2 em { font-style: italic; color: #E8432B; }
+.app .tuoi-coin .sub { margin: 0; font-size: 14px; line-height: 1.45; color: #A8A29A; }
+.app .tuoi-coin .pacchi { display: flex; flex-direction: column; gap: 12px; }
+.app .tuoi-coin .pacco { font: inherit; text-align: left; cursor: pointer; width: 100%; min-height: 72px; border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 16px; padding: 14px 18px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; background: #151217; color: #F2EDE4; }
+.app .tuoi-coin .pacco.on { border-color: #E8432B; box-shadow: 0 0 0 1px #E8432B, 0 0 24px rgba(232, 67, 43, 0.25); }
+.app .tuoi-coin .pacco:focus-visible { outline: 2px solid #F2EDE4; outline-offset: 3px; }
+.app .tuoi-coin .pacco .q { font-family: var(--serif); font-size: 34px; line-height: 1; }
+.app .tuoi-coin .pacco .q small { font-family: var(--sans); font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+.app .tuoi-coin .pacco .d { font-size: 13px; color: #A8A29A; }
+.app .tuoi-coin .scelto { justify-self: center; background: #E8432B; color: #0E0D10; border-radius: 999px; padding: 3px 10px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.app .tuoi-coin .pacco .e { font-weight: 700; font-size: 18px; }
+.app .tuoi-coin .costi { margin: 0; padding-top: 12px; border-top: 1px solid rgba(242, 237, 228, 0.14); display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.app .tuoi-coin .costi > div { display: flex; justify-content: space-between; gap: 12px; }
+.app .tuoi-coin .costi dt { color: #A8A29A; }
+.app .tuoi-coin .costi dd { margin: 0; font-weight: 700; color: #F2EDE4; font-variant-numeric: tabular-nums; }
+.app .tuoi-coin .nota { margin: 0; font-size: 13px; color: #A8A29A; }
+.app .tuoi-coin .azioni { position: sticky; bottom: 0; margin-top: auto; display: grid; grid-template-columns: 1fr 1.7fr; gap: 12px; background: #0E0D10; padding: 12px 0 calc(24px + env(safe-area-inset-bottom)); }
+.app .tuoi-coin .azioni > .bottone, .app .tuoi-coin .azioni > .bottone-secondario { margin-left: 0; width: 100%; }
