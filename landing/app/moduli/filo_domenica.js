@@ -69,27 +69,53 @@ async function leggiJson(f, percorso, t) {
 
 export function creaFiloDomenica({ token, fetch: f = globalThis.fetch, aggiorna = () => {} } = {}) {
   let schermata = null;
-  let letto = null;
+  let letto = false;
+  let lettura = null;
+  let lettore = null; // { url, nodo }: lo stesso elemento audio tra un ridisegno e l'altro
+  let rinnovi = 0;
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare il modulo */ } };
+  const gettone = () => Promise.resolve().then(token).catch(() => null);
 
   async function carica() {
-    const t = await Promise.resolve().then(token).catch(() => null);
-    if (!t) return;
-    const p = await leggiJson(f, PERCORSO_PORTE, t);
-    if (!p || !p.porte) return;
-    const a = await leggiJson(f, PERCORSO_ASCOLTA, t);
-    schermata = schermataFiloDomenica({ porte: p.porte, vocale: a ? a.vocale : null });
-    if (schermata) avvisa();
+    try {
+      const t = await gettone();
+      if (!t) return;
+      const p = await leggiJson(f, PERCORSO_PORTE, t);
+      if (!p || !p.porte) return;
+      const a = await leggiJson(f, PERCORSO_ASCOLTA, t);
+      schermata = schermataFiloDomenica({ porte: p.porte, vocale: a ? a.vocale : null });
+    } finally {
+      letto = true;
+      avvisa();
+    }
   }
 
   return {
     // Per la home, che si ridisegna spesso: la lettura parte una volta sola per apertura dell'app.
-    prepara: () => (letto ??= carica()),
-    modello: () => ({ schermata }),
+    prepara: () => (lettura ??= carica()),
+    modello: () => ({ schermata, letto }),
     chiudi() {
       if (!schermata) return;
       schermata = null;
       avvisa();
+    },
+    // Il lettore si crea una volta per link: un ridisegno della home non interrompe la voce.
+    lettore(url, crea) {
+      if (!lettore || lettore.url !== url) lettore = { url, nodo: crea() };
+      return lettore.nodo;
+    },
+    // Link firmato scaduto (5 minuti) o rete caduta: si chiede un link nuovo, al massimo due volte.
+    async rinnova(nodo) {
+      if (rinnovi >= 2 || !schermata || !schermata.scheda) return;
+      rinnovi++;
+      const t = await gettone();
+      if (!t) return;
+      const a = await leggiJson(f, PERCORSO_ASCOLTA, t);
+      const nuova = schedaVocale(a ? a.vocale : null);
+      if (!nuova || !schermata || !schermata.scheda) return;
+      schermata.scheda.url = nuova.url;
+      if (lettore) lettore.url = nuova.url;
+      if (nodo) nodo.src = nuova.url;
     },
   };
 }
@@ -106,7 +132,12 @@ export function vistaFiloDomenica(h, fd, { scopri = () => {} } = {}) {
     s.scheda ? h("div", { classe: "filo-scheda" },
       h("div", { classe: "filo-simbolo", "aria-hidden": "true" }, "!"),
       h("div", {}, h("b", {}, s.scheda.titolo), h("small", {}, s.scheda.sotto)),
-      h("audio", { classe: "filo-lettore", src: s.scheda.url, controls: true, preload: "none", "aria-label": TESTI_FILO_DOMENICA.ascolta }),
+      fd.lettore(s.scheda.url, () => {
+        let nodo = null;
+        nodo = h("audio", { classe: "filo-lettore", src: s.scheda.url, controls: true, preload: "none",
+          "aria-label": TESTI_FILO_DOMENICA.ascolta, onerror: () => fd.rinnova(nodo) });
+        return nodo;
+      }),
       h("details", { classe: "filo-testo" }, h("summary", {}, TESTI_FILO_DOMENICA.leggi), h("p", {}, s.scheda.testo))) : null,
     h("p", { classe: "sub filo-attacco" }, s.attacco),
     h("h2", { id: "filo-domenica-titolo" },
@@ -116,4 +147,17 @@ export function vistaFiloDomenica(h, fd, { scopri = () => {} } = {}) {
     s.rigaRossa ? h("p", { classe: "filo-riga-rossa" }, s.rigaRossa) : null,
     h("p", { classe: "nota" }, s.nota),
     h("button", { classe: "bottone", type: "button", onclick: vai }, s.bottone));
+}
+
+// Nella home, in cima a «La tua stanza» (flusso.js): dalle 21:00 di domenica, prima della sera delle porte, la
+// schermata 36; «Scopri la tua sera» chiude la schermata e fa partire la sera con le porte che si aprono (#5).
+// Fuori dalla sera, con la sera ancora in calcolo o senza Filo: altrimenti() è la vista di sempre.
+export function vistaSeraFilo(h, fd, ks, altrimenti) {
+  const sera = ks && ks.modello().sera;
+  if (!fd || !sera || sera.tipo === "attesa") return altrimenti();
+  fd.prepara();
+  const m = fd.modello();
+  if (!m.letto) return h("p", { classe: "nota", role: "status" }, "Un attimo…");
+  if (!m.schermata) return altrimenti();
+  return vistaFiloDomenica(h, fd, { scopri: () => ks.riavviaAnimazione() });
 }

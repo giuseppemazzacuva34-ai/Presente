@@ -108,6 +108,15 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
     }),
     scheda: (persona) => schedaChiave(stato, persona),
     saltaAnimazione: fermaAnimazione,
+    // #360 schermata 36: dopo «Scopri la tua sera» le porte si aprono ora, anche se l'animazione era già passata
+    // mentre si guardava il Filo. Con «riduci movimento» (animazioneMs 0) l'esito si vede subito.
+    riavviaAnimazione() {
+      if (!sera || sera.tipo === "attesa" || animazioneMs <= 0) return;
+      animata = true;
+      animazione = true;
+      dopo(fermaAnimazione, animazioneMs);
+      avvisa();
+    },
     apriDai: (a, nome) => apri("dai", a, { ...finestraDai(nome), frase: "" }),
     apriFrase: (a, nome) => {
       const d = data(a);
