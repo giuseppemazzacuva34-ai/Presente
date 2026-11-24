@@ -38,6 +38,7 @@ import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#3
 import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
+import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -46,6 +47,7 @@ let appuntiStanza = null;
 let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
+let schermoProfilo = null; // «Il profilo» dal cerchio in alto a destra, schermata 23 (#349, linea B)
 let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
 let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
 let filoRiascolto = null; // voce «Il vocale del Filo» nella stanza (#360, linea C)
@@ -200,6 +202,7 @@ export function avvia(elemento, opzioni = {}) {
   regaloRicevuto = (telefono && opzioni.regaloRicevuto) || null;
   regaliProfilo = telefono && opzioni.storicoRegali ? creaSchermoRegali({ storico: opzioni.storicoRegali, disegna: () => disegna(),
     errore: (m) => MESSAGGI_SALVATAGGIO[m] || "Non riusciamo a leggere i tuoi regali. Riprova tra poco." }) : null;
+  schermoProfilo = telefono && opzioni.coinProfilo ? creaSchermoProfilo({ coin: opzioni.coinProfilo, storico: opzioni.storicoRegali, disegna: () => disegna() }) : null;
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
   supporto = (telefono && opzioni.aiuto) || null;
@@ -699,6 +702,7 @@ function schermoSegnala(m, alla = () => telefono.torna()) {
 const titoloSegnala = (m) => (m.schermo && m.schermo.titolo) || "Segnala un problema";
 
 function disegna() {
+  collegaCerchio(document, { nome: nomeMio(), apri: profiloApribile() ? () => schermoProfilo.apri() : null }); // schermata 23 (#349, linea B)
   if (telefono) {
     ultimaFirma = telefono.firma();
     const m = telefono.modello();
@@ -710,6 +714,7 @@ function disegna() {
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
   if (regaliProfilo && regaliProfilo.aperto()) { radice.replaceChildren(regaliProfilo.schermo(h)); return; }
+  if (schermoProfilo && schermoProfilo.aperto()) { radice.replaceChildren(schermoIlProfilo()); return; }
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
   if (portaSvelamento && segnalaDaPorta(portaSvelamento.modello().segnala)) { radice.replaceChildren(schermoSegnalaPorta()); return; }
   if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
@@ -1144,12 +1149,12 @@ const SCHERMATE = {
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
           : "Era un'anteprima: niente è stato inviato o salvato.")],
-      archivio
+      archivio && !schermoProfilo
         ? [h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(4) }, "Modifica il profilo"),
           h("button", { classe: "link", type: "button", onclick: () => {
             if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
           } }, "Elimina il mio account")]
-        : [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")]);
+        : archivio ? [] : [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")]);
   },
 };
 
@@ -1692,4 +1697,24 @@ export function filoCambiato() {
 function dopoBenvenutoFilo() {
   const titolo = radice && radice.querySelector("#tua-stanza-titolo");
   if (titolo) { titolo.tabIndex = -1; titolo.focus({ preventScroll: true }); }
+}
+
+// «Il profilo» (schermata 23 del design v4, #349, linea B): si apre dal cerchio in alto a destra solo nella home a
+// profilo completo e fuori dalle chiamate. Le righe riportano ai passi dell'iscrizione già esistenti (risposte, foto,
+// chi cerchi); «Elimina il mio account» sta solo qui. Saldo e regali li legge creaSchermoProfilo dal server.
+function profiloApribile() {
+  if (!schermoProfilo || PASSI[stato.passo].id !== "fatto") return false;
+  try { return !telefono || telefono.modello().schermo.tipo === "nessuna"; } catch { return false; }
+}
+function schermoIlProfilo() {
+  const d = schermoProfilo.dati();
+  const daQui = (id) => () => { schermoProfilo.chiudi(); vai(PASSI.findIndex((p) => p.id === id)); };
+  return vistaProfilo(h, statoProfilo({ nome: stato.nome, eta: etaDa(stato.dataNascita), citta: nomeVisibile(stato.provincia),
+    voce: stato.voce, saldo: d.saldo, regali: d.regali, inStanza: inStanzaAperta() }), {
+    onda: ondaGrande(), risposte: daQui("risposte"), foto: daQui("foto"), preferenze: daQui("cerchi"),
+    regali: regaliProfilo ? () => regaliProfilo.apri() : null,
+    elimina: () => {
+      if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
+    },
+    torna: () => schermoProfilo.chiudi(), errore: salvataggio.errore });
 }

@@ -160,6 +160,8 @@ async function preparaAccesso() {
       mostra: (avviso) => mostraAvvisoRegalo(document.querySelector(".pagina.app"), avviso) });
     // «I tuoi regali» nel profilo (#349, linea B): GET /app/api/regali/storico col proprio token.
     const storicoRegali = creaStoricoRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    // «Il profilo» (#349, schermata 23, linea B): saldo letto col proprio token quando si apre il profilo.
+    const coinProfilo = creaCoinServer({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Saldo dei Coin nella testata (#349, linea B): dal server col proprio token, all'avvio e al ritorno sull'app.
     // Passo 5c: nuovo indirizzo /app/api/coin (saldo + prima stanza usata) e momento (mai in chiamata, svelamento, porte).
     collegaSaldo({ saldo: creaSaldo({ coin: creaCoinServer({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
@@ -170,7 +172,7 @@ async function preparaAccesso() {
     const filoDomenica = creaFiloDomenica({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => chiaviCambiate() });
     const filoLunedi = creaFiloLunedi({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => filoCambiato() });
     const filoRiascolto = creaFiloRiascolto({ token: () => accesso.token(), fetch: window.fetch.bind(window), aggiorna: () => filoCambiato() });
-    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali, regaloRicevuto, filoDomenica, filoLunedi, filoRiascolto };
+    return { aiuto, accesso, archivio, lista, zona, stanza, telefono, sentinella, segnala, blocca, chiavi, storico, appunti, esiti, sanzioni, erroreLink: dalLink && !dalLink.ok ? dalLink.motivo : null, porta, avvisiPorte, vostriIncontri, incontro, valutazione, riepilogo, regali, storicoRegali, coinProfilo, regaloRicevuto, filoDomenica, filoLunedi, filoRiascolto };
   } catch {
     return {}; // senza configurazione si resta in anteprima
   }
