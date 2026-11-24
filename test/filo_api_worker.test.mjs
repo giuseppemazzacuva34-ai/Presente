@@ -58,14 +58,15 @@ test("metodi diversi da GET: 405 con allow", async () => {
 });
 
 test("GET: pannello con le stanze del Filo e i soli nomi di battesimo; il Filo è quello del token", async () => {
-  const s = supabaseFinto({ rpc: { stanze_del_filo: [RIGA], nomi_stanza_filo: [{ nome: "Anna" }, { nome: "Luca" }] } });
+  const s = supabaseFinto({ rpc: { stanze_del_filo: [RIGA], nomi_stanza_filo: [{ nome: "Anna" }, { nome: "Luca" }], porte_stanza_filo: 2 } });
   const r = await filoApi(richiesta({ query: `?filo=${ALTRO}` }), ENV, s.f);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.deepEqual(await r.json(), {
     ok: true, regole: REGOLE_FILO,
-    stanze: [{ id: STANZA, nome: "Stanza 1", apreIl: RIGA.apre_il, chiudeIl: RIGA.chiude_il, nomi: ["Anna", "Luca"] }],
+    stanze: [{ id: STANZA, nome: "Stanza 1", apreIl: RIGA.apre_il, chiudeIl: RIGA.chiude_il, nomi: ["Anna", "Luca"], porte: 2 }],
   });
+  assert.deepEqual({ ...s.rpc("porte_stanza_filo")[0].corpo, p_ora: "x" }, { p_filo: ID, p_stanza: STANZA, p_ora: "x" });
   const [chiamata] = s.rpc("stanze_del_filo");
   assert.equal(chiamata.corpo.p_filo, ID, "un «filo» scritto nella richiesta non conta");
   assert.ok(!Number.isNaN(Date.parse(chiamata.corpo.p_ora)));
