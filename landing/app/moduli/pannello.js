@@ -6,6 +6,7 @@
 import { MOTIVI_MODULO } from "./segnala.js";
 import { REGOLE_COMMUNITY, ID_REGOLE, testoRegola, regolaProposta } from "./regole_community.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
+import { MOTIVI_APP } from "./lascia_stanza.js";
 
 const PERCORSO = "/app/api/pannello";
 const ATTESA_MS = 10000;
@@ -167,6 +168,32 @@ export function testoMandata(iso) {
   return Number.isNaN(d.getTime()) ? "" : `Email mandata il ${GIORNO_MESE.format(d)} alle ${ORA.format(d)}.`;
 }
 
+// #381 passo 6c: perché si lascia la stanza. Una voce per settimana (la più recente prima): titolo con il totale,
+// motivi con i testi della schermata 22 (stessa fonte, MOTIVI_APP) e testi liberi ancora presenti. Mai nomi: il
+// Worker e il database non li danno. Righe non valide si scartano.
+const GIORNO_USCITE = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", timeZone: "UTC" });
+export function vociUscite(righe) {
+  if (!Array.isArray(righe)) return [];
+  const settimane = new Map();
+  for (const r of righe) {
+    if (!r || typeof r.settimana !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.settimana)) continue;
+    const data = new Date(r.settimana + "T00:00:00Z");
+    const ordine = MOTIVI_APP.findIndex((m) => m.id === r.motivo);
+    if (Number.isNaN(data.getTime()) || ordine < 0 || !Number.isInteger(r.quante) || r.quante < 0) continue;
+    if (!settimane.has(r.settimana)) settimane.set(r.settimana, { data, righe: [] });
+    settimane.get(r.settimana).righe.push({ ordine, quante: r.quante, testi: Array.isArray(r.testi) ? r.testi.filter((t) => typeof t === "string" && t.trim()) : [] });
+  }
+  return [...settimane.entries()].sort(([a], [b]) => (a < b ? 1 : -1)).map(([, { data, righe: rr }]) => {
+    rr.sort((a, b) => a.ordine - b.ordine);
+    const totale = rr.reduce((t, r) => t + r.quante, 0);
+    return {
+      titolo: `Settimana del ${GIORNO_USCITE.format(data)} · ${totale} ${totale === 1 ? "uscita" : "uscite"}`,
+      motivi: rr.map((r) => `${MOTIVI_APP[r.ordine].testo}: ${r.quante}`),
+      testi: rr.flatMap((r) => r.testi),
+    };
+  });
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -234,6 +261,10 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
     async ricorsi() {
       const d = await chiama("/ricorsi");
       return d.ok ? { ok: true, ricorsi: Array.isArray(d.ricorsi) ? d.ricorsi : [] } : d;
+    },
+    async uscite() {
+      const d = await chiama("/uscite");
+      return d.ok ? { ok: true, uscite: Array.isArray(d.uscite) ? d.uscite : [] } : d;
     },
     async decidiRicorso({ id, esito, testo }) {
       if (!UUID.test(id || "")) return { ok: false, motivo: "id" };

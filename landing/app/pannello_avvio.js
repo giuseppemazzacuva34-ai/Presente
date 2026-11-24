@@ -2,7 +2,7 @@
 // Si entra con lo stesso accesso dell'app (/app/). Chi decide lo controlla il Worker (tabella moderatori): qui la
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML.
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO }
+import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO, vociUscite }
   from "/app/moduli/pannello.js";
 
 const radice = document.getElementById("pannello");
@@ -75,7 +75,30 @@ async function mostraCoda(p) {
       h("p", { class: "nota", testo: [v.chi, ...v.note].join(" · ") })))),
     h("div", { class: "azioni" },
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Aggiorna" }),
-      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Ricorsi in attesa" })),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Ricorsi in attesa" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraUscite(p), testo: "Perché si lascia la stanza" })),
+  );
+}
+
+// #381 passo 6c: motivi di «Lascia la stanza» delle ultime 8 settimane, senza nomi. I testi liberi spariscono 30
+// giorni dopo la chiusura della stanza (resta il conteggio).
+async function mostraUscite(p) {
+  avvisa("");
+  const r = await p.uscite();
+  if (!r.ok) { avvisa(MESSAGGI[r.motivo] || MESSAGGI.riprova); return; }
+  const voci = vociUscite(r.uscite);
+  mostra(
+    h("h1", { testo: "Perché si lascia la stanza" }),
+    h("p", { class: "sottotitolo", testo: voci.length ? "Ultime 8 settimane, senza nomi. I testi scritti spariscono 30 giorni dopo la chiusura della stanza."
+      : "Nessuna uscita nelle ultime 8 settimane." }),
+    h("ul", { class: "coda" }, voci.map((v) => h("li", { class: "voce-coda" },
+      h("h2", { testo: v.titolo }),
+      h("ul", {}, v.motivi.map((m) => h("li", { testo: m }))),
+      v.testi.length ? h("p", { class: "nota", testo: "Scritto da chi ha scelto «Altro»:" }) : null,
+      v.testi.length ? h("ul", {}, v.testi.map((t) => h("li", { class: "racconto", testo: t }))) : null))),
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna alle segnalazioni" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraUscite(p), testo: "Aggiorna" })),
   );
 }
 
