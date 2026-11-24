@@ -101,7 +101,7 @@ function riquadroVocale(p, v, tipo, i) {
     zona.replaceChildren(
       lettore,
       h("p", { class: "nota", testo: `Durata ${durataVocale(r.vocale.durata) || "non nota"}` }),
-      h("h4", { id: idTesto, testo: "Testo del vocale" }),
+      h("h3", { id: idTesto, testo: "Testo del vocale" }),
       h("p", { class: "racconto", "aria-labelledby": idTesto, testo: r.vocale.testo || "(senza testo)" }),
       h("div", { class: "azioni" }, togli),
     );
