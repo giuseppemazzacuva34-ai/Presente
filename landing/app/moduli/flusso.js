@@ -39,6 +39,8 @@ import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#3
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
+import { disponiStanza, vistaCerchioStanza } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
+import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, creaStanzaViva, creaBattito } from "./appuntamenti_stanza.js"; // schermate 19-20 (#380)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -52,6 +54,12 @@ let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, l
 let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
 let filoRiascolto = null; // voce «Il vocale del Filo» nella stanza (#360, linea C)
 let uscitaStanza = null; // «Lascia la stanza», schermata 22 (#381, linea B)
+// Stanza viva e «Fissa una chiamata» (#380, linea A, schermate 19-20): stati e appuntamenti dal battito ogni 30 s;
+// «fissa» = schermata 20 aperta (resta tra un ridisegno e l'altro). Solo in memoria, mai salvati sul telefono.
+let stanzaViva = null;
+let battito = null;
+let battitoAvviato = false;
+const viva = { letto: false, persa: false, stati: new Map(), appuntamenti: [], nascosti: new Set(), fissa: null, invio: false, avviso: "", errore: "" };
 const uscita = { nodo: null, fatto: "" }; // schermata aperta (resta tra un ridisegno e l'altro) e testo dopo l'uscita
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
@@ -214,6 +222,8 @@ export function avvia(elemento, opzioni = {}) {
   filoLunedi = (telefono && opzioni.filoLunedi) || null;
   filoRiascolto = (telefono && opzioni.filoRiascolto) || null;
   uscitaStanza = telefono && accesso ? creaUscita({ token: () => accesso.token() }) : null; // col token di chi è entrato
+  stanzaViva = telefono && accesso ? creaStanzaViva({ token: () => accesso.token() }) : null; // #380, linea A
+  battito = stanzaViva ? creaBattito({ viva: stanzaViva, pagina: document, quando: battitoArrivato }) : null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -561,17 +571,62 @@ function bloccoTuaStanza() {
   } else if (st.stato === "pronta") {
     // Con un testo della spec v1.3 il pulsante è spento ma resta raggiungibile da tastiera e lettore di schermo
     // (aria-disabled); il tocco non chiama (telefono.chiama controlla di nuovo). Mentre si è in chiamata: disabled.
-    contenuto = h("ul", { classe: "compagni" }, st.persone.filter((p) => !scheda.bloccate.has(p.id)).map((p) => {
+    // #380 (schermata 19): con gli stati del battito, cerchio diviso, stato scritto sotto il nome e CHIAMA o FISSA.
+    if (battito && !battitoAvviato) { battitoAvviato = true; battito.avvia(); }
+    const persone = st.persone.filter((p) => !scheda.bloccate.has(p.id));
+    const nomi = new Map(persone.map((p) => [p.id, nomeScheda(p)]));
+    const adesso = new Date();
+    const aperti = new Map(viva.appuntamenti.filter((a) => a.stato === "proposto" || a.stato === "confermato").map((a) => [a.altra, a]));
+    const riga = (p) => {
       const conTesto = !p.chiama && Boolean(p.etichetta) && p.etichetta !== "Chiama";
-      return h("li", { classe: "compagno" },
-        h("div", {}, h("strong", {}, p.titolo), p.sottotitolo ? h("span", { classe: "nota" }, p.sottotitolo) : null),
-        h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione,
+      const sp = viva.letto ? viva.stati.get(p.id) : null;
+      const statoScritto = sp && !viva.persa ? rigaStato(sp, nomi) : "";
+      const az = viva.letto ? azioneRiga({ etichetta: p.etichetta, stato: sp ? sp.stato : "", adesso, appuntamento: aperti.get(p.id) || null }) : null;
+      let pulsante;
+      if (az && az.tipo === "fissa") {
+        pulsante = h("button", { classe: "bottone-secondario", type: "button", disabled: m.attesa,
+          "aria-label": `${TESTI_FISSA.titolo(nomeScheda(p))}${az.motivo ? ` (${az.motivo})` : ""}`, onclick: () => apriFissa(p) }, TESTI_FISSA.fissa);
+      } else if (az && az.tipo === "testo") {
+        pulsante = h("button", { classe: "bottone-secondario", type: "button", "aria-label": `${p.titolo}: ${az.testo}`, "aria-disabled": "true",
+          disabled: m.attesa, onclick: () => {} }, az.testo);
+      } else if (az) {
+        pulsante = h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.chiama ? p.descrizione : `${TESTI_FISSA.chiama} ${p.titolo}`, disabled: m.attesa,
+          onclick: () => telefono.chiama(p.id) }, TESTI_FISSA.chiama);
+      } else {
+        pulsante = h("button", { classe: "bottone-secondario", type: "button", "aria-label": p.descrizione,
           "aria-disabled": conTesto ? "true" : null, disabled: m.attesa || (!p.chiama && !conTesto),
-          onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama"), menuDellaScheda(p),
+          onclick: () => telefono.chiama(p.id) }, p.etichetta || "Chiama");
+      }
+      return h("li", { classe: "compagno" },
+        h("div", {},
+          h("strong", {}, sp && !viva.persa ? h("span", { classe: `punto-stato ${sp.stato}`, "aria-hidden": "true" }) : null, p.titolo),
+          p.sottotitolo || statoScritto ? h("span", { classe: "nota" }, [p.sottotitolo, statoScritto].filter(Boolean).join(" · ")) : null),
+        pulsante, menuDellaScheda(p),
         chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null,
         appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null,
         regaliStanza ? vistaRegaliScheda(h, regaliStanza, p.id, nomeScheda(p)) : null);
-    }));
+    };
+    if (viva.letto && persone.length) {
+      const PRESENTO = { uomini: "uomo", donne: "donna" };
+      const gruppo = (id) => (viva.stati.get(id) || {}).gruppo;
+      const disp = disponiStanza(persone.map((p) => ({ id: p.id, presento: PRESENTO[gruppo(p.id)] || "altre" })),
+        { id: "tu", presento: stato.miPresento });
+      const perId = new Map(persone.map((p) => [p.id, p]));
+      const stati = viva.persa ? {} : Object.fromEntries(persone.map((p) => [p.id, (viva.stati.get(p.id) || {}).stato]));
+      contenuto = [
+        viva.persa ? h("p", { classe: "nota connessione-persa", role: "status" }, TESTI_FISSA.connessione) : null,
+        vistaCerchioStanza(h, disp, { stati }),
+        h("p", { classe: "legenda-stati", "aria-hidden": "true" },
+          h("span", {}, h("span", { classe: "punto-stato online" }), "online"),
+          h("span", {}, h("span", { classe: "punto-stato in_chiamata" }), "in chiamata"),
+          h("span", {}, h("span", { classe: "punto-stato non_in_linea" }), "non in linea")),
+        vistaAvvisiAppuntamenti(nomi, adesso),
+        disp.elenco.map((g) => [g.titolo ? h("h3", { classe: "gruppo-stanza" }, g.titolo) : null,
+          h("ul", { classe: "compagni" }, g.persone.map((x) => riga(perId.get(x.id))))]),
+      ];
+    } else {
+      contenuto = h("ul", { classe: "compagni" }, persone.map(riga));
+    }
   } else if (st.stato === "vuota") {
     contenuto = h("p", { classe: "nota" }, "Qui troverai le persone della tua stanza quando apre, il lunedì alle 9:00.");
   } else if (st.stato === "errore") {
@@ -590,6 +645,8 @@ function bloccoTuaStanza() {
     st.stato === "pronta" && !st.chiusa ? h("p", { classe: "nota" }, "Chiamate solo voce da 15 minuti. Niente numeri, cognomi o social prima della porta.") : null,
     st.stato === "pronta" && !st.chiusa && uscitaStanza ? h("button", { classe: "link", type: "button", disabled: m.attesa, onclick: apriUscita }, TESTI_USCITA.lascia) : null,
     uscita.fatto ? h("p", { classe: "nota", role: "status" }, uscita.fatto) : null,
+    viva.avviso ? h("p", { classe: "nota", role: "status" }, viva.avviso) : null,
+    errore(viva.errore),
     m.attesa ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
     errore(m.errore));
 }
@@ -710,6 +767,7 @@ function disegna() {
   }
   // Schermata 22 (#381): sempre lo stesso nodo, così scelta e testo restano anche se la pagina si ridisegna.
   if (uscita.nodo) { if (radice.firstChild !== uscita.nodo || radice.childNodes.length !== 1) radice.replaceChildren(uscita.nodo); return; }
+  if (viva.fissa && stanzaViva) { radice.replaceChildren(schermoFissa()); return; } // schermata 20 (#380)
   if (difficolta.aperta) { radice.replaceChildren(schermoDifficolta()); return; }
   if (scheda.segnala) { radice.replaceChildren(schermoSegnalaScheda()); return; }
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
@@ -1676,6 +1734,126 @@ function bloccoRiepilogoMio() {
 // ---------------------------------------------------------------------------------------------------------------
 // «Lascia la stanza» (#381, linea «sviluppatore-b»): schermata 22 a tutta pagina dal link in fondo alla stanza.
 // Il server decide (stanza aperta, nessuna chiamata in corso); dopo l'uscita la stanza si rilegge e resta il testo.
+// ── Stanza viva e «Fissa una chiamata» (#380, linea A, schermate 19-20) ──
+// Arrivano stati e appuntamenti (ogni 30 s, solo con l'app visibile). Si ridisegna solo se la stanza è sullo schermo,
+// così un'altra schermata (o un testo che si sta scrivendo) non si tocca.
+function battitoArrivato(r) {
+  viva.letto = r.letto;
+  viva.persa = r.persa;
+  viva.stati = new Map((r.persone || []).map((p) => [p.id, p]));
+  viva.appuntamenti = r.appuntamenti || [];
+  if (!viva.fissa && radice && radice.querySelector("#tua-stanza-titolo")) disegna();
+}
+
+// Avvisi in cima alla stanza (spec punti 5-6): solo per le due persone dell'appuntamento.
+function vistaAvvisiAppuntamenti(nomi, adesso) {
+  const avvisi = avvisiAppuntamenti(viva.appuntamenti, nomi, adesso).filter((a) => !viva.nascosti.has(`${a.id}:${a.tipo}`));
+  if (!avvisi.length) return null;
+  return h("div", { classe: "avvisi-appuntamenti" }, avvisi.map((a) =>
+    h("div", { classe: a.urgente ? "avviso-appuntamento urgente" : "avviso-appuntamento", role: a.urgente ? "alert" : null },
+      h("p", {}, a.testo),
+      a.messaggio ? h("p", { classe: "nota" }, `«${a.messaggio}»`) : null,
+      h("div", { classe: "azioni" }, a.azioni.map((x) => h("button", {
+        classe: x.azione === "conferma" || x.azione === "chiama" ? "bottone" : "bottone-secondario", type: "button",
+        disabled: viva.invio, onclick: () => azioneAvviso(a, x.azione) }, x.testo))))));
+}
+
+const FATTO_AVVISO = { conferma: "Chiamata fissata.", no: "Risposta mandata.", annulla: "Appuntamento annullato." };
+async function azioneAvviso(a, azione) {
+  if (azione === "chiudi") { viva.nascosti.add(`${a.id}:${a.tipo}`); disegna(); return; }
+  if (azione === "chiama") { telefono.chiama(a.altra); return; }
+  if (azione === "altro") {
+    const p = telefono.modello().stanza.persone.find((x) => x.id === a.altra);
+    if (p) apriFissa(p, { modo: "altro", appuntamento: a.id });
+    return;
+  }
+  if (viva.invio) return;
+  viva.invio = true; viva.avviso = ""; viva.errore = "";
+  disegna();
+  const r = await stanzaViva.rispondi(a.id, azione);
+  viva.invio = false;
+  if (r.ok) viva.avviso = FATTO_AVVISO[azione] || ""; else viva.errore = r.testo || TESTI_FISSA.generico;
+  await battito.subito();
+  disegna();
+}
+
+// Schermata 20: giorno e ora solo tra quelli che il server accetterebbe, messaggio facoltativo.
+function apriFissa(p, { modo = "proponi", appuntamento = null } = {}) {
+  const sp = viva.stati.get(p.id);
+  viva.fissa = { con: p.id, nome: nomeScheda(p), titolo: p.titolo, stato: sp ? rigaStato(sp, new Map()) : "", modo, appuntamento,
+    giorni: null, giorno: "", ora: "", messaggio: "", invio: false, errore: "" };
+  viva.avviso = ""; viva.errore = "";
+  disegna();
+  window.scrollTo(0, 0);
+  const titolo = radice.querySelector("h1");
+  if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: true }); }
+  stanzaViva.ore(p.id).then((r) => {
+    const f = viva.fissa;
+    if (!f || f.con !== p.id) return;
+    f.giorni = r.ok ? giorniEOre(r.ore, new Date()) : [];
+    f.giorno = f.giorni.length ? f.giorni[0].id : "";
+    if (!r.ok) f.errore = r.testo || TESTI_FISSA.generico;
+    disegna();
+  });
+}
+
+function chiudiFissa() {
+  viva.fissa = null;
+  disegna();
+  const titolo = radice.querySelector("#tua-stanza-titolo");
+  if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus(); }
+}
+
+async function inviaFissa() {
+  const f = viva.fissa;
+  if (!f || f.invio || !f.ora) return;
+  f.invio = true; f.errore = "";
+  disegna();
+  const r = f.modo === "altro"
+    ? await stanzaViva.rispondi(f.appuntamento, "altro", { quando: f.ora, messaggio: f.messaggio })
+    : await stanzaViva.proponi({ con: f.con, quando: f.ora, messaggio: f.messaggio });
+  if (viva.fissa !== f) return;
+  if (!r.ok) { f.invio = false; f.errore = r.testo || TESTI_FISSA.generico; disegna(); return; }
+  viva.avviso = TESTI_FISSA.fatto(f.nome);
+  viva.fissa = null;
+  await battito.subito();
+  chiudiFissa();
+}
+
+function schermoFissa() {
+  const f = viva.fissa;
+  const giorno = (f.giorni || []).find((g) => g.id === f.giorno);
+  const scelta = (attiva, testo, onclick) => h("button", { classe: attiva ? "scelta scelta-attiva" : "scelta", type: "button",
+    "aria-pressed": attiva ? "true" : "false", disabled: f.invio, onclick }, testo);
+  let corpo;
+  if (f.giorni === null) corpo = h("p", { classe: "nota", role: "status" }, TESTI_FISSA.orari);
+  else if (!f.giorni.length) corpo = f.errore ? null : h("p", { classe: "nota" }, TESTI_FISSA.nessunOrario);
+  else {
+    corpo = [
+      h("p", { classe: "etichetta", id: "fissa-giorno" }, TESTI_FISSA.giorno),
+      h("div", { classe: "scelte", role: "group", "aria-labelledby": "fissa-giorno" },
+        f.giorni.map((g) => scelta(g.id === f.giorno, g.nome, () => { f.giorno = g.id; f.ora = ""; disegna(); }))),
+      h("p", { classe: "etichetta", id: "fissa-ora" }, TESTI_FISSA.ora),
+      h("div", { classe: "scelte", role: "group", "aria-labelledby": "fissa-ora" },
+        (giorno ? giorno.ore : []).map((o) => scelta(o.iso === f.ora, o.testo, () => { f.ora = o.iso; disegna(); }))),
+      h("div", { classe: "campo" },
+        h("label", { for: "fissa-messaggio" }, TESTI_FISSA.messaggio),
+        h("textarea", { id: "fissa-messaggio", rows: "3", maxlength: String(TESTI_FISSA.massimo), placeholder: TESTI_FISSA.segnaposto,
+          disabled: f.invio, oninput: (e) => { f.messaggio = e.target.value; } }, f.messaggio)),
+      h("p", { classe: "nota" }, TESTI_FISSA.spiega(f.nome)),
+    ];
+  }
+  return h("section", { classe: "schermata fissa-chiamata" },
+    h("p", { classe: "sopratitolo" }, [f.titolo, f.stato].filter(Boolean).join(" · ")),
+    h("h1", {}, "Fissa una chiamata ", h("em", {}, `con ${f.nome}.`)),
+    corpo,
+    errore(f.errore),
+    f.invio ? h("p", { classe: "nota", role: "status" }, "Un attimo…") : null,
+    h("div", { classe: "azioni" },
+      h("button", { classe: "bottone-secondario", type: "button", disabled: f.invio, onclick: chiudiFissa }, TESTI_FISSA.annulla),
+      h("button", { classe: "bottone", type: "button", disabled: f.invio || !f.ora, onclick: inviaFissa }, TESTI_FISSA.proponi)));
+}
+
 function apriUscita() {
   if (!uscitaStanza || uscita.nodo) return;
   const chiudi = () => { uscita.nodo = null; disegna(); };

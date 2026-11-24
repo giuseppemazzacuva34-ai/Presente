@@ -492,3 +492,38 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .profilo .voce-profilo { display: flex; gap: 10px; align-items: center; width: 100%; min-height: 44px; border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 13.5px; color: #F2EDE4; background: none; text-align: left; cursor: pointer; }
 .app .profilo .freccia { margin-left: auto; color: #A8A29A; }
 .app .profilo .link.rosso { color: #F05A43; align-self: center; margin-top: 2px; min-height: 44px; }
+
+/* Stanza viva (#380, linea A, schermata 19): cerchio diviso, punto dello stato (mai solo colore: lo stato è scritto
+   sotto il nome), avvisi degli appuntamenti. «Fissa una chiamata» (schermata 20). */
+.cerchio-stanza { position: relative; width: 190px; height: 190px; margin: 0.5rem auto 0; }
+.cerchio-stanza svg { width: 100%; height: 100%; overflow: visible; }
+.cerchio-stanza .asse { stroke: rgba(242, 237, 228, .22); stroke-width: 1; }
+.cerchio-stanza .p { fill: transparent; stroke: rgba(242, 237, 228, .55); stroke-width: 1.5; }
+.cerchio-stanza .p.on { fill: var(--avorio); stroke: var(--avorio); }
+.cerchio-stanza .p.ch { fill: var(--rosso); stroke: var(--rosso); }
+.cerchio-stanza .p.tu { fill: var(--rosso); stroke: var(--rosso); }
+.cerchio-stanza .p.on:not(.tu) { animation: pulsa 2.4s ease-in-out infinite; }
+@keyframes pulsa { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .cerchio-stanza .p.on:not(.tu) { animation: none; } }
+.cerchio-stanza .et { position: absolute; top: 50%; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.cerchio-stanza .et.sx { left: -6px; transform: translate(-100%, -50%); }
+.cerchio-stanza .et.dx { right: -6px; transform: translate(100%, -50%); }
+.punto-stato { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; margin-right: 0.4rem; vertical-align: 0.05em; border: 1.5px solid rgba(242, 237, 228, .55); }
+.punto-stato.online { background: var(--avorio); border-color: var(--avorio); }
+.punto-stato.in_chiamata { background: var(--rosso); border-color: var(--rosso); }
+.legenda-stati { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.82rem; color: var(--grigio); margin: 0.75rem 0; }
+.gruppo-stanza { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grigio); font-weight: 600; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--linea); padding-bottom: 0.5rem; }
+.avvisi-appuntamenti { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
+.avviso-appuntamento { border: 1px dashed var(--rosso); border-radius: 0.75rem; padding: 0.7rem 0.9rem; }
+.avviso-appuntamento.urgente { border-style: solid; }
+.avviso-appuntamento p { margin: 0 0 0.4rem; overflow-wrap: anywhere; }
+.avviso-appuntamento .azioni { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.connessione-persa { text-align: center; }
+.fissa-chiamata .sopratitolo { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grigio); font-weight: 600; margin: 0 0 0.75rem; }
+.fissa-chiamata h1 em { color: var(--rosso); display: block; }
+.fissa-chiamata .scelte .scelta { min-width: 5.5rem; min-height: 44px; }
+.fissa-chiamata textarea { width: 100%; box-sizing: border-box; font-family: var(--serif); font-style: italic; font-size: max(16px, 1.1rem); color: var(--avorio); background: #1c1a1f; border: 1px solid var(--linea); border-radius: 0.75rem; padding: 0.8rem 1rem; }
+.fissa-chiamata textarea:focus-visible { border-color: var(--avorio); outline: 2px solid var(--avorio); outline-offset: 2px; }
+.fissa-chiamata .campo label { font-size: 0.85rem; color: var(--grigio); font-weight: 400; }
+.fissa-chiamata .azioni { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+.fissa-chiamata .azioni .bottone { flex: 1; }
