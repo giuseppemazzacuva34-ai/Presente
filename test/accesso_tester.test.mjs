@@ -157,6 +157,17 @@ test("config.json: con «tester» l'accesso è acceso e dice il modo; l'elenco d
   assert.equal(no.accesso, false);
 });
 
+test("config.json: con «tester» dice solo SE ci sono chiave server ed elenco tester (sì/no, mai i valori)", async () => {
+  const pieno = await configurazione(ENV).json();
+  assert.deepEqual(pieno.controlli, { chiaveServer: true, elencoTester: true });
+  const vuoto = await configurazione({ ...ENV, SUPABASE_SERVICE_ROLE_KEY: " ", EMAIL_TESTER: "" }).json();
+  assert.deepEqual(vuoto.controlli, { chiaveServer: false, elencoTester: false });
+  assert.equal(vuoto.pronta, true);
+  assert.doesNotMatch(JSON.stringify(pieno), /chiave-server-finta|example\.com/);
+  const no = await configurazione({ ...ENV, ACCESSO_APP: "no" }).json();
+  assert.equal(no.controlli, undefined);
+});
+
 // Passo 2: con «tester» le API dell'app (/app/api/*) rispondono solo a chi ha l'email in elenco.
 // Il controllo è uno solo, in worker/app.js, prima di ogni API: chi è lo dice Supabase leggendo il token.
 import { app } from "../worker/app.js";
