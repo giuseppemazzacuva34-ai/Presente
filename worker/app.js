@@ -19,6 +19,7 @@ import { filoPorteApi, PERCORSO_FILO_PORTE } from "./filo_porte_api.js";
 import { filoBenvenutoApi, PERCORSO_FILO_BENVENUTO } from "./filo_benvenuto_api.js";
 import { storicoRegaliApi, PERCORSO_STORICO_REGALI } from "./storico_regali_api.js";
 import { stanzaVivaApi, PERCORSO_STANZA_VIVA } from "./stanza_viva_api.js";
+import { appuntamentiApi, PERCORSO_APPUNTAMENTI } from "./appuntamenti_api.js";
 import { lasciaStanzaApi, PERCORSO_LASCIA_STANZA } from "./lascia_stanza_api.js"; // #381, linea B
 import { filoRiascoltoApi, PERCORSO_FILO_RIASCOLTO } from "./filo_riascolto_api.js"; // #360, linea C
 
@@ -93,6 +94,7 @@ export async function app(request, env, f = fetch) {
   if (url.pathname === PERCORSO_FILO_BENVENUTO) return conIntestazioniApp(await filoBenvenutoApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_STORICO_REGALI) return conIntestazioniApp(await storicoRegaliApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_STANZA_VIVA) return conIntestazioniApp(await stanzaVivaApi(request, env), url.pathname);
+  if (url.pathname === PERCORSO_APPUNTAMENTI) return conIntestazioniApp(await appuntamentiApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_LASCIA_STANZA) return conIntestazioniApp(await lasciaStanzaApi(request, env), url.pathname);
   if (url.pathname === PERCORSO_FILO_RIASCOLTO) return conIntestazioniApp(await filoRiascoltoApi(request, env), url.pathname);
   if (request.method !== "GET" && request.method !== "HEAD") {
