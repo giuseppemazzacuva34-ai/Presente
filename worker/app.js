@@ -10,6 +10,7 @@ import { supportoOperatoreApi } from "./supporto_operatore_api.js";
 import { svelamentoApi, PERCORSO_SVELAMENTO } from "./svelamento_api.js";
 import { incontroApi, PERCORSO_INCONTRO } from "./incontro_api.js";
 import { regaliApi, PERCORSO_REGALI } from "./regali_api.js";
+import { accessoTester, cancelloTester, PERCORSO_ACCESSO_TESTER, modoAccesso } from "./accesso_tester.js";
 import { coinApi, PERCORSO_COIN } from "./coin_api.js";
 import { filoApi, PERCORSO_FILO } from "./filo_api.js";
 import { filoVocaleApi, PERCORSO_FILO_VOCALE } from "./filo_vocale_api.js";
@@ -54,8 +55,16 @@ export function eApp(pathname) {
   return pathname === "/app" || pathname.startsWith("/app/");
 }
 
-export async function app(request, env) {
+export async function app(request, env, f = fetch) {
   const url = new URL(request.url);
+  if (url.pathname === PERCORSO_ACCESSO_TESTER) return conIntestazioniApp(await accessoTester(request, env, f), url.pathname);
+  // ACCESSO_APP = «tester»: le API rispondono solo a chi ha l'email nel segreto EMAIL_TESTER (worker/accesso_tester.js).
+  // Superato il controllo, l'API vede l'accesso acceso come con «si». I lavori programmati restano spenti (leggono «si»).
+  if (url.pathname.startsWith("/app/api/") && modoAccesso(env) === "tester") {
+    const fermo = await cancelloTester(request, env, f);
+    if (fermo) return conIntestazioniApp(fermo, url.pathname);
+    env = { ...env, ACCESSO_APP: "si" };
+  }
   if (url.pathname === PERCORSO_ELIMINA) return conIntestazioniApp(await eliminaAccount(request, env), url.pathname);
   if (url.pathname === PERCORSO_PROVINCIA_LISTA) return conIntestazioniApp(await provinciaLista(request, env), url.pathname);
   if (url.pathname === PERCORSO_ZONA) return conIntestazioniApp(await contatoreZona(request, env), url.pathname);
@@ -120,11 +129,13 @@ export function configurazione(env) {
   if (!chiave) problemi.push("SUPABASE_ANON_KEY manca");
   else if (!CHIAVE_ANON.test(chiave)) problemi.push("SUPABASE_ANON_KEY non sembra una chiave pubblica di Supabase");
   else if (chiave.startsWith("eyJ") && ruoloDelToken(chiave) !== "anon") problemi.push("SUPABASE_ANON_KEY non è la chiave anon (forse è la service_role)");
-  // «accesso»: true solo se le chiavi sono giuste E la variabile ACCESSO_APP vale «si» (wrangler.jsonc). Finché è
-  // false la web app resta in anteprima: niente email, niente dati verso Supabase.
+  // «accesso»: true solo se le chiavi sono giuste E la variabile ACCESSO_APP vale «si» o «tester» (wrangler.jsonc).
+  // Finché è false la web app resta in anteprima: niente email, niente dati verso Supabase. «modo» = «tester» dice
+  // all'app di chiedere l'email al Worker (/app/api/accesso), che la manda solo agli indirizzi di EMAIL_TESTER.
+  const modo = modoAccesso(env);
   const corpo = problemi.length
     ? { pronta: false, accesso: false, problemi }
-    : { pronta: true, accesso: String(env.ACCESSO_APP || "").trim() === "si", supabaseUrl: indirizzo, supabaseAnonKey: chiave };
+    : { pronta: true, accesso: modo !== "no", modo, supabaseUrl: indirizzo, supabaseAnonKey: chiave };
   return new Response(JSON.stringify(corpo), {
     // Sempre 200: la web app (e chi controlla) legge «pronta»; così il motivo si vede anche da un browser qualsiasi.
     status: 200,

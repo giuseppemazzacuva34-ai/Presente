@@ -61,7 +61,8 @@ async function preparaAccesso() {
     const risposta = await fetch("/app/config.json", { cache: "no-store" });
     const config = await risposta.json();
     if (!config.pronta || config.accesso !== true) return {};
-    const accesso = creaAccesso({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, fetch: window.fetch.bind(window), memoria: memoria() });
+    const accesso = creaAccesso({ supabaseUrl: config.supabaseUrl, supabaseAnonKey: config.supabaseAnonKey, fetch: window.fetch.bind(window), memoria: memoria(),
+      viaServer: config.modo === "tester" });
     // Arrivo dal link nell'email: si leggono i token e si tolgono subito dall'indirizzo e dalla cronologia.
     const dalLink = accesso.daLink(location.href);
     if (dalLink) history.replaceState(null, "", dalLink.indirizzo);

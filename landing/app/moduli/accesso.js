@@ -21,9 +21,16 @@ export const MESSAGGI = {
   codice: "Codice sbagliato o scaduto. Controlla l'ultima email o chiedine un altro.",
   rete: "Non riusciamo a collegarci. Controlla la connessione e riprova.",
   generico: "Qualcosa non ha funzionato. Riprova tra poco.",
+  // Solo con ACCESSO_APP = «tester»: l'email non è tra quelle dei tester.
+  non_aperto: "Accesso non ancora aperto: ti avvisiamo noi appena tocca alla tua città.",
 };
 
-export function creaAccesso({ supabaseUrl, supabaseAnonKey, fetch: f = globalThis.fetch, memoria = null, adesso = () => Date.now() }) {
+// Motivi che il Worker può dare in modo tester; qualunque altra cosa diventa «generico».
+const MOTIVI_SERVER = new Set(["email", "troppe", "non_aperto", "generico"]);
+
+// viaServer: true con ACCESSO_APP = «tester» (config.json dice modo «tester»): l'email la chiede il Worker
+// (/app/api/accesso), che la manda solo agli indirizzi dei tester. Codice, link e rinnovo restano su Supabase.
+export function creaAccesso({ supabaseUrl, supabaseAnonKey, fetch: f = globalThis.fetch, memoria = null, adesso = () => Date.now(), viaServer = false }) {
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl || "") && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(supabaseUrl || "")) {
     throw new Error("Indirizzo Supabase non valido");
   }
@@ -74,11 +81,26 @@ export function creaAccesso({ supabaseUrl, supabaseAnonKey, fetch: f = globalThi
   }
   function imposta(sessione) { inMemoria = sessione; scrivi(sessione); return sessione; }
 
+  async function mandaLinkTester(pulita) {
+    let risposta;
+    try {
+      risposta = await f("/app/api/accesso", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: pulita }) });
+    } catch {
+      return { ok: false, motivo: "rete" };
+    }
+    let dati = null;
+    try { dati = await risposta.json(); } catch { /* corpo vuoto */ }
+    if (risposta.ok && dati?.ok === true) return { ok: true };
+    if (risposta.status === 429) return { ok: false, motivo: "troppe" };
+    return { ok: false, motivo: MOTIVI_SERVER.has(dati?.motivo) ? dati.motivo : "generico" };
+  }
+
   return {
     // Passo 2: manda l'email con il link e il codice. Crea l'account se non esiste.
     async mandaLink(email, ritorno) {
       const pulita = String(email || "").trim().toLowerCase();
       if (!EMAIL_VALIDA.test(pulita) || pulita.length > 254) return { ok: false, motivo: "email" };
+      if (viaServer) return mandaLinkTester(pulita);
       const qs = ritorno ? `?redirect_to=${encodeURIComponent(ritorno)}` : "";
       const r = await chiama(`/auth/v1/otp${qs}`, { corpo: { email: pulita, create_user: true } });
       return r.ok ? { ok: true } : r;
