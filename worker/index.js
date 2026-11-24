@@ -20,6 +20,7 @@ import { spedisciAvvisiSicurezza, CRON_AVVISI } from "./avvisi_sicurezza.js";
 import { chiudiIncontriFiniti } from "./incontri_finiti.js";
 import { pulisciBozzeSupporto } from "./bozze_supporto.js";
 import { pulisciTestiUscita } from "./uscite_pulizia.js"; // #381, linea B: testi di «Lascia la stanza» dopo 30 giorni
+import { pulisciVocaliFilo } from "./filo_pulizia.js"; // #360, linea C: vocali del Filo dopo 7 giorni
 
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
@@ -36,6 +37,9 @@ export default {
     const lavoro = Promise.all([assegnaCodiciMancanti(env), pulisciGettoniScaduti(env), apriPorteDellaSera(env), chiudiIncontriFiniti(env), pulisciBozzeSupporto(env), pulisciTestiUscita(env)]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(lavoro);
     else await lavoro;
+    const vocaliFilo = pulisciVocaliFilo(env); // #360, linea C: vocali del Filo 7 giorni dopo la chiusura
+    if (ctx && ctx.waitUntil) ctx.waitUntil(vocaliFilo);
+    else await vocaliFilo;
   },
   async fetch(request, env, ctx) {
     const { pathname, hostname } = new URL(request.url);
