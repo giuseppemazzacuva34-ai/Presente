@@ -318,6 +318,19 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .cerchio .p.k9 { left: 15.8px; top: 73.8px; }
 .cerchio .p.k10 { left: 37.0px; top: 37.0px; }
 .cerchio .p.k11 { left: 73.8px; top: 15.8px; }
+/* Stanza viva (#380, schermata 19): cerchio diviso uomini/donne con posti in SVG (coordinate negli attributi cx/cy). */
+.cerchio-stanza { position: relative; width: 190px; height: 190px; margin: 2px auto 0; }
+.cerchio-stanza svg { display: block; width: 190px; height: 190px; overflow: visible; }
+.cerchio-stanza svg .asse { stroke: rgba(242, 237, 228, .22); stroke-width: 1; }
+.cerchio-stanza svg .p { fill: transparent; stroke: rgba(242, 237, 228, .55); stroke-width: 1.5; }
+.cerchio-stanza svg .p.on { fill: #F2EDE4; stroke: #F2EDE4; animation: pulsa-posto 2s ease-in-out infinite; }
+.cerchio-stanza svg .p.ch { fill: #E8432B; stroke: #E8432B; }
+.cerchio-stanza svg .p.tu { fill: #E8432B; stroke: #E8432B; }
+.cerchio-stanza .et { position: absolute; top: 50%; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.cerchio-stanza .et.sx { left: -6px; transform: translate(-100%, -50%); }
+.cerchio-stanza .et.dx { right: -6px; transform: translate(100%, -50%); }
+@keyframes pulsa-posto { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .cerchio-stanza svg .p.on { animation: none; } }
 
 /* ===== Linea C (#349): «La porta» del design v4, schermate 37-38 =====
    Valori dal prototipo docs/design/v4/prototipo (.foto-full, .rivela, .bagliore, .ante, .anta-s, .frase). La scena è
@@ -389,3 +402,20 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .foglio-coin .pacco .q { font-family: var(--serif); font-size: 30px; line-height: 1; }
 .app .foglio-coin .pacco .q small { font-family: inherit; font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
 .app .foglio-coin .pacco .e { font-weight: 700; font-size: 17px; }
+
+/* ===== Linea B (#349): «I tuoi regali», design v4 schermata 28 =====
+   Valori dal prototipo docs/design/v4/prototipo (#storico-regali: .passo, h2, .conteggi, .lista-t, .persona). */
+.app .storico-regali .corpo { display: flex; flex-direction: column; gap: 12px; }
+.app .storico-regali .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .storico-regali h2 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+.app .storico-regali h2 em { color: #E8432B; }
+.app .storico-regali .conteggi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.app .storico-regali .conteggi > div { border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 16px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: #151217; }
+.app .storico-regali .conteggi .regalo-icona { width: 48px; height: 48px; }
+.app .storico-regali .conteggi b { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 30px; line-height: 1; }
+.app .storico-regali .conteggi span:last-child { font-size: 11.5px; color: #A8A29A; }
+.app .storico-regali .lista-t { display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; border-bottom: 1px solid rgba(242, 237, 228, 0.12); padding-bottom: 5px; margin-top: 4px; }
+.app .storico-regali .persona { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(242, 237, 228, 0.08); }
+.app .storico-regali .persona b { font-weight: 600; font-size: 14px; display: block; }
+.app .storico-regali .persona small { font-size: 11px; color: #A8A29A; }
+.app .storico-regali .nota { color: #A8A29A; font-size: 12px; margin: 0; }
