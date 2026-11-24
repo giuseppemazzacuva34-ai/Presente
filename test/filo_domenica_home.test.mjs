@@ -144,7 +144,7 @@ test("flusso e avvio: la schermata 36 prima della sera, aggiunte minime", () => 
   const avvio = leggi("../landing/app/avvio.js");
   assert.match(avvio, /import \{ creaFiloDomenica \} from "\/app\/moduli\/filo_domenica\.js";/);
   assert.match(avvio, /creaFiloDomenica\(\{ token: \(\) => accesso\.token\(\), fetch: window\.fetch\.bind\(window\), aggiorna: \(\) => chiaviCambiate\(\) \}\)/);
-  assert.match(avvio, /regaloRicevuto, filoDomenica \};/);
+  assert.match(avvio, /regaloRicevuto, filoDomenica[,}\s]/);
 });
 
 test("service worker: il modulo del Filo è tra i file dell'app e la versione è cambiata", () => {

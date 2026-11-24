@@ -419,3 +419,15 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .storico-regali .persona b { font-weight: 600; font-size: 14px; display: block; }
 .app .storico-regali .persona small { font-size: 11px; color: #A8A29A; }
 .app .storico-regali .nota { color: #A8A29A; font-size: 12px; margin: 0; }
+
+/* Il Filo della stanza (#360, linea C): schermate 18 «Il Filo apre la stanza» e 36 «le porte aperte» (design v4). */
+.app .filo-scheda { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0 12px; }
+.app .filo-scheda h2, .app .filo-scheda b { display: block; margin: 0; font-size: 16px; font-weight: 600; }
+.app .filo-scheda small { font-size: 12px; color: #A8A29A; }
+.app .filo-simbolo { width: 40px; height: 40px; border-radius: 50%; background: var(--rosso); color: var(--nero); display: grid; place-items: center; font-weight: 700; font-size: 20px; flex: none; }
+.app .filo-lettore { width: 100%; margin: 4px 0 8px; }
+.app .filo-testo summary { cursor: pointer; text-decoration: underline; min-height: 24px; }
+.app .filo-nomi { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.app .filo-io { color: var(--rosso); font-weight: 600; }
+.app .filo-numero { font-size: 2.4em; color: var(--rosso); font-style: italic; }
+.app .filo-riga-rossa { color: var(--rosso); }
