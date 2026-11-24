@@ -34,6 +34,7 @@ import { vistaIncontro } from "./incontro.js";
 import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
 import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
+import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -42,6 +43,7 @@ let appuntiStanza = null;
 let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
+let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
 // Apre lo svelamento di una porta (#65, linea del CTO): finché non c'è, la sera mostra le porte senza pulsante.
 let svelamento = null;
 // Schermata della porta (#65 passi 1-2, svelamento.js): nome, età, 48 ore e caparra. Solo con il telefono acceso.
@@ -197,6 +199,7 @@ export function avvia(elemento, opzioni = {}) {
   incontroVostro = (telefono && opzioni.incontro) || null;
   valutazioneVostra = (telefono && opzioni.valutazione) || null;
   riepilogoMio = (telefono && opzioni.riepilogo) || null;
+  filoDomenica = (telefono && opzioni.filoDomenica) || null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
   if (accesso && accesso.connesso()) { stato.passo = 2; if (archivio) { riprendi(); return; } }
@@ -537,7 +540,7 @@ function bloccoTuaStanza() {
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     h("h2", { id: "tua-stanza-titolo" }, "La tua stanza", st.chiusa ? h("span", { classe: "etichetta-chiusa" }, " · Chiusa") : null),
-    chiaviStanza ? vistaSera(h, chiaviStanza, { svelamento }) : null,
+    chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null,
     avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
     chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
     contenuto,
