@@ -106,3 +106,12 @@ test("avvio: coinProfilo col token di chi usa l'app; service worker con profilo.
   assert.ok(sw.includes('"/app/moduli/profilo.js"'));
   assert.ok(!sw.includes('"presente-app-54"'));
 });
+
+test("home: «I tuoi regali» resta solo nel profilo quando il profilo c'è (niente link doppi)", () => {
+  const f = leggiFile("../landing/app/moduli/flusso.js");
+  assert.match(f, /regaliProfilo && !schermoProfilo \? h\("button", \{ classe: "link", type: "button", onclick: \(\) => regaliProfilo\.apri\(\) \}, TESTI_REGALI_PROFILO\.link\) : null/);
+  // Dal profilo la riga «Regali ricevuti» apre ancora la stessa schermata.
+  assert.match(f, /regali: regaliProfilo \? \(\) => regaliProfilo\.apri\(\) : null,/);
+  const sw = leggiFile("../landing/app/sw.js");
+  assert.ok(!sw.includes('"presente-app-55"'), "service worker con versione nuova");
+});
