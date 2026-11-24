@@ -306,6 +306,25 @@ function vai(passo) {
   if (titolo) { titolo.setAttribute("tabindex", "-1"); titolo.focus({ preventScroll: true }); }
 }
 
+// Onda grande del benvenuto (design v4, .onda-grande.attesa): 27 barre nei toni del rosso, più alte al centro. Solo
+// decorazione (aria-hidden); altezze e colori via CSSOM (la CSP style-src 'self' vieta solo gli attributi style).
+const ROSSI_ONDA = ["#8F2414", "#B83220", "#C7361F", "#D63A22", "#E8432B", "#F05A43", "#F46A53", "#FF7A62"];
+function ondaGrande() {
+  const n = 27;
+  const barre = Array.from({ length: 27 }, (_, k) => {
+    const e = Math.sin(((k + 0.5) / n) * Math.PI);
+    const span = h("span");
+    const d = Math.abs(k - (n - 1) / 2) / ((n - 1) / 2);
+    const tono = ROSSI_ONDA[Math.max(0, Math.min(ROSSI_ONDA.length - 1, Math.round((1 - d) * (ROSSI_ONDA.length - 1))))];
+    span.style.height = `${12 + Math.round(88 * Math.pow(e, 1.5) * (0.7 + 0.3 * Math.sin(k * 0.9 + 1)))}px`;
+    span.style.background = `linear-gradient(180deg, ${tono}, #8F2414)`;
+    span.style.animationDelay = `${(-k * 0.16).toFixed(2)}s`;
+    return span;
+  });
+  return h("div", { classe: "onda-grande", "aria-hidden": "true" }, barre);
+}
+function conClasse(el, classe) { el.className = classe; return el; }
+
 // Tre risposte a voce: si cambia domanda restando nello stesso passo (ferma una registrazione in corso, titolo a fuoco).
 function vaiRisposta() { vai(stato.passo); }
 
@@ -832,10 +851,13 @@ function emailVera() {
 // ---------------------------------------------------------------------------------------------------------------
 const SCHERMATE = {
   benvenuto() {
-    return schermata("Ci si conosce prima con la voce.",
-      "Le tue foto le vede solo chi scegli tu, e niente swipe. Una stanza di 12 persone compatibili, chiamate solo voce da 15 minuti, e domenica sera le porte si aprono solo dove la chiave è reciproca.",
-      [h("p", { classe: "nota" }, h("a", { href: "/privacy" }, "Informativa privacy"), " · Regole della community (in arrivo)")],
-      [avanti("Entra", true, () => vai(1))]);
+    // Design v4, schermata 01 (Giuseppe, 24/11): onda grande al centro, una frase sola e «Entra» grande.
+    return h("section", { classe: "schermata benvenuto-v4" },
+      ondaGrande(),
+      h("h1", {}, "Prima la voce.", h("br"), h("em", {}, "Poi il resto.")),
+      h("p", { classe: "sottotitolo" }, "Una stanza di 12 persone vicine a te.", h("br"), "Chiamate solo voce da 15 minuti.", h("br"), "Le foto, solo dopo il sì di entrambi."),
+      h("p", { classe: "nota" }, h("a", { href: "/privacy" }, "Informativa privacy"), " · Regole della community (in arrivo)"),
+      h("div", { classe: "azioni" }, conClasse(avanti("Entra", true, () => vai(1)), "bottone grande")));
   },
 
   email() {
