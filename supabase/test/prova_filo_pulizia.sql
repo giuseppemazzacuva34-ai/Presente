@@ -41,9 +41,10 @@ insert into public.stanze (id, tipo, citta, apre_il, chiude_il, creata_il) value
 insert into public.membri_stanza (stanza_id, utente_id) values (pg_temp.s(1), pg_temp.p(2)), (pg_temp.s(2), pg_temp.p(3));
 insert into public.fili_stanza (stanza_id, filo) values (pg_temp.s(1), pg_temp.p(1)), (pg_temp.s(2), pg_temp.p(1));
 insert into public.vocali_filo (stanza_id, tipo, file, durata, testo, caricato_il) values
-  (pg_temp.s(1), 'lunedi', 'a1.webm', 70, 'Benvenuti', '2026-03-23 07:00+00'),
-  (pg_temp.s(1), 'domenica', 'a2.webm', 48, 'A tra poco', '2026-03-29 17:00+00'),
-  (pg_temp.s(2), 'lunedi', 'b1.webm', 60, 'Ciao', '2026-03-30 06:00+00');
+  -- Come li salva salva_vocale_filo: «file» è già il percorso nel contenitore, <stanza>/<nome>.
+  (pg_temp.s(1), 'lunedi', pg_temp.s(1) || '/a1.webm', 70, 'Benvenuti', '2026-03-23 07:00+00'),
+  (pg_temp.s(1), 'domenica', pg_temp.s(1) || '/a2.webm', 48, 'A tra poco', '2026-03-29 17:00+00'),
+  (pg_temp.s(2), 'lunedi', pg_temp.s(2) || '/b1.webm', 60, 'Ciao', '2026-03-30 06:00+00');
 insert into public.filo_benvenuti_visti (utente_id, stanza_id) values (pg_temp.p(2), pg_temp.s(1)), (pg_temp.p(3), pg_temp.s(2));
 insert into public.filo_vocali_ascoltati (utente_id, stanza_id) values (pg_temp.p(2), pg_temp.s(1)), (pg_temp.p(3), pg_temp.s(2));
 
