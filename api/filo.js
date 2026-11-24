@@ -11,7 +11,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const no = (motivo) => ({ ok: false, motivo });
 const oraValida = (ora) => typeof ora === "string" && !Number.isNaN(Date.parse(ora));
 
-// d = { stanze({ filo, ora }) → righe | null, nomi({ filo, stanza, ora }) → righe | "non_filo" | null }
+// d = { stanze({ filo, ora }) → righe | null, nomi({ filo, stanza, ora }) → righe | "non_filo" | null,
+//       porte({ filo, stanza, ora }) → intero | null (prima delle 21:00) | "non_filo" | undefined (errore) }
+// Passo 6b: «porte» è solo il numero delle porte aperte della domenica (porte_stanza_filo), mai chi.
+const intero = (n) => (Number.isInteger(n) && n >= 0 ? n : null);
 export async function pannelloFilo({ filo, ora }, d) {
   if (!UUID.test(filo || "") || !oraValida(ora)) return no("dati");
   const righe = await d.stanze({ filo, ora });
@@ -21,9 +24,12 @@ export async function pannelloFilo({ filo, ora }, d) {
     const nomi = await d.nomi({ filo, stanza: s.id, ora });
     if (nomi === "non_filo") continue; // stanza chiusa tra le due letture
     if (!Array.isArray(nomi)) return no("riprova");
+    const porte = d.porte ? await d.porte({ filo, stanza: s.id, ora }) : null;
+    if (porte === "non_filo") continue;
+    if (porte === undefined) return no("riprova");
     stanze.push({
       id: s.id, nome: s.nome ?? null, apreIl: s.apre_il, chiudeIl: s.chiude_il,
-      nomi: nomi.map((n) => n.nome),
+      nomi: nomi.map((n) => n.nome), porte: intero(porte),
     });
   }
   return { ok: true, regole: REGOLE_FILO, stanze };
@@ -34,10 +40,10 @@ export async function pannelloFilo({ filo, ora }, d) {
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const ATTESA_MS = 1500;
 
-async function rpc(env, nome, corpo, f) {
+async function rpc(env, nome, corpo, f, seErrore = null) {
   const base = String(env?.SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const chiave = String(env?.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  if (!URL_SUPABASE.test(base) || !chiave) return null;
+  if (!URL_SUPABASE.test(base) || !chiave) return seErrore;
   let timer;
   try {
     const r = await Promise.race([
@@ -53,12 +59,12 @@ async function rpc(env, nome, corpo, f) {
       try { errore = await r.json(); } catch { /* corpo non JSON */ }
       if (errore && errore.message === "non_filo") return "non_filo";
       console.error("filo: risposta", r.status);
-      return null;
+      return seErrore;
     }
     return await r.json();
   } catch (e) {
     console.error("filo: errore", e && e.name);
-    return null;
+    return seErrore;
   } finally {
     clearTimeout(timer);
   }
@@ -72,4 +78,13 @@ export async function stanzeFiloDb(env, { filo, ora }, f = fetch) {
 export async function nomiFiloDb(env, { filo, stanza, ora }, f = fetch) {
   if (!UUID.test(filo || "") || !UUID.test(stanza || "") || !oraValida(ora)) return null;
   return rpc(env, "nomi_stanza_filo", { p_filo: filo, p_stanza: stanza, p_ora: ora }, f);
+}
+
+// Numero delle porte (porte_stanza_filo, migrazione 20261123215547): intero, null prima delle 21:00 o dopo 7 giorni,
+// "non_filo" se la stanza non è sua, undefined se il database non risponde (così un errore non diventa «niente»).
+const ERRORE = Symbol("errore"); // un parametro predefinito trasformerebbe undefined in null
+export async function porteFiloDb(env, { filo, stanza, ora }, f = fetch) {
+  if (!UUID.test(filo || "") || !UUID.test(stanza || "") || !oraValida(ora)) return undefined;
+  const v = await rpc(env, "porte_stanza_filo", { p_filo: filo, p_stanza: stanza, p_ora: ora }, f, ERRORE);
+  return v === ERRORE ? undefined : v;
 }

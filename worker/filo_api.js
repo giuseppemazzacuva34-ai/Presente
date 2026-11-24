@@ -1,13 +1,14 @@
 // Il Filo della stanza (issue #360, spec v1 + v1.1 del CPO, D151 A), passo 3b della linea «sviluppatore-c».
 //
-//   GET /app/api/filo → { ok, regole, stanze: [{ id, nome, apreIl, chiudeIl, nomi: [...] }] }
+//   GET /app/api/filo → { ok, regole, stanze: [{ id, nome, apreIl, chiudeIl, nomi: [...], porte }] }
+//   («porte»: dalle 21:00 di domenica il solo numero delle porte aperte, prima null; passo 6b)
 //
 // Il pannello del Filo: le stanze che segue (dalle 00:30 di lunedì) e i soli nomi di battesimo dei membri. Chi è il
 // Filo lo dice SOLO il token di Supabase: un «filo» scritto nella richiesta non conta. Quali stanze e quali nomi lo
 // decide il database (stanze_del_filo, nomi_stanza_filo: migrazione 20261123095357); chi non è Filo riceve un elenco
 // vuoto. Mai email, telefono, provincia, età, foto, voce, questionario, diario, chiavi, segnalazioni, crediti.
 // Nei log solo nomi di errore e codici, mai token o nomi. Spento finché ACCESSO_APP non vale «si».
-import { pannelloFilo, stanzeFiloDb, nomiFiloDb } from "../api/filo.js";
+import { pannelloFilo, stanzeFiloDb, nomiFiloDb, porteFiloDb } from "../api/filo.js";
 
 export const PERCORSO_FILO = "/app/api/filo";
 const ATTESA_SUPABASE_MS = 1500;
@@ -76,6 +77,7 @@ export async function filoApi(request, env, f = fetch) {
   const esito = await pannelloFilo({ filo: chi.id, ora }, {
     stanze: (a) => stanzeFiloDb(env, a, f),
     nomi: (a) => nomiFiloDb(env, a, f),
+    porte: (a) => porteFiloDb(env, a, f),
   });
   if (!esito.ok) return riprova();
   return risposta(200, esito);
