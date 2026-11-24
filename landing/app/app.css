@@ -63,6 +63,11 @@ body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset
 .riga-registratore > button { width: 100%; margin: 0; }
 /* Tre risposte a voce, una schermata per domanda: «Domanda 1 di 3» come etichetta maiuscola sopra il testo. */
 .passo-domanda { font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; margin: 0 0 0.5rem; }
+/* Questionario (Giuseppe, 24/11): il tema in alto come etichetta maiuscola, il numero della domanda a destra. */
+/* «Quanto conta» del tema: riquadro separato sotto le risposte, testo normale (non un'altra domanda in maiuscolo). */
+.quanto-conta { border-top: 1px solid var(--linea); margin-top: 1rem; padding-top: 0.9rem; }
+.etichetta-importanza { font-size: 0.95rem; color: var(--avorio); margin: 0 0 0.6rem; }
+.tema-domanda { display: flex; justify-content: space-between; gap: 12px; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; margin: 0 0 0.5rem; }
 
 .griglia-foto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
 .casella-foto { aspect-ratio: 3 / 4; border: 1px dashed var(--linea); border-radius: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; overflow: hidden; position: relative; }
