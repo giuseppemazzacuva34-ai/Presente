@@ -89,7 +89,8 @@
     // Accesso vero alla web app con email (issue #2). "no" = l'app resta in anteprima e non manda nulla a Supabase.
     // Si mette "si" solo dopo l'informativa privacy dell'app (T08) e la revisione di sicurezza del CISO (T15).
     // "tester" = entra solo chi ha l'email nel segreto EMAIL_TESTER (worker/accesso_tester.js, richiesta di Giuseppe del 22/11).
-    "ACCESSO_APP": "no",
+    // Acceso «tester» dopo la revisione del CISO (23/11): i lavori programmati e il lavoro del lunedì restano spenti.
+    "ACCESSO_APP": "tester",
     // Risposte automatiche ai commenti «BUIO» su Instagram e Facebook (docs/meta-webhook.md).
     // "no" = Meta può verificare l'indirizzo ma nessuno riceve risposte. "si" solo quando l'app Meta è in modalità Live
     // e i Secret META_APP_SECRET, META_VERIFY_TOKEN e META_PAGE_TOKEN sono inseriti su Cloudflare.

@@ -113,10 +113,11 @@ test("il riassunto ha solo numeri: nessun id, nome o data di nascita", async () 
   for (const v of Object.values(esito.attesa)) assert.equal(typeof v, "number");
 });
 
-test("legge ACCESSO_APP da wrangler.jsonc (oggi «no»: il lavoro resta spento)", async () => {
+test("legge ACCESSO_APP da wrangler.jsonc (oggi «tester»: il lavoro resta spento, parte solo con «si»)", async () => {
   const { readFileSync } = await import("node:fs");
   const { accessoDaWrangler } = await import("../scripts/lavoro_lunedi.mjs");
   assert.equal(accessoDaWrangler('"vars": { "ACCESSO_APP": "si" }'), "si");
   assert.equal(accessoDaWrangler("{}"), "no");
-  assert.equal(accessoDaWrangler(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")), "no");
+  assert.equal(accessoDaWrangler('"vars": { "ACCESSO_APP": "tester" }'), "tester");
+  assert.equal(accessoDaWrangler(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")), "tester");
 });
