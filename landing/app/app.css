@@ -444,3 +444,15 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .filo-io { color: var(--rosso); font-weight: 600; }
 .app .filo-numero { font-size: 2.4em; color: var(--rosso); font-style: italic; }
 .app .filo-riga-rossa { color: var(--rosso); }
+
+/* Benvenuto, design v4 schermata 01 (Giuseppe, 24/11): onda grande, titolo centrato con «Poi il resto.» in corsivo rosso. */
+.benvenuto-v4 { display: flex; flex-direction: column; justify-content: center; gap: 18px; text-align: center; min-height: calc(100vh - 220px); }
+.benvenuto-v4 h1 { font-family: var(--serif); font-weight: 400; font-size: 36px; line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
+.benvenuto-v4 h1 em { color: #E8432B; }
+.benvenuto-v4 .sottotitolo { color: #A8A29A; font-size: 15px; line-height: 1.5; margin: 0; }
+.benvenuto-v4 .nota { font-size: 12px; margin: 0; }
+.benvenuto-v4 .azioni { margin-top: auto; }
+.onda-grande { display: flex; gap: 4px; align-items: center; justify-content: center; height: 110px; }
+.onda-grande span { width: 6px; border-radius: 6px; filter: drop-shadow(0 0 6px rgba(232, 67, 43, 0.45)); animation: attesa 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes attesa { 0%, 100% { transform: scaleY(0.15); opacity: 0.4; } 50% { transform: scaleY(0.9); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .onda-grande span { animation: none; } }
