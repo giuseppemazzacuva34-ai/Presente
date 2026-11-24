@@ -1144,7 +1144,8 @@ const SCHERMATE = {
         cambio.avviso ? h("p", { classe: "nota", role: "status" }, cambio.avviso) : null,
         h("button", { classe: "link", type: "button", onclick: apriDifficolta }, "Sono in difficoltà"),
         storicoChiamate ? h("button", { classe: "link", type: "button", onclick: apriStorico }, TESTI_STORICO.titolo) : null,
-        regaliProfilo ? h("button", { classe: "link", type: "button", onclick: () => regaliProfilo.apri() }, TESTI_REGALI_PROFILO.link) : null,
+        // Con il profilo (schermata 23) «I tuoi regali» sta solo lì, nella riga «Regali ricevuti»: niente link doppi in home.
+        regaliProfilo && !schermoProfilo ? h("button", { classe: "link", type: "button", onclick: () => regaliProfilo.apri() }, TESTI_REGALI_PROFILO.link) : null,
         supporto ? h("button", { classe: "link", type: "button", onclick: apriAiuto }, TESTI_AIUTO.titolo) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."

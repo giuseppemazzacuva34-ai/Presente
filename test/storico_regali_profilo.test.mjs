@@ -76,7 +76,7 @@ test("flusso: link «I tuoi regali» nel profilo e schermata a tutta pagina, sol
   assert.match(flusso, /import \{ creaSchermoRegali, TESTI_STORICO as TESTI_REGALI_PROFILO \} from "\.\/storico_regali\.js";/);
   assert.match(flusso, /regaliProfilo = telefono && opzioni\.storicoRegali \? creaSchermoRegali\(\{ storico: opzioni\.storicoRegali, disegna: \(\) => disegna\(\),/);
   assert.match(flusso, /if \(regaliProfilo && regaliProfilo\.aperto\(\)\) \{ radice\.replaceChildren\(regaliProfilo\.schermo\(h\)\); return; \}/);
-  assert.match(flusso, /regaliProfilo \? h\("button", \{ classe: "link", type: "button", onclick: \(\) => regaliProfilo\.apri\(\) \}, TESTI_REGALI_PROFILO\.link\) : null/);
+  assert.match(flusso, /regaliProfilo(?: && !schermoProfilo)? \? h\("button", \{ classe: "link", type: "button", onclick: \(\) => regaliProfilo\.apri\(\) \}, TESTI_REGALI_PROFILO\.link\) : null/);
 });
 
 test("avvio: lettura col token di chi usa l'app e passata al flusso come storicoRegali", () => {
