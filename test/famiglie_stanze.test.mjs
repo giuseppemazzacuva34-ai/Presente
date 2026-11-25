@@ -150,3 +150,47 @@ test("«Voglio incontrare» vuoto (elenco senza scelte) = filtri incompleti, com
   const s = preparaSettimana({ righe: [r], iscrizioni: new Map([[r.profilo.id, "2026-11-28T12:00:00Z"]]), adesso: new Date(LUNEDI.getTime() + 60000) });
   assert.deepEqual(s.attesa, [{ utente_id: r.profilo.id, motivo: "filtri_incompleti" }]);
 });
+
+// Conteggi per famiglia dal database (conteggi_famiglie(): solo numeri per area e famiglia, «ponte» per chi ha più scelte).
+// Una famiglia si conta con TUTTI i suoi profili completi (anche chi questa settimana non entra) più i ponti di questa
+// settimana sistemati in quella famiglia.
+test("conteggi per famiglia: 6 uomini→uomini entrano questa settimana, nel database ne sono 36 a Bologna: stanza d'area dedicata", () => {
+  const mm = Array.from({ length: 6 }, () => riga("uomo", ["uomini"]));
+  for (const r of mm) r.profilo.provincia = "BO";
+  const iscrizioni = new Map(mm.map((r) => [r.profilo.id, "2026-11-28T12:00:00Z"]));
+  const s = preparaSettimana({ righe: mm, iscrizioni, completiPerFamiglia: { bologna: { uomini: { totale: 36, donne: 0 } } },
+    adesso: new Date(LUNEDI.getTime() + 60000) });
+  assert.equal(s.stanze.length, 1);
+  assert.equal(s.stanze[0].tipo, "citta");
+  assert.equal(s.stanze[0].citta, "bologna");
+});
+
+test("conteggi per famiglia: la mista si conta solo con i suoi profili (chi cerca il proprio genere non la accende)", () => {
+  // Nel database a Roma: 20 nella mista (10 donne) e 20 uomini→uomini. Il totale dell'area (40, 25%) non conta più.
+  const righe = [...Array.from({ length: 4 }, () => riga("donna", ["uomini"])), ...Array.from({ length: 4 }, () => riga("uomo", ["donne"]))];
+  for (const r of righe) { r.profilo.provincia = "RM"; r.filtri.raggio = "citta"; }
+  const iscrizioni = new Map(righe.map((r) => [r.profilo.id, "2026-11-28T12:00:00Z"]));
+  const s = preparaSettimana({ righe, iscrizioni,
+    completiPerZona: { roma: { totale: 40, donne: 16 } }, // vecchio conteggio dell'area: ignorato quando ci sono le famiglie
+    completiPerFamiglia: { roma: { mista: { totale: 20, donne: 10 }, uomini: { totale: 20, donne: 0 } } },
+    adesso: new Date(LUNEDI.getTime() + 60000) });
+  assert.equal(s.stanze.length, 0);
+  const attese = s.attesa.filter((a) => a.motivo === "citta_non_aperta");
+  assert.equal(attese.length, 8);
+  assert.deepEqual(attese[0].mancano, { persone: 16, donne: 16 }); // col vecchio conteggio (40, 16 donne) sarebbe 0: area accesa
+});
+
+test("conteggi per famiglia: i ponti di questa settimana si sommano alla famiglia in cui entrano", () => {
+  // 34 donne→donne nel database a Milano; questa settimana entrano 8 donne→donne e 2 donne che cercano donne e uomini
+  // (ponti: più compatibili nella dedicata) → 36: la stanza d'area dedicata si accende.
+  const dd = Array.from({ length: 8 }, () => riga("donna", ["donne"]));
+  const bi = Array.from({ length: 2 }, () => riga("donna", ["donne", "uomini"]));
+  const righe = [...dd, ...bi];
+  for (const r of righe) r.profilo.provincia = "MI";
+  const iscrizioni = new Map(righe.map((r) => [r.profilo.id, "2026-11-28T12:00:00Z"]));
+  const s = preparaSettimana({ righe, iscrizioni, completiPerFamiglia: { milano: { donne: { totale: 34, donne: 34 }, ponte: { totale: 2, donne: 2 } } },
+    adesso: new Date(LUNEDI.getTime() + 60000) });
+  assert.equal(s.stanze.length, 1);
+  assert.equal(s.stanze[0].citta, "milano");
+  assert.equal(s.stanze[0].membri.length, 10);
+});

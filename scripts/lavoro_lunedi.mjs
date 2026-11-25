@@ -32,15 +32,19 @@ export async function eseguiLunedi({ rpc, adesso = new Date(), accessoApp, modo 
   let { apre, aperta } = settimanaStanza(adesso);
   if (aperta) apre = settimanaStanza(new Date(apre.getTime() + 7 * 86400000)).apre;
   const letto = await rpc("righe_settimana", { apre: apre.toISOString() });
-  const aree = await rpc("conteggi_aree", {});
-  const completiPerZona = Object.fromEntries((aree || []).map((a) => [a.codice, { totale: a.totale, donne: a.donne }]));
+  // Solo numeri per area e famiglia (#471): nessun id, nessun nome, la famiglia di una persona non esce dal database.
+  const righeConti = await rpc("conteggi_famiglie", {});
+  const completiPerFamiglia = {};
+  for (const r of righeConti || []) {
+    if (r?.codice && r?.famiglia) (completiPerFamiglia[r.codice] ||= {})[r.famiglia] = { totale: Number(r.totale) || 0, donne: Number(r.donne) || 0 };
+  }
 
   const settimana = preparaSettimana({
     righe: letto.righe || [],
     iscrizioni: new Map(Object.entries(letto.iscrizioni || {})),
     stanzePrecedenti: new Map(Object.entries(letto.stanze_precedenti || {}).map(([id, n]) => [id, Number(n)])),
     storico: letto.storico || [],
-    completiPerZona,
+    completiPerFamiglia,
     adesso: apre,
   });
 

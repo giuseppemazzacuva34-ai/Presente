@@ -127,9 +127,13 @@ chi entra in **famiglie**: mista (uomini→donne, donne→uomini), dedicata uomi
   Nella 06 «Voglio incontrare» a più scelte (Donne · Uomini · Persone non binarie), «Scegli almeno un'opzione.» se vuoto,
   precompilato dall'orientamento della 05 (che resta solo nel telefono finché D155 è aperta). `rientra_nei_filtri()`:
   «non binario» e «mi descrivo» rientrano in chi sceglie «Persone non binarie».
-- Per ora la mista usa i numeri di `conteggi_aree()` (tutti i profili completi); le famiglie dedicate si contano su chi entra
-  quella settimana. Conteggi per famiglia nel database: prossimo passo.
-- Prove: `test/famiglie_stanze.test.mjs` (criteri 6, 7, 8, 9 della spec).
+- **Conteggi per famiglia (25/11 notte):** `conteggi_famiglie()` (migrazione `20261125230000_conteggi_famiglie.sql`) dà per
+  ogni area solo numeri: `codice`, `famiglia` (mista, uomini, donne, aperta, ponte), `totale`, `donne` dei profili completi.
+  Solo server, nessun id. Il lavoro del lunedì conta ogni famiglia così: i suoi profili completi del database + i ponti di
+  quella settimana sistemati lì (`contoAree()` in `api/settimana.js`). La mista non usa più il totale dell'area: chi cerca
+  il proprio genere non la accende. `conteggi_aree()` resta per il contatore «mancano N» della home e della plancia.
+- Prove: `test/famiglie_stanze.test.mjs` (criteri 6, 7, 8, 9 della spec e conteggi per famiglia),
+  `supabase/test/prova_conteggi_famiglie.sql`.
 
 ## Punti aperti
 
