@@ -4,9 +4,9 @@
 // perché. Nessuna lettura o scrittura qui: le fa il lavoro programmato (passo successivo), così tutto si prova con dati
 // inventati. Il diario non entra mai: nessuna funzione di questo file lo riceve.
 
-import { STANZA, FUSO, coppia, componi, gruppi, contaPerZona, zoneAccese, settimanaStanza, oraDiRoma, costoStanza, affinitaDaQuestionari }
-  from "./stanze.js";
-import { areaDi, mancano } from "./aree.js";
+import { STANZA, FUSO, coppia, componi, settimanaStanza, oraDiRoma, costoStanza, affinitaDaQuestionari,
+  assegnaFamiglie, contaPerZonaEFamiglia, gruppiPerFamiglia, mancanoFamiglia } from "./stanze.js";
+import { areaDi } from "./aree.js";
 import { questionarioCompleto } from "./questionario.js";
 
 // Passo finale dell'iscrizione nella web app (profilo completo).
@@ -49,7 +49,7 @@ export function persona({ profilo, filtri, questionario }, apertura, stanzePrece
   if (eta === null || eta < 18) return { motivo: "senza_data_nascita" };
   // Dall'estero (provincia «EE») la città è vuota per costruzione: basta la provincia.
   if (!profilo.nome || !(profilo.citta || profilo.provincia) || !profilo.mi_presento_come) return { motivo: "profilo_incompleto" };
-  if (!filtri?.cerco || !filtri.consenso_cerco_il || !filtri.raggio) return { motivo: "filtri_incompleti" };
+  if (!filtri?.cerco || (Array.isArray(filtri.cerco) && !filtri.cerco.length) || !filtri.consenso_cerco_il || !filtri.raggio) return { motivo: "filtri_incompleti" };
   if (!questionarioCompleto(questionario)) return { motivo: "questionario_incompleto" };
   // Zona = area vasta ricavata qui dalla provincia (D121 A): eventuali campi «zona» o «area» nella riga non contano.
   // Senza provincia (righe di prima) la zona è la città; dall'estero nessuna zona.
@@ -110,21 +110,33 @@ export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePreceden
     questionari.set(id, q);
   }
 
-  const conto = completiPerZona || contaPerZona(persone);
-  const aperte = zoneAccese(conto);
+  // Famiglie (#471 parte C): mista, dedicate, aperta. Restano solo in memoria: mai scritte, mai nei log.
   const esclusi = coppieEscluse({ blocchi, storico }, apre);
+  const famiglia = assegnaFamiglie(persone, esclusi);
+  // Conteggi per area e famiglia. La mista usa i numeri del database (conteggi_aree(), tutti i profili completi) quando
+  // ci sono; le famiglie dedicate si contano su chi entra questa settimana finché il database non dà i numeri per famiglia.
+  const conto = contaPerZonaEFamiglia(persone, famiglia);
+  for (const [z, c] of Object.entries(completiPerZona || {})) {
+    if (c && typeof c.totale === "number") (conto[z] ||= {}).mista = { totale: c.totale, donne: c.donne || 0 };
+  }
   const affinitaDi = affinitaDaQuestionari(questionari);
   const perId = new Map(persone.map((p) => [p.id, p]));
   const stanze = [];
 
-  for (const [chiave, gruppo] of Object.entries(gruppi(persone, aperte))) {
+  for (const [chiave, gruppo] of Object.entries(gruppiPerFamiglia(persone, famiglia, { conto }))) {
     if (chiave === "attesa_citta") {
-      // mancano: { persone, donne } per il testo della home (testoContatore in api/aree.js).
-      for (const p of gruppo) attesa.push({ utente_id: p.id, motivo: "citta_non_aperta", zona: p.zona, mancano: mancano(conto[p.zona]) });
+      // mancano: { persone, donne } per il testo della home (testoContatore in api/aree.js); per le famiglie dedicate donne = 0.
+      for (const p of gruppo) {
+        const f = famiglia.get(p.id);
+        attesa.push({ utente_id: p.id, motivo: "citta_non_aperta", zona: p.zona, mancano: mancanoFamiglia(f, conto[p.zona]?.[f]) });
+      }
       continue;
     }
+    if (!gruppo.length) continue;
     const { stanze: composte, inAttesa } = componi(gruppo, { esclusi, affinitaDi });
-    const [tipo, citta] = chiave === "italia" ? ["italia", null] : ["citta", chiave.slice("citta:".length)];
+    // Chiavi: "italia[:famiglia]" o "citta:<zona>[:famiglia]". Nelle righe scritte la famiglia non va mai.
+    const parti = chiave.split(":");
+    const [tipo, citta] = parti[0] === "italia" ? ["italia", null] : ["citta", parti[1]];
     for (const membri of composte) {
       stanze.push({
         tipo, citta, apre_il: apre.toISOString(), chiude_il: chiude.toISOString(),

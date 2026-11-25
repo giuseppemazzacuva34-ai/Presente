@@ -4,24 +4,30 @@
 //
 // Persona (come la passa il lavoro del lunedì, dopo aver letto profili e filtri):
 //   { id, eta, presento: "donna" | "uomo" | "non_binario" | "mi_descrivo", zona: "milano", citta: "milano", paese: "IT",
-//     cerco: "donne" | "uomini" | "tutti", eta_min, eta_max, raggio: "citta" | "italia" | "estero", stanzePrecedenti: 0 }
+//     cerco: ["donne", "uomini", "non_binari"] (uno o più; #471) oppure il testo di prima "donne" | "uomini" | "tutti", eta_min, eta_max, raggio: "citta" | "italia" | "estero", stanzePrecedenti: 0 }
 // zona = codice dell'area vasta (api/aree.js, D121 A), ricavato dal server dalla provincia. Senza zona (dati di prima
 // della provincia) vale la città. Raggio «citta» = «Solo la mia zona».
 // Il diario NON entra mai qui: nessuna funzione di questo file lo riceve (D51 A, «il diario non entra mai nei calcoli»).
 
 import { affinita as affinitaQuestionario } from "./questionario.js";
-import { accesa } from "./aree.js";
+import { accesa, mancano } from "./aree.js";
 
 export const STANZA = Object.freeze({ massimo: 12, minimo: 6, compatibiliMinimi: 4, cittaApreA: 36, settimaneSenzaRipetere: 4, costoCrediti: 80 });
 export const FUSO = "Europe/Rome";
 
 // ── Filtri reciproci rigidi: A con B solo se B rientra nei filtri di A E A in quelli di B. Mai eccezioni. ──
-// «cerco» confronta «mi presento come»: donne → donna, uomini → uomo; chi si presenta non binario o si descrive
-// rientra solo in «tutti» (confermato dal CPO il 3/11).
-const CERCO = { donne: new Set(["donna"]), uomini: new Set(["uomo"]) };
+// «cerco» («Voglio incontrare», #471 parte B) confronta «mi presento come»: donne → donna, uomini → uomo,
+// non_binari → non binario o «mi descrivo» (chi si descrive conta come non binario per gli altri). Vale sia l'elenco
+// nuovo sia il testo di prima: «tutti» = tutte e tre le scelte (confermato dal CPO il 3/11 e nella spec #471).
+const CERCO = { donne: ["donna"], uomini: ["uomo"], non_binari: ["non_binario", "mi_descrivo"] };
+const sceltePerCerco = (cerco) => {
+  if (cerco === "tutti") return Object.keys(CERCO);
+  const elenco = Array.isArray(cerco) ? cerco : cerco ? [cerco] : [];
+  return [...new Set(elenco.flatMap((v) => (v === "tutti" ? Object.keys(CERCO) : CERCO[v] ? [v] : [])))];
+};
+export const generiCercati = (cerco) => new Set(sceltePerCerco(cerco).flatMap((v) => CERCO[v]));
 function rientra(chi, altro) {
-  if (!chi.cerco || !altro.presento) return false;
-  if (chi.cerco !== "tutti" && !CERCO[chi.cerco]?.has(altro.presento)) return false;
+  if (!altro.presento || !generiCercati(chi.cerco).has(altro.presento)) return false;
   if (!(altro.eta >= (chi.eta_min ?? 18) && altro.eta <= (chi.eta_max ?? 99))) return false;
   if (chi.raggio === "citta") return altro.paese === chi.paese && Boolean(zonaDi(chi)) && zonaDi(altro) === zonaDi(chi);
   if (chi.raggio === "italia") return altro.paese === "IT";
@@ -44,7 +50,7 @@ export { coppia };
 // - nessuna delle due cerca il genere dell'altra (es. due donne che cercano uomini: non sono una «coppia» possibile).
 // Mai nella stessa stanza chi è escluso (bloccati, già insieme nelle ultime 4 settimane), né chi interessa a uno dei due
 // per genere ma è fuori dai suoi filtri di età o raggio. Confermato dal CPO il 3/11.
-const generePossibile = (chi, altro) => chi.cerco === "tutti" || Boolean(CERCO[chi.cerco]?.has(altro.presento));
+const generePossibile = (chi, altro) => generiCercati(chi.cerco).has(altro.presento);
 export function ammessiInsieme(a, b, esclusi = new Set()) {
   if (a.id === b.id || esclusi.has(coppia(a.id, b.id))) return false;
   return compatibili(a, b, esclusi) || (!generePossibile(a, b) && !generePossibile(b, a));
@@ -93,6 +99,83 @@ export function gruppi(persone, aperte = cittaAperte(persone)) {
     if (p.paese === "IT" && z && aperte.has(z)) (risultato[`citta:${z}`] ||= []).push(p);
     else if (p.raggio === "citta") risultato.attesa_citta.push(p);
     else risultato.italia.push(p);
+  }
+  return risultato;
+}
+
+// ── Famiglie di stanze (#471 parte C, spec v1 del CPO del 25/11, richiesta di Giuseppe). ──
+// Prima di comporre, il lavoro del lunedì divide le persone in famiglie: mista (uomini→donne e donne→uomini), dedicata
+// uomini (uomini→uomini), dedicata donne (donne→donne), aperta (persone non binarie che cercano solo persone non binarie).
+// Chi ha più scelte (o una combinazione diversa) è «ponte»: entra dove ha più persone compatibili; a parità, nella
+// famiglia con meno persone. La famiglia NON si scrive mai nel database e non compare mai nell'app: le stanze si chiamano
+// come sempre (tipo «italia» o «citta»). Nessun log, nessun conteggio fuori da qui.
+export const FAMIGLIE = Object.freeze(["mista", "uomini", "donne", "aperta"]);
+const NON_BINARI = new Set(["non_binario", "mi_descrivo"]);
+export function famigliaPropria(p) {
+  const scelte = sceltePerCerco(p.cerco);
+  if (scelte.length !== 1) return null;
+  const [s] = scelte;
+  if (p.presento === "uomo") return s === "uomini" ? "uomini" : s === "donne" ? "mista" : null;
+  if (p.presento === "donna") return s === "donne" ? "donne" : s === "uomini" ? "mista" : null;
+  if (NON_BINARI.has(p.presento) && s === "non_binari") return "aperta";
+  return null;
+}
+
+// Map id → famiglia. I ponti si sistemano uno alla volta (ordine stabile per id) contando i compatibili già sistemati;
+// se non ne hanno in nessuna famiglia vanno nella mista.
+export function assegnaFamiglie(persone, esclusi = new Set()) {
+  const famiglia = new Map();
+  const membri = Object.fromEntries(FAMIGLIE.map((f) => [f, []]));
+  const ponti = [];
+  for (const p of persone) {
+    const f = famigliaPropria(p);
+    if (f) { famiglia.set(p.id, f); membri[f].push(p); } else ponti.push(p);
+  }
+  ponti.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  for (const p of ponti) {
+    let scelta = "mista", punti = 0;
+    for (const f of FAMIGLIE) {
+      const c = membri[f].filter((q) => compatibili(p, q, esclusi)).length;
+      if (c > punti || (c === punti && c > 0 && membri[f].length < membri[scelta].length)) { scelta = f; punti = c; }
+    }
+    famiglia.set(p.id, scelta);
+    membri[scelta].push(p);
+  }
+  return famiglia;
+}
+
+// Conteggi per area e famiglia: { zona: { mista: { totale, donne }, uomini: {…}, … } }.
+export function contaPerZonaEFamiglia(persone, famiglia) {
+  const conto = {};
+  for (const p of persone) {
+    const f = famiglia.get(p.id);
+    if (!f) continue;
+    for (const [z, c] of Object.entries(contaPerZona([p]))) {
+      const t = ((conto[z] ||= {})[f] ||= { totale: 0, donne: 0 });
+      t.totale += c.totale; t.donne += c.donne;
+    }
+  }
+  return conto;
+}
+
+// Quando una famiglia accende la sua stanza d'area: la mista con 36 profili e il 40% di donne (come sempre), le dedicate
+// e l'aperta con 36 profili della famiglia (senza la regola delle donne).
+export const famigliaAccesa = (f, c) => (f === "mista" ? accesa(c) : (c?.totale || 0) >= STANZA.cittaApreA);
+export const mancanoFamiglia = (f, c) =>
+  (f === "mista" ? mancano(c) : { persone: Math.max(0, STANZA.cittaApreA - (c?.totale || 0)), donne: 0 });
+
+// Come gruppi(), ma per famiglia. Chiavi: "italia" e "citta:<zona>" per la mista (come prima), "italia:<famiglia>" e
+// "citta:<zona>:<famiglia>" per le altre, "attesa_citta" per chi ha «Solo la mia zona» e la sua famiglia non è accesa.
+// conto: { zona: { famiglia: { totale, donne } } }; senza, si contano le persone passate.
+export function gruppiPerFamiglia(persone, famiglia, { conto = contaPerZonaEFamiglia(persone, famiglia) } = {}) {
+  const risultato = { attesa_citta: [] };
+  for (const p of persone) {
+    const f = famiglia.get(p.id) || "mista";
+    const z = zonaDi(p);
+    const coda = f === "mista" ? "" : `:${f}`;
+    if (p.paese === "IT" && z && famigliaAccesa(f, conto[z]?.[f])) (risultato[`citta:${z}${coda}`] ||= []).push(p);
+    else if (p.raggio === "citta") risultato.attesa_citta.push(p);
+    else (risultato[`italia${coda}`] ||= []).push(p);
   }
   return risultato;
 }
