@@ -24,7 +24,7 @@ const MASSIMO = 300;
 export const TESTI_APP = Object.freeze({
   titolo: "Vuoi lasciare la stanza?",
   sotto: "Dicci il motivo. Le persone della stanza vedranno solo che hai lasciato la stanza.",
-  coin: "I Coin della stanza non tornano indietro. Le chiavi che hai dato e ricevuto si annullano.",
+  coin: "I crediti della stanza non tornano indietro. Le chiavi che hai dato e ricevuto si annullano.",
   resto: "Resto",
   lascia: "Lascia la stanza",
   app: "Se qualcosa non funziona, scrivici dall'Aiuto.",
