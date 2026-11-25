@@ -111,9 +111,26 @@ si mostra sempre la provincia. `conteggi_aree()` dà per ogni area solo `totale`
 Prossimo passo: il lavoro del lunedì usa `conteggi_aree()` per l'accensione; testi «La tua zona» e contatore nella
 web app; scelta del raggio «Solo la mia zona · <area>».
 
+## Famiglie di stanze e stanze dedicate (#471 parte C, spec v1 del CPO, 25/11)
+
+Richiesta di Giuseppe del 25/11. Prima di comporre, il lavoro del lunedì (`api/settimana.js` → `api/stanze.js`) divide
+chi entra in **famiglie**: mista (uomini→donne, donne→uomini), dedicata uomini (uomini→uomini), dedicata donne
+(donne→donne), aperta (persone non binarie che cercano solo persone non binarie). Chi ha più scelte in «Voglio incontrare»
+è un **ponte**: va dove ha più persone compatibili, a parità nella famiglia con meno persone, senza compatibili nella mista.
+
+- Ogni famiglia accende la **sua** stanza d'area con 36 profili; la regola del 40% di donne vale solo per la mista.
+  Sotto la soglia: Stanza Italia della famiglia (o attesa per chi ha «Solo la mia zona»); sotto 6 compatibili nessuna stanza.
+- La famiglia vive solo in memoria durante il calcolo: **non si scrive** nel database (le stanze restano `italia` o
+  `citta`), non va nei log e non compare mai nell'app.
+- `cerco` può essere già un elenco (`donne`, `uomini`, `non_binari`) o il testo di prima (`tutti` = tutte e tre): la
+  migrazione del database e la schermata 06 a più scelte sono la parte B (prossimo passo).
+- Per ora la mista usa i numeri di `conteggi_aree()` (tutti i profili completi); le famiglie dedicate si contano su chi entra
+  quella settimana. I conteggi per famiglia nel database arrivano con la parte B.
+- Prove: `test/famiglie_stanze.test.mjs` (criteri 6, 7, 8, 9 della spec).
+
 ## Punti aperti
 
-- «non binario» e «mi descrivo» rientrano solo in chi cerca «tutti»: confermato dal CPO il 3/11.
+- «non binario» e «mi descrivo» rientrano in chi vuole incontrare «Persone non binarie» (o «tutti», testo di prima).
 - Con 1.000 profili il calcolo dura circa 6 secondi: oltre i limiti di CPU del piano gratuito dei Worker. Quando serve,
   il lavoro del lunedì gira come GitHub Action programmata o funzione di Supabase (scelta del CTO, costo zero).
 
