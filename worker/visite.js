@@ -106,6 +106,7 @@ const CITTA_PAGINE = ["bari", "bergamo", "bologna", "brescia", "cagliari", "cata
 export const PAGINE_CONTATE = new Set([
   "/guide", "/guide/perche-le-app-di-incontri-deludono", "/guide/primo-appuntamento-al-buio",
   "/guide/red-flag-green-flag", "/guide/chi-paga-il-conto", "/guide/innamorarsi-di-una-voce",
+  "/guide/prima-chiamata-cosa-dire",
   "/incontri-al-buio", ...CITTA_PAGINE.map((c) => `/incontri-al-buio/${c}`),
   // SEO v3 (2/11): pagine utili indicizzabili.
   "/app-incontri-sicura", "/primo-appuntamento", "/ghosting",
