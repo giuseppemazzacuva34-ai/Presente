@@ -709,8 +709,10 @@ function schermoChiamata(m) {
       h("textarea", { id: "testo-diario", classe: "racconto-segnala", maxlength: String(sc.massimo), rows: "5", disabled: m.attesa,
         oninput: (e) => { notaDiario.testo = e.target.value; } }, notaDiario.testo),
       h("p", { classe: "nota" }, sc.nota),
-      h("div", { classe: "azioni-chiamata" }, bottone(sc.salva, () => t.salvaDiario(notaDiario.testo), { classe: "bottone" })),
-      bottone(sc.salta, () => t.saltaDiario(), { classe: "link" })];
+      // Design v4 (schermata 32, confronto del 25/11): «Salta» e «Salva» sulla stessa riga.
+      h("div", { classe: "azioni-chiamata azioni-diario" },
+        bottone(sc.salta, () => t.saltaDiario(), { classe: "bottone-secondario" }),
+        bottone(sc.salva, () => t.salvaDiario(notaDiario.testo), { classe: "bottone" }))];
   } else if (sc.tipo === "dopo_fine") {
     parti = [h("h1", {}, sc.titolo),
       sc.testo ? h("p", { classe: "sottotitolo" }, sc.testo) : null,

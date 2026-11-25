@@ -136,3 +136,9 @@ test("dopoSalva: avvisa solo quando la nota è salvata davvero", async () => {
   assert.equal((await d.salva(nota)).ok, false);
   assert.equal(avvisi, 1);
 });
+
+test("schermata 32 (design v4): «Salta» e «Salva» sulla stessa riga, «Salta» come pulsante secondario", () => {
+  const codice = readFileSync(new URL("../landing/app/moduli/flusso.js", import.meta.url), "utf8");
+  const pezzo = codice.slice(codice.indexOf('sc.tipo === "diario"'), codice.indexOf('sc.tipo === "dopo_fine"'));
+  assert.match(pezzo, /azioni-diario" },\s*bottone\(sc\.salta, \(\) => t\.saltaDiario\(\), \{ classe: "bottone-secondario" \}\),\s*bottone\(sc\.salva,/);
+});
