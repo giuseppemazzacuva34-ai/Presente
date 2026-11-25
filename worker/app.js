@@ -65,7 +65,7 @@ export async function app(request, env, f = fetch) {
   const url = new URL(request.url);
   if (url.pathname === PERCORSO_ACCESSO_TESTER) return conIntestazioniApp(await accessoTester(request, env, f), url.pathname);
   // ACCESSO_APP = «tester»: le API rispondono solo a chi ha l'email nel segreto EMAIL_TESTER (worker/accesso_tester.js).
-  // Superato il controllo, l'API vede l'accesso acceso come con «si». I lavori programmati restano spenti (leggono «si»).
+  // Superato il controllo, l'API vede l'accesso acceso come con «si». I lavori programmati girano anche con «tester» (esistono solo account in elenco).
   if (url.pathname.startsWith("/app/api/") && modoAccesso(env) === "tester") {
     const fermo = await cancelloTester(request, env, f);
     if (fermo) return conIntestazioniApp(fermo, url.pathname);

@@ -3,13 +3,14 @@
 // finiti che nessuno ha aperto: public.chiudi_incontri_finiti() (migrazione *_buca_incontro.sql, solo ruolo di
 // servizio) applica la buca (100 + 70 Coin a chi ha aspettato, 30 a Presente) o restituisce i crediti a entrambi. Ogni lettura
 // dell'incontro lo chiude già da sola: questo lavoro serve solo per chi non riapre l'app.
-// Spento finché ACCESSO_APP non vale «si». Nei log solo numeri, mai persone.
+// Spento finché ACCESSO_APP non vale «si» o «tester». Nei log solo numeri, mai persone.
+import { accessoAperto } from "./accesso_tester.js"; // «si» o «tester» (#8, test interno)
 
 const ATTESA_MS = 10000;
 
 // Restituisce { esito: "spento" | "fatto" | "errore", chiusi? }. Mai eccezioni verso chi la chiama.
 export async function chiudiIncontriFiniti(env, f = fetch) {
-  if (!env || env.ACCESSO_APP !== "si" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
+  if (!env || !accessoAperto(env) || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
   const chiave = env.SUPABASE_SERVICE_ROLE_KEY;
   try {
     const r = await f(`${String(env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1/rpc/chiudi_incontri_finiti`, {

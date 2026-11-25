@@ -3,7 +3,7 @@
 # - Parte domenica alle 22:35 e alle 23:35 UTC: una delle due è sempre alle 00:35 di Roma (estate e inverno); lunedì alle
 #   6:05 UTC una riserva, se GitHub salta una partenza. Le partenze dopo la prima trovano le stanze già scritte.
 # - A mano da Actions → «Stanze» → Run workflow: «prova» calcola e scrive nel log solo i numeri, senza toccare nulla.
-# - Spento finché ACCESSO_APP in wrangler.jsonc non vale «si». Una seconda esecuzione nella stessa settimana non scrive nulla.
+# - Spento finché ACCESSO_APP in wrangler.jsonc non vale «si» o «tester». Una seconda esecuzione nella stessa settimana non scrive nulla.
 # I segreti si leggono solo qui e non vengono mai stampati; nel log solo numeri (mai id, nomi o province).
 name: Stanze
 

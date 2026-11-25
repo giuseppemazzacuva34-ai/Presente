@@ -1,14 +1,15 @@
 // Testi di «Lascia la stanza» cancellati 30 giorni dopo la chiusura della stanza (issue #381, spec v1 del CPO del 23/11,
 // «Dati»). Linea «sviluppatore-b», passo 5. Ogni ora (cron «23 * * * *» già in wrangler.jsonc, gratuito) il Worker
 // chiede al database public.pulisci_testi_uscita() (migrazione *_uscite_pulizia.sql, solo ruolo di servizio): toglie il
-// testo libero, il codice del motivo resta per il riepilogo #8. Spento finché ACCESSO_APP non vale «si».
+// testo libero, il codice del motivo resta per il riepilogo #8. Spento finché ACCESSO_APP non vale «si» o «tester».
 // Nei log solo numeri, mai testi.
+import { accessoAperto } from "./accesso_tester.js"; // «si» o «tester» (#8, test interno)
 
 const ATTESA_MS = 10000;
 
 // Restituisce { esito: "spento" | "fatto" | "errore", tolti? }. Mai eccezioni verso chi la chiama.
 export async function pulisciTestiUscita(env, f = fetch) {
-  if (!env || env.ACCESSO_APP !== "si" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
+  if (!env || !accessoAperto(env) || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
   const chiave = env.SUPABASE_SERVICE_ROLE_KEY;
   try {
     const r = await f(`${String(env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1/rpc/pulisci_testi_uscita`, {
