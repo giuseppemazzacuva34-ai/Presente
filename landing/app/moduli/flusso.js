@@ -39,6 +39,8 @@ import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#3
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
+import { apriTuoiCoin } from "./tuoi_coin.js"; // schermata 13 da «Ricarica» del profilo (#349, linea B)
+import { schermataTuoiCoin } from "./saldo_coin.js";
 import { disponiStanza, vistaCerchioStanza, testoChiamate } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
 import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, creaStanzaViva, creaBattito } from "./appuntamenti_stanza.js"; // schermate 19-20 (#380)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
@@ -1892,8 +1894,16 @@ function schermoIlProfilo() {
     voce: stato.voce, saldo: d.saldo, regali: d.regali, inStanza: inStanzaAperta() }), {
     onda: ondaGrande(), risposte: daQui("risposte"), foto: daQui("foto"), preferenze: daQui("cerchi"),
     regali: regaliProfilo ? () => regaliProfilo.apri() : null,
+    ricarica: d.saldo === null ? null : () => apriCreditiDalProfilo(d.saldo),
     elimina: () => {
       if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
     },
     torna: () => schermoProfilo.chiudi(), errore: salvataggio.errore });
+}
+// «Ricarica» del profilo (#349, linea B, passo 3; spec #331 v1.1 punto 5): la schermata 13 si apre sotto la testata al
+// posto di #app, che resta il profilo; «Più tardi» riporta al profilo. In beta «Paga» resta spento nella 13.
+function apriCreditiDalProfilo(saldo) {
+  if (document.querySelector(".tuoi-coin")) return;
+  apriTuoiCoin(document.querySelector(".pagina.app"), schermataTuoiCoin(saldo, { primaStanzaUsata: schermoProfilo.primaStanzaUsata() !== false }),
+    { principale: document.getElementById("app") });
 }
