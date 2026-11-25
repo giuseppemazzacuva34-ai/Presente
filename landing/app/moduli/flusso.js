@@ -43,6 +43,7 @@ import { apriTuoiCoin } from "./tuoi_coin.js"; // schermata 13 da «Ricarica» d
 import { schermataTuoiCoin } from "./saldo_coin.js";
 import { disponiStanza, vistaCerchioStanza, testoChiamate } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
 import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, creaStanzaViva, creaBattito } from "./appuntamenti_stanza.js"; // schermate 19-20 (#380)
+import { creaDomenicaSera, vistaDomenicaSera } from "./domenica_sera.js"; // schermata 35 (#349, linea C)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -55,6 +56,7 @@ let schermoProfilo = null; // «Il profilo» dal cerchio in alto a destra, scher
 let opzioniCoin = null; // lettore del saldo (coinProfilo dell'avvio): schermata 13 dopo l'iscrizione (#349, linea B)
 let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
 let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
+const domenicaSera = creaDomenicaSera(); // schermata 35 «Domenica sera» (#349, linea C)
 let filoRiascolto = null; // voce «Il vocale del Filo» nella stanza (#360, linea C)
 let uscitaStanza = null; // «Lascia la stanza», schermata 22 (#381, linea B)
 // Stanza viva e «Fissa una chiamata» (#380, linea A, schermate 19-20): stati e appuntamenti dal battito ogni 30 s;
@@ -474,6 +476,7 @@ function aggiornaSulPosto(m) {
     const c = settimanaDellaHome().conto;
     if (c && conto.textContent !== c) { conto.textContent = c; conto.setAttribute("aria-label", `${TESTI_SETTIMANA.manca} ${c}`); }
   }
+  if (domenicaSera.aggiornaSulPosto(radice, new Date())) disegna(); // schermata 35: conto, alle 21 sparisce
   if (sc.tipo === "squillo_in_uscita") metti("chiamata-testo", sc.testo);
   if (sc.carte) metti("chiamata-carte", sc.carte.etichetta);
 }
@@ -785,6 +788,11 @@ function disegna() {
   if (valutazioneVostra && valutazioneVostra.modello().porta) { radice.replaceChildren(schermoValutazioneVostra()); return; }
   if (incontroVostro && (incontroVostro.modello().porta || incontroVostro.modello().errore)) { radice.replaceChildren(schermoIncontroVostro()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
+  // Schermata 35 «Domenica sera» (#349, linea C): domenica 20:00-20:59 con la stanza aperta, al posto della home.
+  if (PASSI[stato.passo].id === "fatto") {
+    const sera35 = vistaDomenicaSera(h, domenicaSera.modello(new Date(), { inStanza: inStanzaAperta() }), { rivedi: rivediStanza });
+    if (sera35) { radice.replaceChildren(sera35); return; }
+  }
   const passo = PASSI[stato.passo];
   const contenuto = SCHERMATE[passo.id]();
   const parti = [
@@ -1922,4 +1930,12 @@ async function apriCreditiDopoIscrizione() {
   if (!c || c.ok !== true || !Number.isInteger(c.saldo) || document.querySelector(".tuoi-coin")) return;
   apriTuoiCoin(document.querySelector(".pagina.app"), schermataTuoiCoin(c.saldo, { primaStanzaUsata: c.primaStanzaUsata === true }),
     { principale: document.getElementById("app") });
+}
+
+// Schermata 35 (#349, linea C): «Rivedi la tua stanza» la toglie per questa domenica e porta il fuoco su «La tua stanza».
+function rivediStanza() {
+  domenicaSera.rivedi(new Date());
+  disegna();
+  const titolo = radice && radice.querySelector("#tua-stanza-titolo");
+  if (titolo) { titolo.tabIndex = -1; titolo.focus({ preventScroll: true }); }
 }
