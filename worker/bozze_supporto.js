@@ -1,13 +1,14 @@
 // Bozze di «Scrivici» cancellate 30 giorni dopo la risposta (Fase 2, issue #10 parte B v1 del CPO, «Conservazione»;
 // D122 B). Linea «sviluppatore-c». Ogni ora (cron «23 * * * *» già in wrangler.jsonc, gratuito) il Worker chiede al
 // database public.pulisci_bozze_supporto() (migrazione *_supporto_bozze_30_giorni.sql, solo ruolo di servizio).
-// Spento finché ACCESSO_APP non vale «si». Nei log solo numeri, mai testi.
+// Spento finché ACCESSO_APP non vale «si» o «tester». Nei log solo numeri, mai testi.
+import { accessoAperto } from "./accesso_tester.js"; // «si» o «tester» (#8, test interno)
 
 const ATTESA_MS = 10000;
 
 // Restituisce { esito: "spento" | "fatto" | "errore", tolte? }. Mai eccezioni verso chi la chiama.
 export async function pulisciBozzeSupporto(env, f = fetch) {
-  if (!env || env.ACCESSO_APP !== "si" || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
+  if (!env || !accessoAperto(env) || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return { esito: "spento" };
   const chiave = env.SUPABASE_SERVICE_ROLE_KEY;
   try {
     const r = await f(`${String(env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1/rpc/pulisci_bozze_supporto`, {

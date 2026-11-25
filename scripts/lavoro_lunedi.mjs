@@ -1,7 +1,7 @@
 // Lavoro del lunedì (Fase 2, issue #3): legge chi ha confermato, forma le stanze, le scrive. Gira dalla GitHub Action
 // «Stanze» (.github/workflows/stanze.yml) ogni lunedì alle 00:30 di Roma (D151 A), costo zero; le stanze aprono alle 9:00.
 //   node scripts/lavoro_lunedi.mjs            modo da MODO: «automatico» (solo lunedì 00:00–8:59 di Roma) o «prova»
-// Spento finché ACCESSO_APP in wrangler.jsonc non vale «si». Il modo «prova» calcola e non scrive nulla.
+// Spento finché ACCESSO_APP in wrangler.jsonc non vale «si» o «tester» (test interno #8). Il modo «prova» calcola e non scrive nulla.
 // Nel log solo numeri (stanze, persone, motivi di attesa): mai id, nomi, età o province.
 // I calcoli sono in api/settimana.js e api/stanze.js; la lettura e la scrittura nel database sono
 // righe_settimana() e scrivi_settimana() (migrazione 20261108220000_lavoro_lunedi.sql, solo service_role);
@@ -24,7 +24,7 @@ export function primaDellApertura(adesso) {
 
 // rpc(nome, argomenti) → risultato della funzione del database. Restituisce solo un riassunto in numeri.
 export async function eseguiLunedi({ rpc, adesso = new Date(), accessoApp, modo = "automatico" }) {
-  if (accessoApp !== "si") return { esito: "spento" };
+  if (accessoApp !== "si" && accessoApp !== "tester") return { esito: "spento" };
   if (modo !== "prova" && !primaDellApertura(adesso)) return { esito: "fuori_orario" };
 
   // Lunedì notte la stanza della settimana non è ancora aperta (la vecchia ha chiuso domenica alle 21): settimanaStanza()
