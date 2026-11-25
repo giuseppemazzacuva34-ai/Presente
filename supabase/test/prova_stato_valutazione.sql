@@ -66,7 +66,7 @@ select pg_temp.ok(public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', 
 select pg_temp.ok(public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', '7c7c7c7c-0000-4000-8000-00000000007c')
   -> 'azioni' = '["valuta"]'::jsonb, 'incontro avvenuto: anche Ciro vede «valuta»');
 select pg_temp.ok(public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000bd', '7b7b7b7b-0000-4000-8000-00000000007b')
-  -> 'azioni' = '["disdici"]'::jsonb, 'incontro solo confermato: niente «valuta», restano le azioni di prima');
+  -> 'azioni' = '["disdici", "ritardo"]'::jsonb, 'incontro solo confermato: niente «valuta», restano le azioni di prima');
 select pg_temp.ok(public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ad', '7a7a7a7a-0000-4000-8000-00000000007a')
   -> 'azioni' = '[]'::jsonb, 'dopo 7 giorni la valutazione è chiusa: niente «valuta»');
 select pg_temp.ok(public.valuta_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', '7a7a7a7a-0000-4000-8000-00000000007a',
