@@ -13,6 +13,7 @@ const dopoPredefinito = (fn, ms) => {
   if (t && typeof t.unref === "function") t.unref();
   return t;
 };
+const chiDa = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // In attesa del calcolo delle 21:00 si rilegge la sera dopo 20 secondi, finché non è pronta.
 const RILEGGI_SERA_MS = 20000;
@@ -27,11 +28,13 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
   let stato = null;
   let sera = null;
   let finestra = null;
+  // Design v4, schermata 34 «Chiave data»: dopo «Dai la chiave» (o «Salva» della frase) la conferma per quella persona.
+  let data = null;
   let errore = null;
   let inCorso = false;
 
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare le chiavi */ } };
-  const data = (a) => (Array.isArray(stato?.date) ? stato.date.find((k) => k && k.a === a) : null);
+  const dataA = (a) => (Array.isArray(stato?.date) ? stato.date.find((k) => k && k.a === a) : null);
   const apri = (tipo, a, campi) => {
     if (!UUID.test(String(a || ""))) return;
     finestra = { tipo, a, ...campi };
@@ -101,6 +104,7 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
       contatore: contatoreChiavi(stato),
       conto: stato && stato.stanza === true ? contoAllaRovescia(stato.chiude_il, adesso()) : null,
       finestra: finestra ? { ...finestra } : null,
+      data: data ? { ...data } : null,
       sera,
       animazione,
       errore,
@@ -117,12 +121,17 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
       dopo(fermaAnimazione, animazioneMs);
       avvisa();
     },
-    apriDai: (a, nome) => apri("dai", a, { ...finestraDai(nome), frase: "" }),
+    apriDai: (a, nome) => apri("dai", a, { ...finestraDai(nome), nome: chiDa(nome), frase: "" }),
     apriFrase: (a, nome) => {
-      const d = data(a);
-      apri("frase", a, { ...finestraDai(nome), titolo: "Modifica la frase", bottone: "Salva", frase: typeof d?.frase === "string" ? d.frase : "" });
+      const d = dataA(a);
+      apri("frase", a, { ...finestraDai(nome), nome: chiDa(nome), titolo: "Modifica la frase", bottone: "Salva", frase: typeof d?.frase === "string" ? d.frase : "" });
     },
-    apriRiprendi: (a, nome) => apri("riprendi", a, { testo: confermaRiprendi(nome), bottone: "Riprendi la chiave" }),
+    apriRiprendi: (a, nome) => apri("riprendi", a, { nome: chiDa(nome), testo: confermaRiprendi(nome), bottone: "Riprendi la chiave" }),
+    // «Torna alla stanza» della schermata 34.
+    chiudiData() {
+      data = null;
+      avvisa();
+    },
     scrivi(frase) {
       if (finestra && finestra.tipo !== "riprendi") finestra.frase = typeof frase === "string" ? frase : "";
     },
@@ -146,6 +155,7 @@ export function creaChiaviStanza({ chiavi, aggiorna = () => {}, adesso = () => n
           return;
         }
         finestra = null;
+        data = f.tipo === "riprendi" ? null : { a: f.a, nome: f.nome };
         if (r.stato && typeof r.stato === "object") stato = r.stato;
         else await carica();
       } finally {
@@ -170,18 +180,15 @@ export function vistaChiavi(h, ks) {
 }
 
 // Sulla scheda di una persona: «Dai una chiave», oppure il segno con «Riprendi» e «Modifica la frase», oppure il
-// testo delle chiavi chiuse. La finestra aperta per questa persona prende il posto dei pulsanti, vicino a dove si è
-// toccato (tastiera e lettore di schermo restano lì).
+// testo delle chiavi chiuse. Design v4 (#349, schermate 33-34): i pulsanti aprono una schermata sua
+// (vistaSchermataChiave), non più un riquadro dentro la scheda.
 export function vistaSchedaChiave(h, ks, persona, nome) {
   const s = ks.scheda(persona);
   if (!s) return null;
-  const m = ks.modello();
-  const f = m.finestra && m.finestra.a === persona ? m.finestra : null;
   const n = typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona";
   const segno = s.segno ? [h("p", { classe: "chiave-segno" }, s.segno),
     s.frase ? h("p", { classe: "nota chiave-frase-data" }, `«${s.frase}»`) : null] : [];
   if (s.chiuse) return h("div", { classe: "chiave-scheda" }, segno, h("p", { classe: "nota" }, s.chiuse));
-  if (f) return h("div", { classe: "chiave-scheda" }, segno, finestra(h, ks, m, f));
   const link = (testo, onclick, etichetta) => h("button", { classe: "link", type: "button", "aria-label": etichetta, onclick }, testo);
   return h("div", { classe: "chiave-scheda" }, segno,
     s.dai ? h("button", { classe: "bottone-secondario", type: "button", "aria-label": `${s.dai} a ${n}`, onclick: () => ks.apriDai(persona, nome) }, s.dai) : null,
@@ -189,20 +196,64 @@ export function vistaSchedaChiave(h, ks, persona, nome) {
     s.riprendi ? link(s.riprendi, () => ks.apriRiprendi(persona, nome), `${s.riprendi} a ${n}`) : null);
 }
 
-function finestra(h, ks, m, f) {
-  const titolo = `chiave-titolo-${f.a}`;
-  const corpo = f.tipo === "riprendi"
-    ? [h("p", { id: titolo }, h("strong", {}, f.testo))]
-    : [h("p", { id: titolo }, h("strong", {}, f.titolo)),
-      h("label", { for: "chiave-frase" }, f.etichetta),
-      h("textarea", { id: "chiave-frase", classe: "racconto-segnala", maxlength: String(f.massimo), rows: "3", disabled: m.inCorso,
-        "aria-describedby": "chiave-nota", oninput: (e) => ks.scrivi(e.target.value) }, f.frase || ""),
-      h("p", { classe: "nota", id: "chiave-nota" }, f.nota)];
-  return h("div", { classe: "chiave-finestra", role: "dialog", "aria-labelledby": titolo },
-    corpo,
-    m.errore ? h("p", { classe: "errore", role: "alert" }, m.errore) : null,
-    h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ks.conferma() }, m.inCorso ? "Un attimo…" : f.bottone),
-    h("button", { classe: "link", type: "button", disabled: m.inCorso, onclick: () => ks.chiudi() }, "Annulla"));
+// Design v4 (#349, approvato da Giuseppe il 22/11), schermate 33 «Le chiavi» e 34 «Chiave data» (#n23, #n24).
+// Prende tutta la pagina (flusso.js la mette prima della stanza): con una finestra aperta la 33 (dai, modifica la
+// frase, riprendi), dopo «Dai la chiave» o «Salva» la 34. null = si vede la stanza.
+// Testi senza genere (D141): «La leggerà solo se anche <nome> ti dà una chiave.» al posto di «anche lui».
+export const TESTI_SCHERMATE_CHIAVE = Object.freeze({
+  occhiello: (n) => `Le tue chiavi · ${n} di 2`,
+  ripensamento: "Puoi cambiare idea fino a domenica alle 21.",
+  resta: "Ti resta 1 chiave",
+  dato: "Hai dato una chiave",
+  cambia: "Cambia frase",
+  riprendi: "Riprendi la chiave",
+  torna: "Torna alla stanza",
+  indietro: "Indietro",
+});
+
+export function vistaSchermataChiave(h, ks) {
+  const m = ks.modello();
+  const T = TESTI_SCHERMATE_CHIAVE;
+  const restanti = m.contatore ? m.contatore.icone.filter(Boolean).length : null;
+  if (m.finestra) {
+    const f = m.finestra;
+    const n = f.nome || "questa persona";
+    const titolo = f.tipo === "dai" ? ["Dai una chiave", h("br", {}), h("em", {}, `a ${n}?`)]
+      : f.tipo === "riprendi" ? [T.riprendi, h("br", {}), h("em", {}, `a ${n}?`)]
+      : [f.titolo];
+    const corpo = f.tipo === "riprendi"
+      ? [h("p", { classe: "sottotitolo" }, "Non lo saprà.")]
+      : [h("p", { classe: "sottotitolo", id: "chiave-nota" }, f.nota),
+        h("label", { classe: "nascosto", for: "chiave-frase" }, f.etichetta),
+        h("textarea", { id: "chiave-frase", classe: "chiave-v4-campo", maxlength: String(f.massimo), rows: "4", disabled: m.inCorso,
+          "aria-describedby": "chiave-nota", oninput: (e) => ks.scrivi(e.target.value) }, f.frase || ""),
+        h("p", { classe: "nota" }, T.ripensamento)];
+    return h("section", { classe: "schermata chiave-v4", "aria-labelledby": "chiave-v4-titolo" },
+      restanti === null ? null : h("p", { classe: "passo" }, T.occhiello(restanti)),
+      h("h1", { id: "chiave-v4-titolo" }, titolo),
+      h("div", { classe: "corpo chiave-finestra" }, corpo,
+        m.errore ? h("p", { classe: "errore", role: "alert" }, m.errore) : null),
+      h("div", { classe: "azioni" },
+        h("button", { classe: "bottone-secondario", type: "button", disabled: m.inCorso, onclick: () => ks.chiudi() }, T.indietro),
+        h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ks.conferma() }, m.inCorso ? "Un attimo…" : f.bottone)));
+  }
+  if (!m.data) return null;
+  const s = ks.scheda(m.data.a);
+  if (!s || !s.segno) return null;
+  const n = m.data.nome || "questa persona";
+  const occhiello = restanti === 1 ? T.resta : m.contatore ? m.contatore.testo : null;
+  return h("section", { classe: "schermata chiave-v4 chiave-data", "aria-labelledby": "chiave-v4-titolo" },
+    h("div", { classe: "corpo" },
+      occhiello ? h("p", { classe: "passo" }, occhiello) : null,
+      h("h1", { id: "chiave-v4-titolo" }, T.dato, h("br", {}), h("em", {}, `a ${n}.`)),
+      s.frase ? h("blockquote", { classe: "frase" }, s.frase) : null,
+      s.chiuse ? h("p", { classe: "nota" }, s.chiuse) : null),
+    h("div", { classe: "azioni" },
+      s.modifica ? h("button", { classe: "bottone-secondario", type: "button", "aria-label": `Cambia la frase per ${n}`,
+        onclick: () => ks.apriFrase(m.data.a, n) }, T.cambia) : null,
+      s.riprendi ? h("button", { classe: "bottone-secondario", type: "button", "aria-label": `${T.riprendi} a ${n}`,
+        onclick: () => ks.apriRiprendi(m.data.a, n) }, T.riprendi) : null,
+      h("button", { classe: "bottone", type: "button", onclick: () => ks.chiudiData() }, T.torna)));
 }
 
 // La sera delle chiavi (passo 8), in cima a «La tua stanza» dalle 21:00 a lunedì 9:00. «Vai allo svelamento» solo se

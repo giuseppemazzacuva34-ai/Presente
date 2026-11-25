@@ -575,3 +575,20 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .profilo .spiega ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; }
 .app .profilo .spiega .nota { margin: 0 0 6px; color: #D9D3C9; }
 .app .profilo .spiega .link { min-height: 44px; }
+
+/* ===== Linea C (#349): schermate 33-34 «Le chiavi» e «Chiave data» del design v4 =====
+   Valori dal prototipo (#n23, #n24): occhiello spaziato, titolo serif con il nome in rosso corsivo, campo scuro con
+   la frase in corsivo, pulsanti 3D nel piede comune. Nella 34 il testo sta al centro e i pulsanti sono 2 + 1. */
+.app .chiave-v4 { display: flex; flex-direction: column; min-height: min(80vh, 700px); }
+.app .chiave-v4 .passo { margin: 0 0 10px; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .chiave-v4 h1 { margin: 0 0 12px; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 34px; line-height: 1.1; color: #F2EDE4; }
+.app .chiave-v4 h1 em { font-style: italic; color: #E8432B; }
+.app .chiave-v4 .sottotitolo { color: #A8A29A; }
+.app .chiave-v4-campo { width: 100%; box-sizing: border-box; min-height: 140px; padding: 14px 16px; border: 1px solid rgba(242, 237, 228, 0.25); border-radius: 16px; background: #1A171C; color: #F2EDE4; font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.35; resize: vertical; }
+.app .chiave-v4-campo:focus-visible { outline: 2px solid #F2EDE4; outline-offset: 2px; }
+.app .chiave-v4 .azioni { margin-top: auto; }
+.app .chiave-data .corpo { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.app .chiave-data .frase { margin: 1.5rem 0 0; border-left: 2px solid #E8432B; padding: 4px 0 4px 14px; text-align: left; font-family: var(--serif); font-style: italic; font-size: 19px; color: #F2EDE4; }
+#app .chiave-data .azioni { grid-template-columns: 1fr 1fr; }
+#app .chiave-data .azioni > .bottone { grid-column: 1 / -1; }
+#app .chiave-data .azioni > .bottone-secondario { order: 0; }
