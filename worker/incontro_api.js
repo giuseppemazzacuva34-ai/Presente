@@ -13,6 +13,9 @@
 //        «Disdici» (spec v1.1, passo 2m): esito «disdetto» (da fissare) o «disdetto_tardi» (buca di chi disdice)
 //   POST /app/api/incontro  { azione: "annulla", porta }                              → annulla_incontro
 //        «Annulla l'incontro» (passo 2o): esito «annullato», crediti a entrambi, poi nessuna proposta
+//   POST /app/api/incontro  { azione: "ritardo", porta, minuti: 15 | 30 }             → ritardo_incontro
+//        «Arrivo in ritardo» (spec v1, casi limite): una volta sola, sposta la finestra del check-in; nello stato
+//        «ritardo_mio» solo sì/no.
 //   POST /app/api/incontro  { azione: "valuta", porta, presentato, foto_sue, come_in_chiamata, sicuro } → valuta_incontro
 //        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
 //   POST /app/api/incontro  { azione: "racconta", porta, testo }                     → racconta_valutazione
@@ -36,6 +39,7 @@
 // la forma dei dati. Spento finché ACCESSO_APP non vale «si». Nei log solo nomi delle funzioni e codici, mai dati.
 import { risposta, chiEDavvero, leggiCorpo } from "./supporto_api.js";
 import { controllaRisposte, VALUTAZIONE } from "../api/valutazione.js";
+import { INCONTRO } from "../api/incontro.js";
 
 export const PERCORSO_INCONTRO = "/app/api/incontro";
 const CORPO_MASSIMO = 8 * 1024; // passo 3h: il racconto arriva a 1000 caratteri, anche di 4 byte
@@ -57,7 +61,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Passo 3h: «Sì, racconto» dopo «No» alla sicurezza.
   racconta_valutazione: ["raccontato"],
   // Spec v1.3 punto 2: «Contesta» un «No».
-  contesta_no: ["inviata"] };
+  contesta_no: ["inviata"],
+  // Spec v1, casi limite: «Arrivo in ritardo» (+15 o +30 minuti, una volta sola).
+  ritardo_incontro: ["ritardo"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -69,6 +75,7 @@ const RIFIUTI = {
   valuta_incontro: ["non_avvenuto", "chiusa", "gia_fatta", "risposta_non_valida"],
   racconta_valutazione: ["testo_non_valido", "nessuna_segnalazione", "gia_raccontato"],
   contesta_no: ["testo_non_valido", "domanda_non_valida", "nessun_no"],
+  ritardo_incontro: ["non_confermato", "incontro_chiuso", "ritardo_non_valido", "ritardo_gia_usato", "gia_fatto", "troppo_tardi"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -166,6 +173,11 @@ export async function incontroApi(request, env, f = fetch) {
   if (azione === "checkin") return esegui(s, "checkin_incontro", { p_porta: porta, p_persona: chi.id }, f);
   if (azione === "disdici") return esegui(s, "disdici_incontro", { p_porta: porta, p_persona: chi.id }, f);
   if (azione === "annulla") return esegui(s, "annulla_incontro", { p_porta: porta, p_persona: chi.id }, f);
+  if (azione === "ritardo") {
+    const { minuti } = corpo.dati;
+    if (!INCONTRO.ritardi.includes(minuti)) return dati();
+    return esegui(s, "ritardo_incontro", { p_porta: porta, p_persona: chi.id, p_minuti: minuti }, f);
+  }
   if (azione === "valuta") {
     const v = controllaRisposte(corpo.dati);
     if (!v.ok) return dati();
@@ -220,6 +232,7 @@ async function stato(s, request, chi, f) {
   }
   const incontro = Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null]));
   incontro.disdetta = soloDisdetta(r.disdetta);
+  incontro.ritardo_mio = r.ritardo_mio === true; // solo sì/no, mai chi ha dichiarato il ritardo
   Object.assign(incontro, soloLocali(await rpc(s, "locali_incontro", { p_porta: porta, p_persona: chi.id }, f)));
   return risposta(200, { ok: true, incontro });
 }
