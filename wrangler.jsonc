@@ -107,7 +107,7 @@
     "META_MAGGIORENNE_NEL_MODULO": "no",
     // Email di prova degli avvisi di sicurezza (#7, worker/avviso_prova.js): una sola, nel minuto indicato (ora UTC).
     // Passato quel minuto non parte più nulla; vuoto = spento.
-    "AVVISO_PROVA": "2026-11-25T13:15Z"
+    "AVVISO_PROVA": "2026-11-25T12:10Z"
   },
   // Anteprime dei rami (Worker Previews di Workers Builds, comando "npx wrangler preview"): il blocco "previews"
   // è obbligatorio, senza di esso la build di anteprima fallisce. Le anteprime non usano le impostazioni di produzione:
