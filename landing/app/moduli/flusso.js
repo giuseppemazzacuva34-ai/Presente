@@ -39,6 +39,7 @@ import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#3
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
+import { vistaNotifiche, vistaPrivacy } from "./preferenze_profilo.js"; // schermata 23: Notifiche e Privacy (#349, linea B)
 import { apriTuoiCoin } from "./tuoi_coin.js"; // schermata 13 da «Ricarica» del profilo (#349, linea B)
 import { schermataTuoiCoin } from "./saldo_coin.js";
 import { disponiStanza, vistaCerchioStanza, testoChiamate } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
@@ -782,6 +783,7 @@ function disegna() {
   if (storico.aperto) { radice.replaceChildren(schermoStorico()); return; }
   if (regaliProfilo && regaliProfilo.aperto()) { radice.replaceChildren(regaliProfilo.schermo(h)); return; }
   if (schermoProfilo && schermoProfilo.aperto()) { radice.replaceChildren(schermoIlProfilo()); return; }
+  profiloSotto = null; // profilo chiuso: la prossima volta si riapre dalla sua pagina, non da Notifiche o Privacy
   if (aiuto.aperta) { radice.replaceChildren(schermoAiuto()); return; }
   if (portaSvelamento && segnalaDaPorta(portaSvelamento.modello().segnala)) { radice.replaceChildren(schermoSegnalaPorta()); return; }
   if (portaSvelamento && portaSvelamento.modello().aperta) { radice.replaceChildren(vistaPorta(h, portaSvelamento)); return; }
@@ -1899,12 +1901,24 @@ function profiloApribile() {
   if (!schermoProfilo || PASSI[stato.passo].id !== "fatto") return false;
   try { return !telefono || telefono.modello().schermo.tipo === "nessuna"; } catch { return false; }
 }
+// «Notifiche» e «Privacy» del profilo (spec del CPO del 25/11, #349, linea B): si aprono al posto del profilo;
+// «Indietro» riporta al profilo. Il fuoco va sul titolo, così la tastiera non si perde.
+let profiloSotto = null;
+function fuocoSu(id) {
+  const t = radice && radice.querySelector(`#${id}`);
+  if (t) { t.tabIndex = -1; t.focus({ preventScroll: true }); }
+}
+function apriSottoProfilo(quale) { profiloSotto = quale; disegna(); fuocoSu(`${quale}-titolo`); }
+function chiudiSottoProfilo() { profiloSotto = null; disegna(); fuocoSu("profilo-titolo"); }
 function schermoIlProfilo() {
+  if (profiloSotto === "notifiche") return vistaNotifiche(h, { indietro: chiudiSottoProfilo });
+  if (profiloSotto === "privacy") return vistaPrivacy(h, { indietro: chiudiSottoProfilo, aiuto: supporto ? () => { profiloSotto = null; schermoProfilo.chiudi(); apriAiuto(); } : null });
   const d = schermoProfilo.dati();
   const daQui = (id) => () => { schermoProfilo.chiudi(); vai(PASSI.findIndex((p) => p.id === id)); };
   return vistaProfilo(h, statoProfilo({ nome: stato.nome, eta: etaDa(stato.dataNascita), citta: nomeVisibile(stato.provincia),
     voce: stato.voce, saldo: d.saldo, regali: d.regali, inStanza: inStanzaAperta() }), {
     onda: ondaGrande(), risposte: daQui("risposte"), foto: daQui("foto"), preferenze: daQui("cerchi"),
+    notifiche: () => apriSottoProfilo("notifiche"), privacy: () => apriSottoProfilo("privacy"),
     regali: regaliProfilo ? () => regaliProfilo.apri() : null,
     ricarica: d.saldo === null ? null : () => apriCreditiDalProfilo(d.saldo),
     elimina: () => {

@@ -1,7 +1,7 @@
 // Service worker della web app (Fase 2, issue #1).
 // Rende l'app installabile e tiene in memoria solo i file pubblici dell'app (mai risposte con dati personali):
 // se la rete manca, mostra l'ultima versione salvata della pagina.
-const VERSIONE = "presente-app-62";
+const VERSIONE = "presente-app-63";
 const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js", "/app/moduli/domande.js", "/app/moduli/registratore.js",
   "/app/moduli/foto.js", "/app/moduli/accesso.js", "/app/moduli/salvataggio.js", "/app/moduli/province.js", "/app/moduli/lista.js", "/app/moduli/aree.js", "/app/moduli/zona.js", "/app/moduli/stanza.js", "/app/moduli/chiamata.js", "/app/moduli/voce.js", "/app/moduli/compagni.js", "/app/moduli/sentinella.js", "/app/moduli/telefono.js", "/app/manifest.webmanifest", "/stile.css", "/favicon.svg",
   "/app/moduli/segnala.js", "/app/moduli/disponibilita.js", "/app/moduli/diario.js",
@@ -27,6 +27,7 @@ const FILE = ["/app/", "/app/app.css", "/app/avvio.js", "/app/moduli/flusso.js",
   "/app/moduli/svelamento_come.js",
   "/app/moduli/storico_regali.js",
   "/app/moduli/profilo.js",
+  "/app/moduli/preferenze_profilo.js",
   "/app/moduli/regalo_chiamata.js", "/app/moduli/regalo_ricevuto.js",
   "/app/moduli/filo_domenica.js",
   "/app/moduli/lascia_stanza.js",
