@@ -229,7 +229,8 @@ export function avvia(elemento, opzioni = {}) {
   filoLunedi = (telefono && opzioni.filoLunedi) || null;
   filoRiascolto = (telefono && opzioni.filoRiascolto) || null;
   uscitaStanza = telefono && accesso ? creaUscita({ token: () => accesso.token() }) : null; // col token di chi è entrato
-  stanzaViva = telefono && accesso ? creaStanzaViva({ token: () => accesso.token() }) : null; // #380, linea A
+  // #380, linea A. La prova (/app/prova.html) passa la sua stanza viva finta, con risposte in memoria.
+  stanzaViva = telefono && accesso ? (opzioni.stanzaViva || creaStanzaViva({ token: () => accesso.token() })) : null;
   battito = stanzaViva ? creaBattito({ viva: stanzaViva, pagina: document, quando: battitoArrivato }) : null;
   if (opzioni.erroreLink) { stato.passo = 1; email.errore = MESSAGGI[opzioni.erroreLink] || MESSAGGI.generico; }
   // Già dentro (dal link nell'email o da una sessione precedente): si riparte dal passo salvato.
