@@ -5,7 +5,7 @@
 // inventati. Il diario non entra mai: nessuna funzione di questo file lo riceve.
 
 import { STANZA, FUSO, coppia, componi, settimanaStanza, oraDiRoma, costoStanza, affinitaDaQuestionari,
-  assegnaFamiglie, contaPerZonaEFamiglia, gruppiPerFamiglia, mancanoFamiglia } from "./stanze.js";
+  assegnaFamiglie, contaPerZonaEFamiglia, gruppiPerFamiglia, mancanoFamiglia, famigliaPropria, FAMIGLIE } from "./stanze.js";
 import { areaDi } from "./aree.js";
 import { questionarioCompleto } from "./questionario.js";
 
@@ -86,13 +86,40 @@ export function coppieEscluse({ blocchi = [], storico = [] }, apertura) {
   return esclusi;
 }
 
+// Conteggi per area e famiglia che decidono le stanze d'area (#471 parte C, soglia di 36 per famiglia).
+// Con i numeri del database per famiglia: ogni famiglia = i suoi profili completi (anche chi questa settimana non entra)
+// + i ponti di questa settimana sistemati lì (i ponti del database non si contano: non si sa dove entrerebbero).
+// Senza: la mista usa il vecchio conteggio dell'area se c'è, le altre si contano su chi entra questa settimana.
+export function contoAree(persone, famiglia, { completiPerFamiglia = null, completiPerZona = null } = {}) {
+  const settimana = contaPerZonaEFamiglia(persone, famiglia);
+  if (completiPerFamiglia && typeof completiPerFamiglia === "object") {
+    const ponti = contaPerZonaEFamiglia(persone.filter((p) => !famigliaPropria(p)), famiglia);
+    const conto = {};
+    for (const z of new Set([...Object.keys(completiPerFamiglia), ...Object.keys(settimana)])) {
+      for (const f of FAMIGLIE) {
+        const db = completiPerFamiglia[z]?.[f], pt = ponti[z]?.[f], sett = settimana[z]?.[f];
+        const totale = Math.max((Number(db?.totale) || 0) + (pt?.totale || 0), sett?.totale || 0);
+        const donne = Math.max((Number(db?.donne) || 0) + (pt?.donne || 0), sett?.donne || 0);
+        if (totale) (conto[z] ||= {})[f] = { totale, donne };
+      }
+    }
+    return conto;
+  }
+  for (const [z, c] of Object.entries(completiPerZona || {})) {
+    if (c && typeof c.totale === "number") (settimana[z] ||= {}).mista = { totale: c.totale, donne: c.donne || 0 };
+  }
+  return settimana;
+}
+
 // Il lavoro del lunedì in un'unica funzione.
 // righe: [{ profilo, filtri, questionario: [righe della tabella] }] di chi ha confermato l'ingresso.
 // iscrizioni: Map id → istante della conferma. stanzePrecedenti: Map id → quante stanze ha già fatto (per i crediti).
 // Aree accese: si contano TUTTI i profili completi (anche chi questa settimana non entra), come il contatore «mancano N».
-// completiPerZona: { codiceArea: { totale, donne } } dal database (solo numeri); senza, si contano le persone di questa settimana.
+// completiPerFamiglia: { codiceArea: { famiglia: { totale, donne } } } da conteggi_famiglie() (solo numeri; «ponte» = più
+// scelte). Ha la precedenza. completiPerZona: { codiceArea: { totale, donne } } da conteggi_aree(), vecchio conteggio
+// dell'area usato per la mista solo se mancano i numeri per famiglia. Senza nessuno dei due si contano le persone di questa settimana.
 export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePrecedenti = new Map(), blocchi = [], storico = [],
-  completiPerZona = null, adesso = new Date() }) {
+  completiPerZona = null, completiPerFamiglia = null, adesso = new Date() }) {
   const { apre, chiude } = settimanaStanza(adesso);
   const scadenza = scadenzaIscrizione(apre);
   const attesa = [];
@@ -113,12 +140,7 @@ export function preparaSettimana({ righe, iscrizioni = new Map(), stanzePreceden
   // Famiglie (#471 parte C): mista, dedicate, aperta. Restano solo in memoria: mai scritte, mai nei log.
   const esclusi = coppieEscluse({ blocchi, storico }, apre);
   const famiglia = assegnaFamiglie(persone, esclusi);
-  // Conteggi per area e famiglia. La mista usa i numeri del database (conteggi_aree(), tutti i profili completi) quando
-  // ci sono; le famiglie dedicate si contano su chi entra questa settimana finché il database non dà i numeri per famiglia.
-  const conto = contaPerZonaEFamiglia(persone, famiglia);
-  for (const [z, c] of Object.entries(completiPerZona || {})) {
-    if (c && typeof c.totale === "number") (conto[z] ||= {}).mista = { totale: c.totale, donne: c.donne || 0 };
-  }
+  const conto = contoAree(persone, famiglia, { completiPerFamiglia, completiPerZona });
   const affinitaDi = affinitaDaQuestionari(questionari);
   const perId = new Map(persone.map((p) => [p.id, p]));
   const stanze = [];

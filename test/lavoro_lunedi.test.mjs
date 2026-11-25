@@ -37,7 +37,7 @@ function databaseFinto({ righe = 16, giaFatta = false } = {}) {
       storico: [],
     };
     if (nome === "pulisci_stanze_chiuse") return { carte_viste: 4, richiameresti: 3 };
-    if (nome === "conteggi_aree") return [{ codice: "roma", nome: "Roma e dintorni", totale: 16, donne: 8 }];
+    if (nome === "conteggi_famiglie") return [{ codice: "roma", famiglia: "mista", totale: 16, donne: 8 }];
     if (nome === "scrivi_settimana") return giaFatta ? { gia_fatta: true, stanze: 0, membri: 0 }
       : { gia_fatta: false, stanze: argomenti.dati.stanze.length, membri: argomenti.dati.stanze.reduce((s, x) => s + x.membri.length, 0) };
     throw new Error(`funzione inattesa ${nome}`);
@@ -71,7 +71,7 @@ test("in automatico gira solo lunedì tra le 00:00 e le 8:59 di Roma, prima dell
 test("lunedì alle 00:35: legge le righe dell'apertura, conta le aree dal database e scrive le stanze", async () => {
   const db = databaseFinto();
   const esito = await eseguiLunedi({ rpc: db.rpc, adesso: ALLE_0_35, accessoApp: "si", modo: "automatico" });
-  assert.deepEqual(db.chiamate.map((c) => c.nome), ["righe_settimana", "conteggi_aree", "pulisci_stanze_chiuse", "scrivi_settimana"]);
+  assert.deepEqual(db.chiamate.map((c) => c.nome), ["righe_settimana", "conteggi_famiglie", "pulisci_stanze_chiuse", "scrivi_settimana"]);
   assert.deepEqual(esito.pulizia, { carte_viste: 4, richiameresti: 3 }); // solo numeri: carte viste e «La richiameresti?» delle stanze chiuse
   assert.equal(db.chiamate[0].argomenti.apre, LUNEDI.toISOString());
   const dati = db.chiamate[3].argomenti.dati;
