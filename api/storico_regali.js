@@ -26,13 +26,19 @@ function giornoRoma(data) {
   return Date.UTC(a, m - 1, g) / 86400000;
 }
 
+const MESI_BREVI = Object.freeze(["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]);
+
 export function quandoRegalo(ultimo, adesso = new Date()) {
   const d = new Date(ultimo);
   if (Number.isNaN(d.getTime())) return "";
   const diff = giornoRoma(adesso) - giornoRoma(d);
   if (diff <= 0) return "oggi";
   if (diff === 1) return "ieri";
-  return GIORNI[new Date(giornoRoma(d) * 86400000).getUTCDay()];
+  const giorno = new Date(giornoRoma(d) * 86400000);
+  // Spec CPO del 25/11 (#349): oltre una settimana la data breve («12 nov»); dal 7° giorno il nome del giorno
+  // sarebbe lo stesso di oggi e confonderebbe.
+  if (diff >= 7) return `${giorno.getUTCDate()} ${MESI_BREVI[giorno.getUTCMonth()]}`;
+  return GIORNI[giorno.getUTCDay()];
 }
 
 // Dati del database → schermata. Qualunque dato strano → null (il Worker risponde «riprova»).

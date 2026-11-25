@@ -63,6 +63,16 @@ test("testi: quando, con il giorno di Roma (oggi, ieri, poi il giorno della sett
   assert.equal(quandoRegalo("non-una-data", ADESSO), "");
 });
 
+// Spec CPO del 25/11 (#349, schermata 28): oltre 7 giorni la data breve («12 nov»). Dal 7° giorno il giorno della
+// settimana sarebbe uguale a quello di oggi, quindi da lì in poi si usa la data.
+test("quando: dal 7° giorno in poi la data breve, ora di Roma", () => {
+  assert.equal(quandoRegalo("2026-11-17T10:00:00Z", ADESSO), "martedì"); // 6 giorni prima del 23
+  assert.equal(quandoRegalo("2026-11-16T10:00:00Z", ADESSO), "16 nov");
+  assert.equal(quandoRegalo("2026-11-12T10:00:00Z", ADESSO), "12 nov");
+  assert.equal(quandoRegalo("2026-10-31T23:30:00Z", ADESSO), "1 nov"); // 00:30 del 1° novembre a Roma
+  assert.equal(quandoRegalo("2026-09-03T10:00:00Z", ADESSO), "3 set");
+});
+
 test("vista: dati del database → schermata 28, senza id delle persone", () => {
   assert.deepEqual(vistaStorico(DAL_DB, ADESSO), {
     titolo: "Hai ricevuto 17 regali.",
