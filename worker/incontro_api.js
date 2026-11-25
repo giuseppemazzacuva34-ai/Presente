@@ -23,6 +23,11 @@
 //   GET  /app/api/incontro?elenco=1                                                 → miei_incontri
 //        Passo 3l: { ok: true, incontri: [{ porta, nome, stato, scadenza, orario, esito }] } della persona del token,
 //        per raggiungere dalla home la schermata «Il vostro incontro» (ripulito da soloIncontroElenco).
+//   POST /app/api/incontro  { azione: "contesta", domanda, testo }                  → contesta_no
+//        «Contesta» un «No» ricevuto (spec v1.3 punto 2): testo 10-500 caratteri; esito «inviata» o «nessun_no»
+//        (già contestato, oltre 14 giorni o nessun «No» visibile). Senza porta: chi ha risposto non si nomina mai.
+//   GET  /app/api/incontro?contestazioni=1                                          → stato_contestazioni_no
+//        { ok: true, contestazioni: { <domanda>: { contestabile, stato } } }, mai id, nomi o date (soloContestazioni).
 //   Passo 2u (D143 B): il GET aggiunge a «incontro» locali [{ id, nome, indirizzo, tipo, fascia, da_verificare }] (quelli
 //   che chi legge può proporre) e locale_scelto { nome, indirizzo, da_verificare } | null, da locali_incontro. Se quella
 //   lettura non va, l'incontro si legge lo stesso, senza locali.
@@ -50,7 +55,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Passo 3c (D20): valutazione dopo l'incontro avvenuto.
   valuta_incontro: ["grazie", "racconta"],
   // Passo 3h: «Sì, racconto» dopo «No» alla sicurezza.
-  racconta_valutazione: ["raccontato"] };
+  racconta_valutazione: ["raccontato"],
+  // Spec v1.3 punto 2: «Contesta» un «No».
+  contesta_no: ["inviata"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -61,6 +68,7 @@ const RIFIUTI = {
   annulla_incontro: ["gia_confermato", "incontro_chiuso", "incontro_scaduto"],
   valuta_incontro: ["non_avvenuto", "chiusa", "gia_fatta", "risposta_non_valida"],
   racconta_valutazione: ["testo_non_valido", "nessuna_segnalazione", "gia_raccontato"],
+  contesta_no: ["testo_non_valido", "domanda_non_valida", "nessun_no"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -132,11 +140,13 @@ export async function incontroApi(request, env, f = fetch) {
   if (chi.errore) return chi.errore;
   if (request.method === "GET" && new URL(request.url).searchParams.get("riepilogo") === "1") return riepilogo(s, chi, f);
   if (request.method === "GET" && new URL(request.url).searchParams.get("elenco") === "1") return elenco(s, chi, f);
+  if (request.method === "GET" && new URL(request.url).searchParams.get("contestazioni") === "1") return contestazioni(s, chi, f);
   if (request.method === "GET") return stato(s, request, chi, f);
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
   if (corpo.errore) return corpo.errore;
   const { azione, porta } = corpo.dati || {};
+  if (azione === "contesta") return contesta(s, chi, corpo.dati, f);
   if (!UUID.test(String(porta || ""))) return dati();
 
   if (azione === "proponi") {
@@ -259,4 +269,36 @@ async function troppeRichieste(request, env) {
   } catch {
     return false;
   }
+}
+
+// «Contesta» un «No» (spec v1.3 punto 2): solo le tre domande dei fatti; testo 10-500 caratteri senza gli spazi ai
+// lati (come il database, che lo ricontrolla). Il testo non va mai nei log.
+const CONTESTA_MIN = 10;
+const CONTESTA_MAX = 500;
+async function contesta(s, chi, d, f) {
+  if (!DOMANDE.includes(d.domanda) || typeof d.testo !== "string") return dati();
+  const lunghezza = [...d.testo.trim()].length;
+  if (lunghezza < CONTESTA_MIN || lunghezza > CONTESTA_MAX) return risposta(200, { ok: false, motivo: "testo_non_valido" });
+  return esegui(s, "contesta_no", { p_persona: chi.id, p_domanda: d.domanda, p_testo: d.testo }, f);
+}
+
+// Stato delle contestazioni: per ognuna delle tre domande solo { contestabile, stato }; righe di forma sbagliata si
+// scartano, una risposta che non è un oggetto è un guasto («riprova»).
+const STATI_CONTESTAZIONE = ["in_attesa", "accolta", "respinta"];
+function soloContestazioni(r) {
+  if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+  const fuori = {};
+  for (const d of DOMANDE) {
+    const x = r[d];
+    if (!x || typeof x !== "object" || typeof x.contestabile !== "boolean") continue;
+    const stato = x.stato ?? null;
+    if (stato !== null && !STATI_CONTESTAZIONE.includes(stato)) continue;
+    fuori[d] = { contestabile: x.contestabile, stato };
+  }
+  return fuori;
+}
+async function contestazioni(s, chi, f) {
+  const r = soloContestazioni(await rpc(s, "stato_contestazioni_no", { p_persona: chi.id }, f));
+  if (!r) return riprova();
+  return risposta(200, { ok: true, contestazioni: r });
 }
