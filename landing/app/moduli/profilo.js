@@ -2,8 +2,8 @@
 // Si apre dal cerchio in alto a destra della testata. Qui si modificano voce, risposte, foto e preferenze; in fondo
 // «Elimina il mio account», che sta solo qui. Il modulo non tocca la pagina e non chiama la rete: il flusso gli passa
 // i dati che ha già (nome, età, città visibile, voce) e quelli del server (saldo e numero dei regali). Se un numero
-// manca, non si mostra: mai numeri inventati. In beta i crediti sono un contatore interno: «Ricarica» resta spenta
-// (come in saldo_coin.js). Niente salvataggi locali, niente log.
+// manca, non si mostra: mai numeri inventati. In beta i crediti sono un contatore interno: «Ricarica» si accende solo
+// per aprire la schermata 13 (passo 3, dove «Paga» resta spento, come dalla 21). Niente salvataggi locali, niente log.
 
 export const TESTI_PROFILO = Object.freeze({
   voce: "La tua voce",
@@ -57,15 +57,18 @@ const riga = (h, testo, azione) => (typeof azione === "function"
   ? h("button", { classe: "voce-profilo", type: "button", onclick: azione }, testo, h("span", { classe: "freccia", "aria-hidden": "true" }, "›"))
   : null);
 
-// s = statoProfilo(...). Azioni: risposte, regali, foto, preferenze, elimina, torna; onda = l'onda grande del flusso.
-export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, elimina, torna, onda = null, errore = null } = {}) {
+// s = statoProfilo(...). Azioni: risposte, regali, foto, preferenze, elimina, torna, ricarica (apre la schermata 13);
+// onda = l'onda grande del flusso.
+export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, elimina, torna, ricarica = null, onda = null, errore = null } = {}) {
   return h("section", { classe: "schermata profilo", "aria-labelledby": "profilo-titolo" },
     h("div", { classe: "corpo" },
       h("h2", { id: "profilo-titolo" }, s.titolo, s.citta ? [h("br"), h("em", {}, s.citta)] : null),
       s.voce ? h("div", { classe: "rec" }, onda, pulsanteVoce(h, s.voce)) : null,
       s.saldo ? h("div", { classe: "pacco" },
         h("div", { classe: "q" }, s.saldo.numero, h("small", {}, s.saldo.unita)),
-        h("button", { classe: "bottone", type: "button", disabled: !s.saldo.attivo }, s.saldo.ricarica)) : null,
+        typeof ricarica === "function"
+          ? h("button", { classe: "bottone", type: "button", disabled: false, onclick: ricarica }, s.saldo.ricarica)
+          : h("button", { classe: "bottone", type: "button", disabled: !s.saldo.attivo }, s.saldo.ricarica)) : null,
       riga(h, T.risposte, risposte),
       riga(h, s.regali, regali),
       riga(h, T.foto, foto),
@@ -80,7 +83,7 @@ export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, elimina
 // Se una lettura non va, quel numero resta vuoto. Una lettura arrivata dopo la chiusura non cambia niente.
 const somma = (t) => (t && ["rosa", "spumante", "fiori"].every((k) => intero(t[k])) ? t.rosa + t.spumante + t.fiori : null);
 export function creaSchermoProfilo({ coin = null, storico = null, disegna = () => {} } = {}) {
-  const st = { aperto: false, saldo: null, regali: null, giro: 0 };
+  const st = { aperto: false, saldo: null, regali: null, primaStanzaUsata: null, giro: 0 };
   const leggi = async (fonte, metodo) => {
     if (!fonte) return null;
     try { return await fonte[metodo](); } catch { return null; }
@@ -88,19 +91,22 @@ export function creaSchermoProfilo({ coin = null, storico = null, disegna = () =
   return {
     aperto: () => st.aperto,
     dati: () => ({ saldo: st.saldo, regali: st.regali }),
+    primaStanzaUsata: () => st.primaStanzaUsata, // true/false dal server; null se non si sa
+
     async apri() {
       const giro = ++st.giro;
-      Object.assign(st, { aperto: true, saldo: null, regali: null });
+      Object.assign(st, { aperto: true, saldo: null, regali: null, primaStanzaUsata: null });
       disegna();
       const [c, r] = await Promise.all([leggi(coin, "saldo"), leggi(storico, "leggi")]);
       if (giro !== st.giro || !st.aperto) return;
       st.saldo = c && c.ok === true && intero(c.saldo) ? c.saldo : null;
+      st.primaStanzaUsata = st.saldo !== null && typeof c.primaStanzaUsata === "boolean" ? c.primaStanzaUsata : null;
       st.regali = r && r.ok === true && r.vista ? somma(r.vista.totale) : null;
       disegna();
     },
     chiudi() {
       st.giro++;
-      Object.assign(st, { aperto: false, saldo: null, regali: null });
+      Object.assign(st, { aperto: false, saldo: null, regali: null, primaStanzaUsata: null });
       disegna();
     },
   };
