@@ -38,6 +38,7 @@ import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#3
 import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
+import { ORIENTAMENTI, TESTI_ORIENTAMENTO, toccaOrientamento, cercoDaOrientamento } from "./orientamento.js"; // schermata 05 (#471)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
 import { vistaNotifiche, vistaPrivacy } from "./preferenze_profilo.js"; // schermata 23: Notifiche e Privacy (#349, linea B)
 import { apriTuoiCoin } from "./tuoi_coin.js"; // schermata 13 da «Ricarica» del profilo (#349, linea B)
@@ -104,6 +105,7 @@ const stato = {
   regole: false,
   // Provincia (spec v1.3): sigla scelta, testo nel campo, sigla arrivata dalla lista d'attesa (solo la sigla, dal server).
   nome: "", provincia: "", provinciaTesto: "", provinciaLista: "", provinciaSalvata: "", miPresento: "", miDescrivo: "",
+  orientamento: [], orientamentoTesto: "", // #471: solo in memoria fino a D155, mai salvato
   cerco: "", consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
   voce: null,                 // { url, secondi }
   domandeVoce: [],            // indici scelti in DOMANDE_VOCE
@@ -875,8 +877,9 @@ function errore(testo) {
 }
 
 // Gruppo di scelte a pulsante (radio o caselle). valori: [[valore, etichetta]].
-function scelte(nome, valori, scelto, onScelta, { multipla = false } = {}) {
-  return h("div", { classe: "scelte", role: multipla ? "group" : "radiogroup" },
+function scelte(nome, valori, scelto, onScelta, { multipla = false, etichetta = null, descrizione = null } = {}) {
+  return h("div", { classe: "scelte", role: multipla ? "group" : "radiogroup",
+    ...(etichetta ? { "aria-labelledby": etichetta } : {}), ...(descrizione ? { "aria-describedby": descrizione } : {}) },
     valori.map(([valore, etichetta]) => {
       const attivo = multipla ? scelto.includes(valore) : scelto === valore;
       return h("button", {
@@ -1052,13 +1055,22 @@ const SCHERMATE = {
         scelte("presento", [["donna", "Donna"], ["uomo", "Uomo"], ["non_binario", "Non binario"], ["mi_descrivo", "Preferisco descrivermi"]],
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
-          oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null],
+          oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null,
+        // #471 parte A: facoltativo, più scelte; fino a D155 resta solo nella pagina e precompila «Cerco» nella 06.
+        h("p", { classe: "etichetta", id: "orientamento-etichetta" }, TESTI_ORIENTAMENTO.etichetta),
+        h("p", { classe: "nota", id: "orientamento-nota" }, TESTI_ORIENTAMENTO.nota),
+        scelte("orientamento", ORIENTAMENTI, stato.orientamento, (v) => { stato.orientamento = toccaOrientamento(stato.orientamento, v); disegna(); },
+          { multipla: true, etichetta: "orientamento-etichetta", descrizione: "orientamento-nota" }),
+        stato.orientamento.includes("descrivo") ? h("input", { "aria-label": TESTI_ORIENTAMENTO.descrivo, maxlength: "40",
+          value: stato.orientamentoTesto, oninput: (e) => { stato.orientamentoTesto = e.target.value; } }) : null],
       [cambio.daProfilo ? tornaAlProfilo() : indietro(),
         avanti(cambio.daProfilo ? "Salva" : "Continua", () => Boolean(nomeOk() && provinciaOk() && presentoOk()),
           () => salvaEVai(cambio.daProfilo ? PASSI.length - 1 : 5, confermaDallaLista, () => archivio.salvaProfilo(profiloDaStato(stato))))]);
   },
 
   cerchi() {
+    // #471: l'orientamento della 05 precompila «Cerco» solo se non è già stato scelto; si può sempre cambiare.
+    if (!stato.cerco) stato.cerco = cercoDaOrientamento(stato.miPresento, stato.orientamento);
     const etaOk = () => stato.etaMin >= 18 && stato.etaMax <= 99 && stato.etaMin <= stato.etaMax;
     const tutto = () => Boolean(stato.cerco && stato.consensoCerco && etaOk() && stato.raggio && stato.cosaCerco && stato.figli && stato.fumo);
     const avvisoEta = h("p", { classe: "errore", role: "alert", hidden: etaOk() }, "Età da 18 a 99, e la massima non può essere minore della minima.");
