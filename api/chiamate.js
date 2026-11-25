@@ -83,6 +83,17 @@ const partecipa = (c, id) => c.chi === id || c.con === id;
 
 // Può «chi» chiamare «verso» adesso? Tutti i controlli del passo 2 del flusso (docs/architettura.md);
 // quelli con un testo per il pulsante seguono l'ordine di priorità della spec v1.3 § 2.
+// Quante chiamate tra «chi» e «verso» contano per il limite di 3 (nei due versi, solo dentro la settimana della
+// stanza, solo quelle che contano). La usano puoChiamare() e «chiamate N di 3» della stanza viva (#380, passo 6a).
+export function chiamateTra({ chi, verso, stanza, chiamate = [] }) {
+  const apre = stanza.apre.getTime(), chiude = stanza.chiude.getTime();
+  return chiamate.filter((c) => {
+    if (!contaNeiLimiti(c.durata) || !partecipa(c, chi) || !partecipa(c, verso)) return false;
+    const i = new Date(c.inizio).getTime();
+    return i >= apre && i < chiude;
+  }).length;
+}
+
 // stanza: { apre, chiude, membri: [id] } · chiamate: righe del registro { chi, con, inizio, durata } (durata in secondi,
 // null se in corso) · blocchi: [{ chi, bloccato }] · inChiamata: Set degli id in una chiamata aperta ·
 // fascia: fascia di «verso» (null = 9:00–23:00) · pausa: giorno di «Oggi non ricevo chiamate» · soloConPermesso + permessi (Set di chi ha il permesso di «verso», D32) ·
@@ -99,9 +110,7 @@ export function puoChiamare({ chi, verso, adesso, stanza, chiamate = [], blocchi
   if (inChiamata.has(chi)) return no("gia_in_chiamata");
 
   const valide = chiamate.filter((c) => contaNeiLimiti(c.durata));
-  const inSettimana = (c) => { const i = new Date(c.inizio).getTime(); return i >= stanza.apre.getTime() && i < stanza.chiude.getTime(); };
-  const tra = valide.filter((c) => inSettimana(c) && partecipa(c, chi) && partecipa(c, verso)).length;
-  if (tra >= CHIAMATA.conStessaPersona) return no("tre_con_lei", TESTI.tre_con_lei);
+  if (chiamateTra({ chi, verso, stanza, chiamate: valide }) >= CHIAMATA.conStessaPersona) return no("tre_con_lei", TESTI.tre_con_lei);
 
   const oggi = giornoDiRoma(adesso);
   const diOggi = (id) => valide.filter((c) => partecipa(c, id) && giornoDiRoma(new Date(c.inizio)) === oggi).length;

@@ -164,7 +164,7 @@ test("avvio: «Ricarica» del foglio 21 apre la schermata 13 al posto di #app", 
 test("service worker: i moduli dei crediti sono nella copia per quando manca la rete, versione nuova", () => {
   const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
   for (const m of ["coin.js", "saldo_coin.js", "tuoi_coin.js"]) assert.match(sw, new RegExp(`"/app/moduli/${m.replace(".", "\\.")}"`));
-  assert.match(sw, /const VERSIONE = "presente-app-58";/);
+  assert.ok(!sw.includes('"presente-app-57"'), "versione della cache aumentata"); // non fissa: le PR dopo la aumentano ancora
 });
 
 test("chi ha già usato la prima stanza in regalo non legge più «La tua prima stanza è in regalo»", () => {

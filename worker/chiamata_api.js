@@ -12,7 +12,7 @@
 //   POST /app/api/chiamata/carta    {}          → { ok: true, vista }                (pescata: vista.carta { id, testo, daMe })
 //   POST /app/api/chiamata/dopo     { appena }  → { ok: true, dopo }                 (schermata dopo la chiamata, 3c-4b)
 //   POST /app/api/chiamata/richiameresti { chi, inizio, risposta } → { ok: true, salvata }  («La richiameresti?»)
-//   GET  /app/api/chiamata/pulsanti → { ok: true, pulsanti: [{ id, testo }] }  (testi del pulsante «Chiama», 3c-5b-2a)
+//   GET  /app/api/chiamata/pulsanti → { ok: true, pulsanti: [{ id, testo }], chiamate: [{ id, n }] }  (testi del pulsante «Chiama», 3c-5b-2a; «chiamate N di 3», #380)
 //
 // Chi chiama lo dice SOLO il token di Supabase: un «chi» scritto nel corpo non conta. Le regole (stanza, blocchi,
 // 3 volte, 5 al giorno, fascia, solo voce) le applica api/apri_chiamata.js; qui solo accesso, forma della richiesta
@@ -132,7 +132,11 @@ export async function chiamataApi(request, env, f = fetch, operazioni = null) {
       const pulsanti = r.pulsanti
         .filter((p) => p && UUID.test(String(p.id || "")) && (TESTI_FISSI.has(p.testo) || TESTO_FASCIA.test(String(p.testo || ""))))
         .map(({ id, testo }) => ({ id, testo }));
-      return risposta(200, { ok: true, pulsanti });
+      // «chiamate N di 3» (#380 passo 6a): solo { id, n } con id valido e n intero da 1 a 3.
+      const chiamate = (Array.isArray(r.chiamate) ? r.chiamate : [])
+        .filter((c) => c && UUID.test(String(c.id || "")) && Number.isInteger(c.n) && c.n >= 1 && c.n <= 3)
+        .map(({ id, n }) => ({ id, n }));
+      return risposta(200, { ok: true, pulsanti, chiamate });
     }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;

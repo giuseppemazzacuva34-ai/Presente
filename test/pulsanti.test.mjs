@@ -39,7 +39,7 @@ const tre = (x, y) => [1, 2, 3].map((g) => ({ chi: x, con: y, inizio: oraDiRoma(
 
 test("nessun impedimento: lista vuota, tutti restano «Chiama»", async () => {
   const d = finti();
-  assert.deepEqual(await pulsantiStanza({ per: A, adesso: ADESSO }, d), { ok: true, pulsanti: [] });
+  assert.deepEqual(await pulsantiStanza({ per: A, adesso: ADESSO }, d), { ok: true, pulsanti: [], chiamate: [] });
   assert.deepEqual(d.chieste[0].chi, A);
 });
 
@@ -82,7 +82,7 @@ test("sospesi e bloccati: nessun testo (non si scopre), si vede «Chiama» e dec
 
 test("io sospeso o fuori dalla stanza: lista vuota", async () => {
   assert.deepEqual((await pulsantiStanza({ per: A, adesso: ADESSO }, finti({ dati: { sospesi: new Set([A]), chiamate: tre(A, B) } }))).pulsanti, []);
-  assert.deepEqual(await pulsantiStanza({ per: A, adesso: ADESSO }, finti({ stanza: null })), { ok: true, pulsanti: [] });
+  assert.deepEqual(await pulsantiStanza({ per: A, adesso: ADESSO }, finti({ stanza: null })), { ok: true, pulsanti: [], chiamate: [] });
 });
 
 test("database che non risponde o id sbagliato", async () => {
@@ -167,7 +167,7 @@ test("GET /pulsanti: chi lo dice il token; passano solo id validi e solo i 6 tes
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.deepEqual(await r.json(), { ok: true, pulsanti: [
     { id: B, testo: TESTI_PULSANTE.occupato }, { id: C, testo: "Disponibile domani dalle 9:00" }, { id: E, testo: TESTI_PULSANTE.tre_con_lei },
-  ] });
+  ], chiamate: [] });
   assert.equal(ricevute[0].per, ID);
 });
 

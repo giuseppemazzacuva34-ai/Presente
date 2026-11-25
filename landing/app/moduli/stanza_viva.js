@@ -76,6 +76,12 @@ export function descriviCerchio({ diviso, posti }) {
   return `La tua stanza: ${parti.join(", ")}.${dove}`;
 }
 
+// «chiamate N di 3» sulla riga di ogni persona (spec v1 punto 2, passo 6a): N arriva dal server, sempre tra 0 e 3.
+export function testoChiamate(n) {
+  const v = Number.isFinite(n) ? Math.min(3, Math.max(0, Math.floor(n))) : 0;
+  return `chiamate ${v} di 3`;
+}
+
 const c1 = (v) => (Math.round(v * 10) / 10).toString();
 
 // Vista del cerchio. stati: { id: "online" | "in_chiamata" | "non_in_linea" } (facoltativo): diventa la classe del
