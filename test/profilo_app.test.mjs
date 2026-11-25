@@ -12,7 +12,7 @@ const pulsanti = (n) => tutti(n, (x) => x.tag === "button");
 const fn = () => {};
 
 const PIENO = { nome: " Giulia ", eta: 33, citta: "Milano", voce: { url: "blob:voce", secondi: 18.4 }, saldo: 145, regali: 17, inStanza: true };
-const AZIONI = { risposte: fn, regali: fn, foto: fn, preferenze: fn, elimina: fn, torna: fn };
+const AZIONI = { risposte: fn, regali: fn, foto: fn, preferenze: fn, notifiche: fn, privacy: fn, elimina: fn, torna: fn };
 
 test("testi della schermata 23 (design v4), «crediti» al posto di «Coin» (decisione del 23/11)", () => {
   assert.equal(TESTI_PROFILO.voce, "La tua voce");
@@ -21,7 +21,10 @@ test("testi della schermata 23 (design v4), «crediti» al posto di «Coin» (de
   assert.equal(TESTI_PROFILO.risposte, "Le tre risposte a voce");
   assert.equal(TESTI_PROFILO.regali, "Regali ricevuti");
   assert.equal(TESTI_PROFILO.foto, "Le tue foto (nascoste)");
-  assert.equal(TESTI_PROFILO.preferenze, "Chi cerchi · Notifiche · Privacy");
+  // Spec CPO del 25/11 (#349): ogni riga con un'etichetta vera, quindi «Chi cerchi», «Notifiche» e «Privacy» separate.
+  assert.equal(TESTI_PROFILO.preferenze, "Chi cerchi");
+  assert.equal(TESTI_PROFILO.notifiche, "Notifiche");
+  assert.equal(TESTI_PROFILO.privacy, "Privacy");
   assert.equal(TESTI_PROFILO.elimina, "Elimina il mio account");
   assert.equal(TESTI_PROFILO.tornaStanza, "Torna alla stanza");
   assert.equal(TESTI_PROFILO.tornaHome, "Torna alla home");
@@ -57,7 +60,7 @@ test("stato: un solo credito al singolare; Ricarica sempre spenta nella beta", (
   assert.equal(statoProfilo({ ...PIENO, saldo: 0 }).saldo.attivo, false);
 });
 
-test("vista: struttura del prototipo (#n16): titolo con la città in corsivo, voce, crediti, 4 righe, elimina, un pulsante", () => {
+test("vista: struttura del prototipo (#n16): titolo con la città in corsivo, voce, crediti, 6 righe, elimina, un pulsante", () => {
   const v = vistaProfilo(h, statoProfilo(PIENO), { ...AZIONI, onda: h("div", { classe: "onda-grande" }) });
   assert.equal(v.tag, "section");
   assert.equal(v.a["aria-labelledby"], "profilo-titolo");
@@ -71,14 +74,14 @@ test("vista: struttura del prototipo (#n16): titolo con la città in corsivo, vo
   assert.equal(tutti(v, (x) => x.tag === "audio")[0].a.src, "blob:voce");
   const nomi = pulsanti(v).map(testo);
   assert.deepEqual(nomi, ["▶ La tua voce · 18 s", "Ricarica", "Le tre risposte a voce›", "Regali ricevuti · 17›",
-    "Le tue foto (nascoste)›", "Chi cerchi · Notifiche · Privacy›", "Elimina il mio account", "Torna alla stanza"]);
+    "Le tue foto (nascoste)›", "Chi cerchi›", "Notifiche›", "Privacy›", "Elimina il mio account", "Torna alla stanza"]);
   assert.equal(pulsanti(v)[1].a.disabled, true);
   assert.equal(testo(classe(v, "pacco")[0]).startsWith("145crediti"), true);
-  assert.equal(classe(v, "voce-profilo").length, 4);
+  assert.equal(classe(v, "voce-profilo").length, 6);
   assert.ok(pulsanti(v).every((b) => b.a.type === "button"));
   // «›» è decorazione: non lo legge lo screen reader.
   assert.ok(classe(v, "freccia").every((x) => x.a["aria-hidden"] === "true"));
-  const elimina = pulsanti(v)[6];
+  const elimina = pulsanti(v)[8];
   assert.ok(String(elimina.a.classe).includes("link") && String(elimina.a.classe).includes("rosso"));
   const piede = classe(v, "azioni")[0];
   assert.equal(pulsanti(piede).length, 1);
@@ -90,7 +93,7 @@ test("vista: i pulsanti chiamano le azioni giuste", () => {
   const az = Object.fromEntries(Object.keys(AZIONI).map((k) => [k, () => chiamate.push(k)]));
   const v = vistaProfilo(h, statoProfilo(PIENO), az);
   for (const b of pulsanti(v)) if (b.a.onclick && !b.a.disabled && !testo(b).startsWith("▶")) b.a.onclick();
-  assert.deepEqual(chiamate, ["risposte", "regali", "foto", "preferenze", "elimina", "torna"]);
+  assert.deepEqual(chiamate, ["risposte", "regali", "foto", "preferenze", "notifiche", "privacy", "elimina", "torna"]);
 });
 
 test("vista: senza voce, saldo o un'azione, quella parte non compare (mai pulsanti morti)", () => {
