@@ -12,6 +12,10 @@ const STANZA = 80; // COIN.stanzaAlBuio
 const CAPARRA = 100; // SVELAMENTO.caparra
 const REGALI_COIN = [5, 10, 20]; // REGALI di api/coin.js
 const SCELTO = "coin500"; // «Il più scelto»
+// Pacchetto Base (commento di Giuseppe del 25/11 sulla pagina di confronto, regola_confronto_design_25_11): 10 € = 100
+// crediti, una stanza al buio e 20 crediti di regali. Solo nella schermata 13; i due di coin.js (linea C) restano invariati.
+const BASE = Object.freeze({ id: "coin100", coin: 100, euro: 10, inPiu: 0 });
+const PACCHETTI = Object.freeze([BASE, ...OFFERTE]);
 
 export const TESTI_SALDO = Object.freeze({
   // Schermata 13 (testi del design v4).
@@ -19,6 +23,7 @@ export const TESTI_SALDO = Object.freeze({
   titolo: Object.freeze(["I tuoi crediti", "per la stanza e i regali."]),
   hai: "Hai <n> crediti. La tua prima stanza è in regalo.",
   primaStanza: "La tua prima stanza è in regalo.",
+  descrizione100: "1 stanza e regali",
   descrizione200: "2 stanze, o 1 stanza e regali",
   inRegalo: "+<n> in regalo",
   piuScelto: "Il più scelto",
@@ -51,18 +56,20 @@ function pacchetto(o) {
   return { id: o.id, coin: o.coin, euro: euro(o.euro), sotto: o.inPiu > 0 ? T.inRegalo.replace("<n>", String(o.inPiu)) : T.unita };
 }
 
+const descrizione = (o) => (o.inPiu > 0 ? null : o.id === BASE.id ? T.descrizione100 : T.descrizione200);
+
 // Schermata 13. saldo: il numero del server; se manca, nessun numero. scelto: il pacchetto toccato (di base il 500).
 // primaStanzaUsata: true per chi ha già usato la stanza in regalo (es. dalla schermata 21): niente frase del regalo.
 export function schermataTuoiCoin(saldo, { scelto = SCELTO, primaStanzaUsata = false } = {}) {
-  const id = OFFERTE.some((o) => o.id === scelto) ? scelto : SCELTO;
-  const prezzo = OFFERTE.find((o) => o.id === id).euro;
+  const id = PACCHETTI.some((o) => o.id === scelto) ? scelto : SCELTO;
+  const prezzo = PACCHETTI.find((o) => o.id === id).euro;
   return {
     passo: T.passo,
     titolo: [...T.titolo],
     saldo: primaStanzaUsata === true
       ? (valido(saldo) ? `Hai ${saldo} ${saldo === 1 ? T.unitaUno : T.unita}.` : null)
       : (valido(saldo) ? T.hai.replace("<n>", String(saldo)) : T.primaStanza),
-    pacchetti: OFFERTE.map((o) => ({ ...pacchetto(o), descrizione: o.inPiu > 0 ? null : T.descrizione200, piuScelto: o.id === SCELTO })),
+    pacchetti: PACCHETTI.map((o) => ({ ...pacchetto(o), descrizione: descrizione(o), piuScelto: o.id === SCELTO })),
     scelto: id,
     costi: [
       { voce: T.stanza, costo: `${STANZA} ${T.unita}` },
