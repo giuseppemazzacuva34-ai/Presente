@@ -592,3 +592,13 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 #app .chiave-data .azioni { grid-template-columns: 1fr 1fr; }
 #app .chiave-data .azioni > .bottone { grid-column: 1 / -1; }
 #app .chiave-data .azioni > .bottone-secondario { order: 0; }
+/* Linea C · design v4 (#349), schermata 39 «Lo svelamento» (#n27). Valori dal prototipo: occhiello spaziato, titolo
+   serif con la seconda riga rossa, timer serif corsivo 44px a sinistra, spiegazione e nota in grigio caldo. */
+.app .svelamento-v4 { display: flex; flex-direction: column; gap: 14px; min-height: min(80vh, 700px); }
+.app .svelamento-v4 .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .svelamento-v4 h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; color: #F2EDE4; }
+.app .svelamento-v4 h1 em { font-style: italic; color: #E8432B; }
+.app .svelamento-v4 .timer { margin: 0; font-family: var(--serif); font-style: italic; font-size: 44px; line-height: 1; text-align: left; color: #F2EDE4; font-variant-numeric: tabular-nums; }
+.app .svelamento-v4 .sub { margin: 0; color: #A8A29A; font-size: 15px; }
+.app .svelamento-v4 .nota { margin: 0; color: #A8A29A; font-size: 12px; }
+.app .svelamento-v4 .azioni { margin-top: auto; }
