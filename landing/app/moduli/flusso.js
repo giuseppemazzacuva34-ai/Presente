@@ -19,7 +19,7 @@ import { moduloSegnala, corpoSegnala, confermaSegnala, testoErroreSegnala } from
 import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./difficolta.js";
 import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
-import { vistaChiavi, vistaSchedaChiave, vistaSera } from "./chiavi_stanza.js";
+import { vistaChiavi, vistaSchedaChiave, vistaSera, vistaSchermataChiave } from "./chiavi_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { vistaRegaliScheda } from "./regali_stanza.js";
@@ -798,6 +798,7 @@ function disegna() {
   if (valutazioneVostra && valutazioneVostra.modello().porta) { radice.replaceChildren(schermoValutazioneVostra()); return; }
   if (incontroVostro && (incontroVostro.modello().porta || incontroVostro.modello().errore)) { radice.replaceChildren(schermoIncontroVostro()); return; }
   if (disponibilita.aperta && archivio) { radice.replaceChildren(schermoDisponibilita()); return; }
+  if (chiaviStanza && inStanzaAperta()) { const s33 = vistaSchermataChiave(h, chiaviStanza); if (s33) { radice.replaceChildren(s33); return; } } // schermate 33-34 (#349, linea C)
   // Schermata 35 «Domenica sera» (#349, linea C): domenica 20:00-20:59 con la stanza aperta, al posto della home.
   if (PASSI[stato.passo].id === "fatto") {
     const sera35 = vistaDomenicaSera(h, domenicaSera.modello(new Date(), { inStanza: inStanzaAperta() }), { rivedi: rivediStanza });

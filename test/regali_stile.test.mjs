@@ -36,7 +36,11 @@ test("foglio: sale dal basso sopra la schermata, fondo #18151B, angoli 26px, vel
   for (const r of [/position: fixed/, /bottom: 0/, /left: 0/, /right: 0/, /background: #18151B/, /border-radius: 26px 26px 0 0/, /z-index: \d+/]) assert.match(f, r);
   assert.match(f, /box-shadow: 0 0 0 100vmax rgba\(5, 4, 6, 0\.72\)/);
   // Vive fuori da <main id="app">, che la home ridisegna: il piede ha la sua griglia (secondario a sinistra).
-  assert.doesNotMatch(css.slice(css.indexOf("/* ===== Linea C (#331)")), /#app /);
+  const inizio = css.indexOf("/* ===== Linea C (#331)");
+  const fine = css.indexOf("/* =====", inizio + 1); // solo il blocco del foglio, fino al blocco successivo
+  const blocco = css.slice(inizio, fine === -1 ? undefined : fine);
+  assert.ok(blocco.includes(".foglio-regali"));
+  assert.doesNotMatch(blocco, /#app /);
   const p = regole(".app .foglio-regali .azioni");
   assert.match(p, /display: grid/);
   assert.match(p, /grid-template-columns: 1fr 1\.7fr/);

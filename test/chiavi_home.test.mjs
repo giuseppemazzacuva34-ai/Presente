@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { creaChiaviStanza, vistaChiavi, vistaSchedaChiave } from "../landing/app/moduli/chiavi_stanza.js";
+import { creaChiaviStanza, vistaChiavi, vistaSchedaChiave, vistaSchermataChiave } from "../landing/app/moduli/chiavi_stanza.js";
 
 const leggi = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const LEI = "11111111-2222-4333-8444-555555555555";
@@ -70,7 +70,7 @@ test("la finestra di una persona non compare sulla scheda delle altre", async ()
   assert.ok(bottone(altra, "Dai una chiave"));
 });
 
-test("scheda: «Dai una chiave» apre la finestra con il nome, il campo da 140 e la nota", async () => {
+test("scheda: «Dai una chiave» apre la schermata sua (v4, 33) con il nome, il campo da 140 e la nota", async () => {
   const c = creaChiaviStanza({ chiavi: chiaviFinte() });
   await c.carica();
   const s = vistaSchedaChiave(h, c, LEI, "Giulia");
@@ -78,24 +78,22 @@ test("scheda: «Dai una chiave» apre la finestra con il nome, il campo da 140 e
   assert.ok(dai, "pulsante sulla scheda");
   assert.equal(dai.a["aria-label"], "Dai una chiave a Giulia");
   dai.a.onclick();
-  const f = vistaSchedaChiave(h, c, LEI, "Giulia");
-  assert.ok(!bottone(f, "Dai una chiave"), "con la finestra aperta il pulsante lascia il posto alla finestra");
-  assert.equal(tutti(f, (x) => x.a.role === "dialog").length, 1, "la finestra sta nella scheda, vicino al pulsante");
-  assert.match(testo(f), /Dai una chiave a Giulia\?/);
+  const f = vistaSchermataChiave(h, c);
+  assert.match(testo(f), /Dai una chiavea Giulia\?/);
   const campo = tutti(f, (x) => x.tag === "textarea")[0];
   assert.equal(campo.a.maxlength, "140");
   assert.equal(campo.a.id, "chiave-frase");
   assert.ok(tutti(f, (x) => x.tag === "label" && x.a.for === "chiave-frase" && testo(x) === "Una frase per Giulia").length);
   assert.match(testo(f), /La leggerà solo se anche Giulia ti dà una chiave\./);
-  assert.ok(bottone(f, "Annulla"));
+  assert.ok(bottone(f, "Indietro"));
 });
 
-test("finestra: «Dai la chiave» manda la frase scritta, poi la scheda mostra il segno", async () => {
+test("schermata: «Dai la chiave» manda la frase scritta, poi la scheda mostra il segno", async () => {
   const chiavi = chiaviFinte();
   const c = creaChiaviStanza({ chiavi });
   await c.carica();
   c.apriDai(LEI, "Giulia");
-  const f = vistaSchedaChiave(h, c, LEI, "Giulia");
+  const f = vistaSchermataChiave(h, c);
   tutti(f, (x) => x.tag === "textarea")[0].a.oninput({ target: { value: "Mi è piaciuta la storia del treno" } });
   await bottone(f, "Dai la chiave").a.onclick();
   assert.deepEqual(chiavi.chiamate.at(-1), ["dai", LEI, "Mi è piaciuta la storia del treno"]);
@@ -112,22 +110,22 @@ test("riprendere: conferma «Non lo saprà.» e poi la chiave torna disponibile"
   const c = creaChiaviStanza({ chiavi });
   await c.carica();
   bottone(vistaSchedaChiave(h, c, LEI, "Giulia"), "Riprendi la chiave").a.onclick();
-  const f = vistaSchedaChiave(h, c, LEI, "Giulia");
-  assert.match(testo(f), /Riprendi la chiave a Giulia\? Non lo saprà\./);
+  const f = vistaSchermataChiave(h, c);
+  assert.match(testo(f), /Riprendi la chiavea Giulia\?Non lo saprà\./);
   assert.equal(tutti(f, (x) => x.tag === "textarea").length, 0, "per riprendere nessun campo");
   await bottone(f, "Riprendi la chiave").a.onclick();
   assert.deepEqual(chiavi.chiamate.at(-1), ["riprendi", LEI]);
   assert.ok(bottone(vistaSchedaChiave(h, c, LEI, "Giulia"), "Dai una chiave"));
 });
 
-test("rifiuto del server: la finestra resta aperta con il suo testo, come avviso", async () => {
+test("rifiuto del server: la schermata resta aperta con il suo testo, come avviso", async () => {
   const chiavi = chiaviFinte();
   chiavi.dai = async () => ({ ok: false, testo: "Puoi dare una chiave solo a chi hai già chiamato in questa stanza." });
   const c = creaChiaviStanza({ chiavi });
   await c.carica();
   c.apriDai(LEI, "Giulia");
-  await bottone(vistaSchedaChiave(h, c, LEI, "Giulia"), "Dai la chiave").a.onclick();
-  const f = vistaSchedaChiave(h, c, LEI, "Giulia");
+  await bottone(vistaSchermataChiave(h, c), "Dai la chiave").a.onclick();
+  const f = vistaSchermataChiave(h, c);
   const avviso = tutti(f, (x) => x.a.role === "alert")[0];
   assert.equal(testo(avviso), "Puoi dare una chiave solo a chi hai già chiamato in questa stanza.");
   assert.ok(bottone(f, "Dai la chiave"), "si può correggere e riprovare");
