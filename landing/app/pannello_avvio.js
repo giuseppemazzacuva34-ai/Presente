@@ -2,7 +2,8 @@
 // Si entra con lo stesso accesso dell'app (/app/). Chi decide lo controlla il Worker (tabella moderatori): qui la
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML.
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO, vociUscite }
+import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO, vociUscite,
+  vociContestazioni, ESITI_CONTESTAZIONE_PANNELLO }
   from "/app/moduli/pannello.js";
 
 const radice = document.getElementById("pannello");
@@ -17,6 +18,9 @@ const MESSAGGI = {
   testo: "Scrivi il motivo della decisione (massimo 2000 caratteri).",
   spento: "Il pannello non è ancora attivo.",
   rifiutata_ricorso: "Decisione non salvata: il ricorso è già deciso, oppure la sanzione l'hai data tu (decide un'altra persona).",
+  gia_decisa: "Decisione non salvata: la contestazione è già decisa.",
+  non_trovata: "Decisione non salvata: la contestazione non c'è più.",
+  propria: "Decisione non salvata: la contestazione è tua, la decide un'altra persona.",
   seconda_volta_contatti: "Decisione non salvata: è la seconda volta in 6 mesi che chiede contatti prima della porta. Scegli «Sospensione 7 giorni».",
 };
 
@@ -76,7 +80,8 @@ async function mostraCoda(p) {
     h("div", { class: "azioni" },
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Aggiorna" }),
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Ricorsi in attesa" }),
-      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraUscite(p), testo: "Perché si lascia la stanza" })),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraUscite(p), testo: "Perché si lascia la stanza" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraContestazioni(p), testo: "Contestazioni dei no" })),
   );
 }
 
@@ -238,3 +243,44 @@ preparaPannello().then((p) => {
   if (!p) { mostra(h("h1", { testo: "Pannello delle segnalazioni" }), h("p", { testo: MESSAGGI.spento })); return; }
   return mostraCoda(p);
 });
+
+// #6 v1.3 punto 2 (passo 4c): «Contesta» un «No». Chi decide legge domanda e testo e accoglie (quel «No» non conta
+// più) o respinge (resta); una decisione sola, nessun secondo ricorso. Mai chi ha risposto «No» né quale incontro.
+// La propria contestazione si vede ma non si decide (lo rifiuta comunque il database).
+async function mostraContestazioni(p) {
+  avvisa("");
+  const r = await p.contestazioni();
+  if (!r.ok) { avvisa(MESSAGGI[r.motivo] || MESSAGGI.riprova); return; }
+  const voci = vociContestazioni(r.contestazioni);
+  mostra(
+    h("h1", { testo: "Contestazioni dei no" }),
+    h("p", { class: "sottotitolo", testo: voci.length ? `${voci.length} da decidere, prima le più vecchie. Chi ha risposto «No» non si vede e non sa nulla della contestazione.`
+      : "Nessuna contestazione da decidere." }),
+    h("ul", { class: "coda" }, voci.map((v, i) => h("li", { class: "voce-coda" },
+      h("h2", { testo: v.titolo }),
+      v.inviata ? h("p", { class: "nota", testo: `Inviata il ${v.inviata}` }) : null,
+      h("p", { class: "racconto", testo: `Cosa non torna: ${v.perche}` }),
+      v.puoiDecidere ? moduloContestazione(p, v, i) : h("p", { class: "nota", testo: "La contestazione è tua: la decide un'altra persona." })))),
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna alle segnalazioni" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraContestazioni(p), testo: "Aggiorna" })),
+  );
+}
+
+function moduloContestazione(p, v, i) {
+  const esito = h("select", { id: `esito-contestazione-${i}`, name: "esito" },
+    ESITI_CONTESTAZIONE_PANNELLO.map(([e, t]) => h("option", { value: e, testo: t })));
+  const errore = h("p", { class: "errore", role: "alert" });
+  const invia = h("button", { type: "submit", class: "bottone", testo: "Conferma la decisione" });
+  return h("form", { class: "corpo", onsubmit: async (e) => {
+    e.preventDefault();
+    invia.disabled = true;
+    const fatto = await p.decidiContestazione({ id: v.id, esito: esito.value });
+    invia.disabled = false;
+    if (!fatto.ok) { errore.textContent = MESSAGGI[fatto.motivo] || MESSAGGI.riprova; return; }
+    await mostraContestazioni(p);
+    avvisa("Decisione sulla contestazione salvata.");
+  } },
+  h("label", { for: `esito-contestazione-${i}`, testo: "Decisione" }), esito,
+  errore, invia);
+}

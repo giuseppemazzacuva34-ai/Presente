@@ -7,6 +7,7 @@ import { MOTIVI_MODULO } from "./segnala.js";
 import { REGOLE_COMMUNITY, ID_REGOLE, testoRegola, regolaProposta } from "./regole_community.js";
 import { TESTI_SANZIONE } from "./sanzioni.js";
 import { MOTIVI_APP } from "./lascia_stanza.js";
+import { TESTI_RIEPILOGO } from "./riepilogo_valutazioni.js";
 
 const PERCORSO = "/app/api/pannello";
 const ATTESA_MS = 10000;
@@ -194,6 +195,27 @@ export function vociUscite(righe) {
   });
 }
 
+// #6 v1.3 punto 2 (passo 4c): contestazioni dei «No». Stessi esiti del Worker (worker/pannello_api.js); la domanda
+// è quella della valutazione (TESTI_RIEPILOGO.domande). Mai chi ha risposto: il Worker e il database non lo danno.
+export const ESITI_CONTESTAZIONE_PANNELLO = Object.freeze([
+  ["accolta", "Accogli: quel no non conta più"],
+  ["respinta", "Respingi: il no resta"],
+].map(Object.freeze));
+export function vociContestazioni(righe) {
+  if (!Array.isArray(righe)) return [];
+  return righe.filter((r) => r && UUID.test(r.id || "") && Object.hasOwn(TESTI_RIEPILOGO.domande, r.domanda)).map((r) => {
+    const n = Number.isInteger(r.quanti_no) && r.quanti_no > 0 ? r.quanti_no : 1;
+    const d = new Date(typeof r.inviata_il === "string" ? r.inviata_il : "");
+    return {
+      id: r.id,
+      titolo: `${nome(r.nome) || "Senza nome"} contesta ${n} «No» a: «${TESTI_RIEPILOGO.domande[r.domanda]}»`,
+      perche: typeof r.testo === "string" && r.testo.trim() ? r.testo : "Nessun motivo scritto.",
+      inviata: Number.isNaN(d.getTime()) ? "" : `${GIORNO_MESE.format(d)} alle ${ORA.format(d)}`,
+      puoiDecidere: r.tua !== true,
+    };
+  });
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -272,6 +294,16 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       const t = typeof testo === "string" ? testo.trim() : "";
       if (!t || t.length > 2000) return { ok: false, motivo: "testo" };
       const d = await chiama("/ricorso", { id, esito, testo: t });
+      return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
+    },
+    async contestazioni() {
+      const d = await chiama("/contestazioni");
+      return d.ok ? { ok: true, contestazioni: Array.isArray(d.contestazioni) ? d.contestazioni : [] } : d;
+    },
+    async decidiContestazione({ id, esito }) {
+      if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
+      if (!ESITI_CONTESTAZIONE_PANNELLO.some(([e]) => e === esito)) return { ok: false, motivo: "esito" };
+      const d = await chiama("/contestazione", { id, esito });
       return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
     },
   };
