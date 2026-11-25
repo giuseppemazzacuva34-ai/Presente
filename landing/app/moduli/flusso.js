@@ -52,6 +52,7 @@ let regaliStanza = null;
 let regaliProfilo = null; // «I tuoi regali» dal profilo (#349, linea B)
 let regaloRicevuto = null; // regalo ricevuto in chiamata, schermata 27 (#349, linea B)
 let schermoProfilo = null; // «Il profilo» dal cerchio in alto a destra, schermata 23 (#349, linea B)
+let opzioniCoin = null; // lettore del saldo (coinProfilo dell'avvio): schermata 13 dopo l'iscrizione (#349, linea B)
 let filoDomenica = null; // schermata 36 «Il Filo · le porte aperte» (#360, linea C)
 let filoLunedi = null; // schermata 18 «Il Filo apre la stanza» (#360, linea C)
 let filoRiascolto = null; // voce «Il vocale del Filo» nella stanza (#360, linea C)
@@ -213,6 +214,7 @@ export function avvia(elemento, opzioni = {}) {
   regaliProfilo = telefono && opzioni.storicoRegali ? creaSchermoRegali({ storico: opzioni.storicoRegali, disegna: () => disegna(),
     errore: (m) => MESSAGGI_SALVATAGGIO[m] || "Non riusciamo a leggere i tuoi regali. Riprova tra poco." }) : null;
   schermoProfilo = telefono && opzioni.coinProfilo ? creaSchermoProfilo({ coin: opzioni.coinProfilo, storico: opzioni.storicoRegali, disegna: () => disegna() }) : null;
+  opzioniCoin = opzioni.coinProfilo || null; // saldo per la schermata 13 dopo l'iscrizione (#349, linea B)
   esitiSegnalazioni = (telefono && opzioni.esiti) || null;
   sanzioniMie = (telefono && opzioni.sanzioni) || null;
   supporto = (telefono && opzioni.aiuto) || null;
@@ -289,6 +291,7 @@ async function salvaEVai(passo, ...operazioni) {
     disegna();
     return;
   }
+  const primaVoltaFatto = passoMassimo < PASSI.length - 1 && raggiunto === PASSI.length - 1;
   passoMassimo = raggiunto;
   // La provincia sul server è quella del «Continua» di «Chi sei» (gli altri passi salvano solo il loro pezzo):
   // così una provincia solo precompilata dalla lista non risulta già salvata.
@@ -299,6 +302,7 @@ async function salvaEVai(passo, ...operazioni) {
     stato.provinciaSalvata = stato.provincia;
   }
   vai(passo);
+  if (primaVoltaFatto) apriCreditiDopoIscrizione();
 }
 
 // Carica un file solo se è nuovo o se deve cambiare nome (es. una risposta a voce passata da 2ª a 1ª).
@@ -1905,5 +1909,17 @@ function schermoIlProfilo() {
 function apriCreditiDalProfilo(saldo) {
   if (document.querySelector(".tuoi-coin")) return;
   apriTuoiCoin(document.querySelector(".pagina.app"), schermataTuoiCoin(saldo, { primaStanzaUsata: schermoProfilo.primaStanzaUsata() !== false }),
+    { principale: document.getElementById("app") });
+}
+
+// Schermata 13 «I tuoi crediti» una volta sola dopo l'iscrizione (passo 10 di 10, dopo le foto; #349, linea B, passo 4;
+// spec #331 v1.1 punto 3). «Una volta» la decide il passo massimo salvato sul server. Si apre al posto della home, quindi
+// «Più tardi» porta alla home. Saldo letto dal server; se non arriva, la 13 non si apre. In beta «Paga» resta spento.
+async function apriCreditiDopoIscrizione() {
+  if (!opzioniCoin) return;
+  let c = null;
+  try { c = await opzioniCoin.saldo(); } catch { c = null; }
+  if (!c || c.ok !== true || !Number.isInteger(c.saldo) || document.querySelector(".tuoi-coin")) return;
+  apriTuoiCoin(document.querySelector(".pagina.app"), schermataTuoiCoin(c.saldo, { primaStanzaUsata: c.primaStanzaUsata === true }),
     { principale: document.getElementById("app") });
 }
