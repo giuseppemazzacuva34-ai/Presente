@@ -24,7 +24,8 @@ const ULTIMA_ORA = 23 * 60; // 23:00 compreso
 const LUOGO_MASSIMO = 80;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATI = ["da_fissare", "proposto", "confermato", "concluso"];
-const AZIONI = ["proponi", "accetto", "altra_data", "annulla", "sono_qui", "disdici", "annulla_incontro", "valuta"];
+const AZIONI = ["proponi", "accetto", "altra_data", "annulla", "sono_qui", "disdici", "annulla_incontro", "valuta", "ritardo"];
+const RITARDI = [15, 30]; // come INCONTRO.ritardi in api/incontro.js; decide il server
 const ORE_GRATIS = 6; // come INCONTRO.disdettaGratisOre in api/incontro.js (il test lo controlla); decide il server
 const RISPOSTE = ["accetto", "annulla"];
 
@@ -89,6 +90,15 @@ export const TESTI_INCONTRO = Object.freeze({
   disdettoMio: "Hai disdetto l'appuntamento di <giorno>. Potete fissarne un altro entro il <data>.",
   altraPersona: "L'altra persona",
   orarioPassatoDisdici: "L'orario dell'incontro è già passato.",
+  // «Arrivo in ritardo» (spec v1, casi limite): nome del pulsante e minuti dalla spec, il resto provvisorio.
+  ritardo: "Arrivo in ritardo",
+  ritardo15: "+15 minuti",
+  ritardo30: "+30 minuti",
+  domandaRitardo: "Di quanto arrivi in ritardo? Puoi dirlo una volta sola.",
+  ritardoMio: "Hai avvisato che arrivi con <n> minuti di ritardo.",
+  ritardoAltro: "<nome> arriva con <n> minuti di ritardo.",
+  ritardoGiaUsato: "Il ritardo si può dire una volta sola.",
+  ritardoNonValido: "Scegli +15 o +30 minuti.",
 });
 
 const GIORNO = new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" });
@@ -141,6 +151,14 @@ function testoCheckin(i, adesso) {
   return TESTI_INCONTRO.finestraCheckin.replace("<giorno>", GIORNO.format(da)).replace("<da>", ORARIO.format(da)).replace("<fino>", ORARIO.format(fino));
 }
 
+// «Arrivo in ritardo» già detto: a chi l'ha detto senza nome, all'altra persona col nome. Minuti strani → nessun testo.
+function testoRitardo(i, nome) {
+  if (!RITARDI.includes(i.ritardo_minuti)) return null;
+  if (i.ritardo_mio === true) return TESTI_INCONTRO.ritardoMio.replace("<n>", String(i.ritardo_minuti));
+  const chi = typeof nome === "string" && nome.trim() ? nome.trim() : TESTI_INCONTRO.altraPersona;
+  return TESTI_INCONTRO.ritardoAltro.replace("<nome>", chi).replace("<n>", String(i.ritardo_minuti));
+}
+
 // Dopo una disdetta in tempo (spec v1.1): a chi l'ha ricevuta col nome, a chi l'ha fatta senza. Senza orario o
 // scadenza validi nessun testo.
 function testoDisdetta(i, nome) {
@@ -178,7 +196,7 @@ export function schermataIncontro(i, adesso = new Date(), nome = null) {
   }
   if (i.stato === "confermato") {
     const q = quando(i);
-    return { tipo: "confermato", azioni, testo: TESTI_INCONTRO.caparra, checkin: testoCheckin(i, adesso),
+    return { tipo: "confermato", azioni, testo: TESTI_INCONTRO.caparra, checkin: testoCheckin(i, adesso), ritardo: testoRitardo(i, nome),
       titolo: q ? TESTI_INCONTRO.confermato.replace("<giorno>", q.giorno).replace("<ora>", q.ora).replace("<luogo>", dove(i)) : TESTI_INCONTRO.titolo };
   }
   if (i.stato === "proposto" && i.proposta_mia === true) return { tipo: "attesa", proposta: proposta(i), testo: TESTI_INCONTRO.aspetta,
@@ -220,6 +238,8 @@ const ERRORI = Object.freeze({
   non_confermato: TESTI_INCONTRO.nonConfermato,
   // Stesso codice, parole diverse secondo l'azione («<azione>:<motivo>»).
   "disdici:troppo_tardi": TESTI_INCONTRO.orarioPassatoDisdici,
+  ritardo_gia_usato: TESTI_INCONTRO.ritardoGiaUsato,
+  ritardo_non_valido: TESTI_INCONTRO.ritardoNonValido,
 });
 export function testoErroreIncontro(motivo) {
   const m = String(motivo ?? "");
@@ -236,7 +256,7 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
   let inCorso = false;
   let errore = null;
   let aperta = false; // modulo della proposta
-  let conferma = null; // «annulla», «disdici» o «annulla_incontro» in attesa di conferma
+  let conferma = null; // «annulla», «disdici», «annulla_incontro» o «ritardo» in attesa di conferma
   let nome = null; // nome dell'altra persona, solo per i testi (mai mandato al server)
   let bozza = { orario: "", luogo: "", locale: "" };
   const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare la schermata */ } };
@@ -422,6 +442,20 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
     // «Disdici» (incontro confermato) e «Annulla l'incontro» (da fissare o con la mia proposta): spec v1.1.
     disdici: () => confermaPoi("disdici", { azione: "disdici" }),
     annullaIncontro: () => confermaPoi("annulla_incontro", { azione: "annulla" }),
+    // «Arrivo in ritardo»: il primo tocco apre la scelta (+15 o +30), la scelta manda i minuti. Solo con l'azione dal server.
+    async ritardo(minuti) {
+      const s = schermataIncontro(incontro, adesso(), nome);
+      if (!s || !s.azioni.includes("ritardo")) return false;
+      if (conferma !== "ritardo") {
+        if (minuti !== undefined) return false;
+        conferma = "ritardo";
+        aperta = false;
+        avvisa();
+        return false;
+      }
+      if (!RITARDI.includes(minuti)) return false;
+      return invia({ azione: "ritardo", minuti });
+    },
     nonAnnullare() {
       conferma = null;
       avvisa();
@@ -446,6 +480,7 @@ export function vistaIncontro(h, inc, { valuta = null } = {}) {
   if (s && s.segnale) parti.push(h("p", { classe: "segnale", role: "status" }, s.segnale));
   if (s && s.testo) parti.push(h("p", { classe: s.tipo === "confermato" ? "nota" : null }, s.testo));
   if (s && s.checkin) parti.push(h("p", { classe: "nota", role: "status" }, s.checkin));
+  if (s && s.ritardo) parti.push(h("p", { classe: "nota", role: "status" }, s.ritardo));
   if (s && s.scade) parti.push(h("p", { classe: "nota" }, s.scade));
   if (s && s.controproposte) parti.push(h("p", { classe: "nota" }, s.controproposte));
   const bloccato = m.inCorso || m.carica;
@@ -455,6 +490,7 @@ export function vistaIncontro(h, inc, { valuta = null } = {}) {
     if (s.azioni.includes("accetto")) parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.rispondi("accetto") }, T.accetto));
     if (s.azioni.includes("altra_data")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.apriProposta() }, T.altraData));
     if (s.azioni.includes("annulla")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.rispondi("annulla") }, T.annulla));
+    if (s.azioni.includes("ritardo")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.ritardo() }, T.ritardo));
     if (s.azioni.includes("disdici")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.disdici() }, T.disdici));
     if (s.azioni.includes("annulla_incontro")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.annullaIncontro() }, T.annulla));
     if (s.azioni.includes("valuta") && typeof valuta === "function") parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => valuta() }, TESTI_VALUTAZIONE.apri));
@@ -465,6 +501,13 @@ export function vistaIncontro(h, inc, { valuta = null } = {}) {
       h("button", { classe: "bottone", type: "button", disabled: bloccato, "aria-describedby": "incontro-conferma",
         onclick: () => (disdici ? inc.disdici() : inc.annullaIncontro()) }, disdici ? T.siDisdici : T.siAnnulla),
       h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.nonAnnullare() }, T.no));
+  }
+  if (s && m.conferma === "ritardo") {
+    parti.push(h("div", { role: "group", "aria-labelledby": "incontro-ritardo" },
+      h("p", { id: "incontro-ritardo" }, T.domandaRitardo),
+      h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.ritardo(15) }, T.ritardo15),
+      h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => inc.ritardo(30) }, T.ritardo30),
+      h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.nonAnnullare() }, T.no)));
   }
   if (s && m.conferma === "annulla") {
     parti.push(h("p", { id: "incontro-conferma", role: "alert" }, T.confermaAnnulla),
