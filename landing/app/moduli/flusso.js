@@ -46,6 +46,8 @@ import { schermataTuoiCoin } from "./saldo_coin.js";
 import { disponiStanza, vistaCerchioStanza, testoChiamate } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
 import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, creaStanzaViva, creaBattito } from "./appuntamenti_stanza.js"; // schermate 19-20 (#380)
 import { creaDomenicaSera, vistaDomenicaSera } from "./domenica_sera.js"; // schermata 35 (#349, linea C)
+import { TESTI_CONTESTA, LIMITI_CONTESTA, rigaContesta, testoValido } from "./contesta_no.js"; // #6 v1.3 punto 2 (linea B)
+import { TESTI_RIEPILOGO } from "./riepilogo_valutazioni.js"; // #6 v1.3 punto 2 (linea B)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -227,6 +229,7 @@ export function avvia(elemento, opzioni = {}) {
   incontroVostro = (telefono && opzioni.incontro) || null;
   valutazioneVostra = (telefono && opzioni.valutazione) || null;
   riepilogoMio = (telefono && opzioni.riepilogo) || null;
+  contestaNo = (telefono && opzioni.riepilogo && opzioni.riepilogo.contesta) || null; // #6 spec v1.3 punto 2 (linea B)
   filoDomenica = (telefono && opzioni.filoDomenica) || null;
   filoLunedi = (telefono && opzioni.filoLunedi) || null;
   filoRiascolto = (telefono && opzioni.filoRiascolto) || null;
@@ -1756,12 +1759,80 @@ function bloccoRiepilogoMio() {
     riepilogoStato.chiesto = true;
     riepilogoMio.leggi().then((r) => { if (r && r.ok) { riepilogoStato.righe = r.righe; disegna(); } }).catch(() => {});
   }
-  const righe = [...riepilogoStato.righe.bollini, ...riepilogoStato.righe.no];
+  if (contestaNo && !contesta.chiesto) {
+    contesta.chiesto = true;
+    contestaNo.leggi().then((r) => { if (r && r.ok) { contesta.stato = r.contestazioni; disegna(); } }).catch(() => {});
+  }
+  const righeNo = righeNoContestabili();
+  const esiti = ORDINE_NO.map((k) => (righeNo.some((x) => x.k === k) ? null : rigaContesta(contesta.stato, k).esito)).filter(Boolean);
+  const righe = [...riepilogoStato.righe.bollini.map((t) => h("li", {}, t)), ...righeNo.map(rigaNo),
+    ...esiti.map((t) => h("li", { classe: "nota" }, t))];
   if (!righe.length) return null;
   return h("div", { classe: "riepilogo", role: "region", "aria-label": "Dopo i tuoi incontri" },
     h("h2", {}, "Dopo i tuoi incontri"),
-    h("ul", {}, righe.map((t) => h("li", {}, t))),
+    h("ul", {}, righe),
     h("p", { classe: "nota" }, "Lo vedi solo tu."));
+}
+
+// «Contesta» un «No» (#6 spec v1.3 punto 2, linea B): accanto a ogni «Una persona ha risposto no a: …». Al tocco il
+// foglio si apre sotto la riga: etichetta visibile, testo 10-500 caratteri, «Manda» / «Annulla». Dopo l'invio
+// «In revisione». Mai nomi, date o id dell'altra persona: il server manda solo { contestabile, stato }. Solo memoria.
+let contestaNo = null;
+const ORDINE_NO = ["presentato", "foto_sue", "come_in_chiamata"];
+const contesta = { chiesto: false, stato: {}, aperta: "", testo: "", invio: false, errore: "", inviata: "" };
+function righeNoContestabili() {
+  return ORDINE_NO.map((k) => ({ k, testo: TESTI_RIEPILOGO.no.replace("<domanda>", TESTI_RIEPILOGO.domande[k]) }))
+    .filter((x) => riepilogoStato.righe.no.includes(x.testo));
+}
+function rigaNo({ k, testo }) {
+  const riga = contestaNo ? rigaContesta(contesta.stato, k) : { bottone: null, esito: null };
+  const parti = [h("span", {}, testo)];
+  if (riga.esito) parti.push(h("p", { classe: "nota" }, riga.esito));
+  if (contesta.inviata === k) parti.push(h("p", { classe: "nota", role: "status" }, TESTI_CONTESTA.inviata));
+  if (riga.bottone === "in_revisione") parti.push(h("p", { classe: "nota" }, TESTI_CONTESTA.inRevisione));
+  if (riga.bottone === "contesta" && contesta.aperta !== k) {
+    parti.push(h("button", { classe: "link", type: "button", onclick: () => apriContesta(k) }, TESTI_CONTESTA.bottone));
+  }
+  if (contesta.aperta === k) {
+    parti.push(h("div", { classe: "foglio-contesta", role: "group", "aria-label": TESTI_CONTESTA.bottone },
+      h("label", { for: `contesta-${k}` }, TESTI_CONTESTA.domanda),
+      h("p", { classe: "nota", id: `contesta-nota-${k}` }, TESTI_CONTESTA.nota),
+      h("textarea", { id: `contesta-${k}`, classe: "racconto-segnala", maxlength: String(LIMITI_CONTESTA.massimo), rows: "5",
+        minlength: String(LIMITI_CONTESTA.minimo), "aria-describedby": `contesta-nota-${k}`, disabled: contesta.invio,
+        oninput: (e) => { contesta.testo = e.target.value; } }, contesta.testo),
+      contesta.errore ? h("p", { classe: "errore", role: "alert" }, contesta.errore) : null,
+      h("div", { classe: "azioni" },
+        h("button", { classe: "bottone", type: "button", disabled: contesta.invio, onclick: () => mandaContesta(k) },
+          contesta.invio ? "Invio…" : TESTI_CONTESTA.manda),
+        h("button", { classe: "link", type: "button", disabled: contesta.invio, onclick: chiudiContesta }, TESTI_CONTESTA.annulla))));
+  }
+  return h("li", {}, ...parti);
+}
+function apriContesta(k) {
+  Object.assign(contesta, { aperta: k, testo: "", errore: "", inviata: "" });
+  disegna();
+  const campo = radice && radice.querySelector(`#contesta-${k}`);
+  if (campo) campo.focus();
+}
+function chiudiContesta() {
+  const k = contesta.aperta;
+  Object.assign(contesta, { aperta: "", testo: "", errore: "" });
+  disegna();
+  const b = radice && [...radice.querySelectorAll(".riepilogo button")].find((x) => x.textContent === TESTI_CONTESTA.bottone && x.closest("li")
+    && x.closest("li").textContent.includes(TESTI_RIEPILOGO.domande[k]));
+  if (b) b.focus();
+}
+async function mandaContesta(k) {
+  if (contesta.invio) return;
+  if (!testoValido(contesta.testo)) { contesta.errore = TESTI_CONTESTA.errori.testo_non_valido; disegna(); return; }
+  contesta.invio = true; contesta.errore = ""; disegna();
+  const r = await contestaNo.manda(k, contesta.testo).catch(() => ({ ok: false, testo: TESTI_CONTESTA.errori.generico }));
+  contesta.invio = false;
+  if (r.ok) {
+    Object.assign(contesta, { aperta: "", testo: "", inviata: k });
+    contesta.stato = { ...contesta.stato, [k]: { contestabile: false, stato: "in_attesa" } };
+  } else contesta.errore = r.testo;
+  disegna();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
