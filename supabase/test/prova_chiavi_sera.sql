@@ -131,6 +131,28 @@ select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'provincia' = 'Dall
   'sera: chi vive all''estero → «Dall''estero», mai la sigla');
 reset role;
 
+-- #471 parte D (spec v1 del CPO, 25/11): nelle stanze di un solo genere la sagoma è il genere dell'ALTRA persona,
+-- mai quello di chi guarda. Due uomini: entrambi vedono un uomo. Due donne: entrambe vedono una donna.
+-- «Mi descrivo» dall'altra parte: neutra, qualunque sia il genere di chi guarda.
+update public.profili set mi_presento_come = 'uomo' where id in (pg_temp.p(1), pg_temp.p(2));
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'uomo'
+  and public.sera_di(pg_temp.p(2))->'porte'->0->>'sagoma' = 'uomo',
+  'sera (#471): stanza di soli uomini → ognuno vede dietro la porta la sagoma di un uomo');
+reset role;
+update public.profili set mi_presento_come = 'donna' where id in (pg_temp.p(1), pg_temp.p(2));
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'donna'
+  and public.sera_di(pg_temp.p(2))->'porte'->0->>'sagoma' = 'donna',
+  'sera (#471): stanza di sole donne → ognuna vede dietro la porta la sagoma di una donna');
+reset role;
+update public.profili set mi_presento_come = 'mi_descrivo' where id = pg_temp.p(2);
+set local role service_role;
+select pg_temp.ok(public.sera_di(pg_temp.p(1))->'porte'->0->>'sagoma' = 'neutra'
+  and public.sera_di(pg_temp.p(2))->'porte'->0->>'sagoma' = 'donna',
+  'sera (#471): dietro la porta di chi «si descrive» la sagoma neutra; lui/lei vede il genere dell''altra, non il proprio');
+reset role;
+
 -- Un blocco dopo la sera: per il server la porta non c'è più.
 insert into public.blocchi (chi, bloccato) values (pg_temp.p(2), pg_temp.p(1));
 set local role service_role;
