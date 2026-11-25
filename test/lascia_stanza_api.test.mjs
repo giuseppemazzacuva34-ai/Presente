@@ -42,7 +42,7 @@ test("testi della schermata 22 come nella spec v1 (senza genere)", () => {
   ]);
   assert.equal(TESTI_USCITA.titolo, "Vuoi lasciare la stanza?");
   assert.equal(TESTI_USCITA.sotto, "Dicci il motivo. Le persone della stanza vedranno solo che hai lasciato la stanza.");
-  assert.equal(TESTI_USCITA.coin, "I Coin della stanza non tornano indietro. Le chiavi che hai dato e ricevuto si annullano.");
+  assert.equal(TESTI_USCITA.coin, "I crediti della stanza non tornano indietro. Le chiavi che hai dato e ricevuto si annullano.");
   assert.equal(TESTI_USCITA.resto, "Resto");
   assert.equal(TESTI_USCITA.lascia, "Lascia la stanza");
   assert.equal(TESTI_USCITA.app, "Se qualcosa non funziona, scrivici dall'Aiuto.");
