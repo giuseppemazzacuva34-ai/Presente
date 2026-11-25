@@ -122,10 +122,13 @@ chi entra in **famiglie**: mista (uomini→donne, donne→uomini), dedicata uomi
   Sotto la soglia: Stanza Italia della famiglia (o attesa per chi ha «Solo la mia zona»); sotto 6 compatibili nessuna stanza.
 - La famiglia vive solo in memoria durante il calcolo: **non si scrive** nel database (le stanze restano `italia` o
   `citta`), non va nei log e non compare mai nell'app.
-- `cerco` può essere già un elenco (`donne`, `uomini`, `non_binari`) o il testo di prima (`tutti` = tutte e tre): la
-  migrazione del database e la schermata 06 a più scelte sono la parte B (prossimo passo).
+- **Parte B (25/11 sera):** `filtri.cerco` è un elenco (`donne`, `uomini`, `non_binari`, almeno uno) — migrazione
+  `20261125220000_voglio_incontrare.sql`, non distruttiva (`tutti` → tutte e tre, conversione in `cerco_da_testo()`).
+  Nella 06 «Voglio incontrare» a più scelte (Donne · Uomini · Persone non binarie), «Scegli almeno un'opzione.» se vuoto,
+  precompilato dall'orientamento della 05 (che resta solo nel telefono finché D155 è aperta). `rientra_nei_filtri()`:
+  «non binario» e «mi descrivo» rientrano in chi sceglie «Persone non binarie».
 - Per ora la mista usa i numeri di `conteggi_aree()` (tutti i profili completi); le famiglie dedicate si contano su chi entra
-  quella settimana. I conteggi per famiglia nel database arrivano con la parte B.
+  quella settimana. Conteggi per famiglia nel database: prossimo passo.
 - Prove: `test/famiglie_stanze.test.mjs` (criteri 6, 7, 8, 9 della spec).
 
 ## Punti aperti

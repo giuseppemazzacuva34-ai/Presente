@@ -11,6 +11,7 @@
 
 import { VERSIONE } from "./domande.js";
 import { ESTERO, nomeMenu } from "./province.js";
+import { cercoComeElenco } from "./voglio_incontrare.js";
 
 // Versione dell'informativa privacy dell'app accettata con il consenso a «cerco». Va aggiornata insieme al testo
 // dell'informativa (T08): il database la salva accanto al consenso.
@@ -174,7 +175,7 @@ export function profiloDaStato(s) {
 
 export function filtriDaStato(s) {
   return {
-    cerco: s.consensoCerco && s.cerco ? s.cerco : null,
+    cerco: s.consensoCerco && Array.isArray(s.cerco) && s.cerco.length ? s.cerco : null, // elenco (#471 parte B)
     eta_min: s.etaMin, eta_max: s.etaMax, raggio: s.raggio || null,
     cosa_cerco: s.cosaCerco || null, figli: s.figli || null, fumo: s.fumo || null,
   };
@@ -200,7 +201,7 @@ export function statoDaSalvato(s, salvato) {
   }
   const fi = salvato.filtri;
   if (fi) {
-    s.cerco = fi.cerco || ""; s.consensoCerco = Boolean(fi.cerco);
+    s.cerco = cercoComeElenco(fi.cerco); s.consensoCerco = s.cerco.length > 0;
     if (fi.eta_min) s.etaMin = fi.eta_min;
     if (fi.eta_max) s.etaMax = fi.eta_max;
     s.raggio = fi.raggio || s.raggio; s.cosaCerco = fi.cosa_cerco || ""; s.figli = fi.figli || ""; s.fumo = fi.fumo || "";

@@ -25,7 +25,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   (pg_temp.p(1), 'Ada', '1990-01-01', 'MI', 'donna'), (pg_temp.p(2), 'Ugo', '1990-01-01', 'MI', 'uomo'),
   (pg_temp.p(3), 'Leo', '1990-01-01', 'MI', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select id, case mi_presento_come when 'uomo' then 'donne' else 'uomini' end, now(), '1.5', 25, 50, 'italia'
+  select id, case mi_presento_come when 'uomo' then '{donne}' else '{uomini}' end::text[], now(), '1.5', 25, 50, 'italia'
   from public.profili where id in (select pg_temp.p(n) from generate_series(1, 3) n);
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('1a5c4d5c-5555-4000-8000-00000000000a', 'italia', now() - interval '2 days', now() + interval '3 days');

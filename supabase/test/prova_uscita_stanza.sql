@@ -40,7 +40,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   (pg_temp.p(2), 'Bea', '1990-01-01', 'MI', 'donna'),
   (pg_temp.p(3), 'Ugo', '1990-01-01', 'MI', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select id, case when nome = 'Ugo' then 'donne' else 'uomini' end, now(), '1.5', 25, 50, 'italia' from public.profili
+  select id, case when nome = 'Ugo' then '{donne}' else '{uomini}' end::text[], now(), '1.5', 25, 50, 'italia' from public.profili
   where id in (pg_temp.p(1), pg_temp.p(2), pg_temp.p(3));
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('e5e5e5e5-5555-4000-8000-000000000001', 'italia', now() - interval '2 days', now() + interval '3 days');

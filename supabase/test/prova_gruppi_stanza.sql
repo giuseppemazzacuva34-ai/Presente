@@ -41,7 +41,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   (pg_temp.p(5), 'Prova', '1990-01-01', 'MI', 'donna'),
   (pg_temp.p(6), 'Prova', '1990-01-01', 'MI', 'donna');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select pg_temp.p(n), 'tutti', now(), '1.5', 18, 99, 'italia' from generate_series(1, 6) n;
+  select pg_temp.p(n), '{donne,uomini,non_binari}', now(), '1.5', 18, 99, 'italia' from generate_series(1, 6) n;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('6a6a6a6a-0000-4000-8000-00000000000a', 'italia', now() - interval '2 days', now() + interval '3 days'),
   ('6a6a6a6a-0000-4000-8000-00000000000b', 'italia', now() - interval '2 days', now() + interval '3 days');
