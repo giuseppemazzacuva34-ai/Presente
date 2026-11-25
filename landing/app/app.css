@@ -568,3 +568,10 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .domenica-sera-piede { display: flex; flex-direction: column; gap: 14px; }
 .app .domenica-sera-conto { font-family: var(--serif); font-style: italic; font-size: 60px; line-height: 1; color: #F2EDE4; margin: 0; font-variant-numeric: tabular-nums; }
 .app .domenica-sera-piede .bottone { margin-left: 0; width: 100%; }
+
+/* Profilo › Notifiche e Privacy (#349, linea B, spec CPO del 25/11): righe-link come le altre, testo che si apre sotto. */
+.app .profilo a.voce-profilo { text-decoration: none; box-sizing: border-box; }
+.app .profilo .spiega { padding: 2px 12px 6px; color: #F2EDE4; font-size: 13.5px; line-height: 1.45; }
+.app .profilo .spiega ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; }
+.app .profilo .spiega .nota { margin: 0 0 6px; color: #D9D3C9; }
+.app .profilo .spiega .link { min-height: 44px; }
