@@ -153,6 +153,7 @@ const STATO = {
   azioni: ["accetto", "altra_data", "annulla"], ritardo_minuti: 0, esito: null,
   checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null, segnale: null,
   disdetta: null, // passo 2q
+  ritardo_mio: false, // «Arrivo in ritardo»: solo sì/no, mai chi l'ha dichiarato
 };
 const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
 
@@ -239,4 +240,52 @@ test("stato: dopo i due check-in il segnale arriva al telefono (passo 2h)", asyn
     checkin_da: "2026-11-20T17:30:00+00:00", checkin_fino: "2026-11-20T18:30:00+00:00", segnale: "Lampone" };
   const corpo = await (await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: dopo } }).f)).json();
   assert.deepEqual(corpo, { ok: true, incontro: { ...dopo, locali: [], locale_scelto: null } });
+});
+
+// ── «Arrivo in ritardo» (spec v1, casi limite): POST { azione: "ritardo", porta, minuti } → ritardo_incontro. ──
+const ritardo = (extra = {}) => richiesta({ corpo: { azione: "ritardo", porta: PORTA, minuti: 15, ...extra } });
+
+test("ritardo: la persona è quella del token, mai quella del corpo; i minuti arrivano al database", async () => {
+  const s = supabaseFinto({ rpc: { ritardo_incontro: "ritardo" } });
+  const r = await incontroApi(ritardo({ minuti: 30, persona: ALTRO, p_persona: ALTRO }), ENV, s.f);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { ok: true, esito: "ritardo" });
+  assert.deepEqual(s.rpc("ritardo_incontro")[0].corpo, { p_porta: PORTA, p_persona: ID, p_minuti: 30 });
+});
+
+test("ritardo: solo 15 o 30 minuti, il resto non arriva al database (400)", async () => {
+  for (const minuti of [0, 10, 20, 45, "15", null, undefined, 15.5]) {
+    const s = supabaseFinto({ rpc: { ritardo_incontro: "ritardo" } });
+    assert.equal((await incontroApi(ritardo({ minuti }), ENV, s.f)).status, 400, String(minuti));
+    assert.equal(s.rpc("ritardo_incontro").length, 0);
+  }
+});
+
+test("ritardo: i rifiuti del database tornano con il loro motivo", async () => {
+  for (const motivo of ["non_confermato", "incontro_chiuso", "ritardo_non_valido", "ritardo_gia_usato", "gia_fatto", "troppo_tardi"]) {
+    const r = await incontroApi(ritardo(), ENV, supabaseFinto({ rpc: { ritardo_incontro: motivo } }).f);
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: false, motivo });
+  }
+});
+
+test("ritardo: porta non sua → 404; porta malformata non arriva al database; guasto → 503", async () => {
+  for (const errore of ["non_nella_porta", "nessun_incontro"]) {
+    assert.equal((await incontroApi(ritardo(), ENV, supabaseFinto({ rpc: { ritardo_incontro: errore } }).f)).status, 404);
+  }
+  const s = supabaseFinto({ rpc: { ritardo_incontro: "ritardo" } });
+  assert.equal((await incontroApi(ritardo({ porta: "x" }), ENV, s.f)).status, 400);
+  assert.equal(s.rpc("ritardo_incontro").length, 0);
+  for (const rotto of [new Response("{}", { status: 500 }), "boh"]) {
+    assert.equal((await incontroApi(ritardo(), ENV, supabaseFinto({ rpc: { ritardo_incontro: rotto } }).f)).status, 503);
+  }
+});
+
+test("stato: «ritardo_mio» arriva solo come sì/no, mai come id", async () => {
+  for (const [dal_db, atteso] of [[true, true], [false, false], [ALTRO, false], [null, false], ["true", false]]) {
+    const st = { ...STATO, stato: "confermato", azioni: ["disdici"], ritardo_minuti: 15, ritardo_mio: dal_db };
+    const corpo = await (await incontroApi(leggi(), ENV, supabaseFinto({ rpc: { stato_incontro: st } }).f)).json();
+    assert.equal(corpo.incontro.ritardo_mio, atteso, String(dal_db));
+    assert.doesNotMatch(JSON.stringify(corpo), new RegExp(ALTRO));
+  }
 });
