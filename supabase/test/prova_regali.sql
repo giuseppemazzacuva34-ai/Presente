@@ -39,7 +39,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   select pg_temp.p(n), 'Prova', '1990-01-01', 'MI', 'donna' from generate_series(1, 16) n;
 -- Tutti cercano «tutti» in Italia, tranne p3 che non ha filtri (quindi non è compatibile con nessuno).
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select pg_temp.p(n), 'tutti', now(), '1.5', 18, 99, 'italia' from generate_series(1, 16) n where n <> 3;
+  select pg_temp.p(n), '{donne,uomini,non_binari}', now(), '1.5', 18, 99, 'italia' from generate_series(1, 16) n where n <> 3;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('c0155555-0000-4000-8000-000000000001', 'italia', now() - interval '3 days', now() + interval '2 days'),
   ('c0155555-0000-4000-8000-000000000002', 'italia', now() - interval '7 days', now() - interval '1 minute');

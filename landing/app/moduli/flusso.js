@@ -38,7 +38,7 @@ import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#3
 import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
-import { ORIENTAMENTI, TESTI_ORIENTAMENTO, toccaOrientamento, cercoDaOrientamento } from "./orientamento.js"; // schermata 05 (#471)
+import { ORIENTAMENTI, TESTI_ORIENTAMENTO, toccaOrientamento, cercoDaOrientamento, VOGLIO_INCONTRARE, toccaCerco } from "./orientamento.js"; // schermata 05 (#471)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
 import { vistaNotifiche, vistaPrivacy } from "./preferenze_profilo.js"; // schermata 23: Notifiche e Privacy (#349, linea B)
 import { apriTuoiCoin } from "./tuoi_coin.js"; // schermata 13 da «Ricarica» del profilo (#349, linea B)
@@ -106,7 +106,7 @@ const stato = {
   // Provincia (spec v1.3): sigla scelta, testo nel campo, sigla arrivata dalla lista d'attesa (solo la sigla, dal server).
   nome: "", provincia: "", provinciaTesto: "", provinciaLista: "", provinciaSalvata: "", miPresento: "", miDescrivo: "",
   orientamento: [], orientamentoTesto: "", // #471: solo in memoria fino a D155, mai salvato
-  cerco: "", consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
+  cerco: [], cercoToccato: false, consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
   voce: null,                 // { url, secondi }
   domandeVoce: [],            // indici scelti in DOMANDE_VOCE
   rispostaInCorso: null,      // tre risposte a voce: null = scelta delle 3 domande, 0–2 = schermata della domanda
@@ -1071,16 +1071,18 @@ const SCHERMATE = {
   },
 
   cerchi() {
-    // #471: l'orientamento della 05 precompila «Cerco» solo se non è già stato scelto; si può sempre cambiare.
-    if (!stato.cerco) stato.cerco = cercoDaOrientamento(stato.miPresento, stato.orientamento);
+    // #471: l'orientamento della 05 precompila «Voglio incontrare» solo se è vuoto e non è stato ancora toccato;
+    // si può sempre cambiare. Più scelte, almeno una (parte B).
+    if (!stato.cerco.length && !stato.cercoToccato) stato.cerco = cercoDaOrientamento(stato.miPresento, stato.orientamento);
     const etaOk = () => stato.etaMin >= 18 && stato.etaMax <= 99 && stato.etaMin <= stato.etaMax;
-    const tutto = () => Boolean(stato.cerco && stato.consensoCerco && etaOk() && stato.raggio && stato.cosaCerco && stato.figli && stato.fumo);
+    const tutto = () => Boolean(stato.cerco.length && stato.consensoCerco && etaOk() && stato.raggio && stato.cosaCerco && stato.figli && stato.fumo);
     const avvisoEta = h("p", { classe: "errore", role: "alert", hidden: etaOk() }, "Età da 18 a 99, e la massima non può essere minore della minima.");
     const numero = (id, valore, set) => h("input", { id, type: "text", inputmode: "numeric", pattern: "[0-9]*", maxlength: "2", value: String(valore),
       oninput: (e) => { set(Number(e.target.value.replace(/\D/g, "")) || 0); avvisoEta.hidden = etaOk(); ricontrolla(); } });
     return schermata("Chi cerchi", "Servono a comporre la tua stanza. Nessuno li vede.",
-      [h("p", { classe: "etichetta" }, "Cerco"),
-        scelte("cerco", [["donne", "Donne"], ["uomini", "Uomini"], ["tutti", "Tutti"]], stato.cerco, (v) => { stato.cerco = v; disegna(); }),
+      [h("p", { classe: "etichetta", id: "cerco-etichetta" }, "Voglio incontrare"),
+        scelte("cerco", VOGLIO_INCONTRARE, stato.cerco, (v) => { stato.cerco = toccaCerco(stato.cerco, v); stato.cercoToccato = true; disegna(); }, { multipla: true, etichetta: "cerco-etichetta" }),
+        h("p", { classe: "errore", role: "alert", hidden: !(stato.cercoToccato && !stato.cerco.length) }, "Scegli almeno un'opzione."),
         h("div", { classe: "consenso" },
           h("label", { classe: "casella", for: "consenso-cerco" },
             h("input", { type: "checkbox", id: "consenso-cerco", checked: stato.consensoCerco, onchange: (e) => { stato.consensoCerco = e.target.checked; disegna(); } }),

@@ -113,7 +113,18 @@ test("dallo stato dell'app ai campi del database", () => {
   assert.deepEqual(profiloDaStato({ ...base, provincia: "EE" }).paese, PAESE_ESTERO);
   assert.equal("citta" in profiloDaStato(base), false);
   // «cerco» parte solo con il consenso spuntato.
-  const filtri = { cerco: "tutti", consensoCerco: false, etaMin: 20, etaMax: 30, raggio: "citta", cosaCerco: "", figli: "no", fumo: "si" };
+  const filtri = { cerco: ["donne", "uomini", "non_binari"], consensoCerco: false, etaMin: 20, etaMax: 30, raggio: "citta", cosaCerco: "", figli: "no", fumo: "si" };
   assert.equal(filtriDaStato(filtri).cerco, null);
-  assert.equal(filtriDaStato({ ...filtri, consensoCerco: true }).cerco, "tutti");
+  assert.deepEqual(filtriDaStato({ ...filtri, consensoCerco: true }).cerco, ["donne", "uomini", "non_binari"]);
+  assert.equal(filtriDaStato({ ...filtri, cerco: [], consensoCerco: true }).cerco, null, "elenco vuoto = niente");
+});
+
+test("#471 parte B: «cerco» letto dal database come elenco; il testo di prima diventa elenco", () => {
+  const vuoto = () => ({ cerco: [], consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", questionario: { risposte: {}, importanza: {} } });
+  let s = vuoto(); statoDaSalvato(s, { filtri: { cerco: ["uomini", "non_binari"] } });
+  assert.deepEqual(s.cerco, ["uomini", "non_binari"]); assert.equal(s.consensoCerco, true);
+  s = vuoto(); statoDaSalvato(s, { filtri: { cerco: "tutti" } });
+  assert.deepEqual(s.cerco, ["donne", "uomini", "non_binari"]);
+  s = vuoto(); statoDaSalvato(s, { filtri: { cerco: null } });
+  assert.deepEqual(s.cerco, []); assert.equal(s.consensoCerco, false);
 });

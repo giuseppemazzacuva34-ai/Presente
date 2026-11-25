@@ -35,7 +35,7 @@ insert into auth.users (id, email) select pg_temp.p(n), 'ricevuto' || n || '@exa
 insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   select pg_temp.p(n), (array['Ada', 'Bea', 'Cia', 'Dea', 'Eva'])[n], '1990-01-01', 'MI', 'donna' from generate_series(1, 5) n;
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select pg_temp.p(n), 'tutti', now(), '1.5', 18, 99, 'italia' from generate_series(1, 5) n;
+  select pg_temp.p(n), '{donne,uomini,non_binari}', now(), '1.5', 18, 99, 'italia' from generate_series(1, 5) n;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('c0165555-0000-4000-8000-000000000001', 'italia', now() - interval '3 days', now() + interval '2 days');
 insert into public.membri_stanza (stanza_id, utente_id)

@@ -38,7 +38,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   ('8b8b8b8b-0000-4000-8000-00000000008b', 'Bea', '1990-01-01', 'MI', 'donna'),
   ('8d8d8d8d-0000-4000-8000-00000000008d', 'Ugo', '1990-01-01', 'MI', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select id, case when nome = 'Ugo' then 'donne' else 'uomini' end, now(), '1.5', 25, 50, 'italia' from public.profili
+  select id, case when nome = 'Ugo' then '{donne}' else '{uomini}' end::text[], now(), '1.5', 25, 50, 'italia' from public.profili
   where id::text like '8_8_8_8_-0000-%';
 -- Stanza chiusa un'ora fa: la sua «lunedì 9:00» è sempre dopo adesso.
 insert into public.stanze (id, tipo, apre_il, chiude_il) values

@@ -52,7 +52,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   (pg_temp.p(5), 'Leo', '1990-01-01', 'MI', 'uomo'), (pg_temp.p(6), 'Max', '1990-01-01', 'MI', 'uomo'),
   (pg_temp.p(7), 'Nic', '1990-01-01', 'MI', 'non_binario'), (pg_temp.p(8), 'Zoe', '1990-01-01', 'MI', 'donna');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select id, case mi_presento_come when 'uomo' then 'donne' when 'donna' then 'uomini' else 'tutti' end, now(), '1.5', 25, 50, 'italia'
+  select id, case mi_presento_come when 'uomo' then '{donne}' when 'donna' then '{uomini}' else '{donne,uomini,non_binari}' end::text[], now(), '1.5', 25, 50, 'italia'
   from public.profili where id in (select pg_temp.p(n) from generate_series(1, 8) n);
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('1a5c2b5c-5555-4000-8000-00000000000a', 'italia', now() - interval '3 days', now() + interval '3 days'),

@@ -29,7 +29,7 @@ begin;
 select pg_temp.come('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 insert into public.profili (id, nome, data_nascita, citta, mi_presento_come) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Niccolò', '1995-03-02', 'Milano', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'donne', now(), '1.2', 25, 40, 'citta');
+  values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '{donne}', now(), '1.2', 25, 40, 'citta');
 insert into public.questionario (utente_id, risposte, importanza) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '{"1":[0,1]}', '{"valori":3}');
 insert into storage.objects (bucket_id, name, owner) values
   ('voci', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/presentazione', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
@@ -47,7 +47,7 @@ select pg_temp.ok((select count(*) from public.filtri) = 0, 'B non legge i filtr
 select pg_temp.ok((select count(*) from public.questionario) = 0, 'B non legge il questionario di A');
 select pg_temp.ok((select count(*) from storage.objects) = 0, 'B non vede voce e foto di A');
 update public.profili set nome = 'Intruso' where true;
-update public.filtri set cerco = 'tutti' where true;
+update public.filtri set cerco = '{donne,uomini,non_binari}' where true;
 update public.questionario set risposte = '{}' where true;
 delete from storage.objects where true;
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.profili (id, nome) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Finto')$$), 'B non crea un profilo a nome di A');
@@ -56,7 +56,7 @@ select pg_temp.ok(pg_temp.rifiutato($$insert into storage.objects (bucket_id, na
 select pg_temp.ok(pg_temp.rifiutato($$delete from public.profili$$), 'nessuno cancella righe del profilo a mano (si cancella l''account)');
 commit;
 
-select pg_temp.ok((select nome from public.profili) = 'Niccolò' and (select cerco from public.filtri) = 'donne'
+select pg_temp.ok((select nome from public.profili) = 'Niccolò' and (select cerco from public.filtri) = '{donne}'
   and (select risposte from public.questionario) = '{"1":[0,1]}' and (select count(*) from storage.objects) = 2,
   'i dati di A sono intatti dopo i tentativi di B');
 
@@ -73,8 +73,8 @@ begin;
 select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select pg_temp.ok(pg_temp.rifiutato(format($$insert into public.profili (id, data_nascita) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', %L)$$, (current_date - interval '17 years')::date)), 'sotto i 18 anni il profilo non si crea');
 select pg_temp.ok((select count(*) from public.profili) = 0, 'del minorenne non resta nessuna riga');
-select pg_temp.ok(pg_temp.rifiutato($$insert into public.filtri (utente_id, cerco) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'uomini')$$), '«cerco» senza consenso non si salva');
-select pg_temp.ok(pg_temp.rifiutato($$insert into public.filtri (utente_id, cerco, consenso_cerco_il) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'uomini', now())$$), 'il consenso vale solo con la versione dell''informativa');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.filtri (utente_id, cerco) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '{uomini}')$$), '«cerco» senza consenso non si salva');
+select pg_temp.ok(pg_temp.rifiutato($$insert into public.filtri (utente_id, cerco, consenso_cerco_il) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '{uomini}', now())$$), 'il consenso vale solo con la versione dell''informativa');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.filtri (utente_id, eta_min, eta_max) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 40, 30)$$), 'età massima minore della minima: rifiutata');
 select pg_temp.ok(pg_temp.rifiutato($$insert into public.profili (id, nome) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'X')$$), 'nome di una sola lettera rifiutato');
 commit;
@@ -138,7 +138,7 @@ select pg_temp.ok((select bool_and(not public) from storage.buckets) and (select
 begin;
 select pg_temp.come('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa)
-  values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'tutti', '2020-01-01', '1.2');
+  values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '{donne,uomini,non_binari}', '2020-01-01', '1.2');
 select pg_temp.ok((select consenso_cerco_il from public.filtri where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') = now(),
   'consenso: la data mandata dal telefono viene ignorata, vale l''ora del server');
 update public.filtri set consenso_cerco_il = '2021-01-01', raggio = 'italia' where utente_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -199,8 +199,8 @@ insert into public.profili (id, nome) values ('dddddddd-dddd-4ddd-8ddd-ddddddddd
 update public.profili set mi_presento_come = 'uomo' where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 update public.profili set mi_presento_come = 'donna' where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
-  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'donne', now(), '1.5', 25, 40, 'italia'),
-  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'uomini', now(), '1.5', 25, 45, 'italia')
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '{donne}', now(), '1.5', 25, 40, 'italia'),
+  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '{uomini}', now(), '1.5', 25, 45, 'italia')
   on conflict (utente_id) do update set cerco = excluded.cerco, eta_min = excluded.eta_min, eta_max = excluded.eta_max, raggio = excluded.raggio;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('11111111-1111-4111-8111-111111111111', 'italia', now() - interval '1 day', now() + interval '5 days'),
@@ -243,10 +243,10 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', 'Carlo', '1992-02-02', 'RM', 'uomo'),
   ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', 'Dario', '1990-01-01', 'RM', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
-  ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', 'uomini', now(), '1.5', 25, 45, 'italia'),
-  ('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', 'uomini', now(), '1.5', 25, 45, 'italia'),
-  ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', 'donne', now(), '1.5', 25, 45, 'italia'),
-  ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', 'donne', now(), '1.5', 33, 45, 'italia'); -- Anna e Bice fuori dalla sua età
+  ('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a', '{uomini}', now(), '1.5', 25, 45, 'italia'),
+  ('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b', '{uomini}', now(), '1.5', 25, 45, 'italia'),
+  ('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c', '{donne}', now(), '1.5', 25, 45, 'italia'),
+  ('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d', '{donne}', now(), '1.5', 33, 45, 'italia'); -- Anna e Bice fuori dalla sua età
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('33333333-3333-4333-8333-333333333333', 'italia', now() - interval '1 day', now() + interval '5 days');
 insert into public.membri_stanza (stanza_id, utente_id) select '33333333-3333-4333-8333-333333333333', id from public.profili
@@ -393,10 +393,10 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come,
   ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', 'Ciro', '1991-01-01', 'NO', 'uomo', 11),
   ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', 'Duilio', '1991-01-01', 'RM', 'uomo', 5);
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
-  ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', 'uomini', now(), '1.5', 25, 45, 'citta'),
-  ('1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', 'donne', now(), '1.5', 25, 45, 'italia'),
-  ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', 'donne', now(), '1.5', 25, 45, 'italia'),
-  ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', 'donne', now(), '1.5', 25, 45, 'italia');
+  ('1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a', '{uomini}', now(), '1.5', 25, 45, 'citta'),
+  ('1b1b1b1b-1b1b-4b1b-8b1b-1b1b1b1b1b1b', '{donne}', now(), '1.5', 25, 45, 'italia'),
+  ('1c1c1c1c-1c1c-4c1c-8c1c-1c1c1c1c1c1c', '{donne}', now(), '1.5', 25, 45, 'italia'),
+  ('1d1d1d1d-1d1d-4d1d-8d1d-1d1d1d1d1d1d', '{donne}', now(), '1.5', 25, 45, 'italia');
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('44444444-4444-4444-8444-444444444444', 'italia', now() - interval '1 day', now() + interval '5 days');
 insert into public.membri_stanza (stanza_id, utente_id) select '44444444-4444-4444-8444-444444444444', id from public.profili
@@ -439,9 +439,9 @@ update public.profili set provincia_precedente = 'RM', provincia_in_vigore_dal =
   where id = '2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a';
 set local session_replication_role = origin;
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio) values
-  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', 'uomini', now(), '1.5', 25, 45, 'italia'),
-  ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', 'donne', now(), '1.5', 25, 45, 'italia'),
-  ('2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', 'donne', now(), '1.5', 25, 45, 'italia');
+  ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', '{uomini}', now(), '1.5', 25, 45, 'italia'),
+  ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', '{donne}', now(), '1.5', 25, 45, 'italia'),
+  ('2c2c2c2c-2c2c-4c2c-8c2c-2c2c2c2c2c2c', '{donne}', now(), '1.5', 25, 45, 'italia');
 insert into public.conferme_stanza (utente_id, apre_il) values
   ('2a2a2a2a-2a2a-4a2a-8a2a-2a2a2a2a2a2a', now()), ('2b2b2b2b-2b2b-4b2b-8b2b-2b2b2b2b2b2b', now());
 create temp table lunedi as select public.prossima_apertura(now() + interval '9 hours') as apre;

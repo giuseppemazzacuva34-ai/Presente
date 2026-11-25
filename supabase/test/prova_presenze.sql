@@ -40,7 +40,7 @@ insert into auth.users (id, email) select pg_temp.p(n), 'presenza' || n || '@exa
 insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   select pg_temp.p(n), 'Prova', '1990-01-01', 'MI', 'donna' from generate_series(1, 9) n;
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select pg_temp.p(n), 'tutti', now(), '1.5', 18, 99, 'italia' from generate_series(1, 9) n where n <> 6;
+  select pg_temp.p(n), '{donne,uomini,non_binari}', now(), '1.5', 18, 99, 'italia' from generate_series(1, 9) n where n <> 6;
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('5e5e5e5e-0000-4000-8000-00000000000a', 'italia', now() - interval '2 days', now() + interval '3 days'),
   ('5e5e5e5e-0000-4000-8000-00000000000b', 'italia', now() - interval '2 days', now() + interval '3 days'),

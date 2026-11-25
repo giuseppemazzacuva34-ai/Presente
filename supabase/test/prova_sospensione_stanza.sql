@@ -48,7 +48,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
   ('9c9c9c9c-0000-4000-8000-00000000009c', 'Cia', '1990-01-01', 'MI', 'donna'),
   ('9d9d9d9d-0000-4000-8000-00000000009d', 'Ugo', '1990-01-01', 'MI', 'uomo');
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select id, case when nome = 'Ugo' then 'donne' else 'uomini' end, now(), '1.5', 25, 50, 'italia' from public.profili
+  select id, case when nome = 'Ugo' then '{donne}' else '{uomini}' end::text[], now(), '1.5', 25, 50, 'italia' from public.profili
   where id::text like '9_9_9_9_-0000-%';
 insert into public.stanze (id, tipo, apre_il, chiude_il) values
   ('5a5a5a5a-0000-4000-8000-000000000001', 'italia', now() - interval '2 days', now() + interval '3 days');

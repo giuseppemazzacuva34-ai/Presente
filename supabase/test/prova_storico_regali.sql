@@ -36,7 +36,7 @@ insert into public.profili (id, nome, data_nascita, provincia, mi_presento_come)
          (current_date - make_interval(years => 30 + n))::date, 'MI', case when n = 1 then 'donna' else 'uomo' end
   from generate_series(1, 7) n;
 insert into public.filtri (utente_id, cerco, consenso_cerco_il, consenso_versione_informativa, eta_min, eta_max, raggio)
-  select pg_temp.p(n), 'tutti', now(), '1.5', 18, 99, 'italia' from generate_series(1, 7) n;
+  select pg_temp.p(n), '{donne,uomini,non_binari}', now(), '1.5', 18, 99, 'italia' from generate_series(1, 7) n;
 select public.assegna_crediti_beta(pg_temp.p(n), 200) from generate_series(1, 7) n;
 
 -- S1 è aperta mentre si mandano i regali, poi si chiude (la si sposta nel passato).

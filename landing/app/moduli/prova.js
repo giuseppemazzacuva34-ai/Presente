@@ -480,7 +480,7 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
       mondo.profilo = { data_nascita: "1990-05-12", regole_accettate_il: new Date(adesso()).toISOString(), nome: "Prova",
         provincia: "MI", provincia_origine: "scelta", paese: "IT", mi_presento_come: "uomo", mi_descrivo: null,
         domande_voce: [0, 1, 2], passo: 10 };
-      mondo.filtri = { cerco: "donne", eta_min: 25, eta_max: 45, raggio: "citta", cosa_cerco: "storia_seria", figli: "forse", fumo: "no" };
+      mondo.filtri = { cerco: ["donne"], eta_min: 25, eta_max: 45, raggio: "citta", cosa_cerco: "storia_seria", figli: "forse", fumo: "no" };
       const risposta = (d) => (d.tipo === "multipla" ? [0, 1].slice(0, d.min) : d.tipo === "scala" ? d.min : 0);
       mondo.questionario = { risposte: Object.fromEntries(DOMANDE.map((d) => [d.n, risposta(d)])),
         importanza: Object.fromEntries(Object.keys(TEMI).map((t) => [t, 2])) };
