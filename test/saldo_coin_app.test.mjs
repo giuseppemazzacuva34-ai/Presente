@@ -10,12 +10,13 @@ import { SVELAMENTO } from "../api/svelamento.js";
 import { OFFERTE } from "../landing/app/moduli/coin.js";
 import { SOGLIA_SALDO_BASSO } from "../landing/app/moduli/testata.js";
 
-test("13: saldo dal server, due pacchetti come coin.js, il secondo «il più scelto»", () => {
+test("13: saldo dal server, tre pacchetti (Base 100 + i due di coin.js), il 500 «il più scelto»", () => {
   const s = schermataTuoiCoin(0);
   assert.equal(s.passo, "Passo 10 di 10 · I tuoi crediti");
   assert.deepEqual(s.titolo, ["I tuoi crediti", "per la stanza e i regali."]);
   assert.equal(s.saldo, "Hai 0 crediti. La tua prima stanza è in regalo.");
   assert.deepEqual(s.pacchetti, [
+    { id: "coin100", coin: 100, euro: "10 €", sotto: "crediti", descrizione: "1 stanza e regali", piuScelto: false },
     { id: "coin200", coin: 200, euro: "20 €", sotto: "crediti", descrizione: "2 stanze, o 1 stanza e regali", piuScelto: false },
     { id: "coin500", coin: 500, euro: "45 €", sotto: "+50 in regalo", descrizione: null, piuScelto: true },
   ]);
@@ -83,4 +84,18 @@ test("saldo nella testata: legge dal server e aggiorna la pillola; errore → pi
 test("sicurezza: niente pagamenti, salvataggi locali o log nel modulo", () => {
   const src = readFileSync(new URL("../landing/app/moduli/saldo_coin.js", import.meta.url), "utf8");
   assert.doesNotMatch(src, /gomry\.|stripe|localStorage|sessionStorage|indexedDB|console\.|fetch\(/i);
+});
+
+// Commento di Giuseppe del 25/11 sulla pagina di confronto (regola_confronto_design_25_11): pacchetto base 10 € = 100
+// crediti, cioè una stanza al buio (80) e 20 crediti per i regali. Stesso cambio di 1 € = 10 crediti degli altri.
+test("13: pacchetto Base 100 crediti a 10 €: basta per una stanza e lascia 20 crediti di regali", () => {
+  const s = schermataTuoiCoin(0, { scelto: "coin100" });
+  const base = s.pacchetti[0];
+  assert.equal(base.coin, 100);
+  assert.equal(base.euro, "10 €");
+  assert.ok(base.coin >= COIN.stanzaAlBuio);
+  assert.equal(base.coin - COIN.stanzaAlBuio, 20);
+  assert.equal(s.scelto, "coin100");
+  assert.equal(s.paga.testo, "Paga 10 €");
+  assert.equal(s.paga.attivo, false);
 });

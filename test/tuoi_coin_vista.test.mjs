@@ -34,7 +34,7 @@ function documento() {
 }
 const pulsante = (r, re) => r.pulsanti().find((b) => re.test(b.textContent));
 
-test("vista: passo, titolo in due righe, saldo, due pacchetti, costi e Gomry", () => {
+test("vista: passo, titolo in due righe, saldo, tre pacchetti, costi e Gomry", () => {
   const doc = documento();
   apriTuoiCoin(doc.body, schermataTuoiCoin(0));
   const [v] = doc.body.children;
@@ -45,6 +45,7 @@ test("vista: passo, titolo in due righe, saldo, due pacchetti, costi e Gomry", (
   assert.match(t, /Passo 10 di 10 · I tuoi crediti/);
   assert.match(t, /I tuoi creditiper la stanza e i regali\./);
   assert.match(t, /Hai 0 crediti\. La tua prima stanza è in regalo\./);
+  assert.match(t, /100crediti1 stanza e regali10 €/);
   assert.match(t, /200crediti2 stanze, o 1 stanza e regali20 €/);
   assert.match(t, /500\+50 in regaloIl più scelto45 €/);
   assert.match(t, /Una stanza al buio, 7 giorni80 crediti/);
