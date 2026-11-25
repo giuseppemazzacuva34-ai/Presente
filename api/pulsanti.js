@@ -6,7 +6,7 @@
 // mai una riga: l'altra persona non deve scoprire una sospensione o un blocco (#7 spec v1.1).
 // Nulla di rete qui: tutto arriva da `d` (il Worker passa i pezzi veri, i test quelli finti).
 
-import { puoChiamare } from "./chiamate.js";
+import { puoChiamare, chiamateTra, CHIAMATA } from "./chiamate.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const NESSUNO = Object.freeze({ fascia: null, pausa: null, soloConPermesso: false });
@@ -16,7 +16,7 @@ const NESSUNO = Object.freeze({ fascia: null, pausa: null, soloConPermesso: fals
 export async function pulsantiStanza({ per, adesso }, d) {
   if (!UUID.test(per || "")) return { ok: false, motivo: "dati" };
   const stanza = await d.stanzaDi(per, adesso);
-  if (!stanza) return { ok: true, pulsanti: [] };
+  if (!stanza) return { ok: true, pulsanti: [], chiamate: [] };
   const dati = await d.datiPerPulsanti({ stanza, chi: per });
   if (!dati || !dati.ok) return { ok: false, motivo: "riprova" };
 
@@ -37,5 +37,16 @@ export async function pulsantiStanza({ per, adesso }, d) {
     });
     if (!r.ok && r.testo) pulsanti.push({ id: verso, testo: r.testo });
   }
-  return { ok: true, pulsanti };
+  // «chiamate N di 3» (#380 passo 6a): solo per chi ha almeno una chiamata con me. Niente righe per sospesi e
+  // blocchi (nei due versi), né se sono sospeso io: non si deve scoprire una sospensione o un blocco.
+  const chiamate = [];
+  const fuori = (id) => dati.sospesi.has(id) || dati.blocchi.some((b) => (b.chi === per && b.bloccato === id) || (b.chi === id && b.bloccato === per));
+  if (!dati.sospesi.has(per)) {
+    for (const verso of altri) {
+      if (fuori(verso)) continue;
+      const n = Math.min(CHIAMATA.conStessaPersona, chiamateTra({ chi: per, verso, stanza, chiamate: dati.chiamate }));
+      if (n > 0) chiamate.push({ id: verso, n });
+    }
+  }
+  return { ok: true, pulsanti, chiamate };
 }

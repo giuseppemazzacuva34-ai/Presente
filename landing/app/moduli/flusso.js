@@ -39,7 +39,7 @@ import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#3
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
 import { apriSchermataUscita, creaUscita, TESTI_APP as TESTI_USCITA } from "./lascia_stanza.js"; // schermata 22 (#381, linea B)
 import { creaSchermoProfilo, collegaCerchio, statoProfilo, vistaProfilo } from "./profilo.js"; // schermata 23 (#349, linea B)
-import { disponiStanza, vistaCerchioStanza } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
+import { disponiStanza, vistaCerchioStanza, testoChiamate } from "./stanza_viva.js"; // schermata 19 (#380, linea A)
 import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, creaStanzaViva, creaBattito } from "./appuntamenti_stanza.js"; // schermate 19-20 (#380)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
@@ -600,7 +600,7 @@ function bloccoTuaStanza() {
       return h("li", { classe: "compagno" },
         h("div", {},
           h("strong", {}, sp && !viva.persa ? h("span", { classe: `punto-stato ${sp.stato}`, "aria-hidden": "true" }) : null, p.titolo),
-          p.sottotitolo || statoScritto ? h("span", { classe: "nota" }, [p.sottotitolo, statoScritto].filter(Boolean).join(" · ")) : null),
+          h("span", { classe: "nota" }, [p.sottotitolo, statoScritto, testoChiamate(p.chiamate)].filter(Boolean).join(" · "))),
         pulsante, menuDellaScheda(p),
         chiaviStanza ? vistaSchedaChiave(h, chiaviStanza, p.id, nomeScheda(p)) : null,
         appuntiStanza ? vistaAppunti(h, appuntiStanza, p.id, nomeScheda(p)) : null,

@@ -67,7 +67,7 @@ test("pulsanti: GET /app/api/chiamata/pulsanti con il token, senza corpo; tornan
     { id: ID1, testo: SEI[3] }, { id: "non-un-id", testo: SEI[0] }, { id: ID2, testo: "Sospesa" }, { id: ID1, testo: SEI[0] },
   ] }]);
   const r = await creaChiamata({ token: async () => "tok", fetch: s.f }).pulsanti();
-  assert.deepEqual(r, { ok: true, pulsanti: [{ id: ID1, testo: SEI[3] }] });
+  assert.deepEqual(r, { ok: true, pulsanti: [{ id: ID1, testo: SEI[3] }], chiamate: [] });
   assert.equal(s.chiamate[0].url, "/app/api/chiamata/pulsanti");
   assert.equal(s.chiamate[0].metodo, "GET");
   assert.equal(s.chiamate[0].headers.authorization, "Bearer tok");
@@ -78,7 +78,7 @@ test("pulsanti: spento, rete o risposta strana → nessun testo (i pulsanti rest
   for (const [stato, dati, motivo] of [[404, {}, "spento"], ["rete", null, "rete"], [200, { ok: true, pulsanti: "x" }, null], [401, {}, "accesso"]]) {
     const r = await creaChiamata({ token: async () => "tok", fetch: finto(() => [stato, dati]).f }).pulsanti();
     if (motivo) assert.deepEqual(r, { ok: false, motivo });
-    else assert.deepEqual(r, { ok: true, pulsanti: [] });
+    else assert.deepEqual(r, { ok: true, pulsanti: [], chiamate: [] });
   }
   const senza = await creaChiamata({ token: async () => null, fetch: () => { throw new Error("nessuna rete"); } }).pulsanti();
   assert.deepEqual(senza, { ok: false, motivo: "accesso" });

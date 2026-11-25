@@ -39,6 +39,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     chiusa: false, // stanza appena chiusa (#5 passo 9): da domenica 21:00 a lunedì 9:00 schede in sola lettura
     ricarica: null, // rilettura in corso (ricaricaPersone), una alla volta
     testi: new Map(), // id → testo sul pulsante «Chiama» disattivato (spec v1.3 § 2, 3c-5b-2b)
+    conteggi: new Map(), // id → chiamate fatte insieme nella settimana, da 1 a 3 («chiamate N di 3», #380)
     vista: null, nascondiFinita: false,
     voceAttiva: false, muto: false, riconnetti: false,
     visibileDal: null, ascoltoInCorso: false, ultimoAscolto: 0,
@@ -56,6 +57,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     return Promise.resolve().then(() => chiamata.pulsanti()).then((r) => {
       if (r && r.ok && Array.isArray(r.pulsanti)) {
         s.testi = new Map(r.pulsanti.map((x) => [x.id, x.testo]));
+        s.conteggi = new Map((Array.isArray(r.chiamate) ? r.chiamate : []).map((x) => [x.id, x.n]));
         avvisa();
       }
     }, () => { /* nessun testo: restano «Chiama» */ }).finally(() => { pulsantiInCorso = false; });
@@ -314,7 +316,8 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
           // Stanza chiusa: schede in sola lettura, nessun pulsante Chiama (né etichetta).
           persone: s.persone.map((p) => {
             const sc = schedaCompagno(p, { inChiamata: occupato, testo: s.testi.get(p.id) });
-            return s.chiusa ? { id: p.id, ...sc, chiama: false, etichetta: "", descrizione: sc.titolo } : { id: p.id, ...sc };
+            const chiamate = s.conteggi.get(p.id) || 0;
+            return s.chiusa ? { id: p.id, ...sc, chiama: false, etichetta: "", descrizione: sc.titolo, chiamate } : { id: p.id, ...sc, chiamate };
           }),
         },
         schermo: schermo(),

@@ -89,7 +89,7 @@ export function creaChiamata({ token, fetch: f = globalThis.fetch, attesa = ATTE
       if (dati.segnala === true) fine.segnala = true;
       if (passo === "dopo") return { ok: true, dopo: dati.dopo && typeof dati.dopo === "object" ? dati.dopo : null };
       if (passo === "richiameresti") return { ok: true, salvata: dati.salvata === true };
-      if (passo === "pulsanti") return { ok: true, pulsanti: pulsantiPuliti(dati.pulsanti) };
+      if (passo === "pulsanti") return { ok: true, pulsanti: pulsantiPuliti(dati.pulsanti), chiamate: chiamatePulite(dati.chiamate) };
       return fine;
     } catch {
       return { ok: false, motivo: "riprova" };
@@ -134,6 +134,17 @@ function pulsantiPuliti(righe) {
     if (testo) visti.set(x.id, { id: x.id, testo });
   }
   return [...visti.values()];
+}
+
+// «chiamate N di 3» (#380 passo 6a): una riga per persona (la prima), id valido e n intero da 1 a 3.
+function chiamatePulite(righe) {
+  if (!Array.isArray(righe)) return [];
+  const viste = new Map();
+  for (const x of righe) {
+    if (!x || typeof x !== "object" || !UUID.test(x.id || "") || viste.has(x.id)) continue;
+    if (Number.isInteger(x.n) && x.n >= 1 && x.n <= 3) viste.set(x.id, { id: x.id, n: x.n });
+  }
+  return [...viste.values()];
 }
 
 // Cosa mostrare. vista: quella del server (o null). nomeAltra: il nome mostrato nella stanza. secondiVisti: da quanti

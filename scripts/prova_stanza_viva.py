@@ -3,7 +3,7 @@
 # Uso: node scripts/server_locale.mjs "$PWD" &  poi  python3 scripts/prova_stanza_viva.py <cartella per le schermate>
 # Controlla: cerchio diviso con «Uomini · N» / «Donne · N»; stato scritto sotto il nome; CHIAMA per chi è online e
 # chiamabile, FISSA per chi non è in linea o fuori fascia; avviso di una proposta ricevuta; schermata 20 con giorni e
-# ore dal server, messaggio facoltativo, «Proponi» che manda solo con, quando e messaggio; console pulita.
+# ore dal server, «chiamate N di 3» sulla riga, messaggio facoltativo, «Proponi» che manda solo con, quando e messaggio; console pulita.
 import asyncio, sys, json, re, base64
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright
@@ -59,7 +59,8 @@ async def main():
             if u.query == f"con={LUCA}": return await ok({"ok": True, "ore": ore})
             return await ok({"ok": True, "appuntamenti": appuntamenti})
         if u.path == "/app/api/chiamata/pulsanti":
-            return await ok({"ok": True, "pulsanti": [{"id": SARA, "testo": "È in un'altra chiamata"}, {"id": DARIO, "testo": "È in un'altra chiamata"}]})
+            return await ok({"ok": True, "pulsanti": [{"id": SARA, "testo": "È in un'altra chiamata"}, {"id": DARIO, "testo": "È in un'altra chiamata"}],
+                                     "chiamate": [{"id": MARCO, "n": 2}, {"id": SARA, "n": 3}]})
         if u.path in ("/app/api/provincia-lista", "/app/api/zona"): return await ok({})
         return await ok({"ok": False, "motivo": "spento"}, 404)
     async with async_playwright() as pw:
@@ -88,6 +89,8 @@ async def main():
         assert await riga_luca.locator("button", has_text=re.compile("^Fissa$")).count() == 1
         riga_marco = pg.locator("li.compagno").filter(has_text="Marco")
         assert await riga_marco.locator("button", has_text=re.compile("^Chiama$")).count() == 1
+        assert "chiamate 2 di 3" in await riga_marco.inner_text()  # «chiamate N di 3» (#380 passo 6a)
+        assert "chiamate 0 di 3" in await riga_luca.inner_text()
         await riga_luca.locator("button", has_text=re.compile("^Fissa$")).click()
         await pg.wait_for_selector("h1:has-text('Fissa una chiamata')")
         await pg.wait_for_selector(".fissa-chiamata [role=group] .scelta")

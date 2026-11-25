@@ -220,7 +220,8 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
   const chiamata = {
     async stato() { await pausa(); return { ok: true, vista: vista() }; },
     async pulsanti() {
-      return { ok: true, pulsanti: PERSONE_PROVA.filter((p) => conLei(p.id) >= CHIAMATA.conStessaPersona).map((p) => ({ id: p.id, testo: TESTO_TRE })) };
+      return { ok: true, pulsanti: PERSONE_PROVA.filter((p) => conLei(p.id) >= CHIAMATA.conStessaPersona).map((p) => ({ id: p.id, testo: TESTO_TRE })),
+        chiamate: PERSONE_PROVA.filter((p) => conLei(p.id) > 0).map((p) => ({ id: p.id, n: Math.min(CHIAMATA.conStessaPersona, conLei(p.id)) })) };
     },
     async apri(verso) {
       if (!PERSONE_PROVA.some((p) => p.id === verso)) return { ok: false, motivo: "non_in_stanza" };
