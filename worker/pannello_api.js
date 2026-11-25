@@ -11,6 +11,10 @@
 //   POST /app/api/pannello/mandata { id: sanzione }             → { ok: true, mandata_il }   («Ho mandato l'email», passo 15e)
 //   GET  /app/api/pannello/uscite                               → { ok: true, uscite: [{ settimana, motivo, quante, testi }] }
 //        (#381 passo 6b: motivi di «Lascia la stanza» per settimana, ultime 8; testi liberi senza nome)
+//   GET  /app/api/pannello/contestazioni                        → { ok: true, contestazioni: [{ id, nome, domanda, testo,
+//        quanti_no, inviata_il, tua }] }   (#6 v1.3 punto 2, passo 4b: «Contesta» un «No»; mai chi ha risposto)
+//   POST /app/api/pannello/contestazione { id, esito }          → { ok: true, esito } | { ok: false, motivo }
+//        (esito «accolta» o «respinta»; motivi: gia_decisa, non_trovata, propria, non_moderatore)
 //
 // Chi decide lo dicono SOLO il token di Supabase e la tabella «moderatori» (in beta Giuseppe): un campo nel corpo
 // non conta. Le regole stanno nel database (migrazioni 20261116094039 e 20261116144014): qui solo accesso, forma
@@ -101,6 +105,25 @@ function soloUscite(d) {
   return fuori;
 }
 
+// #6 v1.3: contestazioni dei «No». Passa solo questa forma (mai chi ha risposto né l'incontro); altro → null (guasto).
+const DOMANDE_CONTESTABILI = ["presentato", "foto_sue", "come_in_chiamata"];
+const ESITI_CONTESTAZIONE = Object.freeze({ accolta: true, respinta: false });
+const RISPOSTE_CONTESTAZIONE = new Set(["accolta", "respinta", "gia_decisa", "non_trovata", "propria", "non_moderatore"]);
+function soloContestazioni(d) {
+  if (!Array.isArray(d) || d.length > 200) return null;
+  const fuori = [];
+  for (const riga of d) {
+    if (!riga || typeof riga !== "object") return null;
+    const { id, nome, domanda, testo, quanti_no, inviata_il, tua } = riga;
+    if (typeof id !== "string" || !UUID.test(id) || !DOMANDE_CONTESTABILI.includes(domanda)) return null;
+    if (!(nome === null || (typeof nome === "string" && nome.length <= 40))) return null;
+    if (typeof testo !== "string" || testo.length > 500 || !Number.isInteger(quanti_no) || quanti_no < 0) return null;
+    if (!soloData(inviata_il) || typeof tua !== "boolean") return null;
+    fuori.push({ id, nome, domanda, testo, quanti_no, inviata_il, tua });
+  }
+  return fuori;
+}
+
 function operazioniVere(env, f) {
   const s = server(env);
   return {
@@ -163,13 +186,23 @@ function operazioniVere(env, f) {
       if (r.stato >= 400 && r.stato < 500) return { ok: false, motivo: "rifiutata" };
       return null;
     },
+    contestazioni: async (id) => {
+      const r = s && (await rpc(s, "contestazioni_no_da_decidere", { p_moderatore: id }, f));
+      return r && r.stato === 200 ? soloContestazioni(r.dati) : null;
+    },
+    // Solo moderatori, mai la propria, una volta sola: lo controlla decidi_contestazione_no() nel database.
+    decidiContestazione: async ({ moderatore, contestazione, accolta }) => {
+      const r = s && (await rpc(s, "decidi_contestazione_no", { p_id: contestazione, p_decisore: moderatore, p_accolta: accolta }, f));
+      return r && r.stato === 200 && RISPOSTE_CONTESTAZIONE.has(r.dati) ? r.dati : null;
+    },
   };
 }
 
 export async function pannelloApi(request, env, f = fetch, operazioni = null) {
   const percorso = new URL(request.url).pathname.slice(PERCORSO_PANNELLO.length);
   if (String(env.ACCESSO_APP || "").trim() !== "si") return risposta(404, { ok: false, motivo: "spento" });
-  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST", "/email": "POST", "/mandata": "POST", "/uscite": "GET" };
+  const metodi = { "/coda": "GET", "/scheda": "POST", "/decidi": "POST", "/ricorsi": "GET", "/ricorso": "POST", "/email": "POST", "/mandata": "POST", "/uscite": "GET",
+    "/contestazioni": "GET", "/contestazione": "POST" };
   if (!Object.hasOwn(metodi, percorso)) return risposta(404, { ok: false, motivo: "non_trovato" });
   if (request.method !== metodi[percorso]) return risposta(405, { ok: false, motivo: "metodo" }, { allow: metodi[percorso] });
   if (await troppeRichieste(request, env)) return risposta(429, { ok: false, motivo: "troppe" });
@@ -194,10 +227,23 @@ export async function pannelloApi(request, env, f = fetch, operazioni = null) {
       const uscite = op.uscite ? await op.uscite(chi.id) : null;
       return Array.isArray(uscite) ? risposta(200, { ok: true, uscite }) : risposta(503, { ok: false, motivo: "riprova" });
     }
+    if (percorso === "/contestazioni") {
+      const contestazioni = op.contestazioni ? await op.contestazioni(chi.id) : null;
+      return Array.isArray(contestazioni) ? risposta(200, { ok: true, contestazioni }) : risposta(503, { ok: false, motivo: "riprova" });
+    }
     const corpo = await leggiCorpo(request);
     if (corpo.errore) return corpo.errore;
     const id = corpo.dati.id;
     if (typeof id !== "string" || !UUID.test(id)) return risposta(400, { ok: false, motivo: "dati" });
+
+    if (percorso === "/contestazione") {
+      const { esito } = corpo.dati;
+      if (typeof esito !== "string" || !Object.hasOwn(ESITI_CONTESTAZIONE, esito)) return risposta(400, { ok: false, motivo: "dati" });
+      const r = op.decidiContestazione
+        ? await op.decidiContestazione({ moderatore: chi.id, contestazione: id, accolta: ESITI_CONTESTAZIONE[esito] }) : null;
+      if (!r) return risposta(503, { ok: false, motivo: "riprova" });
+      return risposta(200, r === esito ? { ok: true, esito } : { ok: false, motivo: r });
+    }
 
     if (percorso === "/ricorso") {
       const { esito } = corpo.dati;
