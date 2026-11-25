@@ -35,6 +35,7 @@ import { creaRegali } from "/app/moduli/regali.js";
 import { creaRegaliStanza } from "/app/moduli/regali_stanza.js";
 import { creaStoricoRegali } from "/app/moduli/storico_regali.js";
 import { creaRiepilogo } from "/app/moduli/riepilogo_valutazioni.js";
+import { creaContesta } from "/app/moduli/contesta_no.js";
 import { creaSaldo, collegaSaldo } from "/app/moduli/saldo_coin.js";
 import { aggiornaTestata } from "/app/moduli/testata.js";
 import { apriFoglioQuasiFiniti, quasiFiniti } from "/app/moduli/saldo_coin.js";
@@ -154,6 +155,8 @@ async function preparaAccesso() {
       finito: () => incontro.riprova() });
     // Riepilogo alla cieca nel profilo (#6 passo 3o): solo le proprie valutazioni ricevute, via Worker col proprio token.
     const riepilogo = creaRiepilogo({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
+    // «Contesta» un «No» (#6 spec v1.3 punto 2, linea B): stato e invio via Worker col proprio token, insieme al riepilogo.
+    riepilogo.contesta = creaContesta({ token: () => accesso.token(), fetch: window.fetch.bind(window) });
     // Regali (#331 parte C): «Manda un regalo» sulla scheda; il foglio sta in .pagina.app, fuori da #app che si ridisegna.
     const regali = creaRegaliStanza({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       contenitore: document.querySelector(".pagina.app"), aggiorna: () => regaliCambiati() });
