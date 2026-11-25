@@ -1,0 +1,48 @@
+// Issue #471 (spec v1 del CPO, parte A): orientamento facoltativo nella schermata 05 «Chi sei».
+// Fino a D155 l'etichetta non si salva: serve solo a precompilare «Cerco» nella 06.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { ORIENTAMENTI, TESTI_ORIENTAMENTO, toccaOrientamento, cercoDaOrientamento } from "../landing/app/moduli/orientamento.js";
+import { readFileSync } from "node:fs";
+
+test("le scelte della spec, nell'ordine", () => {
+  assert.deepEqual(ORIENTAMENTI.map(([, t]) => t),
+    ["Eterosessuale", "Gay", "Lesbica", "Bisessuale", "Pansessuale", "Queer", "Preferisco descrivermi", "Preferisco non dirlo"]);
+  assert.equal(TESTI_ORIENTAMENTO.etichetta, "Il mio orientamento · facoltativo");
+  assert.equal(TESTI_ORIENTAMENTO.nota, "Nessuno lo vede. Ci aiuta a proporti la stanza giusta.");
+});
+
+test("più scelte insieme; un secondo tocco toglie la scelta", () => {
+  let s = toccaOrientamento([], "gay");
+  s = toccaOrientamento(s, "queer");
+  assert.deepEqual(s, ["gay", "queer"]);
+  assert.deepEqual(toccaOrientamento(s, "gay"), ["queer"]);
+});
+
+test("«Preferisco non dirlo» toglie le altre e viceversa", () => {
+  assert.deepEqual(toccaOrientamento(["gay", "queer"], "non_dirlo"), ["non_dirlo"]);
+  assert.deepEqual(toccaOrientamento(["non_dirlo"], "bisessuale"), ["bisessuale"]);
+  assert.deepEqual(toccaOrientamento(["gay"], "inventato"), ["gay"]);
+});
+
+test("precompilazione di «Cerco» (tabella della spec, con i valori di oggi)", () => {
+  assert.equal(cercoDaOrientamento("uomo", ["etero"]), "donne");
+  assert.equal(cercoDaOrientamento("donna", ["etero"]), "uomini");
+  assert.equal(cercoDaOrientamento("uomo", ["gay"]), "uomini");
+  assert.equal(cercoDaOrientamento("donna", ["lesbica"]), "donne");
+  for (const o of ["bisessuale", "pansessuale", "queer"]) {
+    for (const p of ["uomo", "donna", "non_binario", "mi_descrivo"]) assert.equal(cercoDaOrientamento(p, [o]), "tutti");
+  }
+  assert.equal(cercoDaOrientamento("uomo", ["gay", "bisessuale"]), "tutti");
+  assert.equal(cercoDaOrientamento("uomo", ["lesbica"]), "");
+  assert.equal(cercoDaOrientamento("non_binario", ["etero"]), "");
+  assert.equal(cercoDaOrientamento("uomo", ["non_dirlo"]), "");
+  assert.equal(cercoDaOrientamento("uomo", ["descrivo"]), "");
+  assert.equal(cercoDaOrientamento("uomo", []), "");
+  assert.equal(cercoDaOrientamento("uomo", ["etero", "gay"]), "");
+});
+
+test("fino a D155 l'orientamento non si salva: mai nel profilo mandato al database", () => {
+  const salvataggio = readFileSync(new URL("../landing/app/moduli/salvataggio.js", import.meta.url), "utf8");
+  assert.doesNotMatch(salvataggio, /orientamento/i); // né profiloDaStato né filtriDaStato lo leggono
+});
