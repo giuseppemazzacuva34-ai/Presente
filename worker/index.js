@@ -21,6 +21,7 @@ import { chiudiIncontriFiniti } from "./incontri_finiti.js";
 import { pulisciBozzeSupporto } from "./bozze_supporto.js";
 import { pulisciTestiUscita } from "./uscite_pulizia.js"; // #381, linea B: testi di «Lascia la stanza» dopo 30 giorni
 import { pulisciVocaliFilo } from "./filo_pulizia.js"; // #360, linea C: vocali del Filo dopo 7 giorni
+import { avvisoDiProva } from "./avviso_prova.js"; // #7, linea B: una email di prova nel minuto di AVVISO_PROVA
 
 export default {
   // Ogni ora (cron in wrangler.jsonc, gratuito): codice invito personale a chi non ce l'ha ancora (D98 A).
@@ -30,6 +31,9 @@ export default {
       const avvisi = spedisciAvvisiSicurezza(env);
       if (ctx && ctx.waitUntil) ctx.waitUntil(avvisi);
       else await avvisi;
+      const prova = avvisoDiProva(env, evento.scheduledTime); // #7, linea B: solo nel minuto di AVVISO_PROVA
+      if (ctx && ctx.waitUntil) ctx.waitUntil(prova);
+      else await prova;
       return;
     }
     // Sera delle porte (#5): anche domenica alle 21:00 di Roma (cron a parte in wrangler.jsonc); spenta senza ACCESSO_APP.
