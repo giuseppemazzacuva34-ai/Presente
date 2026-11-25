@@ -80,6 +80,9 @@ select pg_temp.ok((select bool_and(j::text not like '%2c2c2c2c%' and j::text not
   and j::text !~ '\d{4}-\d{2}-\d{2}') from s), 'lo stato non dice mai chi, quale incontro o quando');
 
 -- Decisione (D51 A: in beta Giuseppe, dal pannello).
+reset role;
+insert into public.moderatori (persona) values ('2e2e2e2e-0000-4000-8000-00000000002e'); -- decide solo un moderatore
+set local role service_role;
 create temp table c on commit drop as select id from public.contestazioni_no;
 select pg_temp.ok(public.decidi_contestazione_no((select id from c), '2e2e2e2e-0000-4000-8000-00000000002e', true) = 'accolta',
   'contestazione accolta');
