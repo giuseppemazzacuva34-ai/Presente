@@ -777,6 +777,7 @@ function schermoSegnala(m, alla = () => telefono.torna()) {
 const titoloSegnala = (m) => (m.schermo && m.schermo.titolo) || "Segnala un problema";
 
 function disegna() {
+  document.body.classList.toggle("in-iscrizione", inIscrizione());
   collegaCerchio(document, { nome: nomeMio(), apri: profiloApribile() ? () => schermoProfilo.apri() : null }); // schermata 23 (#349, linea B)
   if (telefono) {
     ultimaFirma = telefono.firma();
@@ -816,14 +817,25 @@ function disegna() {
   radice.replaceChildren(...parti.filter(Boolean));
 }
 
+// Design v4 (D149): «Passo n di 10» riempie n/10, così al passo 1 c'è già un tratto rosso.
 function barra() {
-  const totale = PASSI.length - 2;
-  const fatto = stato.passo - 1;
+  const totale = PASSI.length - 1;
   const riempimento = h("span");
-  riempimento.style.width = `${Math.round((fatto / totale) * 100)}%`;
+  riempimento.style.width = `${Math.round((stato.passo / totale) * 100)}%`;
   return h("div", { classe: "avanzamento" },
-    h("div", { classe: "avanzamento-testo" }, `Passo ${stato.passo} di ${totale + 1} · ${PASSI[stato.passo].titolo}`),
-    h("div", { classe: "avanzamento-barra", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(totale), "aria-valuenow": String(fatto) }, riempimento));
+    h("div", { classe: "avanzamento-testo" }, `Passo ${stato.passo} di ${totale} · ${PASSI[stato.passo].titolo}`),
+    h("div", { classe: "avanzamento-barra", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(totale), "aria-valuenow": String(stato.passo) }, riempimento));
+}
+
+// Iscrizione in corso (dal benvenuto alle foto, non il cambio provincia dal profilo): la pagina nasconde saldo e
+// profilo e mette i pulsanti in fondo allo schermo, come le schermate 01-12 del design v4 (D149).
+function inIscrizione() {
+  return PASSI[stato.passo].id !== "fatto" && !cambio.daProfilo;
+}
+
+// Etichetta dentro il riquadro del campo (design v4, schermate 02 e 05).
+function campoDentro(id, etichetta, campo) {
+  return h("div", { classe: "campo-dentro" }, h("label", { for: id }, etichetta), campo);
 }
 
 // Design v4 (#349): la home, con la settimana al posto del titolo.
@@ -921,7 +933,7 @@ function emailVera() {
       placeholder: "nome@esempio.it", oninput: (e) => { stato.email = e.target.value.trim(); ricontrolla(); } });
     return schermata("La tua email",
       "Ti mandiamo un link: lo apri e sei dentro. Niente password.",
-      [h("label", { for: "email" }, "Email"), campo, errore(email.errore)],
+      [campoDentro("email", "Email", campo), errore(email.errore)],
       [indietro(), avanti(email.attesa ? "Invio…" : "Mandami il link", valida, manda)]);
   }
   const entra = async () => {
@@ -949,7 +961,7 @@ const SCHERMATE = {
       ondaGrande(),
       h("h1", {}, "Prima la voce.", h("br"), h("em", {}, "Poi il resto.")),
       h("p", { classe: "sottotitolo" }, "Una stanza di 12 persone vicine a te.", h("br"), "Chiamate solo voce da 15 minuti.", h("br"), "Le foto, solo dopo il sì di entrambi."),
-      h("p", { classe: "nota" }, h("a", { href: "/privacy" }, "Informativa privacy"), " · Regole della community (in arrivo)"),
+      h("p", { classe: "nota" }, h("a", { href: "/privacy" }, "Informativa privacy"), " · Regole della stanza"),
       h("div", { classe: "azioni" }, conClasse(avanti("Entra", true, () => vai(1)), "bottone grande")));
   },
 
@@ -960,7 +972,7 @@ const SCHERMATE = {
     const bottone = avanti("Mandami il link", () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(stato.email), () => vai(2));
     return schermata("La tua email",
       "Ti mandiamo un link: lo apri e sei dentro. Niente password.",
-      [h("label", { for: "email" }, "Email"), campo,
+      [campoDentro("email", "Email", campo),
         h("p", { classe: "nota" }, "Nell'anteprima non mandiamo nessuna email: si passa direttamente al passo dopo.")],
       [indietro(), bottone]);
   },
@@ -1049,14 +1061,12 @@ const SCHERMATE = {
     aggiornaRighe();
     precompilaDallaLista();
     return schermata("Chi sei", "Gli altri vedranno solo nome, età e provincia.",
-      [h("label", { for: "nome" }, "Nome (solo il nome di battesimo)"),
-        h("input", { id: "nome", autocomplete: "given-name", autocapitalize: "words", maxlength: "20", value: stato.nome,
+      [campoDentro("nome", "Nome di battesimo", h("input", { id: "nome", autocomplete: "given-name", autocapitalize: "words", maxlength: "20", value: stato.nome,
           oninput: (e) => { stato.nome = e.target.value; if (nomeOk()) avvisoNome.hidden = true; ricontrolla(); },
-          onblur: () => { avvisoNome.hidden = !stato.nome || nomeOk(); } }),
+          onblur: () => { avvisoNome.hidden = !stato.nome || nomeOk(); } })),
         avvisoNome,
-        h("label", { for: "provincia" }, "Dove vivi?"),
-        h("p", { classe: "nota", id: "provincia-aiuto" }, "Ci serve la provincia per metterti in stanza con persone della tua zona. Non mostriamo mai il tuo indirizzo."),
-        campoProvincia, elenco, nessuna, dallaLista, estero, quando,
+        h("p", { classe: "solo-lettore", id: "provincia-aiuto" }, "Ci serve la provincia per metterti in stanza con persone della tua zona. Non mostriamo mai il tuo indirizzo."),
+        campoDentro("provincia", "Provincia", campoProvincia), elenco, nessuna, dallaLista, estero, quando,
         h("p", { classe: "etichetta" }, "Mi presento come"),
         scelte("presento", [["donna", "Donna"], ["uomo", "Uomo"], ["non_binario", "Non binario"], ["mi_descrivo", "Preferisco descrivermi"]],
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
