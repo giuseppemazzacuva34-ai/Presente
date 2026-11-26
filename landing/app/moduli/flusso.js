@@ -2023,7 +2023,14 @@ function schermoIlProfilo() {
     elimina: () => {
       if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
     },
+    esci: accesso ? esciDalProfilo : null,
     torna: () => schermoProfilo.chiudi(), errore: salvataggio.errore });
+}
+// «Esci» del profilo (richiesta di Giuseppe del 26/11): chiude la sessione e riporta al Benvenuto (01). Nessuna conferma.
+async function esciDalProfilo() {
+  schermoProfilo.chiudi();
+  await accesso.esci();
+  location.replace("/app/");
 }
 // «Ricarica» del profilo (#349, linea B, passo 3; spec #331 v1.1 punto 5): la schermata 13 si apre sotto la testata al
 // posto di #app, che resta il profilo; «Più tardi» riporta al profilo. In beta «Paga» resta spento nella 13.
