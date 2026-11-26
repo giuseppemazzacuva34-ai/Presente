@@ -450,8 +450,9 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .benvenuto-v4 h1 { font-family: var(--serif); font-weight: 400; font-size: 36px; line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
 .app .benvenuto-v4 h1 em { color: #E8432B; }
 .app .benvenuto-v4 .sottotitolo { color: #A8A29A; font-size: 15px; line-height: 1.5; margin: 0; }
-.benvenuto-v4 .nota { font-size: 12px; margin: 0; }
-.benvenuto-v4 .azioni { margin-top: auto; }
+.benvenuto-v4 .nota { font-size: 12px; margin: auto 0 0; }
+body.in-iscrizione #app > .benvenuto-v4 > .azioni { margin-top: 0; }
+.benvenuto-v4 .onda-grande { margin-top: auto; }
 .onda-grande { display: flex; gap: 4px; align-items: center; justify-content: center; height: 110px; }
 .onda-grande span { width: 6px; border-radius: 6px; filter: drop-shadow(0 0 6px rgba(232, 67, 43, 0.45)); animation: attesa 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 @keyframes attesa { 0%, 100% { transform: scaleY(0.15); opacity: 0.4; } 50% { transform: scaleY(0.9); opacity: 1; } }
@@ -602,3 +603,16 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .svelamento-v4 .sub { margin: 0; color: #A8A29A; font-size: 15px; }
 .app .svelamento-v4 .nota { margin: 0; color: #A8A29A; font-size: 12px; }
 .app .svelamento-v4 .azioni { margin-top: auto; }
+
+/* ===== Parità con il design v4, iscrizione 01-12 (D149, 26/11) =====
+   Niente saldo né profilo durante l'iscrizione; schermata alta quanto il telefono con i pulsanti in fondo;
+   etichetta dentro il riquadro del campo. La spiegazione della provincia resta per il lettore di schermo. */
+body.in-iscrizione .saldo-coin, body.in-iscrizione .icona-profilo { display: none !important; }
+body.in-iscrizione #app { display: flex; flex-direction: column; min-height: calc(100dvh - 112px); }
+body.in-iscrizione #app > .schermata { flex: 1; display: flex; flex-direction: column; }
+body.in-iscrizione #app > .schermata > .azioni { margin-top: auto; }
+.app .campo-dentro { background-color: #1A171D; border: 1px solid rgba(242, 237, 228, 0.3); border-radius: 12px; padding: 8px 14px 6px; margin: 0 0 12px; }
+.app .campo-dentro:focus-within { outline: 2px solid #F2EDE4; outline-offset: 2px; }
+.app .campo-dentro label { display: block; font-size: 12px; font-weight: 400; color: #A8A29A; margin: 0; letter-spacing: 0; text-transform: none; }
+.app .corpo .campo-dentro input { border: 0; background: transparent; padding: 2px 0 4px; min-height: 32px; border-radius: 0; outline: none; width: 100%; }
+.solo-lettore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
