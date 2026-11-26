@@ -18,7 +18,7 @@ const SCADE = "2026-11-17T20:00:00Z"; // martedì 21:00 di Roma
 const LUNEDI = new Date("2026-11-16T09:30:00Z");
 const porta = (extra = {}) => ({ porta: PORTA, con: LEI, nome: "Giulia", eta: 31, aperta_il: APERTA, scade_il: SCADE,
   mia_caparra: false, sua_caparra: false, aspetta: null, ...extra });
-const stato = (porte = [porta()], saldo = 20) => ({ saldo, caparra: 10, beta: true,
+const stato = (porte = [porta()], saldo = 120) => ({ saldo, caparra: 100, beta: true,
   testi: { blocca: TESTI_SVELAMENTO.blocca, spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra, beta: TESTI_SVELAMENTO.beta }, porte });
 
 const h = (tag, a = {}, ...figli) => ({ tag, a: a || {}, f: figli.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false) });
@@ -49,16 +49,27 @@ test("porta senza caparre e crediti sufficienti: nome, età, conto e «Blocca 10
   assert.equal(s.titolo, TESTI.aperta);
   assert.equal(s.chi, "Giulia, 31");
   assert.equal(s.conto, "Mancano 34 ore e 30 minuti per lo svelamento.");
-  assert.equal(s.saldo, "I tuoi crediti: 20");
+  assert.equal(s.saldo, "I tuoi crediti: 120");
   assert.deepEqual(s.caparra, { tipo: "blocca", bottone: "Blocca 100 crediti", spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra });
 });
 
 test("meno della caparra: «Ti mancano N Coin», «Ricarica» e il testo della beta; nessun pulsante per bloccare", () => {
-  const s = schermataPorta(stato([porta()], 7), PORTA, LUNEDI);
+  const s = schermataPorta(stato([porta()], 97), PORTA, LUNEDI);
   assert.deepEqual(s.caparra, { tipo: "ricarica", testo: "Ti mancano 3 crediti", bottone: "Ricarica", beta: "In beta i crediti sono di prova",
     spiegazione: TESTI_SVELAMENTO.spiegazioneCaparra });
-  assert.equal(schermataPorta(stato([porta()], 9), PORTA, LUNEDI).caparra.testo, "Ti manca 1 credito");
-  assert.equal(schermataPorta(stato([porta()], 0), PORTA, LUNEDI).caparra.testo, "Ti mancano 10 crediti");
+  assert.equal(schermataPorta(stato([porta()], 99), PORTA, LUNEDI).caparra.testo, "Ti manca 1 credito");
+  assert.equal(schermataPorta(stato([porta()], 0), PORTA, LUNEDI).caparra.testo, "Ti mancano 100 crediti");
+});
+
+// Segnalazione della linea C (25/11): con la caparra di 100 il telefono contava ancora 10 e con 50 crediti mostrava
+// «Blocca 100 crediti». La soglia è quella del server (svelamento_di dà «caparra»); senza, vale 100.
+test("caparra del server: con 50 crediti mancano 50, niente «Blocca»; senza il campo vale 100", () => {
+  assert.equal(schermataPorta(stato([porta()], 50), PORTA, LUNEDI).caparra.testo, "Ti mancano 50 crediti");
+  const senza = { ...stato([porta()], 50) }; delete senza.caparra;
+  assert.equal(schermataPorta(senza, PORTA, LUNEDI).caparra.tipo, "ricarica");
+  assert.equal(schermataPorta(senza, PORTA, LUNEDI).caparra.testo, "Ti mancano 50 crediti");
+  assert.equal(schermataPorta(stato([porta()], 100), PORTA, LUNEDI).caparra.tipo, "blocca");
+  assert.doesNotMatch(leggi("../landing/app/sw.js"), /const VERSIONE = "presente-app-68";/, "cache dell'app rinnovata");
 });
 
 test("caparra bloccata solo da me: «Aspettiamo che anche Giulia blocchi la caparra.»", () => {
@@ -111,7 +122,7 @@ test("leggi: GET con il token, nessuna persona nel corpo", async () => {
   const s = creaSvelamento({ token: () => "tok", fetch: rete.f });
   const r = await s.leggi();
   assert.equal(r.ok, true);
-  assert.equal(r.stato.saldo, 20);
+  assert.equal(r.stato.saldo, 120);
   assert.equal(r.stato.porte[0].porta, PORTA);
   assert.equal(rete.chiamate[0].url, "/app/api/svelamento");
   assert.equal(rete.chiamate[0].init.method, "GET");
@@ -189,7 +200,7 @@ test("Blocca 100 Coin: una richiesta alla volta, poi la schermata dice di aspett
 });
 
 test("rifiuto per crediti: testo del server e si rilegge lo stato, che mostra «Ricarica»", async () => {
-  const sv = svelamentoFinto({ ok: true, stato: stato() }, { ok: true, stato: stato([porta()], 4) });
+  const sv = svelamentoFinto({ ok: true, stato: stato() }, { ok: true, stato: stato([porta()], 94) });
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
   await ps.apri(PORTA);
   sv.risposte.blocca = { ok: false, motivo: "crediti_insufficienti", testo: "Ti mancano 6 crediti" };
@@ -228,7 +239,7 @@ test("vista: titolo, nome ed età, conto, saldo, pulsante «Blocca 100 Coin» co
   assert.ok(t.includes(TESTI.aperta));
   assert.ok(t.includes("Giulia, 31"));
   assert.ok(t.includes("Mancano 34 ore e 30 minuti per lo svelamento."));
-  assert.ok(t.includes("I tuoi crediti: 20"));
+  assert.ok(t.includes("I tuoi crediti: 120"));
   assert.ok(t.includes(TESTI_SVELAMENTO.spiegazioneCaparra));
   const b = bottone(v, "Blocca 100 crediti");
   assert.ok(b, "pulsante presente");
@@ -240,7 +251,7 @@ test("vista: titolo, nome ed età, conto, saldo, pulsante «Blocca 100 Coin» co
 });
 
 test("vista con pochi crediti: «Ricarica» mostra solo il testo della beta, nessun pagamento e nessun blocco", async () => {
-  const sv = svelamentoFinto({ ok: true, stato: stato([porta()], 3) });
+  const sv = svelamentoFinto({ ok: true, stato: stato([porta()], 93) });
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
   await ps.apri(PORTA);
   let v = vistaPorta(h, ps);
