@@ -616,3 +616,5 @@ body.in-iscrizione #app > .schermata > .azioni { margin-top: auto; }
 .app .campo-dentro label { display: block; font-size: 12px; font-weight: 400; color: #A8A29A; margin: 0; letter-spacing: 0; text-transform: none; }
 .app .corpo .campo-dentro input { border: 0; background: transparent; padding: 2px 0 4px; min-height: 32px; border-radius: 0; outline: none; width: 100%; }
 .solo-lettore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* «Esci» del profilo (#349, linea B, richiesta di Giuseppe del 26/11): pulsante secondario 3D a tutta larghezza sopra «Elimina il mio account». */
+.app .profilo .corpo > .bottone-secondario { margin: 8px 0 0; width: 100%; }

@@ -17,6 +17,8 @@ export const TESTI_PROFILO = Object.freeze({
   preferenze: "Chi cerchi",
   notifiche: "Notifiche",
   privacy: "Privacy",
+  // Richiesta di Giuseppe del 26/11: uscire dall'account e rientrare. Sta sopra «Elimina il mio account».
+  esci: "Esci",
   elimina: "Elimina il mio account",
   tornaStanza: "Torna alla stanza",
   tornaHome: "Torna alla home",
@@ -60,9 +62,9 @@ const riga = (h, testo, azione) => (typeof azione === "function"
   ? h("button", { classe: "voce-profilo", type: "button", onclick: azione }, testo, h("span", { classe: "freccia", "aria-hidden": "true" }, "›"))
   : null);
 
-// s = statoProfilo(...). Azioni: risposte, regali, foto, preferenze (chi cerchi), notifiche, privacy, elimina, torna, ricarica (apre la schermata 13);
+// s = statoProfilo(...). Azioni: risposte, regali, foto, preferenze (chi cerchi), notifiche, privacy, esci, elimina, torna, ricarica (apre la schermata 13);
 // onda = l'onda grande del flusso.
-export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, notifiche = null, privacy = null, elimina, torna, ricarica = null, onda = null, errore = null } = {}) {
+export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, notifiche = null, privacy = null, esci = null, elimina, torna, ricarica = null, onda = null, errore = null } = {}) {
   return h("section", { classe: "schermata profilo", "aria-labelledby": "profilo-titolo" },
     h("div", { classe: "corpo" },
       h("h2", { id: "profilo-titolo" }, s.titolo, s.citta ? [h("br"), h("em", {}, s.citta)] : null),
@@ -79,6 +81,7 @@ export function vistaProfilo(h, s, { risposte, regali, foto, preferenze, notific
       riga(h, T.notifiche, notifiche),
       riga(h, T.privacy, privacy),
       typeof errore === "string" && errore ? h("p", { classe: "errore", role: "alert" }, errore) : null,
+      typeof esci === "function" ? h("button", { classe: "bottone-secondario", type: "button", onclick: esci }, T.esci) : null,
       typeof elimina === "function" ? h("button", { classe: "link rosso", type: "button", onclick: elimina }, T.elimina) : null),
     h("div", { classe: "azioni" }, h("button", { classe: "bottone", type: "button", onclick: torna }, s.torna)));
 }
