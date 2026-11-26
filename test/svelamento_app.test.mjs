@@ -69,6 +69,7 @@ test("caparra del server: con 50 crediti mancano 50, niente «Blocca»; senza il
   assert.equal(schermataPorta(senza, PORTA, LUNEDI).caparra.tipo, "ricarica");
   assert.equal(schermataPorta(senza, PORTA, LUNEDI).caparra.testo, "Ti mancano 50 crediti");
   assert.equal(schermataPorta(stato([porta()], 100), PORTA, LUNEDI).caparra.tipo, "blocca");
+  assert.doesNotMatch(leggi("../landing/app/sw.js"), /const VERSIONE = "presente-app-68";/, "cache dell'app rinnovata");
 });
 
 test("caparra bloccata solo da me: «Aspettiamo che anche Giulia blocchi la caparra.»", () => {
