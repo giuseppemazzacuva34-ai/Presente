@@ -15,7 +15,7 @@ import { vistaCome } from "./svelamento_come.js";
 
 const PERCORSO = "/app/api/svelamento";
 const ATTESA_MS = 8000;
-const CAPARRA = 10;
+const CAPARRA = 100; // solo se il server non la manda: la soglia vera è «caparra» di svelamento_di (api/svelamento.js)
 const MINUTO = 60 * 1000;
 const ORA = 60 * MINUTO;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -173,13 +173,14 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
   if (!conto) return { tipo: "scaduta", testo: TESTI.scaduta };
   const n = nome(p.nome) || "questa persona";
   const saldo = Number.isFinite(stato.saldo) ? Math.max(0, stato.saldo) : 0;
+  const soglia = Number.isInteger(stato.caparra) && stato.caparra > 0 ? stato.caparra : CAPARRA;
   let caparra;
   if (p.mia_caparra === true && p.sua_caparra === true) caparra = { tipo: "entrambe", testo: TESTI.entrambe };
   else if (p.mia_caparra === true) {
     caparra = { tipo: "aspetta", testo: typeof p.aspetta === "string" && p.aspetta ? p.aspetta : TESTI.aspettaCaparra.replace("<nome>", n) };
-  } else if (saldo >= CAPARRA) caparra = { tipo: "blocca", bottone: TESTI.blocca, spiegazione: TESTI.spiegazioneCaparra };
+  } else if (saldo >= soglia) caparra = { tipo: "blocca", bottone: TESTI.blocca, spiegazione: TESTI.spiegazioneCaparra };
   else {
-    const mancano = CAPARRA - saldo;
+    const mancano = soglia - saldo;
     caparra = { tipo: "ricarica", testo: mancano === 1 ? "Ti manca 1 credito" : `Ti mancano ${mancano} crediti`,
       bottone: TESTI.ricarica, beta: TESTI.beta, spiegazione: TESTI.spiegazioneCaparra };
   }
