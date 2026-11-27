@@ -37,6 +37,7 @@ import { creaStoricoRegali } from "/app/moduli/storico_regali.js";
 import { creaRiepilogo } from "/app/moduli/riepilogo_valutazioni.js";
 import { creaContesta } from "/app/moduli/contesta_no.js";
 import { creaContestaBuca, creaFoglioBuca } from "/app/moduli/contesta_buca.js";
+import { creaClientCambio, creaFoglioCambio } from "/app/moduli/cambia_luogo.js";
 import { creaSaldo, collegaSaldo } from "/app/moduli/saldo_coin.js";
 import { aggiornaTestata } from "/app/moduli/testata.js";
 import { apriFoglioQuasiFiniti, quasiFiniti } from "/app/moduli/saldo_coin.js";
@@ -161,6 +162,9 @@ async function preparaAccesso() {
     // «Ero lì» / «Non riesco a fare il check-in» (#6 spec v1.4, linea B): foglio dentro «Il vostro incontro».
     incontro.buca = creaFoglioBuca({ client: creaContestaBuca({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       aggiorna: () => incontroCambiato() });
+    // «Cambia luogo» (#6 spec v1, casi limite, linea B): foglio dentro «Il vostro incontro», poi si rilegge lo stato.
+    incontro.cambio = creaFoglioCambio({ client: creaClientCambio({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
+      ricarica: () => incontro.riprova(), aggiorna: () => incontroCambiato() });
     // Regali (#331 parte C): «Manda un regalo» sulla scheda; il foglio sta in .pagina.app, fuori da #app che si ridisegna.
     const regali = creaRegaliStanza({ regali: creaRegali({ token: () => accesso.token(), fetch: window.fetch.bind(window) }),
       contenitore: document.querySelector(".pagina.app"), aggiorna: () => regaliCambiati() });

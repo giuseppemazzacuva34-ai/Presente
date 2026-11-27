@@ -16,6 +16,7 @@
 
 import { TESTI_VALUTAZIONE } from "./valutazione.js";
 import { vistaFoglioBuca } from "./contesta_buca.js"; // «Ero lì» / «Non riesco» (spec v1.4)
+import { vistaFoglioCambio } from "./cambia_luogo.js"; // «Cambia luogo» (spec v1, casi limite)
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
@@ -469,7 +470,8 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
 // La vista (h come in flusso.js). null se la schermata non è aperta.
 // opzioni.valuta (passo 3f): chi apre la schermata della valutazione; senza, il pulsante non c'è.
 // opzioni.buca (#6 v1.4): il foglio «Ero lì» / «Non riesco» di moduli/contesta_buca.js; senza, non c'è.
-export function vistaIncontro(h, inc, { valuta = null, buca = null } = {}) {
+// opzioni.cambio (#6 v1, casi limite): il foglio «Cambia luogo» di moduli/cambia_luogo.js; senza, non c'è.
+export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = null } = {}) {
   const m = inc.modello();
   if (!m.porta && !m.errore) return null;
   const T = TESTI_INCONTRO;
@@ -518,6 +520,7 @@ export function vistaIncontro(h, inc, { valuta = null, buca = null } = {}) {
   }
   if (s && m.proposta) parti.push(vistaProposta(h, inc, m, s));
   if (s && buca && !m.proposta && !m.conferma) parti.push(vistaFoglioBuca(h, buca, m.porta, s, m.incontro));
+  if (s && cambio && !m.proposta && !m.conferma) parti.push(vistaFoglioCambio(h, cambio, m.porta, m.incontro, m.nome));
   if (m.errore) parti.push(h("p", { classe: "errore", role: "alert" }, m.errore));
   return h("section", { classe: "incontro", "aria-labelledby": "incontro-titolo" }, h("h2", { id: "incontro-titolo" }, T.titolo), parti);
 }
