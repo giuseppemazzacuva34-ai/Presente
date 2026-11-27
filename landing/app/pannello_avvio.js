@@ -3,7 +3,7 @@
 // pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent, mai come HTML.
 import { creaAccesso } from "/app/moduli/accesso.js";
 import { creaPannello, vociCoda, schedaLeggibile, AZIONI_PANNELLO, REGOLE_PANNELLO, MASSIMO_MOTIVO_DECISIONE, vociRicorsi, ESITI_RICORSO_PANNELLO, vociUscite,
-  vociContestazioni, ESITI_CONTESTAZIONE_PANNELLO }
+  vociContestazioni, ESITI_CONTESTAZIONE_PANNELLO, vociBuche, esitiBuca }
   from "/app/moduli/pannello.js";
 
 const radice = document.getElementById("pannello");
@@ -21,6 +21,8 @@ const MESSAGGI = {
   gia_decisa: "Decisione non salvata: la contestazione è già decisa.",
   non_trovata: "Decisione non salvata: la contestazione non c'è più.",
   propria: "Decisione non salvata: la contestazione è tua, la decide un'altra persona.",
+  non_ancora: "Decisione non salvata: la finestra del check-in non è ancora finita.",
+  in_attesa_d156: "Decisione non salvata: per questa buca non c'è nulla da restituire (forse è già stata sistemata).",
   seconda_volta_contatti: "Decisione non salvata: è la seconda volta in 6 mesi che chiede contatti prima della porta. Scegli «Sospensione 7 giorni».",
 };
 
@@ -81,7 +83,8 @@ async function mostraCoda(p) {
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Aggiorna" }),
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraRicorsi(p), testo: "Ricorsi in attesa" }),
       h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraUscite(p), testo: "Perché si lascia la stanza" }),
-      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraContestazioni(p), testo: "Contestazioni dei no" })),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraContestazioni(p), testo: "Contestazioni dei no" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraBuche(p), testo: "«Ero lì» e «Non riesco»" })),
   );
 }
 
@@ -282,5 +285,47 @@ function moduloContestazione(p, v, i) {
     avvisa("Decisione sulla contestazione salvata.");
   } },
   h("label", { for: `esito-contestazione-${i}`, testo: "Decisione" }), esito,
+  errore, invia);
+}
+
+// #6 v1.4: «Ero lì» (buca già pagata) e «Non riesco a fare il check-in» (prima della fine della finestra). Chi decide
+// legge cosa dice la persona e accoglie o respinge; i crediti li muove il database (D156 A). Una decisione sola.
+// Mai l'altra persona né la porta. La propria e quelle con la finestra ancora aperta si vedono ma non si decidono.
+async function mostraBuche(p) {
+  avvisa("");
+  const r = await p.buche();
+  if (!r.ok) { avvisa(MESSAGGI[r.motivo] || MESSAGGI.riprova); return; }
+  const voci = vociBuche(r.buche);
+  mostra(
+    h("h1", { testo: "«Ero lì» e «Non riesco»" }),
+    h("p", { class: "sottotitolo", testo: voci.length ? `${voci.length} da decidere, prima le più vecchie. L'altra persona non si vede.`
+      : "Nessuna contestazione di buca da decidere." }),
+    h("ul", { class: "coda" }, voci.map((v, i) => h("li", { class: "voce-coda" },
+      h("h2", { testo: v.titolo }),
+      v.incontro ? h("p", { class: "nota", testo: v.incontro }) : null,
+      v.inviata ? h("p", { class: "nota", testo: `Inviata il ${v.inviata}` }) : null,
+      h("p", { class: "racconto", testo: `Cosa dice: ${v.perche}` }),
+      v.puoiDecidere ? moduloBuca(p, v, i) : h("p", { class: "nota", testo: v.nota })))),
+    h("div", { class: "azioni" },
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraCoda(p), testo: "Torna alle segnalazioni" }),
+      h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraBuche(p), testo: "Aggiorna" })),
+  );
+}
+
+function moduloBuca(p, v, i) {
+  const esito = h("select", { id: `esito-buca-${i}`, name: "esito" },
+    esitiBuca(v.fase).map(([e, t]) => h("option", { value: e, testo: t })));
+  const errore = h("p", { class: "errore", role: "alert" });
+  const invia = h("button", { type: "submit", class: "bottone", testo: "Conferma la decisione" });
+  return h("form", { class: "corpo", onsubmit: async (e) => {
+    e.preventDefault();
+    invia.disabled = true;
+    const fatto = await p.decidiBuca({ id: v.id, esito: esito.value });
+    invia.disabled = false;
+    if (!fatto.ok) { errore.textContent = MESSAGGI[fatto.motivo] || MESSAGGI.riprova; return; }
+    await mostraBuche(p);
+    avvisa("Decisione sulla buca salvata.");
+  } },
+  h("label", { for: `esito-buca-${i}`, testo: "Decisione" }), esito,
   errore, invia);
 }
