@@ -73,7 +73,7 @@ export function vistaStoricoRegali(h, v, { torna }) {
         h("div", { classe: "lista-t" }, h("span", {}, TESTI_STORICO.stanzePassate), h("span", {}, String(v.passate.stanze))),
         riga(h, v.passate.persone, v.passate.dettaglio, ""),
       ] : null),
-    h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI_STORICO.torna)));
+    h("div", { classe: "azioni" }, h("button", { classe: "bottone", type: "button", onclick: torna }, TESTI_STORICO.torna)));
 }
 
 // Passo 4: la schermata aperta dal profilo. Tiene solo lo stato della schermata (aperta, in lettura, vista o errore);
@@ -99,7 +99,7 @@ export function creaSchermoRegali({ storico, disegna, errore }) {
           h("div", { classe: "corpo" },
             h("div", { classe: "passo" }, TESTI_STORICO.etichetta),
             st.carica ? h("p", { classe: "nota", role: "status" }, TESTI_STORICO.carica) : h("p", { classe: "errore", role: "alert" }, st.errore)),
-          h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: chiudi }, TESTI_STORICO.torna)));
+          h("div", { classe: "azioni" }, h("button", { classe: "bottone", type: "button", onclick: chiudi }, TESTI_STORICO.torna)));
       return h("section", { classe: "schermata", "aria-label": TESTI_STORICO.link }, contenuto);
     },
   };

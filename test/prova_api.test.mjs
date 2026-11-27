@@ -37,7 +37,7 @@ test("regali ricevuti (schermata 28): forma accettata dal modulo vero, con perso
   const r = await creaStoricoRegali({ token, fetch: creaApiProva().fetch }).leggi();
   assert.equal(r.ok, true);
   assert.ok(r.vista.attuale.persone.length > 0);
-  for (const p of r.vista.attuale.persone) assert.ok(PERSONE_PROVA.some((x) => x.nome === p.nome));
+  for (const p of r.vista.attuale.persone) assert.ok(PERSONE_PROVA.some((x) => `${x.nome}, ${x.eta}` === p.nome));
 });
 
 test("Filo del lunedì (18): benvenuto da vedere una volta, poi segnato visto", async () => {
