@@ -191,7 +191,7 @@ export function vistaSchedaChiave(h, ks, persona, nome) {
   if (s.chiuse) return h("div", { classe: "chiave-scheda" }, segno, h("p", { classe: "nota" }, s.chiuse));
   const link = (testo, onclick, etichetta) => h("button", { classe: "link", type: "button", "aria-label": etichetta, onclick }, testo);
   return h("div", { classe: "chiave-scheda" }, segno,
-    s.dai ? h("button", { classe: "bottone-secondario", type: "button", "aria-label": `${s.dai} a ${n}`, onclick: () => ks.apriDai(persona, nome) }, s.dai) : null,
+    s.dai ? h("button", { classe: "bottone", type: "button", "aria-label": `${s.dai} a ${n}`, onclick: () => ks.apriDai(persona, nome) }, s.dai) : null,
     s.modifica ? link(s.modifica, () => ks.apriFrase(persona, nome), `${s.modifica} per ${n}`) : null,
     s.riprendi ? link(s.riprendi, () => ks.apriRiprendi(persona, nome), `${s.riprendi} a ${n}`) : null);
 }

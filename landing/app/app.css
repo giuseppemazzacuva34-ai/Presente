@@ -754,3 +754,19 @@ body:has(.chiamata.in-corso) { background: transparent; }
 #app .azioni-home > .bottone { width: 100%; margin: 0; }
 #app .azioni-home > .nota { margin: 0; }
 .app .home-dopo { padding-top: 24px; }
+
+/* ===== Linea A (#349, D149): la stanza, schermata 19 (prototipo #n14), passo 1: le schede delle persone ===== */
+/* Una riga per persona senza riquadro, linea sottile sotto. Prima riga: nome e stato | CHIAMA/FISSA | DAI UNA CHIAVE.
+   Seconda riga, piccoli: «Manda un regalo» a sinistra, «⋯» (segnala, blocca) a destra. Tutto il resto della scheda
+   (frase data, appunti, menu aperto, conferme) va a tutta larghezza sotto, nell'ordine di prima. */
+.tua-stanza .compagno { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 10px; border: 0; border-bottom: 1px solid rgba(242, 237, 228, 0.12); border-radius: 0; padding: 14px 0; background: none; }
+.tua-stanza .compagno > * { grid-column: 1 / -1; }
+.tua-stanza .compagno > div:first-child { grid-column: 1; grid-row: 1; gap: 2px; }
+.tua-stanza .compagno > div:first-child strong { font-size: 17px; }
+.tua-stanza .compagno > .bottone-secondario { grid-column: 2; grid-row: 1; }
+.tua-stanza .compagno > .chiave-scheda:has(> .bottone:only-child) { grid-column: 3; grid-row: 1; }
+.tua-stanza .compagno > .bottone-secondario, .tua-stanza .compagno > .chiave-scheda > .bottone { min-height: 44px; padding: 0 12px; font-size: 13px; border-radius: 12px; margin: 0; white-space: nowrap; }
+.tua-stanza .compagno > .regali-scheda { grid-column: 1 / 3; grid-row: 2; justify-self: start; text-align: left; font-size: 13px; }
+.tua-stanza .compagno > button.link[aria-expanded] { grid-column: 3; grid-row: 2; justify-self: end; }
+/* Chiama spento con un testo lungo (spec #4 v1.3, es. «Già 3 chiamate…»): a tutta larghezza sotto, mai tagliato. */
+.tua-stanza .compagno > .bottone-secondario[aria-disabled="true"] { grid-column: 1 / -1; grid-row: auto; white-space: normal; text-align: left; justify-content: flex-start; }
