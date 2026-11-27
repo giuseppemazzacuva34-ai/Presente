@@ -9,6 +9,11 @@ export const TESTI_SETTIMANA = Object.freeze({
   etichetta: "La tua settimana",
   apre: "La tua stanza apre lunedì.",
   notaApre: "Lunedì alle 9 entri con 11 persone vicine a te.",
+  regalo: "La prima stanza è in regalo.",
+  ciSaro: "Ci sarò lunedì",
+  costo: "Poi 80 crediti a stanza. Si conferma entro domenica alle 23:59.",
+  ripenso: "Ci ripenso",
+  attimo: "Un attimo…",
   aperta: "La tua stanza è aperta.",
   notaAperta: "Le porte si aprono domenica alle 21.",
   domenica: "Le porte si aprono alle 21.",
@@ -66,13 +71,14 @@ function prossimaApertura(adesso) {
   return istanteRoma(r, 8 - r.giorno, ORA_APERTURA);
 }
 
-export function settimanaHome(adesso, { nome = "", inStanza = false } = {}) {
+// regalo: true quando la home mostra l'ingresso alla stanza (schermata 16): la nota dice anche che la prima è in regalo.
+export function settimanaHome(adesso, { nome = "", inStanza = false, regalo = false } = {}) {
   const n = typeof nome === "string" ? nome.trim() : "";
   const titolo = n ? `Ciao ${n}.` : "Ciao.";
   const r = aRoma(adesso);
   if (!inStanza) {
     return { titolo, evidenza: TESTI_SETTIMANA.apre, conto: contoAllaRovescia(adesso, prossimaApertura(adesso)),
-      nota: TESTI_SETTIMANA.notaApre, segmenti: Array(7).fill("") };
+      nota: regalo ? `${TESTI_SETTIMANA.notaApre} ${TESTI_SETTIMANA.regalo}` : TESTI_SETTIMANA.notaApre, segmenti: Array(7).fill("") };
   }
   const segmenti = Array.from({ length: 7 }, (_, i) => (i + 1 < r.giorno ? "on" : i + 1 === r.giorno ? "oggi" : ""));
   if (r.giorno === 7) {
@@ -106,4 +112,19 @@ export function vistaCerchioHome(h, presento) {
     h("span", { classe: "et sx", "aria-hidden": "true" }, TESTI_SETTIMANA.uomini),
     h("span", { classe: "et dx", "aria-hidden": "true" }, TESTI_SETTIMANA.donne),
     Array.from({ length: 12 }, (_, k) => h("i", { classe: k === tu ? `p k${k} tu` : `p k${k}` })));
+}
+
+// Il piede della schermata 16 (prototipo #n13, piede «uno»): un solo pulsante, «Ci sarò lunedì», in fondo allo schermo.
+// Dopo il tocco il testo della conferma arriva dal server (testoConferma in flusso.js) con «Ci ripenso». Sotto il
+// pulsante il costo dopo la prima stanza: si legge prima di confermare. erroreNodo = nodo già pronto (o null).
+export function vistaIngressoHome(h, { conferma = null, inCorso = false, letto = false, avviso = "", errore = null } = {}, { entra, ripensa }) {
+  return h("div", { classe: "azioni azioni-home" },
+    conferma
+      ? [h("p", { role: "status", id: "conferma-stanza" }, conferma),
+        h("button", { classe: "link", type: "button", disabled: inCorso, onclick: ripensa }, TESTI_SETTIMANA.ripenso)]
+      : [h("button", { classe: "bottone", type: "button", disabled: inCorso || !letto, onclick: entra }, TESTI_SETTIMANA.ciSaro),
+        h("p", { classe: "nota" }, TESTI_SETTIMANA.costo)],
+    inCorso ? h("p", { classe: "nota", role: "status" }, TESTI_SETTIMANA.attimo) : null,
+    avviso ? h("p", { classe: "nota", role: "status" }, avviso) : null,
+    errore);
 }
