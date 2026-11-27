@@ -104,9 +104,13 @@ export function apriSchermataUscita(contenitore, { uscita, alResto, alFatto, alA
   const st = { scelto: null, testo: "", fase: "scelta", errore: null };
   let aperta = true;
 
-  const schermo = el(doc, "section", null);
+  const schermo = el(doc, "section", "lascia-stanza");
   schermo.setAttribute("aria-labelledby", "uscita-titolo");
-  const titolo = el(doc, "h1", null, TESTI_APP.titolo);
+  // D149: «Vuoi lasciare» e, a capo, «la stanza?» in corsivo rosso; il testo letto resta la frase intera.
+  const titolo = el(doc, "h1", null);
+  const diviso = /^(Vuoi lasciare) (.+)$/.exec(TESTI_APP.titolo);
+  if (diviso) titolo.append(`${diviso[1]} `, el(doc, "br", null), el(doc, "em", null, diviso[2]));
+  else titolo.textContent = TESTI_APP.titolo;
   titolo.id = "uscita-titolo";
   titolo.setAttribute("id", "uscita-titolo");
 

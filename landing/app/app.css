@@ -620,3 +620,13 @@ body.in-iscrizione #app > .schermata > .azioni { margin-top: auto; }
 .solo-lettore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* «Esci» del profilo (#349, linea B, richiesta di Giuseppe del 26/11): pulsante secondario 3D a tutta larghezza sopra «Elimina il mio account». */
 .app .profilo .corpo > .bottone-secondario { margin: 8px 0 0; width: 100%; }
+/* «Lascia la stanza», schermata 22 del design v4 (#349, linea B, D149): titolo su due righe con il corsivo rosso,
+   sottotitolo grigio, cerchi scuri con l'anello rosso alla scelta, pulsanti in fondo come nella 13. */
+.app .lascia-stanza { display: flex; flex-direction: column; min-height: calc(100dvh - 140px); box-sizing: border-box; }
+.app .lascia-stanza > .azioni { margin-top: auto; }
+.app .lascia-stanza h1 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; margin: 0 0 10px; }
+.app .lascia-stanza h1 em { color: #E8432B; }
+.app .lascia-stanza legend { color: #A8A29A; font-size: 15px; line-height: 1.45; margin-bottom: 12px; }
+.app .lascia-stanza input[type="radio"] { appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid rgba(242, 237, 228, 0.45); border-radius: 50%; background: transparent; }
+.app .lascia-stanza input[type="radio"]:checked { border: 5px solid #E8432B; width: 26px; height: 26px; }
+.app .lascia-stanza input[type="radio"]:focus-visible { outline: 2px solid #F2EDE4; outline-offset: 3px; }
