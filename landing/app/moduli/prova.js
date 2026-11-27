@@ -28,6 +28,19 @@ import { creaIncontro, orariProposta } from "./incontro.js";
 export const UTENTE_PROVA = "00000000-0000-4000-8000-000000000001";
 const EMAIL_VALIDA = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const FILE_AMMESSI = /^(presentazione|risposta-[1-3]|foto-[1-3])$/;
+const FILE_VOCE = "presentazione"; // come FILE_VOCE di salvataggio.js
+// File WAV di silenzio (8 kHz, 8 bit, mono): voce finta della prova, nessuna registrazione vera.
+function silenzioWav(secondi) {
+  const n = 8000 * secondi;
+  const b = new DataView(new ArrayBuffer(44 + n));
+  const testo = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  testo(0, "RIFF"); b.setUint32(4, 36 + n, true); testo(8, "WAVE"); testo(12, "fmt ");
+  b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 8000, true); b.setUint32(28, 8000, true); b.setUint16(32, 1, true); b.setUint16(34, 8, true);
+  testo(36, "data"); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+  return new Blob([b.buffer], { type: "audio/wav" });
+}
 const CAMPI_PROFILO = ["data_nascita", "regole_accettate_il", "nome", "provincia", "provincia_origine", "paese",
   "mi_presento_come", "mi_descrivo", "domande_voce", "passo", "fascia_da", "fascia_a", "pausa_il"];
 const CAMPI_FILTRI = ["cerco", "eta_min", "eta_max", "raggio", "cosa_cerco", "figli", "fumo"];
@@ -484,6 +497,8 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
       const risposta = (d) => (d.tipo === "multipla" ? [0, 1].slice(0, d.min) : d.tipo === "scala" ? d.min : 0);
       mondo.questionario = { risposte: Object.fromEntries(DOMANDE.map((d) => [d.n, risposta(d)])),
         importanza: Object.fromEntries(Object.keys(TEMI).map((t) => [t, 2])) };
+      // Parità della schermata 23 (D149, linea B): una voce finta (18 secondi di silenzio) per il riquadro «La tua voce · 18 s».
+      if (!mondo.file.has(`voci/${FILE_VOCE}`)) mondo.file.set(`voci/${FILE_VOCE}`, silenzioWav(18));
       return true;
     },
   };

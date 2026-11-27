@@ -46,10 +46,19 @@ export function statoProfilo({ nome = "", eta = null, citta = "", voce = null, s
 // Pulsante della voce: suona dall'<audio> senza i comandi del browser (come «Riascolta» nella schermata 08).
 function pulsanteVoce(h, voce) {
   const audio = h("audio", { src: voce.url, preload: "metadata" });
-  const etichetta = `▶ ${voce.testo}`;
+  let etichetta = `▶ ${voce.testo}`;
   const b = h("button", { classe: "bottone-secondario", type: "button", "aria-pressed": "false",
     onclick: () => { if (audio.paused) { audio.currentTime = 0; audio.play().catch(() => {}); } else audio.pause(); } }, etichetta);
   if (typeof audio.addEventListener === "function") {
+    // Voce riletta dal server: i secondi non si sanno finché il browser non legge i metadati del file (D149, «· 18 s»).
+    if (voce.testo === T.voce) {
+      audio.addEventListener("loadedmetadata", () => {
+        const d = audio.duration;
+        if (!Number.isFinite(d) || d < 0.5) return;
+        etichetta = `▶ ${T.voce} · ${Math.round(d)} s`;
+        if (b.getAttribute ? b.getAttribute("aria-pressed") !== "true" : true) b.textContent = etichetta;
+      });
+    }
     audio.addEventListener("play", () => { b.textContent = T.pausa; b.setAttribute("aria-pressed", "true"); });
     const fermo = () => { b.textContent = etichetta; b.setAttribute("aria-pressed", "false"); };
     audio.addEventListener("pause", fermo);
