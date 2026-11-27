@@ -95,6 +95,22 @@ reset role;
 set local role service_role;
 select pg_temp.ok((select esito = 'contestato' from public.incontri where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ac'),
   'preparazione: caso 1 in esito contestato');
+-- Elenco per il pannello: solo moderatori; nome di chi contesta, fase, testo, ora dell'incontro, se si può già decidere,
+-- se la porta è «tua». Mai l'altra persona né id della porta.
+select pg_temp.ok(pg_temp.rifiutato($q$select * from public.contestazioni_buca_da_decidere('d3c1c1c1-0000-4000-8000-0000000000d3')$q$),
+  'elenco: chi non è moderatore non legge');
+create temp table e on commit drop as select * from public.contestazioni_buca_da_decidere('d3e3e3e3-0000-4000-8000-0000000000d3');
+select pg_temp.ok((select count(*) = 5 from e), 'elenco: cinque contestazioni in attesa');
+select pg_temp.ok((select nome = 'Ciro' and fase = 'prima_della_buca' and testo = 'Non riesco: niente rete.' and decidibile
+  and orario is not null and inviata_il is not null and not tua from e where id = pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ac')),
+  'elenco: nome di chi contesta, fase, testo, ora, decidibile');
+select pg_temp.ok((select not decidibile from e where id = pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ab')),
+  'elenco: finestra ancora aperta → non ancora decidibile');
+select pg_temp.ok((select to_jsonb(e)::text not like '%d3f1f1f1%' and to_jsonb(e)::text not like '%Anna%'
+  from e where id = pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ac')), 'elenco: mai l''altra persona né la porta');
+select pg_temp.ok((select tua from public.contestazioni_buca_da_decidere('d3a1a1a1-0000-4000-8000-0000000000d3')
+  where id = pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ac')), 'elenco: la porta del moderatore è segnata «tua»');
+
 -- Chi non può decidere.
 select pg_temp.ok(public.decidi_contestazione_buca(pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ac'),
   'd3c1c1c1-0000-4000-8000-0000000000d3', true) = 'non_moderatore', 'decidi: chi non è moderatore no');
@@ -142,5 +158,7 @@ select pg_temp.ok(public.decidi_contestazione_buca(pg_temp.id_di('d3f1f1f1-0000-
   and (select count(*) = 4 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad')
   and (select stato = 'in_attesa' from public.contestazioni_buca where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'),
   'caso 2 accolto: in attesa di D156, nulla si muove');
+select pg_temp.ok((select count(*) = 2 from public.contestazioni_buca_da_decidere('d3e3e3e3-0000-4000-8000-0000000000d3')),
+  'elenco: le decise escono, restano «non ancora» e quella in attesa di D156');
 reset role;
 rollback;
