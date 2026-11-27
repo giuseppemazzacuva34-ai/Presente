@@ -729,9 +729,10 @@ function schermoChiamata(m) {
       bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
   } else if (sc.tipo === "diario") {
     // #5 spec v1.1 passo 2: «Lo leggi solo tu. Non lo usiamo per niente.» Salva o Salta, nessun obbligo.
-    parti = [h("h1", {}, sc.titolo),
-      h("label", { for: "testo-diario" }, sc.suggerimento),
-      h("textarea", { id: "testo-diario", classe: "racconto-segnala", maxlength: String(sc.massimo), rows: "5", disabled: m.attesa,
+    // Design v4 (schermata 32): occhiello col nome, la domanda come titolo, il campo legato al titolo.
+    parti = [h("p", { classe: "passo" }, sc.occhiello),
+      h("h1", { id: "domanda-diario" }, sc.suggerimento),
+      h("textarea", { id: "testo-diario", classe: "racconto-segnala", "aria-labelledby": "domanda-diario", maxlength: String(sc.massimo), rows: "5", disabled: m.attesa,
         oninput: (e) => { notaDiario.testo = e.target.value; } }, notaDiario.testo),
       h("p", { classe: "nota" }, sc.nota),
       // Design v4 (schermata 32, confronto del 25/11): «Salta» e «Salva» sulla stessa riga.

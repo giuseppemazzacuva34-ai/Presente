@@ -35,13 +35,13 @@ async function ambiente({ dopo = DOPO, salva = async () => ({ ok: true }), conDi
   return { t, salvate };
 }
 
-test("dopo «La richiameresti?» arriva il diario: titolo col nome, suggerimento, nota, Salva e Salta", async () => {
+test("dopo «La richiameresti?» arriva il diario: occhiello col nome, suggerimento, nota, Salva e Salta", async () => {
   const { t } = await ambiente();
   assert.equal(t.modello().schermo.tipo, "richiameresti");
   await t.richiameresti("si");
   const sc = t.modello().schermo;
   assert.equal(sc.tipo, "diario");
-  assert.equal(sc.titolo, "Il tuo diario su Giulia");
+  assert.equal(sc.occhiello, "Il tuo diario · Giulia");
   assert.equal(sc.suggerimento, "Cosa ti è rimasto di questa chiamata?");
   assert.equal(sc.nota, "Lo leggi solo tu. Non lo usiamo per niente.");
   assert.equal(sc.massimo, 1000);

@@ -23,14 +23,14 @@ const diario = (f, token = async () => "tok") => creaDiario({ supabaseUrl: BASE,
 
 test("schermata: i testi della spec con il nome, 1000 caratteri al massimo", () => {
   assert.deepEqual(schermataDiario("Giulia"), {
-    titolo: "Il tuo diario su Giulia",
+    occhiello: "Il tuo diario · Giulia",
     suggerimento: "Cosa ti è rimasto di questa chiamata?",
     nota: "Lo leggi solo tu. Non lo usiamo per niente.",
     salva: "Salva",
     salta: "Salta",
     massimo: 1000,
   });
-  assert.equal(schermataDiario("  ").titolo, "Il tuo diario su questa persona");
+  assert.equal(schermataDiario("  ").occhiello, "Il tuo diario");
   assert.equal(TESTI_DIARIO.appunti, "I tuoi appunti");
 });
 
