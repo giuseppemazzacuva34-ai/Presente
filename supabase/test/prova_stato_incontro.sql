@@ -111,7 +111,7 @@ select pg_temp.ok((select (j->>'controproposte_rimaste')::int = 0 and j->'azioni
 -- Confermato: niente pulsanti di proposta per nessuno dei due, solo «Disdici» (passo 2p).
 select public.rispondi_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9a9a9a9a-0000-4000-8000-00000000009a', 'accetto');
 insert into s select 'b3', public.stato_incontro('9f9f9f9f-0000-4000-8000-0000000000ab', '9b9b9b9b-0000-4000-8000-00000000009b');
-select pg_temp.ok((select j->>'stato' = 'confermato' and j->'azioni' = '["disdici", "ritardo"]'::jsonb and j->'esito' = 'null'::jsonb
+select pg_temp.ok((select j->>'stato' = 'confermato' and j->'azioni' = '["disdici", "ritardo", "cambia_luogo"]'::jsonb and j->'esito' = 'null'::jsonb
   and (j->>'orario')::timestamptz = pg_temp.roma(5, 19) from s where chi = 'b3'), 'stato: confermato, con giorno e ora');
 
 -- Incontro scaduto senza conferma: la lettura lo chiude e restituisce i crediti.
