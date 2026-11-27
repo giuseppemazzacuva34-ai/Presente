@@ -416,8 +416,9 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .foglio-coin .sub { margin: 0; font-size: 14px; line-height: 1.45; color: #A8A29A; }
 .app .foglio-coin .pacco { border: 1px solid rgba(242, 237, 228, 0.2); border-radius: 16px; padding: 14px 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; background: #151217; color: #F2EDE4; border-color: #E8432B; box-shadow: 0 0 0 1px #E8432B, 0 0 24px rgba(232, 67, 43, 0.25); }
 .app .foglio-coin .pacco .q { font-family: var(--serif); font-size: 30px; line-height: 1; }
-.app .foglio-coin .pacco .q small { font-family: inherit; font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
+.app .foglio-coin .pacco .q small { font-family: var(--sans); font-size: 11px; color: #A8A29A; display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
 .app .foglio-coin .pacco .e { font-weight: 700; font-size: 17px; }
+.app .foglio-coin .azioni > .bottone { margin-top: 0; }
 
 /* ===== Linea B (#349): «I tuoi regali», design v4 schermata 28 =====
    Valori dal prototipo docs/design/v4/prototipo (#storico-regali: .passo, h2, .conteggi, .lista-t, .persona). */
