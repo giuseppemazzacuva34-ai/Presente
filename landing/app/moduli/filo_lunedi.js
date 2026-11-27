@@ -45,8 +45,9 @@ function nomiDiOggi(persone, mioNome) {
     nomi.push({ nome, io: false });
   }
   nomi.sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+  // Design v4 (#349, schermata 18): il proprio nome viene per primo, in rosso.
   const mio = pulito(mioNome).slice(0, 40);
-  if (mio) nomi.push({ nome: mio, io: true });
+  if (mio) nomi.unshift({ nome: mio, io: true });
   return nomi;
 }
 
