@@ -123,9 +123,12 @@ export function puoCheckin({ orario, ritardoMinuti = 0, adesso }) {
 // Esito dell'incontro confermato. checkin = { a: Date|null, b: Date|null }.
 // Entrambi → avvenuto subito, caparre sbloccate, valutazione aperta. Alla fine della finestra: uno solo → buca dell'altro;
 // nessuno → crediti a entrambi, niente valutazione (solo il messaggio di controllo).
-export function esitoIncontro({ orario, ritardoMinuti = 0, checkin, adesso, a, b }) {
+// nonRiesco = { a?, b? }: «Non riesco a fare il check-in» mandato nella finestra (spec #6 v1.4 punto 1) → per chi manca
+// nessuna penale finché non decide una persona: esito «contestato», caparre ancora bloccate.
+export function esitoIncontro({ orario, ritardoMinuti = 0, checkin, nonRiesco = {}, adesso, a, b }) {
   if (checkin?.a && checkin?.b) return { esito: "avvenuto", movimenti: restituzione(a, b), presente: 0, valutazione: true };
   if (new Date(adesso) < finestraCheckin({ orario, ritardoMinuti }).a) return { esito: "in_corso", movimenti: [], presente: 0, valutazione: false };
+  if ((checkin?.a && nonRiesco.b) || (checkin?.b && nonRiesco.a)) return { esito: "contestato", movimenti: [], presente: 0, valutazione: false };
   if (checkin?.a) return { ...buca(b, a, b), valutazione: false };
   if (checkin?.b) return { ...buca(a, a, b), valutazione: false };
   return { esito: "nessun_checkin", movimenti: restituzione(a, b), presente: 0, valutazione: false };
