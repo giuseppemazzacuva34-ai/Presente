@@ -134,10 +134,10 @@ test("crediti che non bastano: «Ti mancano N crediti», «Ricarica» primario c
   assert.ok(bottone(aperta, "Più tardi"));
 });
 
-test("niente nomi di funzioni del server toccati: il modulo usa solo blocca e mostraRicarica", () => {
+test("niente nomi di funzioni del server toccati: il modulo usa solo blocca, mostraRicarica e riprova", () => {
   const src = readFileSync(new URL("../landing/app/moduli/svelamento_caparra.js", import.meta.url), "utf8");
   const usate = [...src.matchAll(/ps\.(\w+)\(/g)].map((x) => x[1]).sort();
-  assert.deepEqual([...new Set(usate)], ["blocca", "mostraRicarica"]);
+  assert.deepEqual([...new Set(usate)], ["blocca", "mostraRicarica", "riprova"]);
   assert.doesNotMatch(src, /innerHTML|localStorage|fetch\(/);
 });
 
