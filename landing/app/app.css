@@ -418,6 +418,8 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 
 /* ===== Linea B (#349): «I tuoi regali», design v4 schermata 28 =====
    Valori dal prototipo docs/design/v4/prototipo (#storico-regali: .passo, h2, .conteggi, .lista-t, .persona). */
+.app .storico-regali { display: flex; flex-direction: column; min-height: calc(100dvh - 140px); box-sizing: border-box; }
+.app .storico-regali > .azioni { margin-top: auto; } /* D149: pulsante in fondo allo schermo come nel design */
 .app .storico-regali .corpo { display: flex; flex-direction: column; gap: 12px; }
 .app .storico-regali .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
 .app .storico-regali h2 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }

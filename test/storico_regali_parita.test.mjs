@@ -35,3 +35,9 @@ test("prova 28: titolo, nomi con l'età e ordine come li darebbe il server (il p
   const server = vistaStorico({ totale: r.vista.totale, passate: { rosa: 0, spumante: 0, fiori: 0, stanze: 0, persone: 0 }, attuale: null });
   assert.equal(r.vista.titolo, server.titolo);
 });
+
+test("28: la schermata è alta quanto il telefono e «Torna al profilo» sta in fondo (come la 13)", () => {
+  const css = readFileSync(new URL("../landing/app/app.css", import.meta.url), "utf8");
+  assert.match(css, /\.app \.storico-regali \{[^}]*min-height: calc\(100dvh - 140px\)/);
+  assert.match(css, /\.app \.storico-regali > \.azioni \{[^}]*margin-top: auto/);
+});
