@@ -216,6 +216,46 @@ export function vociContestazioni(righe) {
   });
 }
 
+// #6 v1.4: «Ero lì» / «Non riesco». Stessi esiti del Worker; l'effetto sui crediti dipende dalla fase (spec v1.4,
+// D156 A). Mai l'altra persona né la porta: il Worker e il database non le danno.
+const ESITI_BUCA = Object.freeze({
+  prima_della_buca: Object.freeze([
+    ["accolta", "Accogli: caparre restituite a entrambi (100 + 100)"],
+    ["respinta", "Respingi: buca normale (70 a chi ha aspettato, 30 a Presente)"],
+  ].map(Object.freeze)),
+  dopo_buca: Object.freeze([
+    ["accolta", "Accogli: tornano 100 a chi contesta, chi ha aspettato tiene i 70"],
+    ["respinta", "Respingi: nulla cambia"],
+  ].map(Object.freeze)),
+});
+const DICE_BUCA = Object.freeze({ prima_della_buca: "«Non riesco a fare il check-in»", dopo_buca: "«Ero lì»" });
+export function esitiBuca(fase) {
+  return Object.hasOwn(ESITI_BUCA, fase) ? ESITI_BUCA[fase] : [];
+}
+function quandoBuca(t) {
+  const d = new Date(typeof t === "string" ? t : "");
+  return Number.isNaN(d.getTime()) ? "" : `${GIORNO_MESE.format(d)} alle ${ORA.format(d)}`;
+}
+export function vociBuche(righe) {
+  if (!Array.isArray(righe)) return [];
+  return righe.filter((r) => r && UUID.test(r.id || "") && Object.hasOwn(ESITI_BUCA, r.fase)).map((r) => {
+    const tua = r.tua === true;
+    const presto = !tua && r.decidibile !== true;
+    const incontro = quandoBuca(r.orario);
+    return {
+      id: r.id,
+      fase: r.fase,
+      titolo: `${nome(r.nome) || "Senza nome"} dice ${DICE_BUCA[r.fase]}`,
+      incontro: incontro ? `Incontro del ${incontro}` : "",
+      inviata: quandoBuca(r.inviata_il),
+      perche: typeof r.testo === "string" && r.testo.trim() ? r.testo : "Nessun motivo scritto.",
+      puoiDecidere: !tua && !presto,
+      nota: tua ? "La contestazione è tua: la decide un'altra persona."
+        : presto ? "Si decide quando è finita la finestra del check-in." : "",
+    };
+  });
+}
+
 export function creaPannello({ token, fetch: f = globalThis.fetch }) {
   async function chiama(percorso, corpo) {
     const t = await Promise.resolve().then(token).catch(() => null);
@@ -304,6 +344,16 @@ export function creaPannello({ token, fetch: f = globalThis.fetch }) {
       if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
       if (!ESITI_CONTESTAZIONE_PANNELLO.some(([e]) => e === esito)) return { ok: false, motivo: "esito" };
       const d = await chiama("/contestazione", { id, esito });
+      return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
+    },
+    async buche() {
+      const d = await chiama("/buche");
+      return d.ok ? { ok: true, buche: Array.isArray(d.buche) ? d.buche : [] } : d;
+    },
+    async decidiBuca({ id, esito }) {
+      if (!UUID.test(id || "")) return { ok: false, motivo: "id" };
+      if (!["accolta", "respinta"].includes(esito)) return { ok: false, motivo: "esito" };
+      const d = await chiama("/buca", { id, esito });
       return d.ok ? { ok: true } : { ok: false, motivo: d.motivo || "riprova" };
     },
   };
