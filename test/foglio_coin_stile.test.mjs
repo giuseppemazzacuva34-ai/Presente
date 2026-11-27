@@ -20,3 +20,9 @@ test("21: «+N in regalo» sotto il numero è senza grazie, maiuscolo e spaziato
 test("21: «Dopo» e «Ricarica» alti uguali, sulla stessa riga (nessun margine sopra «Ricarica»)", () => {
   assert.match(regole(".app .foglio-coin .azioni > .bottone"), /margin-top: 0/);
 });
+
+// 27 (D149): mentre la rosa grande è al centro della chiamata, l'onda grande della chiamata (linea A) non si vede,
+// come nel design; torna da sola quando l'avviso sparisce. Solo CSS, nessun file della linea A toccato.
+test("27: con l'avviso del regalo al centro l'onda grande della chiamata si nasconde", () => {
+  assert.match(regole(".app:has(.avviso-regalo) .onda-grande.in-chiamata"), /visibility: hidden/);
+});
