@@ -294,8 +294,11 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .foglio-regali .azioni > .bottone, .app .foglio-regali .azioni > .bottone-secondario { margin-left: 0; width: 100%; white-space: normal; }
 .app .foglio-regali .azioni > .bottone-secondario { order: -1; }
 .app .foglio-regali-messaggio { margin: 0; font-size: 15px; line-height: 1.4; color: #F2EDE4; }
-.app .avviso-regalo { position: fixed; top: calc(76px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 45; margin: 0; width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(232, 67, 43, 0.6); background: #18151B; color: #F2EDE4; font-size: 14px; text-align: center; animation: regalo-arriva 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@keyframes regalo-arriva { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.app .avviso-regalo { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 45; margin: 0; width: calc(100% - 48px); max-width: 26rem; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; color: #F2EDE4; pointer-events: none; animation: regalo-arriva 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.app .avviso-regalo .regalo-icona { width: 120px; height: 120px; filter: drop-shadow(0 0 18px rgba(232, 67, 43, 0.6)); }
+.app .avviso-regalo .avviso-regalo-frase { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.15; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6); }
+.app .avviso-regalo em { color: #E8432B; }
+@keyframes regalo-arriva { from { opacity: 0; transform: translate(-50%, -46%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .app .avviso-regalo { animation: none; } }
 
 /* Design v4 (#349, schermate 16 e 35): la home che cambia con la settimana. Valori del prototipo v4. */
