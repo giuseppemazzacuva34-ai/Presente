@@ -49,5 +49,5 @@ test("flusso.js usa lo sfondo nella chiamata in corso con il gruppo della stanza
 test("il service worker tiene il modulo nuovo (le immagini, come quelle della porta, arrivano dalla rete)", () => {
   const sw = leggi("../landing/app/sw.js");
   assert.ok(sw.includes('"/app/moduli/sfondo_chiamata.js"'));
-  assert.match(sw, /const VERSIONE = "presente-app-73"/);
+  assert.ok(Number((sw.match(/const VERSIONE = "presente-app-(\d+)"/) || [])[1]) >= 73, "cache almeno alla 73");
 });

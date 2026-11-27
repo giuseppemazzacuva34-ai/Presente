@@ -691,3 +691,14 @@ body:has(.chiamata.in-corso) { background: transparent; }
    copriva la metà bassa di «Entra nella stanza» del Filo. Il Filo lascia spazio prima della scheda del profilo. */
 .azioni:empty { position: static; background: none; }
 .app .filo-lunedi { margin-bottom: 24px; }
+/* ===== Linea A (#349, D149): la chiamata squilla, schermata 24 =====
+   Valori dal prototipo (#n17): occhiello spaziato, «Stai chiamando» serif con il nome sotto in rosso corsivo, onda
+   grande nei toni del rosso che pulsa piano (animazione «attesa», ferma con meno movimento), CHIUDI 3D in fondo. */
+.chiamata.squillo-uscita { text-align: center; gap: 14px; min-height: calc(100dvh - 130px); }
+.chiamata.squillo-uscita .passo { margin: auto 0 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.chiamata.squillo-uscita h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 34px; line-height: 1.1; color: #F2EDE4; }
+.chiamata.squillo-uscita h1 em { display: block; font-style: italic; color: #E8432B; }
+.chiamata.squillo-uscita .onda-grande { margin: 18px 0 6px; }
+.chiamata.squillo-uscita .sottotitolo { margin: 0; color: #A8A29A; font-variant-numeric: tabular-nums; }
+.chiamata.squillo-uscita .azioni-chiamata { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+.chiamata.squillo-uscita .azioni-chiamata > .bottone { width: 100%; margin: 0; }
