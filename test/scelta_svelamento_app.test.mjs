@@ -119,8 +119,8 @@ test("vista: gruppo «Come vi volete vedere?» con due schede a pressione, il to
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
   await ps.apri(PORTA);
   let v = vistaPorta(h, ps);
-  const gruppo = tutti(v, (x) => x.a.role === "group" && x.a["aria-labelledby"] === "come-titolo")[0];
-  assert.ok(gruppo, "gruppo presente");
+  const gruppo = tutti(v, (x) => x.a.role === "group" && x.a["aria-labelledby"] === "porta-titolo")[0];
+  assert.ok(gruppo, "gruppo presente (D149: nella 40 il nome del gruppo è il titolo della pagina)");
   assert.ok(testo(v).includes("Come vi volete vedere?"));
   const video = scheda(v, "Videochiamata");
   const foto = scheda(v, "Le foto");

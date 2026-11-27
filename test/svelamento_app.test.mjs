@@ -248,7 +248,7 @@ test("vista: titolo, nome ed età, conto, saldo, pulsante «Blocca 100 Coin» co
   assert.equal(b.a["aria-describedby"], "caparra-spiegazione");
   await b.a.onclick();
   assert.deepEqual(sv.chiamate.at(-1), ["blocca", PORTA]);
-  assert.ok(bottone(vistaPorta(h, ps), "Torna alla stanza"));
+  assert.ok(bottone(vistaPorta(h, ps), "Torna"), "D149: dopo la caparra la pagina è la 40 con «Torna»");
   assert.equal(bottone(vistaPorta(h, ps), "Blocca 100 crediti"), undefined, "dopo la caparra il pulsante sparisce");
 });
 

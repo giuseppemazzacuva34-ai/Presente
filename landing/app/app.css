@@ -609,6 +609,9 @@ body.in-iscrizione #app > .benvenuto-v4 > .azioni { margin-top: 0; }
 .app .svelamento-v4 .nota { margin: 0; color: #A8A29A; font-size: 12px; }
 .app .svelamento-v4 .azioni { margin-top: auto; }
 .app .svelamento-v4 .azioni button { white-space: nowrap; padding-inline: 14px; font-size: 15px; }
+/* Linea C · schermata 40 come pagina (D149): titolo grande del prototipo su due righe, niente margini doppi. */
+.app .come-v4 .come-svelamento { margin: 0; }
+.app .come-v4 h1 { font-size: 34px; }
 
 /* ===== Parità con il design v4, iscrizione 01-12 (D149, 26/11) =====
    Niente saldo né profilo durante l'iscrizione; schermata alta quanto il telefono con i pulsanti in fondo;
