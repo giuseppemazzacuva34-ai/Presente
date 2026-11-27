@@ -1,7 +1,7 @@
 -- Test della decisione su «Ero lì» / «Non riesco» (issue #6 spec v1.4, CPO 27/11; D51 A: decide una persona).
 -- Caso 1 («Non riesco» nella finestra, esito «contestato»): accolta → 100 a entrambi, nessun 70/30; respinta → buca
--- normale (70 a chi ha aspettato, 30 a Presente). Caso 2 (buca già pagata): respinta → nulla si muove; accolta → in
--- attesa di D156 (nulla si muove, la contestazione resta da decidere). Una decisione sola; mai sulla propria porta.
+-- normale (70 a chi ha aspettato, 30 a Presente). Caso 2 (buca già pagata): respinta → nulla si muove; accolta → D156 A
+-- (100 a chi contesta, chi ha aspettato tiene i 70, Presente rinuncia ai 30). Una decisione sola; mai sulla propria porta.
 -- Linea «sviluppatore-b». Dati inventati, Postgres di prova.
 \set ON_ERROR_STOP on
 create function pg_temp.ok(condizione boolean, descrizione text) returns void language plpgsql as $$
@@ -153,12 +153,34 @@ select pg_temp.ok(public.decidi_contestazione_buca(pg_temp.id_di('d3f1f1f1-0000-
   'd3e3e3e3-0000-4000-8000-0000000000d3', false) = 'respinta'
   and (select count(*) = 4 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000bc'),
   'caso 2 respinto: nessun movimento');
+-- Caso 2 accolto (D156 A, Giuseppe 27/11): chi ha aspettato tiene i 70, a chi contesta tornano 100, Presente rinuncia
+-- ai 30 (e copre i 70). Esito «annullato»: nessuno ha dato buca.
 select pg_temp.ok(public.decidi_contestazione_buca(pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ad'),
-  'd3e3e3e3-0000-4000-8000-0000000000d3', true) = 'in_attesa_d156'
-  and (select count(*) = 4 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad')
-  and (select stato = 'in_attesa' from public.contestazioni_buca where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'),
-  'caso 2 accolto: in attesa di D156, nulla si muove');
-select pg_temp.ok((select count(*) = 2 from public.contestazioni_buca_da_decidere('d3e3e3e3-0000-4000-8000-0000000000d3')),
-  'elenco: le decise escono, restano «non ancora» e quella in attesa di D156');
+  'd3e3e3e3-0000-4000-8000-0000000000d3', true) = 'accolta', 'caso 2 accolto (D156 A)');
+-- Anna ha già avuto +100 dal caso 1 accolto (porta ac): qui altri +100.
+select pg_temp.ok(pg_temp.saldo('d3a1a1a1-0000-4000-8000-0000000000d3') = pg_temp.prima('d3a1a1a1-0000-4000-8000-0000000000d3') + 200,
+  'caso 2 accolto: tornano 100 a chi contesta');
+select pg_temp.ok(pg_temp.saldo('d3d1d1d1-0000-4000-8000-0000000000d3') = pg_temp.prima('d3d1d1d1-0000-4000-8000-0000000000d3'),
+  'caso 2 accolto: chi ha aspettato tiene i 70 (nessun movimento)');
+select pg_temp.ok((select count(*) = 5 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad')
+  and (select count(*) = 1 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'
+       and persona = 'd3a1a1a1-0000-4000-8000-0000000000d3' and tipo = 'caparra_restituita'),
+  'caso 2 accolto: un solo movimento nuovo (+100 a chi contesta)');
+select pg_temp.ok((select esito = 'annullato' and crediti_presente = 0 from public.incontri
+  where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'), 'caso 2 accolto: Presente rinuncia ai 30, esito annullato');
+select pg_temp.ok((select stato = 'accolta' and deciso_da = 'd3e3e3e3-0000-4000-8000-0000000000d3'
+  from public.contestazioni_buca where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'), 'caso 2 accolto: chi e quando');
+select pg_temp.ok(public.decidi_contestazione_buca(pg_temp.id_di('d3f1f1f1-0000-4000-8000-0000000000ad'),
+  'd3e3e3e3-0000-4000-8000-0000000000d3', true) = 'gia_decisa'
+  and (select count(*) = 5 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'),
+  'caso 2: una seconda decisione è rifiutata e non muove crediti');
+select pg_temp.ok(not public.buca_accolta_dopo_pagamento('d3f1f1f1-0000-4000-8000-0000000000ad', 'd3a1a1a1-0000-4000-8000-0000000000d3')
+  and (select count(*) = 5 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000ad'),
+  'caso 2: la funzione chiamata di nuovo non restituisce due volte');
+select pg_temp.ok(not public.buca_accolta_dopo_pagamento('d3f1f1f1-0000-4000-8000-0000000000bc', 'd3b1b1b1-0000-4000-8000-0000000000d3')
+  and (select count(*) = 4 from public.crediti_movimenti where porta_id = 'd3f1f1f1-0000-4000-8000-0000000000bc'),
+  'caso 2: mai a chi ha aspettato (non è chi ha dato buca)');
+select pg_temp.ok((select count(*) = 1 from public.contestazioni_buca_da_decidere('d3e3e3e3-0000-4000-8000-0000000000d3')),
+  'elenco: le decise escono, resta solo quella «non ancora»');
 reset role;
 rollback;
