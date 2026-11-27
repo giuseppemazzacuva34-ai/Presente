@@ -217,3 +217,11 @@ test("stile: classi della schermata nel blocco della linea C in fondo ad app.css
   assert.match(css, /\.chiave-data \.azioni/);
   assert.ok(!leggi("../landing/app/sw.js").includes('"presente-app-66"'));
 });
+
+test("stile: 33 e 34 alte quanto lo schermo, pulsanti in fondo come il design v4 (non più min(80vh, 700px))", () => {
+  const css = leggi("../landing/app/app.css");
+  const regola = css.match(/\.app \.chiave-v4 \{[^}]*\}/)[0];
+  assert.match(regola, /min-height: calc\(100dvh - 140px\)/);
+  assert.match(regola, /box-sizing: border-box/);
+  assert.doesNotMatch(regola, /80vh/);
+});

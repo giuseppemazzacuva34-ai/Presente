@@ -138,3 +138,11 @@ test("service worker e stile: modulo tra i file dell'app, versione cambiata, reg
   assert.match(css, /\.app \.domenica-sera-luce \{[^}]*animation/);
   assert.match(css, /prefers-reduced-motion: reduce\) \{ \.app \.domenica-sera-luce \{ animation: none; \}/);
 });
+
+test("stile 35: la porta arriva fino in fondo allo schermo come il design v4 (non più min(80vh, 700px))", () => {
+  const css = leggi("../landing/app/app.css");
+  const regola = css.match(/\.app \.domenica-sera \{[^}]*\}/)[0];
+  assert.match(regola, /min-height: calc\(100dvh - 112px\)/);
+  assert.match(regola, /box-sizing: border-box/);
+  assert.doesNotMatch(regola, /80vh/);
+});
