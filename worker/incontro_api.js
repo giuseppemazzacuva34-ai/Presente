@@ -16,6 +16,10 @@
 //   POST /app/api/incontro  { azione: "ritardo", porta, minuti: 15 | 30 }             → ritardo_incontro
 //        «Arrivo in ritardo» (spec v1, casi limite): una volta sola, sposta la finestra del check-in; nello stato
 //        «ritardo_mio» solo sì/no.
+//   POST /app/api/incontro  { azione: "cambia_luogo", porta, locale | luogo }       → cambia_luogo
+//   POST /app/api/incontro  { azione: "rispondi_cambio", porta, risposta: "accetto" | "rifiuto" } → rispondi_cambio_luogo
+//        «Cambia luogo» (spec v1, casi limite): fino a 1 ora prima, con conferma dell'altra persona; nello stato
+//        «cambio_luogo» { mio, locale, luogo, scade } | null, mai chi l'ha chiesto (ripulito da soloCambioLuogo).
 //   POST /app/api/incontro  { azione: "valuta", porta, presentato, foto_sue, come_in_chiamata, sicuro } → valuta_incontro
 //        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
 //   POST /app/api/incontro  { azione: "racconta", porta, testo }                     → racconta_valutazione
@@ -50,6 +54,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const RISPOSTE = ["accetto", "annulla"];
+const RISPOSTE_CAMBIO = ["accetto", "rifiuto"]; // «Cambia luogo»: la risposta dell'altra persona
 const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_incontro: ["confermato", "annullato"],
   checkin_incontro: ["sono_qui", "avvenuto"],
   // Passo 2m (spec v1.1): «Disdici» → «disdetto» (torna da fissare) o «disdetto_tardi» (buca di chi disdice).
@@ -65,7 +70,10 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Spec v1, casi limite: «Arrivo in ritardo» (+15 o +30 minuti, una volta sola).
   ritardo_incontro: ["ritardo"],
   // Spec v1: «Ero lì» e «Non riesco a fare il check-in» (contestazione della buca).
-  contesta_buca: ["inviata"] };
+  contesta_buca: ["inviata"],
+  // Spec v1, casi limite: «Cambia luogo» con conferma dell'altra persona.
+  cambia_luogo: ["proposto"],
+  rispondi_cambio_luogo: ["cambiato", "rifiutato"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -79,6 +87,9 @@ const RIFIUTI = {
   contesta_no: ["testo_non_valido", "domanda_non_valida", "nessun_no"],
   ritardo_incontro: ["non_confermato", "incontro_chiuso", "ritardo_non_valido", "ritardo_gia_usato", "gia_fatto", "troppo_tardi"],
   contesta_buca: ["testo_non_valido", "non_contestabile", "gia_inviata"],
+  cambia_luogo: ["non_confermato", "incontro_chiuso", "troppo_tardi", "luogo_non_valido", "stesso_luogo", "attendi_risposta",
+    "rispondi_prima"],
+  rispondi_cambio_luogo: ["nessun_cambio", "non_puoi_rispondere", "troppo_tardi", "non_confermato", "incontro_chiuso"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -188,6 +199,17 @@ export async function incontroApi(request, env, f = fetch) {
     return esegui(s, "valuta_incontro", { p_porta: porta, p_persona: chi.id, p_presentato: v.risposte.presentato,
       p_foto_sue: v.risposte.foto_sue, p_come_in_chiamata: v.risposte.come_in_chiamata, p_sicuro: v.risposte.sicuro }, f);
   }
+  if (azione === "cambia_luogo") {
+    const locale = testo(corpo.dati.locale);
+    const luogo = testo(corpo.dati.luogo);
+    if (locale.errore || luogo.errore) return dati();
+    return esegui(s, "cambia_luogo", { p_porta: porta, p_persona: chi.id, p_locale: locale.valore, p_luogo: luogo.valore }, f);
+  }
+  if (azione === "rispondi_cambio") {
+    const { risposta: scelta } = corpo.dati;
+    if (!RISPOSTE_CAMBIO.includes(scelta)) return dati();
+    return esegui(s, "rispondi_cambio_luogo", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
+  }
   if (azione === "contesta_buca") return contestaBuca(s, chi, porta, corpo.dati.testo, f);
   if (azione === "racconta") {
     const t = corpo.dati.testo;
@@ -224,6 +246,17 @@ function soloDisdetta(d) {
   return { mia: d.mia, il, orario };
 }
 
+// Richiesta di «Cambia luogo» nello stato: solo «mio» sì/no, un luogo (locale o scritto, max 80) e la scadenza della
+// conferma; mai chi l'ha chiesta. Forma diversa → null.
+function soloCambioLuogo(c) {
+  if (!c || typeof c !== "object" || Array.isArray(c) || typeof c.mio !== "boolean") return null;
+  const locale = c.locale ?? null;
+  const luogo = c.luogo ?? null;
+  if ((locale === null) === (luogo === null) || ![locale, luogo].every((v) => v === null || breve(v, 80))) return null;
+  if (typeof c.scade !== "string" || c.scade.length > 40 || Number.isNaN(Date.parse(c.scade))) return null;
+  return { mio: c.mio, locale, luogo, scade: c.scade };
+}
+
 // Stato dell'incontro per la persona del token. Un errore noto → 404 senza dire perché; una risposta di forma
 // sconosciuta è un guasto → «riprova».
 async function stato(s, request, chi, f) {
@@ -238,6 +271,7 @@ async function stato(s, request, chi, f) {
   const incontro = Object.fromEntries(CAMPI_STATO.map((k) => [k, r[k] ?? null]));
   incontro.disdetta = soloDisdetta(r.disdetta);
   incontro.ritardo_mio = r.ritardo_mio === true; // solo sì/no, mai chi ha dichiarato il ritardo
+  incontro.cambio_luogo = soloCambioLuogo(r.cambio_luogo); // «Cambia luogo»: mai chi l'ha chiesto
   Object.assign(incontro, soloLocali(await rpc(s, "locali_incontro", { p_porta: porta, p_persona: chi.id }, f)));
   return risposta(200, { ok: true, incontro });
 }

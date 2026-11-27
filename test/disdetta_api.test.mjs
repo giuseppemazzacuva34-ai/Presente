@@ -98,6 +98,7 @@ const STATO_DISDETTO = {
   ritardo_minuti: 0, esito: null, checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null,
   segnale: null, disdetta: { mia: false, il: "2026-11-20T09:00:00+00:00", orario: "2026-11-21T18:00:00+00:00" },
   ritardo_mio: false,
+  cambio_luogo: null, // «Cambia luogo»: nessuna richiesta
 };
 const leggiStato = () => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${PORTA}` });
 
