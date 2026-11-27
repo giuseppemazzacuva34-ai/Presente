@@ -727,3 +727,19 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .chiamata:has(.azioni-diario) .nota { margin: 0; color: #A8A29A; font-size: 12px; }
 .chiamata:has(.azioni-diario) .azioni-diario { display: grid; grid-template-columns: 1fr 1.7fr; gap: 12px; align-items: stretch; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
 .chiamata:has(.azioni-diario) .azioni-diario > * { width: 100%; margin: 0; }
+
+/* Design v4 (#349, D149), schermata 36 «Il Filo · le porte aperte» (linea C): valori del prototipo #madrina-domenica
+   (.passo, .madr, .big-n, .app h2 28px con «em» rosso, .nota); il pulsante resta in fondo come il piede «uno». */
+.app .filo-domenica { display: flex; flex-direction: column; gap: 11px; text-align: center; padding: 4px 0 16px; }
+.app .filo-domenica:has(.filo-scheda) { min-height: min(640px, calc(100svh - 160px)); }
+.app .filo-domenica .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.app .filo-domenica .filo-scheda { margin: 0; padding: 11px 12px; border: 1px solid #E8432B; border-radius: 16px; background: linear-gradient(180deg, rgba(232,67,43,.13), rgba(232,67,43,.03)); text-align: left; }
+.app .filo-domenica .filo-scheda b { font-size: 14px; }
+.app .filo-domenica .filo-scheda small { font-size: 11.5px; }
+.app .filo-domenica .filo-simbolo { width: 50px; height: 50px; background: transparent; border: 2px solid #E8432B; color: #F2EDE4; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 32px; box-shadow: 0 0 18px rgba(232,67,43,.5); }
+.app .filo-domenica .filo-attacco { margin: 0; font-family: var(--serif); font-style: italic; font-size: 17px; color: #A8A29A; }
+.app .filo-domenica h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 28px; line-height: 1.05; letter-spacing: -0.01em; }
+.app .filo-domenica .filo-numero { display: block; margin-bottom: 8px; font-size: 92px; line-height: 1; font-style: italic; color: #E8432B; text-shadow: 0 0 30px rgba(232,67,43,.5); }
+.app .filo-domenica .filo-riga-rossa { font-style: italic; color: #E8432B; }
+.app .filo-domenica .nota { margin: 0 0 18px; font-size: 12px; color: #A8A29A; }
+.app .filo-domenica .bottone { margin-top: auto; width: 100%; }

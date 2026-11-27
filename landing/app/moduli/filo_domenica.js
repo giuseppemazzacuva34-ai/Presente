@@ -143,8 +143,10 @@ export function vistaFiloDomenica(h, fd, { scopri = () => {} } = {}) {
     h("h2", { id: "filo-domenica-titolo" },
       s.numero ? h("span", { classe: "filo-numero" }, s.numero) : null,
       s.numero ? " " : null,
-      s.frase),
-    s.rigaRossa ? h("p", { classe: "filo-riga-rossa" }, s.rigaRossa) : null,
+      s.frase,
+      // Design v4: la riga rossa è il corsivo del titolo («<em>» del prototipo), su una riga sua.
+      s.rigaRossa ? h("br", {}) : null,
+      s.rigaRossa ? h("em", { classe: "filo-riga-rossa" }, s.rigaRossa) : null),
     h("p", { classe: "nota" }, s.nota),
     h("button", { classe: "bottone", type: "button", onclick: vai }, s.bottone));
 }
