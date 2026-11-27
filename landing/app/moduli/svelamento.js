@@ -12,6 +12,7 @@
 import { TESTI_SALA, vistaSala } from "./sala_attesa.js";
 import { vistaSchermata } from "./schermata_svelamento.js";
 import { vistaCome } from "./svelamento_come.js";
+import { vistaCaparra } from "./svelamento_caparra.js";
 
 const PERCORSO = "/app/api/svelamento";
 const ATTESA_MS = 8000;
@@ -193,6 +194,7 @@ export function schermataPorta(stato, idPorta, adesso = new Date()) {
     tipo: "porta", porta: p.porta, titolo: TESTI.aperta,
     chi: Number.isInteger(p.eta) ? `${n}, ${p.eta}` : n,
     conto, saldo: `I tuoi crediti: ${saldo}`, caparra, scelta, quando: quandoPorta(p, n, adesso),
+    scadeIl: p.scade_il, // timer «hh:mm» della schermata 39 (design v4, svelamento_caparra.js)
     // Passo 6b: «momento» e «tipo» solo come li dà il server (passo 6a); un tipo sconosciuto non accende la fotocamera.
     momento: p.momento === true,
     tipoSvelamento: p.momento === true && SCELTE.includes(p.tipo) ? p.tipo : null,
@@ -676,6 +678,7 @@ export function creaPortaSvelamento({ svelamento, aggiorna = () => {}, adesso = 
       nome: nomeAltra(),
       segnala: segnala ? { ...segnala } : null,
       schermata: porta !== null ? schermataPorta(stato, porta, adesso()) : null,
+      adesso: adesso(), // per il timer «hh:mm» della schermata 39 (svelamento_caparra.js)
     }),
   };
 }
@@ -699,6 +702,9 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
         : h("div", { classe: "azioni" }, h("button", { classe: "bottone-secondario", type: "button", onclick: torna }, TESTI.torna)));
   }
   if (video && fase === "uscita") parti.push(vistaSchermata(h, video));
+  // Design v4 (#349, schermata 39, linea C con l'ok del CTO): prima della propria caparra, la pagina è la 39.
+  const v39 = !(video && fase === "uscita") && s && s.tipo === "porta" ? vistaCaparra(h, ps, m, s, { torna, scadeIl: s.scadeIl, adesso: m.adesso }) : null;
+  if (v39) return v39;
   if (m.carica && !s) parti.push(h("p", { classe: "nota", role: "status" }, "Un attimo…"));
   if (m.errore) {
     parti.push(h("p", { classe: "errore", role: "alert" }, m.errore),

@@ -229,6 +229,8 @@ test("errore di lettura: testo breve e «Riprova»", async () => {
   assert.equal(ps.modello().schermata.tipo, "porta");
 });
 
+// Design v4 (#349, schermata 39, linea C): prima della caparra il titolo è «Hai 48 ore / per lo svelamento.», il conto
+// è il timer «34:30» con il testo intero per il lettore di schermo; dopo la caparra torna «Torna alla stanza».
 test("vista: titolo, nome ed età, conto, saldo, pulsante «Blocca 100 Coin» con la spiegazione e «Torna alla stanza»", async () => {
   const sv = svelamentoFinto({ ok: true, stato: stato() });
   const ps = creaPortaSvelamento({ svelamento: sv, adesso: () => LUNEDI });
@@ -236,9 +238,9 @@ test("vista: titolo, nome ed età, conto, saldo, pulsante «Blocca 100 Coin» co
   sv.risposte.blocca = { ok: true, esito: "bloccata", stato: stato([porta({ mia_caparra: true })], 10) };
   const v = vistaPorta(h, ps);
   const t = testo(v);
-  assert.ok(t.includes(TESTI.aperta));
+  assert.ok(t.includes("Hai 48 oreper lo svelamento."));
   assert.ok(t.includes("Giulia, 31"));
-  assert.ok(t.includes("Mancano 34 ore e 30 minuti per lo svelamento."));
+  assert.equal(tutti(v, (x) => x.a.role === "timer")[0].a["aria-label"], "Mancano 34 ore e 30 minuti per lo svelamento.");
   assert.ok(t.includes("I tuoi crediti: 120"));
   assert.ok(t.includes(TESTI_SVELAMENTO.spiegazioneCaparra));
   const b = bottone(v, "Blocca 100 crediti");
