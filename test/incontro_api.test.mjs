@@ -154,6 +154,7 @@ const STATO = {
   checkin_mio: false, checkin_altro: false, checkin_da: null, checkin_fino: null, segnale: null,
   disdetta: null, // passo 2q
   ritardo_mio: false, // «Arrivo in ritardo»: solo sì/no, mai chi l'ha dichiarato
+  cambio_luogo: null, // «Cambia luogo»: nessuna richiesta in corso
 };
 const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
 
