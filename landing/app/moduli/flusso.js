@@ -7,8 +7,8 @@
 // CON L'ACCESSO ACCESO (ACCESSO_APP = «si»): ogni «Continua» salva il passo su Supabase (salvataggio.js) e chi esce
 // a metà, al rientro, riparte dal passo lasciato.
 
-import { DOMANDE, TEMI, IMPORTANZA, testoImportanza, DOMANDE_VOCE, erroreRisposta } from "./domande.js";
-import { registra, registrazioneSupportata, MINIMO_SECONDI } from "./registratore.js";
+import { DOMANDE, TEMI, IMPORTANZA, testoImportanza, DOMANDE_VOCE, DOMANDE_VOCE_BREVI, erroreRisposta } from "./domande.js";
+import { registra, registrazioneSupportata, MINIMO_SECONDI, scalaOnda } from "./registratore.js";
 import { preparaFoto } from "./foto.js";
 import { MESSAGGI } from "./accesso.js";
 import { profiloDaStato, filtriDaStato, statoDaSalvato, FILE_VOCE, fileRisposta, fileFoto } from "./salvataggio.js";
@@ -895,8 +895,8 @@ function errore(testo) {
 }
 
 // Gruppo di scelte a pulsante (radio o caselle). valori: [[valore, etichetta]].
-function scelte(nome, valori, scelto, onScelta, { multipla = false, etichetta = null, descrizione = null } = {}) {
-  return h("div", { classe: "scelte", role: multipla ? "group" : "radiogroup",
+function scelte(nome, valori, scelto, onScelta, { multipla = false, etichetta = null, descrizione = null, pillole = false } = {}) {
+  return h("div", { classe: pillole ? "scelte pillole" : "scelte", role: multipla ? "group" : "radiogroup",
     ...(etichetta ? { "aria-labelledby": etichetta } : {}), ...(descrizione ? { "aria-describedby": descrizione } : {}) },
     valori.map(([valore, etichetta]) => {
       const attivo = multipla ? scelto.includes(valore) : scelto === valore;
@@ -1120,8 +1120,9 @@ const SCHERMATE = {
   },
 
   voce() {
+    // Design v4: 07 mentre registri, 08 «Eccola…» con Riascolta e Rifai quando la voce c'è.
     return schermata("La tua voce",
-      "Presentati come faresti a una cena tra amici. Hai 20 secondi.",
+      stato.voce ? "Eccola. Se non ti convince, rifalla." : "Presentati come faresti a una cena tra amici. Hai 20 secondi.",
       [registratoreVoce(stato.voce, 20, (esito) => { stato.voce = esito; disegna(); })],
       [indietro(), avanti("Continua", Boolean(stato.voce), () => salvaEVai(7, caricaSeServe("voci", FILE_VOCE, stato.voce)))]);
   },
@@ -1131,13 +1132,13 @@ const SCHERMATE = {
     if (stato.rispostaInCorso === null || scelte3[stato.rispostaInCorso] === undefined) {
       if (stato.rispostaInCorso !== null) stato.rispostaInCorso = null;
       return schermata("Tre risposte a voce",
-        "Scegli 3 domande e rispondi a voce, massimo 30 secondi ciascuna.",
-        [scelte("domande-voce", DOMANDE_VOCE.map((d, i) => [i, d]), scelte3, (i) => {
+        "Scegli 3 domande e rispondi a voce, massimo 30 secondi.",
+        // Design v4 (09): pillole brevi in colonna, le tre scelte in crema; la domanda intera nella sua schermata.
+        [scelte("domande-voce", DOMANDE_VOCE_BREVI.map((d, i) => [i, d]), scelte3, (i) => {
             if (scelte3.includes(i)) { stato.domandeVoce = scelte3.filter((x) => x !== i); delete stato.risposteVoce[i]; }
             else if (scelte3.length < 3) stato.domandeVoce = [...scelte3, i];
             disegna();
-          }, { multipla: true }),
-          h("p", { classe: "nota" }, `${scelte3.length} di 3 scelte`)],
+          }, { multipla: true, pillole: true })],
         [indietro(), avanti("Registra le risposte", scelte3.length === 3, () => { stato.rispostaInCorso = 0; vaiRisposta(); })]);
     }
     // Una schermata per domanda (Giuseppe, 24/11): «Domanda 1 di 3», il testo una volta sola, Registra / Riascolta /
@@ -1266,7 +1267,10 @@ const SCHERMATE = {
 
 // ---------------------------------------------------------------------------------------------------------------
 function registratoreVoce(esistente, massimo, onFatto) {
-  const box = h("div", { classe: "registratore" });
+  // Design v4 (#n07, #n08): riquadro .rec con l'onda grande; sotto «n / 20 s» e Registra/Ferma sulla stessa riga;
+  // a registrazione fatta «▶ Riascolta» e «Rifai» in riga. Durante la registrazione l'onda segue il livello della voce.
+  const box = h("div", { classe: "registratore rec" });
+  const menoMovimento = Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const messaggi = {
     breve: `Troppo corta: parla almeno ${MINIMO_SECONDI} secondi.`,
     silenzio: "Non ti sentiamo bene, riprova un po' più vicino al telefono.",
@@ -1274,38 +1278,51 @@ function registratoreVoce(esistente, massimo, onFatto) {
     non_supportato: "Questo browser non registra audio. Su iPhone usa Safari aggiornato, su Android Chrome.",
     altro: "Non riusciamo a usare il microfono. Riprova.",
   };
+  const tempo = (s) => h("p", { classe: "tempo", "aria-live": "off" }, `${Math.floor(s)} / ${massimo} s`);
+  let viva = null; // { onda, tempo } della registrazione in corso: si aggiorna senza ricostruire il riquadro
   const mostra = (stato) => {
     box.replaceChildren();
+    viva = null;
     if (stato.errore) aggiungi(box, errore(messaggi[stato.errore] || messaggi.altro));
     if (esistente && !stato.registrando) {
-      // «Riascolta» e «Rifai» sulla stessa riga (design v4, schermata 08): l'audio suona dal pulsante, senza i comandi del browser.
+      // «Riascolta» e «Rifai» sulla stessa riga (schermata 08): l'audio suona dal pulsante, senza i comandi del browser.
       const audio = h("audio", { src: esistente.url, preload: "metadata" });
+      const scritta = h("span", {}, "Riascolta");
       const riascolta = h("button", { classe: "bottone-secondario", type: "button", "aria-pressed": "false",
-        onclick: () => { if (audio.paused) { audio.currentTime = 0; audio.play().catch(() => {}); } else audio.pause(); } }, "Riascolta");
-      audio.addEventListener("play", () => { riascolta.textContent = "Pausa"; riascolta.setAttribute("aria-pressed", "true"); });
-      const fermo = () => { riascolta.textContent = "Riascolta"; riascolta.setAttribute("aria-pressed", "false"); };
+        onclick: () => { if (audio.paused) { audio.currentTime = 0; audio.play().catch(() => {}); } else audio.pause(); } },
+        h("span", { "aria-hidden": "true" }, "▶ "), scritta);
+      audio.addEventListener("play", () => { scritta.textContent = "Pausa"; riascolta.setAttribute("aria-pressed", "true"); });
+      const fermo = () => { scritta.textContent = "Riascolta"; riascolta.setAttribute("aria-pressed", "false"); };
       audio.addEventListener("pause", fermo); audio.addEventListener("ended", fermo);
-      aggiungi(box, audio,
-        esistente.secondi ? h("p", { classe: "nota" }, `${esistente.secondi.toFixed(0)} secondi`) : null,
+      aggiungi(box, audio, ondaGrande(),
         h("div", { classe: "riga-registratore" }, riascolta,
           h("button", { classe: "bottone-secondario", type: "button", onclick: () => { audio.pause(); inizia(); } }, "Rifai")));
       return;
     }
     if (stato.registrando) {
-      const riempimento = h("span");
-      riempimento.style.width = `${Math.min(100, (stato.secondi / massimo) * 100)}%`;
-      aggiungi(box, h("p", { classe: "timer", "aria-live": "off" }, `${Math.floor(stato.secondi)} / ${massimo} s`),
-        h("div", { classe: "avanzamento-barra" }, riempimento),
-        h("button", { classe: "bottone bottone-rec", type: "button", onclick: () => registrazioneInCorso && registrazioneInCorso.ferma() }, "Ferma"));
+      const onda = conClasse(ondaGrande(), "onda-grande viva");
+      const t = tempo(0);
+      aggiungi(box, onda, h("div", { classe: "riga-rec" }, t,
+        h("button", { classe: "bottone", type: "button", onclick: () => registrazioneInCorso && registrazioneInCorso.ferma() }, "Ferma")));
+      viva = { onda, tempo: t };
       return;
     }
-    aggiungi(box, h("button", { classe: "bottone bottone-rec", type: "button", disabled: !registrazioneSupportata(), onclick: inizia }, "● Registra"),
+    aggiungi(box, ondaGrande(), h("div", { classe: "riga-rec" }, tempo(0),
+      h("button", { classe: "bottone bottone-rec", type: "button", disabled: !registrazioneSupportata(), onclick: inizia }, "● Registra")),
       registrazioneSupportata() ? null : errore(messaggi.non_supportato));
   };
+  // A ogni decimo di secondo: il tempo e l'altezza delle barre (con «meno movimento» le barre restano ferme).
+  function aggiornaRegistrazione(s, livello) {
+    if (!viva) return;
+    viva.tempo.textContent = `${Math.floor(s)} / ${massimo} s`;
+    if (menoMovimento) return;
+    const alto = scalaOnda(livello);
+    [...viva.onda.children].forEach((b, k) => { b.style.transform = `scaleY(${(alto * (0.65 + 0.35 * Math.abs(Math.sin(s * 3 + k * 0.7)))).toFixed(2)})`; });
+  }
   async function inizia() {
     esistente = null;
-    mostra({ registrando: true, secondi: 0 });
-    const r = await registra(massimo, (s) => mostra({ registrando: true, secondi: s }));
+    mostra({ registrando: true });
+    const r = await registra(massimo, aggiornaRegistrazione);
     registrazioneInCorso = r;
     const esito = await r.finita;
     registrazioneInCorso = null;
