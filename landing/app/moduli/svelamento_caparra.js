@@ -12,6 +12,7 @@ export const TESTI_CAPARRA = Object.freeze({
   titoloEvidenza: "per lo svelamento.",
   piuTardi: "Più tardi",
   attimo: "Un attimo…",
+  riprova: "Riprova",
 });
 
 const MINUTO = 60 * 1000;
@@ -37,6 +38,11 @@ export function vistaCaparra(h, ps, m, s, { torna, scadeIl, adesso = new Date() 
     h("p", { classe: "timer", role: "timer", "aria-label": s.conto }, breve || s.conto),
     h("p", { classe: "sub", id: "caparra-spiegazione" }, c.spiegazione),
   ];
+  // Errore di lettura o del blocco (testo breve di svelamento.js) e «Riprova», come nella schermata di prima.
+  if (m.errore) {
+    corpo.push(h("p", { classe: "errore", role: "alert" }, m.errore),
+      h("button", { classe: "link", type: "button", onclick: () => ps.riprova() }, TESTI_CAPARRA.riprova));
+  }
   if (c.tipo === "ricarica") corpo.push(h("p", { classe: "errore", role: "status" }, c.testo));
   corpo.push(h("p", { classe: "nota" }, s.saldo));
   if (c.tipo === "ricarica" && m.ricarica) corpo.push(h("p", { classe: "nota", id: "ricarica-beta", role: "status" }, c.beta));

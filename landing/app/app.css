@@ -418,6 +418,8 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 
 /* ===== Linea B (#349): «I tuoi regali», design v4 schermata 28 =====
    Valori dal prototipo docs/design/v4/prototipo (#storico-regali: .passo, h2, .conteggi, .lista-t, .persona). */
+.app .storico-regali { display: flex; flex-direction: column; min-height: calc(100dvh - 140px); box-sizing: border-box; }
+.app .storico-regali > .azioni { margin-top: auto; } /* D149: pulsante in fondo allo schermo come nel design */
 .app .storico-regali .corpo { display: flex; flex-direction: column; gap: 12px; }
 .app .storico-regali .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
 .app .storico-regali h2 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
@@ -595,7 +597,7 @@ body.in-iscrizione #app > .benvenuto-v4 > .azioni { margin-top: 0; }
 #app .chiave-data .azioni > .bottone-secondario { order: 0; }
 /* Linea C · design v4 (#349), schermata 39 «Lo svelamento» (#n27). Valori dal prototipo: occhiello spaziato, titolo
    serif con la seconda riga rossa, timer serif corsivo 44px a sinistra, spiegazione e nota in grigio caldo. */
-.app .svelamento-v4 { display: flex; flex-direction: column; gap: 14px; min-height: min(80vh, 700px); }
+.app .svelamento-v4 { display: flex; flex-direction: column; gap: 14px; min-height: calc(100dvh - 140px); }
 .app .svelamento-v4 .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
 .app .svelamento-v4 h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; color: #F2EDE4; }
 .app .svelamento-v4 h1 em { font-style: italic; color: #E8432B; }
@@ -603,6 +605,7 @@ body.in-iscrizione #app > .benvenuto-v4 > .azioni { margin-top: 0; }
 .app .svelamento-v4 .sub { margin: 0; color: #A8A29A; font-size: 15px; }
 .app .svelamento-v4 .nota { margin: 0; color: #A8A29A; font-size: 12px; }
 .app .svelamento-v4 .azioni { margin-top: auto; }
+.app .svelamento-v4 .azioni button { white-space: nowrap; padding-inline: 14px; font-size: 15px; }
 
 /* ===== Parità con il design v4, iscrizione 01-12 (D149, 26/11) =====
    Niente saldo né profilo durante l'iscrizione; schermata alta quanto il telefono con i pulsanti in fondo;
@@ -634,3 +637,13 @@ body.in-iscrizione #app > .schermata > .azioni { margin-top: auto; }
 .app .tempo { white-space: nowrap; }
 .app .riga-rec > .bottone { width: auto; flex: none; }
 .app .rec .riga-registratore > .bottone-secondario { gap: 8px; }
+/* «Lascia la stanza», schermata 22 del design v4 (#349, linea B, D149): titolo su due righe con il corsivo rosso,
+   sottotitolo grigio, cerchi scuri con l'anello rosso alla scelta, pulsanti in fondo come nella 13. */
+.app .lascia-stanza { display: flex; flex-direction: column; min-height: calc(100dvh - 140px); box-sizing: border-box; }
+.app .lascia-stanza > .azioni { margin-top: auto; }
+.app .lascia-stanza h1 { font-family: var(--serif); font-weight: 400; font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; margin: 0 0 10px; }
+.app .lascia-stanza h1 em { color: #E8432B; }
+.app .lascia-stanza legend { color: #A8A29A; font-size: 15px; line-height: 1.45; margin-bottom: 12px; }
+.app .lascia-stanza input[type="radio"] { appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid rgba(242, 237, 228, 0.45); border-radius: 50%; background: transparent; }
+.app .lascia-stanza input[type="radio"]:checked { border: 5px solid #E8432B; width: 26px; height: 26px; }
+.app .lascia-stanza input[type="radio"]:focus-visible { outline: 2px solid #F2EDE4; outline-offset: 3px; }
