@@ -430,7 +430,7 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .storico-regali .lista-t { display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; border-bottom: 1px solid rgba(242, 237, 228, 0.12); padding-bottom: 5px; margin-top: 4px; }
 .app .storico-regali .persona { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(242, 237, 228, 0.08); }
 .app .storico-regali .persona b { font-weight: 600; font-size: 14px; display: block; }
-.app .storico-regali .persona small { font-size: 11px; color: #A8A29A; }
+.app .storico-regali .persona small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.3; color: #A8A29A; }
 .app .storico-regali .nota { color: #A8A29A; font-size: 12px; margin: 0; }
 
 /* Il Filo della stanza (#360, linea C): schermate 18 «Il Filo apre la stanza» e 36 «le porte aperte» (design v4). */

@@ -25,9 +25,10 @@ export function creaApiProva() {
   const p = (i) => PERSONE_PROVA[i % PERSONE_PROVA.length];
 
   // Schermata 28: un regalo da due persone finte di questa stanza, nessuna stanza passata.
-  const storico = () => ({ ok: true, titolo: "Hai ricevuto 3 regali", totale: { rosa: 2, spumante: 1, fiori: 0 },
-    attuale: { citta: "Milano", persone: [{ nome: p(1).nome, dettaglio: "2 rose", quando: "ieri" },
-      { nome: p(3).nome, dettaglio: "1 spumante", quando: "oggi" }] },
+  // Stessa forma di api/storico_regali.js (D149, linea B): titolo con il punto, «Nome, età», il più recente in alto.
+  const storico = () => ({ ok: true, titolo: "Hai ricevuto 3 regali.", totale: { rosa: 2, spumante: 1, fiori: 0 },
+    attuale: { citta: "Milano", persone: [{ nome: `${p(3).nome}, ${p(3).eta}`, dettaglio: "1 spumante", quando: "oggi" },
+      { nome: `${p(1).nome}, ${p(1).eta}`, dettaglio: "2 rose", quando: "ieri" }] },
     passate: null });
 
   // Schermata 19: stati veri di presenza (online, in chiamata con…, non in linea · da …).
