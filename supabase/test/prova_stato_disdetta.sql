@@ -57,7 +57,7 @@ update public.incontri set stato = 'confermato', orario = now() + interval '10 m
 create temp table s (chi text, j jsonb) on commit drop;
 -- Confermato, lontano: solo «Disdici»; nessuna disdetta.
 insert into s select 'a0', public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', '7a7a7a7a-0000-4000-8000-00000000007a');
-select pg_temp.ok((select j->'azioni' = '["disdici", "ritardo"]'::jsonb and j->'disdetta' = 'null'::jsonb from s where chi = 'a0'),
+select pg_temp.ok((select j->'azioni' = '["disdici", "ritardo", "cambia_luogo"]'::jsonb and j->'disdetta' = 'null'::jsonb from s where chi = 'a0'),
   'stato: confermato tra 10 ore, c''è «Disdici»');
 -- Confermato nella finestra del check-in: «Sono qui» e «Disdici».
 insert into s select 'd0', public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ad', '7d7d7d7d-0000-4000-8000-00000000007d');
@@ -101,7 +101,7 @@ select pg_temp.ok((select j->'azioni' = '["accetto", "altra_data", "annulla"]'::
 -- Confermato di nuovo: la disdetta vecchia non si mostra più.
 update public.incontri set stato = 'confermato', confermato_il = now() where porta_id = '7f7f7f7f-0000-4000-8000-0000000000ac';
 insert into s select 'c3', public.stato_incontro('7f7f7f7f-0000-4000-8000-0000000000ac', '7c7c7c7c-0000-4000-8000-00000000007c');
-select pg_temp.ok((select j->'disdetta' = 'null'::jsonb and j->'azioni' = '["disdici", "ritardo"]'::jsonb from s where chi = 'c3'),
+select pg_temp.ok((select j->'disdetta' = 'null'::jsonb and j->'azioni' = '["disdici", "ritardo", "cambia_luogo"]'::jsonb from s where chi = 'c3'),
   'stato: a nuovo appuntamento confermato la disdetta non si mostra più');
 -- Annullato: nessuna azione.
 select public.annulla_incontro('7f7f7f7f-0000-4000-8000-0000000000cd', '7d7d7d7d-0000-4000-8000-00000000007d');

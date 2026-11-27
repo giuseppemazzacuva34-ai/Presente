@@ -67,7 +67,7 @@ set local role service_role;
 create temp table s (chi text, j jsonb) on commit drop;
 -- Confermato ma fuori finestra (tra 2 ore): finestra indicata, nessun pulsante.
 insert into s select 'b0', public.stato_incontro('5f5f5f5f-0000-4000-8000-0000000000bd', '5b5b5b5b-0000-4000-8000-00000000005b');
-select pg_temp.ok((select j->'azioni' = '["disdici", "ritardo"]'::jsonb and not (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean
+select pg_temp.ok((select j->'azioni' = '["disdici", "ritardo", "cambia_luogo"]'::jsonb and not (j->>'checkin_mio')::boolean and not (j->>'checkin_altro')::boolean
   and (j->>'checkin_da')::timestamptz = now() + interval '90 minutes'
   and (j->>'checkin_fino')::timestamptz = now() + interval '150 minutes' and j->'segnale' = 'null'::jsonb
   from s where chi = 'b0'), 'stato: finestra del check-in indicata, «Sono qui» non ancora');
