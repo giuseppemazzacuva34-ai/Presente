@@ -66,13 +66,13 @@ test("telefono: durante la chiamata il modello dà l'id dell'altra persona; fuor
   assert.equal(t.modello().inCorsoCon, null);
 });
 
-test("flusso: il tasto «Regalo» sta tra le azioni della chiamata in corso, subito dopo le Carte", () => {
+test("flusso: il tasto «Regalo» sta tra le azioni della chiamata in corso, subito dopo le Carte (D149, linea A: «Chiudi» va accanto a «Microfono», prima riga)", () => {
   const flusso = leggi("../landing/app/moduli/flusso.js");
   const blocco = flusso.slice(flusso.indexOf('sc.tipo === "in_corso"'), flusso.indexOf('sc.tipo === "richiameresti"'));
   const carte = blocco.indexOf("chiamata-carte");
   const regalo = blocco.indexOf("vistaRegaloChiamata(h, regaliStanza, { a: m.inCorsoCon, nome: m.nome })");
   const chiudi = blocco.indexOf('bottone("Chiudi", () => t.chiudi(false))');
-  assert.ok(carte > 0 && regalo > carte && chiudi > regalo, "ordine: Carte, Regalo, Chiudi");
+  assert.ok(chiudi > 0 && carte > chiudi && regalo > carte, "ordine: Chiudi, Carte, Regalo");
 });
 
 test("service worker: versione nuova dopo la modifica di flusso.js", () => {

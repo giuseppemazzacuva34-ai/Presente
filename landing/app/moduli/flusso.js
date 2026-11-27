@@ -48,6 +48,7 @@ import { TESTI_FISSA, azioneRiga, rigaStato, giorniEOre, avvisiAppuntamenti, cre
 import { creaDomenicaSera, vistaDomenicaSera } from "./domenica_sera.js"; // schermata 35 (#349, linea C)
 import { TESTI_CONTESTA, LIMITI_CONTESTA, rigaContesta, testoValido } from "./contesta_no.js"; // #6 v1.3 punto 2 (linea B)
 import { TESTI_RIEPILOGO } from "./riepilogo_valutazioni.js"; // #6 v1.3 punto 2 (linea B)
+import { vistaSfondoChiamata } from "./sfondo_chiamata.js"; // schermate 25, 29, 30 (#349, linea A)
 // Chiavi nella stanza (#5, linea «sviluppatore-c»): solo con il telefono acceso (accesso vero).
 let chiaviStanza = null;
 // «I tuoi appunti» sulla scheda (#5 passo 3, linea «sviluppatore-c»): solo con il telefono acceso.
@@ -683,21 +684,27 @@ function schermoChiamata(m) {
       h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false)))];
   } else if (sc.tipo === "in_corso") {
     if (regaloRicevuto) regaloRicevuto.avvia(() => telefono && telefono.modello().inCorsoCon);
+    // Design v4 (D149, schermate 25, 29, 30): sagoma di chi parla dietro il vetro rosso, nome e timer al centro in
+    // corsivo, onda grande viva; «Microfono» e «Chiudi» sulla stessa riga, «Chiudi e segnala» sotto a tutta larghezza.
     parti = [
+      vistaSfondoChiamata(h, (viva.stati.get(m.inCorsoCon) || {}).gruppo),
       sc.banner ? h("p", { classe: "banner-chiamata", role: "note" }, sc.banner) : null,
       h("h1", {}, m.nome || "In chiamata"),
-      h("p", { classe: "timer timer-chiamata", id: "chiamata-timer", role: "timer", "aria-label": "Tempo che resta" }, sc.timer),
+      h("p", { classe: `timer timer-chiamata${sc.avviso ? " ultimo-minuto" : ""}`, id: "chiamata-timer", role: "timer", "aria-label": "Tempo che resta" }, sc.timer),
       sc.avviso ? h("p", { classe: "avviso-chiamata", role: "alert" }, sc.avviso) : null,
+      sc.carta ? null : conClasse(ondaGrande(), "onda-grande in-chiamata"),
       sc.riconnessione ? h("p", { classe: "nota", role: "status" }, sc.riconnessione) : null,
       m.riconnetti ? [h("p", { classe: "errore", role: "alert" }, "Hai perso la connessione: hai 30 secondi per rientrare"),
         bottone("Riconnetti", () => t.riconnetti(), { classe: "bottone" })] : null,
       sc.carta ? h("figure", { classe: "carta-chiamata" }, h("blockquote", {}, sc.carta.testo), h("figcaption", { classe: "nota" }, sc.carta.da)) : null,
       sc.suggerimento && !sc.carta ? h("p", { classe: "nota" }, sc.suggerimento) : null,
-      h("div", { classe: "azioni-chiamata" },
-        bottone(m.muto ? "Microfono spento" : "Microfono acceso", () => t.microfono(), { "aria-pressed": m.muto ? "true" : "false", disabled: m.riconnetti }),
+      // Ordine del design: prima riga «Microfono» e «Chiudi»; poi Carte e Regalo; «Chiudi e segnala» per ultimo
+      // (a tutta larghezza se resta solo, CSS .azioni-in-corso).
+      h("div", { classe: "azioni-chiamata azioni-in-corso" },
+        bottone(m.muto ? "Microfono spento" : "Microfono", () => t.microfono(), { "aria-label": "Microfono", "aria-pressed": m.muto ? "false" : "true", disabled: m.riconnetti }),
+        bottone("Chiudi", () => t.chiudi(false)),
         sc.carte ? bottone(sc.carte.etichetta, () => t.carta(), { id: "chiamata-carte", disabled: !sc.carte.attiva }) : null,
         vistaRegaloChiamata(h, regaliStanza, { a: m.inCorsoCon, nome: m.nome }),
-        bottone("Chiudi", () => t.chiudi(false)),
         bottone("Chiudi e segnala", () => t.chiudi(true), { classe: "bottone-pericolo" })),
     ];
   } else if (sc.tipo === "richiameresti") {
@@ -730,7 +737,7 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
   }
-  return h("section", { classe: "schermata chiamata", "aria-label": "Chiamata" }, parti, errore(m.errore));
+  return h("section", { classe: `schermata chiamata${sc.tipo === "in_corso" ? " in-corso" : ""}`, "aria-label": "Chiamata" }, parti, errore(m.errore));
 }
 
 // Modulo di segnalazione (#7 spec v1.1 punti 2-3): motivo, racconto facoltativo, «Blocca anche», conferma con il 112.
@@ -782,6 +789,9 @@ function disegna() {
   if (telefono) {
     ultimaFirma = telefono.firma();
     const m = telefono.modello();
+    // Design v4: durante la chiamata l'onda della testata batte più veloce (.app.viva, 1,6 s).
+    const pagina = document.querySelector(".pagina.app");
+    if (pagina) pagina.classList.toggle("viva", m.schermo.tipo === "in_corso" || String(m.schermo.tipo).startsWith("squillo"));
     if (m.schermo.tipo !== "nessuna") { radice.replaceChildren(schermoChiamata(m)); return; }
   }
   // Schermata 22 (#381): sempre lo stesso nodo, così scelta e testo restano anche se la pagina si ridisegna.

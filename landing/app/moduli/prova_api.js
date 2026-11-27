@@ -40,9 +40,12 @@ export function creaApiProva() {
 
   // Schermata 19: stati veri di presenza (online, in chiamata con…, non in linea · da …).
   const NON_IN_LINEA = ["non in linea · da poco", "non in linea · da 3 h", "non in linea · da ieri"];
-  const presenza = () => ({ ok: true, persone: PERSONE_PROVA.map((x, i) => (i % 4 === 0 ? { id: x.id, stato: "online", testo: "online" }
+  // «gruppo» come worker/stanza_viva_api.js: le persone finte alternano donna (Aurora, Celeste…) e uomo (Bruno, Dario…).
+  // Serve al cerchio diviso (19) e alla sagoma dietro il vetro della chiamata (25, 29, 30).
+  const gruppoProva = (i) => (i % 2 === 0 ? "donne" : "uomini");
+  const presenza = () => ({ ok: true, persone: PERSONE_PROVA.map((x, i) => ({ gruppo: gruppoProva(i), ...(i % 4 === 0 ? { id: x.id, stato: "online", testo: "online" }
     : i % 4 === 1 ? { id: x.id, stato: "in_chiamata", testo: "in chiamata", con: p(i + 1).id }
-      : { id: x.id, stato: "non_in_linea", testo: NON_IN_LINEA[i % NON_IN_LINEA.length] })) });
+      : { id: x.id, stato: "non_in_linea", testo: NON_IN_LINEA[i % NON_IN_LINEA.length] }) })) });
 
   async function rispondi(percorso, metodo, corpo) {
     const url = new URL(percorso, "https://prova.invalid");
