@@ -61,11 +61,11 @@ test("scheda «<Nome> · il Filo della stanza»; senza nome del Filo resta «Il 
   assert.equal(senza.scheda.titolo, "Il Filo della stanza");
 });
 
-test("«Vi presento»: i nomi di oggi in ordine, il proprio segnato come «io»; doppioni e nomi vuoti scartati", () => {
+test("«Vi presento»: il proprio nome per primo (design v4), poi gli altri in ordine; doppioni e nomi vuoti scartati", () => {
   const s = schermataFiloLunedi({ benvenuto: BENVENUTO, vocale: null,
     persone: [...PERSONE, { id: "a", nome: "Marco" }, { id: "d", nome: "  " }, null], mioNome: " Sara " });
   assert.deepEqual(s.nomi, [
-    { nome: "Anna", io: false }, { nome: "Luca", io: false }, { nome: "Marco", io: false }, { nome: "Sara", io: true },
+    { nome: "Sara", io: true }, { nome: "Anna", io: false }, { nome: "Luca", io: false }, { nome: "Marco", io: false },
   ]);
   // Senza il proprio nome (non ancora letto): solo gli altri.
   assert.deepEqual(schermataFiloLunedi({ benvenuto: BENVENUTO, vocale: null, persone: [], mioNome: "" }).nomi, []);
