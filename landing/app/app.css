@@ -743,3 +743,14 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .app .filo-domenica .filo-riga-rossa { font-style: italic; color: #E8432B; }
 .app .filo-domenica .nota { margin: 0 0 18px; font-size: 12px; color: #A8A29A; }
 .app .filo-domenica .bottone { margin-top: auto; width: 100%; }
+
+/* ===== Linea A (#349, D149): home prima della stanza, schermata 16 ===== */
+/* Schermata 16 (prototipo #n13): prima della stanza la prima schermata riempie lo schermo, «Ci sarò lunedì» in fondo,
+   un pulsante solo largo quanto il piede; il resto della home sta sotto (.home-dopo). */
+.app .home-prima { display: flex; flex-direction: column; gap: 16px; min-height: calc(100dvh - 140px); box-sizing: border-box; }
+.app .home-prima .nota-settimana { line-height: 1.45; }
+.app .home-prima > .azioni-home { margin-top: auto; }
+#app .azioni-home { display: flex; flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
+#app .azioni-home > .bottone { width: 100%; margin: 0; }
+#app .azioni-home > .nota { margin: 0; }
+.app .home-dopo { padding-top: 24px; }

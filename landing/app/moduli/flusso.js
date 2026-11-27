@@ -33,7 +33,7 @@ import { TESTI_AIUTO, DOMANDE_FREQUENTI, moduloScrivici, corpoScrivici, conferma
 import { vistaIncontro } from "./incontro.js";
 import { vistaValutazione } from "./valutazione.js";
 import { vistaVostriIncontri } from "./vostri_incontri.js";
-import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, TESTI_SETTIMANA } from "./settimana_home.js";
+import { settimanaHome, vistaSettimanaHome, vistaCerchioHome, vistaIngressoHome, TESTI_SETTIMANA } from "./settimana_home.js";
 import { vistaSeraFilo } from "./filo_domenica.js"; // schermata 36 del Filo (#360, linea C)
 import { vistaStanzaFilo } from "./filo_lunedi.js"; // schermata 18 del Filo (#360, linea C)
 import { vistaFiloRiascolto } from "./filo_riascolto.js"; // voce «Il vocale del Filo» (#360, linea C)
@@ -868,7 +868,25 @@ function inStanzaAperta() {
   const st = telefono.modello().stanza;
   return !!st && st.stato === "pronta" && !st.chiusa;
 }
-const settimanaDellaHome = () => settimanaHome(new Date(), { nome: stato.nome, inStanza: inStanzaAperta() });
+const settimanaDellaHome = ({ regalo = false } = {}) => settimanaHome(new Date(), { nome: stato.nome, inStanza: inStanzaAperta(), regalo });
+
+// Schermata 16 (#349, D149 A, prototipo #n13): prima della stanza la prima schermata ha una cosa sola da fare.
+// Settimana, conto alla rovescia e cerchio; in fondo «Ci sarò lunedì» (il vecchio «Entra nella stanza»). Il resto
+// della home non sparisce: sta sotto, dopo il pulsante («dopo»).
+function homePrimaDellaStanza(corpo, dopo) {
+  chiediConferma();
+  const piede = vistaIngressoHome(h, { conferma: ingresso.apreIl ? testoConferma(ingresso.apreIl) : null,
+    inCorso: ingresso.inCorso, letto: ingresso.letto, avviso: ingresso.avviso, errore: errore(ingresso.errore) },
+  { entra: entraNellaStanza, ripensa: ciRipenso });
+  return h("div", { classe: "home-v4" },
+    h("section", { classe: "schermata home-prima" },
+      vistaSettimanaHome(h, settimanaDellaHome({ regalo: true })),
+      h("div", { classe: "corpo" }, corpo),
+      errore(salvataggio.errore),
+      salvataggio.inCorso ? h("p", { classe: "nota", role: "status" }, "Salvataggio…") : null,
+      piede),
+    h("div", { classe: "corpo home-dopo" }, dopo));
+}
 
 function schermataHome(testa, corpo, azioni) {
   return h("section", { classe: "schermata" },
@@ -1250,15 +1268,12 @@ const SCHERMATE = {
   fatto() {
     chiediContatore();
     const zonaVisibile = nomeVisibile(stato.provincia);
-    // Design v4 (#349, schermate 16 e 35): in cima la settimana, mai «profilo pronto».
-    return schermataHome(vistaSettimanaHome(h, settimanaDellaHome()),
-      [inStanzaAperta() ? null : vistaCerchioHome(h, stato.miPresento),
-        contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
-          stato.raggio === "citta" ? contatoreSoloZona(contatore.testo) : contatore.testo) : null,
-        bloccoItalia(),
-        italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null,
-        bloccoStanza(),
-        bloccoTuaStanza(),
+    const prima = Boolean(stanza) && !inStanzaAperta();
+    const zona = [contatore.testo ? h("p", { classe: "contatore-zona", id: "contatore-zona", role: "status" },
+        stato.raggio === "citta" ? contatoreSoloZona(contatore.testo) : contatore.testo) : null,
+      bloccoItalia(),
+      italia.avviso ? h("p", { classe: "nota", role: "status" }, italia.avviso) : null];
+    const resto = [bloccoTuaStanza(),
         bloccoEsiti(),
         bloccoSanzioni(),
         bloccoVostriIncontri(),
@@ -1279,13 +1294,18 @@ const SCHERMATE = {
         supporto ? h("button", { classe: "link", type: "button", onclick: apriAiuto }, TESTI_AIUTO.titolo) : null,
         h("p", { classe: "nota" }, archivio
           ? "Il tuo profilo è salvato. Puoi cambiarlo quando vuoi, tranne la data di nascita."
-          : "Era un'anteprima: niente è stato inviato o salvato.")],
-      archivio && !schermoProfilo
+          : "Era un'anteprima: niente è stato inviato o salvato.")];
+    const azioniFondo = archivio && !schermoProfilo
         ? [h("button", { classe: "bottone-secondario", type: "button", onclick: () => vai(4) }, "Modifica il profilo"),
           h("button", { classe: "link", type: "button", onclick: () => {
             if (confirm("Vuoi davvero eliminare il tuo account? Cancelliamo subito email, voce, foto, questionario e filtri.")) eliminaAccount();
           } }, "Elimina il mio account")]
-        : archivio ? [] : [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")]);
+        : archivio ? [] : [h("button", { classe: "bottone-secondario", type: "button", onclick: () => location.reload() }, "Ricomincia l'anteprima")];
+    // Schermata 16: settimana, cerchio e «Ci sarò lunedì» in fondo alla prima schermata; il resto sotto.
+    if (prima) return homePrimaDellaStanza([vistaCerchioHome(h, stato.miPresento), ...zona], [...resto, h("div", { classe: "azioni" }, azioniFondo)]);
+    // Design v4 (#349, schermate 16 e 35): in cima la settimana, mai «profilo pronto».
+    return schermataHome(vistaSettimanaHome(h, settimanaDellaHome()),
+      [inStanzaAperta() ? null : vistaCerchioHome(h, stato.miPresento), ...zona, bloccoStanza(), ...resto], azioniFondo);
   },
 };
 
