@@ -106,3 +106,16 @@ export const DOMANDE_VOCE = [
   "Una canzone che ti riporta indietro: dove ti porta?",
   "Una cosa di cui vai fiera o fiero, anche piccola.",
 ];
+
+// Le stesse domande, brevi, per le pillole della schermata 09 (design v4, D149). Stesso ordine: gli indici salvati in
+// domande_voce non cambiano. Nella schermata della singola risposta resta la domanda intera.
+export const DOMANDE_VOCE_BREVI = [
+  "Una cosa che ti fa ridere sempre",
+  "Il posto dove ti senti a casa",
+  "Un viaggio che rifaresti domani",
+  "Una cosa che hai capito tardi",
+  "La tua domenica perfetta",
+  "Un piccolo gesto che ti conquista",
+  "Una canzone che ti riporta indietro",
+  "Una cosa di cui vai fiera o fiero",
+];

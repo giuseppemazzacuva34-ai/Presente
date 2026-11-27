@@ -226,13 +226,25 @@ export function apriFoglioRegali(contenitore, { a, nome, saldo = null, inChiamat
   return { chiudi };
 }
 
-// Avviso del regalo ricevuto (schermata 27): testo del server, piccolo sopra il timer, sparisce da solo.
+// Avviso del regalo ricevuto (schermata 27 del design v4, D149): l'icona grande al centro sopra la chiamata e la frase
+// del server su due righe, il regalo in corsivo («Marta ti ha mandato» / «una rosa.»). Letto intero dal lettore di
+// schermo (role="status"), non blocca i pulsanti della chiamata, sparisce da solo.
 export function mostraAvvisoRegalo(contenitore, avviso = {}, { setTimeout: dopo = globalThis.setTimeout } = {}) {
   const r = regaloDa(avviso.regalo);
   if (!r || typeof avviso.testo !== "string" || !avviso.testo.trim()) return null;
   const doc = contenitore.ownerDocument;
-  const box = el(doc, "p", `avviso-regalo avviso-regalo-${r.id}`, avviso.testo.trim());
+  const testo = avviso.testo.trim();
+  const box = el(doc, "div", `avviso-regalo avviso-regalo-${r.id}`);
   box.setAttribute("role", "status");
+  const icona = el(doc, "span", `regalo-icona regalo-${r.id}`);
+  icona.setAttribute("aria-hidden", "true");
+  const frase = el(doc, "p", "avviso-regalo-frase");
+  const diviso = / ti ha mandato /.exec(testo);
+  if (diviso) {
+    const dove = diviso.index + " ti ha mandato".length;
+    frase.append(el(doc, "span", null, `${testo.slice(0, dove)} `), el(doc, "br", null), el(doc, "em", null, testo.slice(dove + 1)));
+  } else frase.textContent = testo;
+  box.append(icona, frase);
   contenitore.append(box);
   dopo(() => box.remove(), DURATA_AVVISO_MS);
   return box;
