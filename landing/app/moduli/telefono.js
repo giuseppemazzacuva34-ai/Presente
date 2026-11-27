@@ -38,6 +38,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     persone: [], statoStanza: "attesa", erroreStanza: "",
     chiusa: false, // stanza appena chiusa (#5 passo 9): da domenica 21:00 a lunedì 9:00 schede in sola lettura
     ricarica: null, // rilettura in corso (ricaricaPersone), una alla volta
+    numero: null, // { altra, n }: quale chiamata con quella persona è questa (design v4, schermata 31)
     testi: new Map(), // id → testo sul pulsante «Chiama» disattivato (spec v1.3 § 2, 3c-5b-2b)
     conteggi: new Map(), // id → chiamate fatte insieme nella settimana, da 1 a 3 («chiamate N di 3», #380)
     vista: null, nascondiFinita: false,
@@ -78,6 +79,11 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     if (!v || !ATTIVE.has(v.fase)) spegniVoce();
     if (v && v.fase !== "finita") s.nascondiFinita = false;
     if (v && ATTIVE.has(v.fase)) { s.dopo = null; s.dopoChiesto = false; s.risposto = false; s.segnala = null; s.diarioFatto = false; }
+    // Design v4 (schermata 31): il numero della chiamata si fissa quando parte (già fatte + 1), così non cambia se i
+    // conteggi del server si rileggono durante la chiamata o la domanda.
+    if (v && ATTIVE.has(v.fase) && (!s.numero || s.numero.altra !== v.altra || !s.vista || !ATTIVE.has(s.vista.fase))) {
+      s.numero = { altra: v.altra, n: Math.min(3, (s.conteggi.get(v.altra) || 0) + 1) };
+    }
     if (v && v.fase === "finita" && !s.dopoChiesto && !s.segnala && !s.nascondiFinita) { s.dopoChiesto = true; chiediDopo(true); }
     if (v && v.fase === "in_corso") { if (s.visibileDal === null) s.visibileDal = adesso(); }
     else s.visibileDal = null;
@@ -157,7 +163,9 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     if (s.segnala) return { tipo: "segnala", titolo: "Segnala un problema" };
     if (s.dopo && !s.nascondiFinita && !inChiamata()) {
       if (passoDiario()) return { tipo: "diario", ...schermataDiario(nomeInChiamata({ altra: s.dopo.altra }, s.persone)) };
-      return schermataDopo(s.dopo, { nomeAltra: nomeInChiamata({ altra: s.dopo.altra }, s.persone), risposto: s.risposto });
+      // Senza numero fissato (l'app è ripartita durante la domanda) vale il conteggio del server, che la comprende già.
+      const numero = s.numero && s.numero.altra === s.dopo.altra ? s.numero.n : s.conteggi.get(s.dopo.altra);
+      return schermataDopo(s.dopo, { nomeAltra: nomeInChiamata({ altra: s.dopo.altra }, s.persone), risposto: s.risposto, numero });
     }
     if (!s.vista || (s.vista.fase === "finita" && s.nascondiFinita)) return { tipo: "nessuna" };
     const secondiVisti = s.visibileDal === null ? undefined : (adesso() - s.visibileDal) / 1000;

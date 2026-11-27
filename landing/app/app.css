@@ -702,3 +702,15 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .chiamata.squillo-uscita .sottotitolo { margin: 0; color: #A8A29A; font-variant-numeric: tabular-nums; }
 .chiamata.squillo-uscita .azioni-chiamata { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
 .chiamata.squillo-uscita .azioni-chiamata > .bottone { width: 100%; margin: 0; }
+/* ===== Linea A (#349, D149): dopo la chiamata, schermata 31 «La richiameresti?» =====
+   Valori dal prototipo (#n21): occhiello spaziato, titolo serif con «richiameresti?» in rosso corsivo sotto, nota grigia,
+   «No» (scuro) e «Sì» (rosso) sulla stessa riga in 3D, «Salta» e «Segnala un problema» come link sotto. */
+.chiamata.richiameresti-v4 { text-align: center; gap: 14px; min-height: calc(100dvh - 130px); }
+.chiamata.richiameresti-v4 .passo { margin: auto 0 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.chiamata.richiameresti-v4 h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 40px; line-height: 1.05; color: #F2EDE4; }
+.chiamata.richiameresti-v4 h1 em { display: block; font-style: italic; color: #E8432B; }
+.chiamata.richiameresti-v4 .nota { margin: 0; color: #A8A29A; font-size: 15px; }
+.chiamata.richiameresti-v4 .azioni-chiamata { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.chiamata.richiameresti-v4 .azioni-chiamata > * { width: 100%; margin: 0; }
+.chiamata.richiameresti-v4 .azioni-chiamata > .link { grid-column: 1 / -1; }
+.chiamata.richiameresti-v4 > .link { align-self: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }

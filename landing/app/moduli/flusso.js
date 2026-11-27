@@ -714,11 +714,18 @@ function schermoChiamata(m) {
     ];
   } else if (sc.tipo === "richiameresti") {
     // Spec v1.3 § 3: Sì / No / Salta, nota segreta sotto, «Segnala un problema» in fondo. Nessuna risposta obbligata.
-    parti = [sc.testo ? h("p", { classe: "sottotitolo", role: "status" }, sc.testo) : null,
-      h("h1", { id: "domanda-dopo" }, sc.titolo),
-      h("div", { classe: "azioni-chiamata", role: "group", "aria-labelledby": "domanda-dopo" },
-        sc.risposte.map(([valore, testo]) => bottone(testo, () => t.richiameresti(valore), { classe: valore === "salta" ? "link" : "bottone-secondario" }))),
+    // Design v4 (D149, schermata 31): occhiello «Chiamata N di 3 con <nome> · finita», «La» + «richiameresti?» in rosso
+    // corsivo, nota sotto il titolo, «No» e «Sì» sulla stessa riga in 3D (Sì rosso), poi «Salta» e «Segnala».
+    const risposta = (valore, classe) => {
+      const r = sc.risposte.find(([v]) => v === valore);
+      return r ? bottone(r[1], () => t.richiameresti(valore), { classe }) : null;
+    };
+    parti = [h("p", { classe: "passo" }, sc.occhiello),
+      sc.testo ? h("p", { classe: "sottotitolo", role: "status" }, sc.testo) : null,
+      h("h1", { id: "domanda-dopo" }, "La ", h("em", {}, "richiameresti?")),
       h("p", { classe: "nota" }, sc.nota),
+      h("div", { classe: "azioni-chiamata", role: "group", "aria-labelledby": "domanda-dopo" },
+        risposta("no", "bottone-secondario"), risposta("si", "bottone"), risposta("salta", "link")),
       bottone("Segnala un problema", () => t.segnalaProblema(), { classe: "link" })];
   } else if (sc.tipo === "diario") {
     // #5 spec v1.1 passo 2: «Lo leggi solo tu. Non lo usiamo per niente.» Salva o Salta, nessun obbligo.
@@ -742,7 +749,7 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
   }
-  const variante = sc.tipo === "in_corso" ? " in-corso" : sc.tipo === "squillo_in_uscita" ? " squillo-uscita" : "";
+  const variante = { in_corso: " in-corso", squillo_in_uscita: " squillo-uscita", richiameresti: " richiameresti-v4" }[sc.tipo] || "";
   return h("section", { classe: `schermata chiamata${variante}`, "aria-label": "Chiamata" }, parti, errore(m.errore));
 }
 
