@@ -1216,10 +1216,10 @@ const SCHERMATE = {
   foto() {
     const pronte = stato.foto.filter(Boolean).length;
     return schermata("Le tue foto",
-      "Nessuno le vede fino a quando entrambi aprite la porta. Servono 3 foto, con il volto visibile in almeno una.",
+      "Nessuno le vede fino a quando aprite la porta in due. Servono 3 foto, con il volto in almeno una.", // design v4 (12)
       [h("div", { classe: "griglia-foto" }, stato.foto.map((f, i) => casellaFoto(f, i))),
         pronte ? h("p", { classe: "nota" }, "Così le vedono gli altri, fino alla porta: sfocate.") : null,
-        h("p", { classe: "nota" }, "Prima di tutto il telefono toglie dalle foto i dati nascosti (posizione, modello, data).")],
+        h("p", { classe: "nota" }, "Il telefono toglie dalle foto i dati nascosti: posizione, modello, data.")],
       [indietro(), avanti("Continua", pronte === 3, () => salvaEVai(10, ...stato.foto.map((f, i) => caricaSeServe("foto", fileFoto(i), f))))]);
   },
 
