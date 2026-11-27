@@ -63,7 +63,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   // Spec v1.3 punto 2: «Contesta» un «No».
   contesta_no: ["inviata"],
   // Spec v1, casi limite: «Arrivo in ritardo» (+15 o +30 minuti, una volta sola).
-  ritardo_incontro: ["ritardo"] };
+  ritardo_incontro: ["ritardo"],
+  // Spec v1: «Ero lì» e «Non riesco a fare il check-in» (contestazione della buca).
+  contesta_buca: ["inviata"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -76,6 +78,7 @@ const RIFIUTI = {
   racconta_valutazione: ["testo_non_valido", "nessuna_segnalazione", "gia_raccontato"],
   contesta_no: ["testo_non_valido", "domanda_non_valida", "nessun_no"],
   ritardo_incontro: ["non_confermato", "incontro_chiuso", "ritardo_non_valido", "ritardo_gia_usato", "gia_fatto", "troppo_tardi"],
+  contesta_buca: ["testo_non_valido", "non_contestabile", "gia_inviata"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -148,6 +151,7 @@ export async function incontroApi(request, env, f = fetch) {
   if (request.method === "GET" && new URL(request.url).searchParams.get("riepilogo") === "1") return riepilogo(s, chi, f);
   if (request.method === "GET" && new URL(request.url).searchParams.get("elenco") === "1") return elenco(s, chi, f);
   if (request.method === "GET" && new URL(request.url).searchParams.get("contestazioni") === "1") return contestazioni(s, chi, f);
+  if (request.method === "GET" && new URL(request.url).searchParams.get("buca") === "1") return statoBuca(s, request, chi, f);
   if (request.method === "GET") return stato(s, request, chi, f);
 
   const corpo = await leggiCorpo(request, CORPO_MASSIMO);
@@ -184,6 +188,7 @@ export async function incontroApi(request, env, f = fetch) {
     return esegui(s, "valuta_incontro", { p_porta: porta, p_persona: chi.id, p_presentato: v.risposte.presentato,
       p_foto_sue: v.risposte.foto_sue, p_come_in_chiamata: v.risposte.come_in_chiamata, p_sicuro: v.risposte.sicuro }, f);
   }
+  if (azione === "contesta_buca") return contestaBuca(s, chi, porta, corpo.dati.testo, f);
   if (azione === "racconta") {
     const t = corpo.dati.testo;
     if (typeof t !== "string" || !t.trim() || [...t].length > RACCONTO_MASSIMO) return dati();
@@ -314,4 +319,28 @@ async function contestazioni(s, chi, f) {
   const r = soloContestazioni(await rpc(s, "stato_contestazioni_no", { p_persona: chi.id }, f));
   if (!r) return riprova();
   return risposta(200, { ok: true, contestazioni: r });
+}
+
+// «Ero lì» / «Non riesco a fare il check-in» (spec v1, linea B, passo 2): testo 10-500 caratteri senza gli spazi ai lati,
+// come contesta_buca nel database, che lo ricontrolla insieme a chi può contestare e quando. Il testo non va nei log.
+async function contestaBuca(s, chi, porta, t, f) {
+  if (typeof t !== "string") return dati();
+  const lunghezza = [...t.trim()].length;
+  if (lunghezza < CONTESTA_MIN || lunghezza > CONTESTA_MAX) return risposta(200, { ok: false, motivo: "testo_non_valido" });
+  return esegui(s, "contesta_buca", { p_porta: porta, p_persona: chi.id, p_testo: t }, f);
+}
+
+// Stato della contestazione della buca: solo { contestabile, stato }; null del database (non nella porta) → 404;
+// qualunque altra forma è un guasto («riprova»).
+async function statoBuca(s, request, chi, f) {
+  const porta = new URL(request.url).searchParams.get("porta") || "";
+  if (!UUID.test(porta)) return dati();
+  const r = await rpc(s, "stato_contestazione_buca", { p_porta: porta, p_persona: chi.id }, f);
+  if (r === null) return risposta(404, { ok: false, motivo: "non_trovato" });
+  const stato = r && typeof r === "object" && !Array.isArray(r) ? r.stato ?? null : undefined;
+  if (stato === undefined || typeof r.contestabile !== "boolean" || !(stato === null || STATI_CONTESTAZIONE.includes(stato))) {
+    if (r !== undefined) console.error("incontro: stato_contestazione_buca forma sconosciuta");
+    return riprova();
+  }
+  return risposta(200, { ok: true, contestazione: { contestabile: r.contestabile, stato } });
 }
