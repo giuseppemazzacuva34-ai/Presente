@@ -1,6 +1,6 @@
 // Orientamento facoltativo nella schermata 05 «Chi sei» (issue #471, spec v1 del CPO, parte A; richiesta di Giuseppe
 // del 25/11). Più scelte possibili; «Preferisco non dirlo» toglie le altre e viceversa. Non è mai obbligatorio.
-// Finché Giuseppe non decide D155 l'etichetta NON si salva: resta nella memoria della pagina e serve solo a
+// D155 = A (Giuseppe, 26/11): l'etichetta NON si salva mai: resta nella memoria della pagina e serve solo a
 // precompilare «Voglio incontrare» nella 06 (l'utente può sempre cambiarlo). Nessuno la vede, mai nei log o fuori dal telefono.
 
 import { VOGLIO_INCONTRARE, toccaCerco, cercoComeElenco } from "./voglio_incontrare.js";

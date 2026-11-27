@@ -125,7 +125,7 @@ chi entra in **famiglie**: mista (uomini→donne, donne→uomini), dedicata uomi
 - **Parte B (25/11 sera):** `filtri.cerco` è un elenco (`donne`, `uomini`, `non_binari`, almeno uno) — migrazione
   `20261125220000_voglio_incontrare.sql`, non distruttiva (`tutti` → tutte e tre, conversione in `cerco_da_testo()`).
   Nella 06 «Voglio incontrare» a più scelte (Donne · Uomini · Persone non binarie), «Scegli almeno un'opzione.» se vuoto,
-  precompilato dall'orientamento della 05 (che resta solo nel telefono finché D155 è aperta). `rientra_nei_filtri()`:
+  precompilato dall'orientamento della 05 (che resta solo nel telefono: D155 = A, decisa il 26/11, non si salva mai). `rientra_nei_filtri()`:
   «non binario» e «mi descrivo» rientrano in chi sceglie «Persone non binarie».
 - **Conteggi per famiglia (25/11 notte):** `conteggi_famiglie()` (migrazione `20261125230000_conteggi_famiglie.sql`) dà per
   ogni area solo numeri: `codice`, `famiglia` (mista, uomini, donne, aperta, ponte), `totale`, `donne` dei profili completi.

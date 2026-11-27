@@ -107,7 +107,7 @@ const stato = {
   regole: false,
   // Provincia (spec v1.3): sigla scelta, testo nel campo, sigla arrivata dalla lista d'attesa (solo la sigla, dal server).
   nome: "", provincia: "", provinciaTesto: "", provinciaLista: "", provinciaSalvata: "", miPresento: "", miDescrivo: "",
-  orientamento: [], orientamentoTesto: "", // #471: solo in memoria fino a D155, mai salvato
+  orientamento: [], orientamentoTesto: "", // #471, D155 = A: solo in memoria, mai salvato
   cerco: [], cercoToccato: false, consensoCerco: false, etaMin: 25, etaMax: 40, raggio: "citta", cosaCerco: "", figli: "", fumo: "",
   voce: null,                 // { url, secondi }
   domandeVoce: [],            // indici scelti in DOMANDE_VOCE
@@ -1072,7 +1072,7 @@ const SCHERMATE = {
           stato.miPresento, (v) => { stato.miPresento = v; disegna(); }),
         stato.miPresento === "mi_descrivo" ? h("input", { "aria-label": "Come ti descrivi", maxlength: "40", value: stato.miDescrivo,
           oninput: (e) => { stato.miDescrivo = e.target.value; ricontrolla(); } }) : null,
-        // #471 parte A: facoltativo, più scelte; fino a D155 resta solo nella pagina e precompila «Cerco» nella 06.
+        // #471 parte A: facoltativo, più scelte; D155 = A: resta solo nella pagina e precompila «Cerco» nella 06.
         h("p", { classe: "etichetta", id: "orientamento-etichetta" }, TESTI_ORIENTAMENTO.etichetta),
         h("p", { classe: "nota", id: "orientamento-nota" }, TESTI_ORIENTAMENTO.nota),
         scelte("orientamento", ORIENTAMENTI, stato.orientamento, (v) => { stato.orientamento = toccaOrientamento(stato.orientamento, v); disegna(); },
