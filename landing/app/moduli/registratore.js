@@ -9,7 +9,21 @@ export function registrazioneSupportata() {
   return Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 }
 
-// Avvia una registrazione. onTick(secondi) a ogni decimo di secondo. Restituisce { ferma(), finita: Promise<esito> }.
+// Livello della voce da 0 a 1 (media quadratica dei campioni, amplificata: la voce parlata sta tra 0,01 e 0,2).
+export function livelloVoce(campioni) {
+  if (!campioni || !campioni.length) return 0;
+  let somma = 0;
+  for (const v of campioni) somma += v * v;
+  return Math.min(1, Math.sqrt(somma / campioni.length) * 6);
+}
+
+// Altezza dell'onda grande (design v4, schermata 07) per un livello: in silenzio bassa ma visibile, con voce piena 1.
+export function scalaOnda(livello) {
+  const l = Math.max(0, Math.min(1, Number(livello) || 0));
+  return Math.round((0.15 + 0.85 * Math.min(1, l * 2.5)) * 100) / 100;
+}
+
+// Avvia una registrazione. onTick(secondi, livello) a ogni decimo di secondo (livello: vedi livelloVoce). Restituisce { ferma(), finita: Promise<esito> }.
 // esito: { blob, url, secondi } oppure { errore: "breve" | "silenzio" | "negato" | "non_supportato" | "altro" }.
 export async function registra(massimoSecondi, onTick) {
   if (!registrazioneSupportata()) return { ferma() {}, finita: Promise.resolve({ errore: "non_supportato" }) };
@@ -51,11 +65,13 @@ export async function registra(massimoSecondi, onTick) {
   });
   timer = setInterval(() => {
     const secondi = (performance.now() - inizio) / 1000;
+    let livello = 0;
     if (analizzatore) {
       analizzatore.getFloatTimeDomainData(campioni);
       for (const v of campioni) picco = Math.max(picco, Math.abs(v));
+      livello = livelloVoce(campioni);
     }
-    onTick && onTick(Math.min(secondi, massimoSecondi));
+    onTick && onTick(Math.min(secondi, massimoSecondi), livello);
     if (secondi >= massimoSecondi && registratore.state === "recording") registratore.stop();
   }, 100);
   registratore.start(250);

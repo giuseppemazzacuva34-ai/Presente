@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const flusso = readFileSync(new URL("../landing/app/moduli/flusso.js", import.meta.url), "utf8");
-const registratore = flusso.slice(flusso.indexOf("const box = h(\"div\", { classe: \"registratore\" })"), flusso.indexOf("function casellaFoto"));
+const registratore = flusso.slice(flusso.indexOf("const box = h(\"div\", { classe: \"registratore"), flusso.indexOf("function casellaFoto"));
 
 test("registratore: nessun box.append diretto (append(null) scrive «null» sullo schermo)", () => {
   assert.ok(registratore.length > 100, "blocco del registratore trovato");

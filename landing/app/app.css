@@ -621,6 +621,22 @@ body.in-iscrizione #app > .schermata > .azioni { margin-top: auto; }
 .solo-lettore { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* «Esci» del profilo (#349, linea B, richiesta di Giuseppe del 26/11): pulsante secondario 3D a tutta larghezza sopra «Elimina il mio account». */
 .app .profilo .corpo > .bottone-secondario { margin: 8px 0 0; width: 100%; }
+
+/* Voce e tre risposte come il design v4, schermate 07-09 (D149, prototipo #n07-#n09): riquadro .rec, onda grande che
+   segue la voce, «n / 20 s» in serif 34px, pulsanti 3D piccoli sulla stessa riga; pillole brevi in colonna. */
+.app .rec { border: 1px solid rgba(242, 237, 228, 0.18); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; align-items: stretch; gap: 12px; background: #151217; }
+.app .tempo { font-family: var(--serif); font-size: 34px; line-height: 1; margin: 0; font-variant-numeric: tabular-nums; }
+.app .riga-rec { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.app .rec .bottone, .app .rec .bottone-secondario { margin: 0; min-height: 44px; height: 44px; border-radius: 12px; font-size: 16px; padding: 0 22px; }
+.app .rec .bottone { box-shadow: 0 4px 0 #8F2414, 0 8px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.38); }
+.app .rec .bottone-secondario { box-shadow: 0 4px 0 #050406, 0 8px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.app .rec .riga-registratore { gap: 12px; }
+.onda-grande.viva span { animation: none; transform: scaleY(0.15); transition: transform 0.1s linear; }
+.scelte.pillole { flex-direction: column; align-items: flex-start; gap: 10px; }
+.app .scelte.pillole .scelta { font-size: 14px; padding: 9px 14px; min-height: 44px; }
+.app .tempo { white-space: nowrap; }
+.app .riga-rec > .bottone { width: auto; flex: none; }
+.app .rec .riga-registratore > .bottone-secondario { gap: 8px; }
 /* «Lascia la stanza», schermata 22 del design v4 (#349, linea B, D149): titolo su due righe con il corsivo rosso,
    sottotitolo grigio, cerchi scuri con l'anello rosso alla scelta, pulsanti in fondo come nella 13. */
 .app .lascia-stanza { display: flex; flex-direction: column; min-height: calc(100dvh - 140px); box-sizing: border-box; }

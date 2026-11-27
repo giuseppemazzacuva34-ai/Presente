@@ -100,5 +100,6 @@ test("errore nel blocco: la 39 mostra il testo e «Riprova» rilegge lo stato", 
 test("copia offline: svelamento_caparra.js in sw.js e cache nuova (presente-app-70)", () => {
   const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
   assert.ok(sw.includes("\"/app/moduli/svelamento_caparra.js\""));
-  assert.ok(sw.includes("const VERSIONE = \"presente-app-70\""));
+  const versione = Number((sw.match(/const VERSIONE = "presente-app-(\d+)"/) || [])[1]);
+  assert.ok(versione >= 70, `cache presente-app-${versione}: deve essere almeno la 70`); // le PR dopo la alzano ancora
 });
