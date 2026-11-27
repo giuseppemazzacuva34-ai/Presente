@@ -412,7 +412,9 @@ export function creaProva({ adesso = () => Date.now(), attesaMs = 250, cambiato 
   // Una porta per ogni chiave data a chi, nella prova, la ricambia.
   const porteDellaSera = () => date.map((d) => ({ d, i: PERSONE_PROVA.findIndex((p) => p.id === d.a) }))
     .filter(({ i }) => RICAMBIANO.has(i))
-    .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, eta: PERSONE_PROVA[i].eta, frase_per_te: RICAMBIANO.get(i) || null }));
+    .map(({ d, i }) => ({ id: finta(200 + i), con: d.a, nome: PERSONE_PROVA[i].nome, eta: PERSONE_PROVA[i].eta, frase_per_te: RICAMBIANO.get(i) || null,
+      // Come la funzione vera della sera (sagoma e provincia, #349 schermate 37-38): genere finto come prova_api.js.
+      sagoma: i % 2 === 0 ? "donna" : "uomo", provincia: PERSONE_PROVA[i].citta.replace("Persona finta · ", "") }));
 
   // ---- Passo 4: porta e svelamento (stesse regole di api/svelamento.js) -------------------------------------------
   // Coin di prova: 200 (spec #331 A.4). La persona finta blocca la sua caparra e si dice pronta insieme a te.
