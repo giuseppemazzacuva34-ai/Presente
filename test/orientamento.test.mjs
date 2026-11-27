@@ -1,5 +1,5 @@
 // Issue #471 (spec v1 del CPO, parte A): orientamento facoltativo nella schermata 05 «Chi sei».
-// Fino a D155 l'etichetta non si salva: serve solo a precompilare «Cerco» nella 06.
+// D155 = A: l'etichetta non si salva mai: serve solo a precompilare «Cerco» nella 06.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ORIENTAMENTI, TESTI_ORIENTAMENTO, toccaOrientamento, cercoDaOrientamento, toccaCerco, VOGLIO_INCONTRARE } from "../landing/app/moduli/orientamento.js";
@@ -42,7 +42,7 @@ test("precompilazione di «Cerco» (tabella della spec, con i valori di oggi)", 
   assert.deepEqual(cercoDaOrientamento("uomo", ["etero", "gay"]), []);
 });
 
-test("fino a D155 l'orientamento non si salva: mai nel profilo mandato al database", () => {
+test("D155 = A: l'orientamento non si salva: mai nel profilo mandato al database", () => {
   const salvataggio = readFileSync(new URL("../landing/app/moduli/salvataggio.js", import.meta.url), "utf8");
   assert.doesNotMatch(salvataggio, /orientamento/i); // né profiloDaStato né filtriDaStato lo leggono
 });
