@@ -145,7 +145,8 @@ export function avvisiAppuntamenti(lista, nomi, adesso) {
     } else if (a.stato === "confermato" && (a.fase === "fissato" || a.fase === "promemoria")) {
       const annulla = [{ azione: "annulla", testo: "Annulla l'appuntamento" }];
       if (a.fase === "promemoria") voce("promemoria", `Tra 10 minuti: chiamata con ${n}.`, annulla, { urgente: true });
-      else voce("fissato", `◷ Chiamata fissata con ${n} · ${quando}`, annulla);
+      // Design v4 (schermata 19): «◷ Chiamata fissata con Luca oggi alle 21:00», il nome a parte per il rosso.
+      else voce("fissato", `◷ Chiamata fissata con ${n} ${quando}`, annulla, { parti: ["◷ Chiamata fissata con ", n, ` ${quando}`] });
     } else if (a.stato === "confermato" && a.fase === "chiama") {
       voce("chiama", `◷ Chiamata fissata con ${n} · adesso`, [{ azione: "chiama", testo: TESTI_FISSA.chiama }], { urgente: true });
     } else if (a.fase === "scaduto" && a.propostoDaMe) {

@@ -46,6 +46,7 @@ async def main():
         if p == "/rest/v1/profili": return await ok([PROFILO])
         if p == "/rest/v1/filtri": return await ok([{"cerco": "tutti", "eta_min": 25, "eta_max": 45, "raggio": "italia"}])
         if p == "/rest/v1/rpc/compagni_di_stanza": return await ok(COMPAGNI)
+        if p == "/rest/v1/stanze": return await ok([{"tipo": "citta", "citta": "Milano", "apre_il": adesso_piu(-30)}])
         return await ok([])
     async def worker(route):
         r = route.request
@@ -79,6 +80,9 @@ async def main():
         await pg.wait_for_selector(".cerchio-stanza", timeout=15000)
         await pg.wait_for_selector("text=Uomini · 3")
         await pg.wait_for_selector("text=Donne · 1")
+        # Testata v4 (#349, schermata 19): «La tua stanza · Milano» a sinistra, «Giorno N di 7» a destra.
+        assert (await pg.locator("#tua-stanza-titolo").text_content()) == "La tua stanza · Milano"
+        assert re.fullmatch(r"Giorno [1-7] di 7", await pg.locator(".giorno-stanza").text_content())
         testo = await pg.locator(".tua-stanza").inner_text()
         assert "in chiamata con Sara" in testo, testo
         assert "non in linea · da 2 h" in testo, testo

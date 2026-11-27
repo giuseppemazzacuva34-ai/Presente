@@ -520,7 +520,13 @@ body.in-iscrizione #app > .benvenuto-v4 > .azioni { margin-top: 0; }
 .punto-stato.online { background: var(--avorio); border-color: var(--avorio); }
 .punto-stato.in_chiamata { background: var(--rosso); border-color: var(--rosso); }
 .legenda-stati { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.82rem; color: var(--grigio); margin: 0.75rem 0; }
-.gruppo-stanza { font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grigio); font-weight: 600; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--linea); padding-bottom: 0.5rem; }
+.gruppo-stanza { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grigio); font-weight: 600; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--linea); padding-bottom: 0.5rem; }
+/* Design v4 (#349, schermata 19): testata «LA TUA STANZA · MILANO» / «GIORNO 2 DI 7» e «N CHIAVI» sulla riga del gruppo. */
+.testata-stanza { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin: 0 0 0.75rem; }
+.testata-stanza h2 { font-family: var(--sans); font-style: normal; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--grigio); margin: 0; }
+.testata-stanza .giorno-stanza { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--avorio); margin: 0; white-space: nowrap; }
+.gruppo-stanza .chiavi-gruppo { white-space: nowrap; }
+.avviso-appuntamento .nome-avviso { color: var(--rosso); font-weight: 600; }
 .avvisi-appuntamenti { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
 .avviso-appuntamento { border: 1px dashed var(--rosso); border-radius: 0.75rem; padding: 0.7rem 0.9rem; }
 .avviso-appuntamento.urgente { border-style: solid; }

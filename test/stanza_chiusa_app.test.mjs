@@ -120,8 +120,9 @@ test("flusso: stanza chiusa → titolo «Chiusa», schede senza Chiama né Chiav
   assert.doesNotMatch(chiusa, /telefono\.chiama|vistaSchedaChiave|"button"/);
   assert.match(chiusa, /menuDellaScheda\(p\)/);
   assert.match(chiusa, /vistaAppunti\(/);
-  assert.match(blocco, /st\.chiusa \? h\("span", \{ classe: "etichetta-chiusa" \}, " · Chiusa"\)/);
-  assert.match(blocco, /st\.stato === "pronta" && !st\.chiusa \? vistaChiavi/);
+  // Design v4 (schermata 19): «· Chiusa» lo scrive la testata (testata_stanza.js, provata in stanza_testata_v4).
+  assert.match(blocco, /vistaTestataStanza\(h, testataStanza\(st\.info, new Date\(\)\), \{ chiusa: st\.chiusa \}\)/);
+  assert.match(blocco, /st\.stato === "pronta" && !st\.chiusa \? \(chiaviSulGruppo \? vistaContoChiavi\(\) : vistaChiavi/);
   assert.match(blocco, /telefono\.ricaricaPersone\(\)/);
 });
 

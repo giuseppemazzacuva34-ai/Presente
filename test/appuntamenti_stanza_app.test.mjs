@@ -112,7 +112,7 @@ test("avvisi: proposta mandata, fissata, promemoria, ora della chiamata", () => 
   assert.deepEqual(m.azioni.map((x) => x.azione), ["annulla"]);
   assert.equal(m.messaggio, null, "il proprio messaggio non si ripete");
   const [f] = avvisiAppuntamenti([app({ stato: "confermato", fase: "fissato" })], nomi, MARTEDI);
-  assert.equal(f.testo, "◷ Chiamata fissata con Sara · oggi alle 21:00");
+  assert.equal(f.testo, "◷ Chiamata fissata con Sara oggi alle 21:00");
   assert.deepEqual(f.azioni.map((x) => [x.azione, x.testo]), [["annulla", "Annulla l'appuntamento"]]);
   const [p] = avvisiAppuntamenti([app({ stato: "confermato", fase: "promemoria" })], nomi, MARTEDI);
   assert.equal(p.testo, "Tra 10 minuti: chiamata con Sara.");

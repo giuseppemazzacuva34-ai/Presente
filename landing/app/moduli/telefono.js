@@ -36,6 +36,7 @@ const PAUSA_ASCOLTO_MS = 3000;
 export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, subito = () => {}, cambiato = () => {}, adesso = () => Date.now() }) {
   const s = {
     persone: [], statoStanza: "attesa", erroreStanza: "",
+    info: null, // { tipo, citta, apreIl } della stanza aperta, per la testata (design v4, schermata 19)
     chiusa: false, // stanza appena chiusa (#5 passo 9): da domenica 21:00 a lunedì 9:00 schede in sola lettura
     ricarica: null, // rilettura in corso (ricaricaPersone), una alla volta
     numero: null, // { altra, n }: quale chiamata con quella persona è questa (design v4, schermata 31)
@@ -149,11 +150,17 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     && !!s.dopo.diario && typeof s.dopo.diario === "object";
 
   async function leggiPersone() {
-    try { return await compagni.leggi(); } catch { return { ok: false, motivo: "rete" }; }
+    try {
+      // Testata della stanza (design v4, schermata 19): città e giorno insieme alle persone; se manca, nessuna testata.
+      const info = typeof compagni.stanza === "function" ? Promise.resolve().then(() => compagni.stanza()).catch(() => null) : null;
+      const [r, i] = await Promise.all([compagni.leggi(), info]);
+      return r && r.ok ? { ...r, info: i } : r;
+    } catch { return { ok: false, motivo: "rete" }; }
   }
   function applicaPersone(r) {
     s.persone = (Array.isArray(r.persone) ? r.persone : []).map((p) => ({ id: p.id, nome: p.nome, eta: p.eta ?? null, citta: p.citta || "" }));
     s.chiusa = r.chiusa === true && s.persone.length > 0;
+    s.info = !s.chiusa && r.info && r.info.ok ? { tipo: r.info.tipo, citta: r.info.citta, apreIl: r.info.apreIl } : null;
     s.statoStanza = s.persone.length ? "pronta" : "vuota";
     s.erroreStanza = "";
     if (s.chiusa) s.testi = new Map();
@@ -321,6 +328,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
           stato: s.statoStanza,
           errore: s.erroreStanza,
           chiusa: s.chiusa,
+          info: s.info,
           // Stanza chiusa: schede in sola lettura, nessun pulsante Chiama (né etichetta).
           persone: s.persone.map((p) => {
             const sc = schedaCompagno(p, { inChiamata: occupato, testo: s.testi.get(p.id) });
