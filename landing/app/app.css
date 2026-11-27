@@ -714,3 +714,16 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .chiamata.richiameresti-v4 .azioni-chiamata > * { width: 100%; margin: 0; }
 .chiamata.richiameresti-v4 .azioni-chiamata > .link { grid-column: 1 / -1; }
 .chiamata.richiameresti-v4 > .link { align-self: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+
+/* ===== Linea C (#349, D149): il diario, schermata 32 =====
+   Valori dal prototipo (#n22: .app .passo, .app h2, .app .campo, .app .nota, .app .piede): occhiello spaziato, la
+   domanda in serif 31px, campo scuro con il testo in serif corsivo, nota piccola grigia, «Salta» e «Salva» in 3D sulla
+   stessa riga in fondo, 1 : 1,7, alti uguali. */
+.chiamata:has(.azioni-diario) { gap: 14px; min-height: calc(100dvh - 130px); }
+.chiamata:has(.azioni-diario) .passo { margin: 0; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #A8A29A; font-weight: 600; }
+.chiamata:has(.azioni-diario) h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-style: normal; font-size: 31px; line-height: 1.05; letter-spacing: -0.01em; color: #F2EDE4; }
+.chiamata:has(.azioni-diario) #testo-diario { margin: 0; min-height: 150px; background: #1A171D; border: 1px solid rgba(242, 237, 228, 0.3); border-radius: 12px; padding: 12px 14px; font-family: var(--serif); font-style: italic; font-size: 18px; line-height: 1.45; color: #F2EDE4; resize: none; }
+.chiamata:has(.azioni-diario) #testo-diario:focus { border-color: rgba(242, 237, 228, 0.7); }
+.chiamata:has(.azioni-diario) .nota { margin: 0; color: #A8A29A; font-size: 12px; }
+.chiamata:has(.azioni-diario) .azioni-diario { display: grid; grid-template-columns: 1fr 1.7fr; gap: 12px; align-items: stretch; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+.chiamata:has(.azioni-diario) .azioni-diario > * { width: 100%; margin: 0; }

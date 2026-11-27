@@ -18,12 +18,13 @@ export const TESTI_DIARIO = Object.freeze({
   appunti: "I tuoi appunti",
 });
 
-const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "questa persona");
+const chi = (nome) => (typeof nome === "string" && nome.trim() ? nome.trim() : "");
 
-// Schermata dopo la chiamata (spec, passo 2).
+// Schermata dopo la chiamata (spec, passo 2). Design v4 (#349, schermata 32): occhiello «Il tuo diario · <nome>» e la
+// domanda come titolo.
 export function schermataDiario(nome) {
   return {
-    titolo: `Il tuo diario su ${chi(nome)}`,
+    occhiello: chi(nome) ? `Il tuo diario · ${chi(nome)}` : "Il tuo diario",
     suggerimento: TESTI_DIARIO.suggerimento,
     nota: TESTI_DIARIO.nota,
     salva: TESTI_DIARIO.salva,
