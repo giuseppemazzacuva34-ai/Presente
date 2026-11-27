@@ -74,14 +74,15 @@ test("con pochi crediti la 39 mostra «Ti mancano N crediti» e «Ricarica», se
   assert.ok(!sv.chiamate.some((c) => Array.isArray(c)));
 });
 
-test("dopo la propria caparra la 39 sparisce e resta il percorso di prima (attesa, scelta, orario)", async () => {
+test("dopo la propria caparra la 39 sparisce e arriva la 40 (D149: attesa, scelta, piede «Torna»)", async () => {
   const { sv, ps } = await aperta();
   sv.risposte.blocca = { ok: true, esito: "bloccata", stato: stato([porta({ mia_caparra: true })], 20) };
   await ps.blocca();
   const v = vistaPorta(h, ps);
-  assert.ok(!v4(v));
+  assert.ok(!testo(v).includes("Hai 48 ore"));
   assert.equal(bottone(v, "Più tardi"), undefined);
-  assert.ok(bottone(v, "Torna alla stanza"));
+  assert.ok(testo(v).includes("Come vi volete vedere?"));
+  assert.ok(bottone(v, "Torna"));
 });
 
 test("errore nel blocco: la 39 mostra il testo e «Riprova» rilegge lo stato", async () => {

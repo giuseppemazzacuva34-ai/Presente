@@ -11,7 +11,7 @@
 
 import { TESTI_SALA, vistaSala } from "./sala_attesa.js";
 import { vistaSchermata } from "./schermata_svelamento.js";
-import { vistaCome } from "./svelamento_come.js";
+import { vistaCome, vistaComePagina } from "./svelamento_come.js";
 import { vistaCaparra } from "./svelamento_caparra.js";
 
 const PERCORSO = "/app/api/svelamento";
@@ -705,6 +705,9 @@ export function vistaPorta(h, ps, { torna = () => ps.chiudi() } = {}) {
   // Design v4 (#349, schermata 39, linea C con l'ok del CTO): prima della propria caparra, la pagina è la 39.
   const v39 = !(video && fase === "uscita") && s && s.tipo === "porta" ? vistaCaparra(h, ps, m, s, { torna, scadeIl: s.scadeIl, adesso: m.adesso }) : null;
   if (v39) return v39;
+  // D149 (linea C): dopo la propria caparra, prima del momento dello svelamento, la pagina è la 40.
+  const v40 = !(video && fase === "uscita") && s && s.tipo === "porta" ? vistaComePagina(h, ps, m, s, { torna }) : null;
+  if (v40) return v40;
   if (m.carica && !s) parti.push(h("p", { classe: "nota", role: "status" }, "Un attimo…"));
   if (m.errore) {
     parti.push(h("p", { classe: "errore", role: "alert" }, m.errore),

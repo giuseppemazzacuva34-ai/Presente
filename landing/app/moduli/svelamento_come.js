@@ -19,6 +19,10 @@ export const TESTI_COME = Object.freeze({
   orario: "Orario",
   nessunOrario: "Nessuno",
   salvaOrari: "Salva gli orari",
+  occhiello: "Svelamento",
+  torna: "Torna",
+  attimo: "Un attimo…",
+  riprova: "Riprova",
   orariSpiegazione: "Segna fino a 3 mezz'ore. L'app fissa la prima che avete in comune.",
 });
 
@@ -39,7 +43,15 @@ function scheda(h, ps, m, valore, attuale, immagine, titolo, nota) {
   immagine, h("b", {}, titolo), h("span", {}, nota));
 }
 
-function vistaQuandoV4(h, ps, m, q) {
+function bottoneQuando(h, ps, m, q) {
+  return m.orari === true
+    ? h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.inviaFasce() },
+      m.inCorso ? TESTI_COME.attimo : TESTI_COME.salvaOrari)
+    : h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.pronto() },
+      m.inCorso ? TESTI_COME.attimo : q.ora);
+}
+
+function vistaQuandoV4(h, ps, m, q, { conBottone = true } = {}) {
   const stato = [q.entrambi, q.mioPronto, q.pronta, q.fissata, q.nessuna].filter(Boolean)
     .map((t) => h("p", { role: "status" }, t));
   const orari = m.orari === true;
@@ -62,25 +74,51 @@ function vistaQuandoV4(h, ps, m, q) {
       h("button", { type: "button", "aria-pressed": orari ? "true" : "false", disabled: m.inCorso,
         onclick: () => { if (!orari) ps.mostraOrari(); } }, q.orario)),
     fila,
-    orari
-      ? h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.inviaFasce() },
-        m.inCorso ? "Un attimo…" : TESTI_COME.salvaOrari)
-      : h("button", { classe: "bottone", type: "button", disabled: m.inCorso, onclick: () => ps.pronto() }, q.ora),
+    conBottone ? bottoneQuando(h, ps, m, q) : null,
   ];
 }
 
 // La vista (h come in flusso.js). null se non c'è ancora niente da scegliere (prima della propria caparra).
-export function vistaCome(h, ps, m, s) {
+// Con { pagina: true } (vistaComePagina) il titolo è l'h1 della pagina e il pulsante principale va nel piede.
+export function vistaCome(h, ps, m, s, { pagina = false } = {}) {
   if (!s || s.tipo !== "porta" || (!s.scelta && !s.quando)) return null;
-  const parti = [h("h2", { id: "come-titolo" }, `${TESTI_COME.titolo} `, h("em", {}, TESTI_COME.titoloEvidenza))];
+  const idTitolo = pagina ? "porta-titolo" : "come-titolo";
+  const parti = [pagina
+    ? h("h1", { id: idTitolo }, `${TESTI_COME.titolo} `, h("br", {}), h("em", {}, TESTI_COME.titoloEvidenza))
+    : h("h2", { id: idTitolo }, `${TESTI_COME.titolo} `, h("em", {}, TESTI_COME.titoloEvidenza))];
   if (s.scelta) {
     const a = s.scelta.attuale;
-    parti.push(h("div", { classe: "scelta2", role: "group", "aria-labelledby": "come-titolo" },
+    parti.push(h("div", { classe: "scelta2", role: "group", "aria-labelledby": idTitolo },
       scheda(h, ps, m, "video", a, h("div", { classe: "anello", "aria-hidden": "true" }, h("span", {}, TESTI_COME.videoCerchio)),
         TESTI_COME.video, TESTI_COME.videoNota),
       scheda(h, ps, m, "foto", a, h("div", { classe: "pila", "aria-hidden": "true" }, h("i", {}), h("i", {}), h("i", {})),
         TESTI_COME.foto, TESTI_COME.fotoNota)));
   }
-  if (s.quando) parti.push(vistaQuandoV4(h, ps, m, s.quando));
+  if (s.quando) parti.push(vistaQuandoV4(h, ps, m, s.quando, { conBottone: !pagina }));
   return h("div", { classe: "come-svelamento" }, parti);
+}
+
+// D149 (parità con il design v4): dopo la propria caparra la 40 è una pagina intera, come la 39 di
+// svelamento_caparra.js. Occhiello «Svelamento · <nome>, <età>», titolo in due righe, schede e «Quando»; piede
+// «Torna» / pulsante principale su una riga in fondo. Il titolo lungo, il conto, il saldo (già nella testata) e la
+// riga «avete bloccato entrambi» non ci sono, come nel design; resta la riga del server mentre si aspetta la caparra
+// dell'altra persona. null se non è il momento della 40 (nessuna porta, prima della propria caparra, al momento
+// dello svelamento: lì resta la sala d'attesa di svelamento.js).
+export function vistaComePagina(h, ps, m, s, { torna } = {}) {
+  if (!s || s.tipo !== "porta" || s.momento || !s.caparra) return null;
+  const c = s.caparra;
+  if (c.tipo === "blocca" || c.tipo === "ricarica") return null;
+  const come = vistaCome(h, ps, m, s, { pagina: true });
+  if (!come) return null;
+  const corpo = [h("p", { classe: "passo" }, `${TESTI_COME.occhiello} · ${s.chi}`), come];
+  if (c.tipo === "aspetta" && c.testo) corpo.push(h("p", { classe: "nota", role: "status" }, c.testo));
+  if (m.errore) {
+    corpo.push(h("p", { classe: "errore", role: "alert" }, m.errore),
+      h("button", { classe: "link", type: "button", onclick: () => ps.riprova() }, TESTI_COME.riprova));
+  }
+  return h("section", { classe: "schermata porta-svelamento svelamento-v4 come-v4", "aria-labelledby": "porta-titolo" },
+    corpo,
+    h("div", { classe: "azioni" },
+      h("button", { classe: "bottone-secondario", type: "button", onclick: () => torna() }, TESTI_COME.torna),
+      s.quando ? bottoneQuando(h, ps, m, s.quando) : null));
 }
