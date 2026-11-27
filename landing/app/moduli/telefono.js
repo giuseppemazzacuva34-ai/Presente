@@ -161,7 +161,7 @@ export function creaTelefono({ compagni, linea, chiamata, voce, diario = null, s
     }
     if (!s.vista || (s.vista.fase === "finita" && s.nascondiFinita)) return { tipo: "nessuna" };
     const secondiVisti = s.visibileDal === null ? undefined : (adesso() - s.visibileDal) / 1000;
-    return schermata(s.vista, { nomeAltra: nomeInChiamata(s.vista, s.persone), secondiVisti });
+    return schermata(s.vista, { nomeAltra: nomeInChiamata(s.vista, s.persone), secondiVisti, giaFatte: s.conteggi.get(s.vista.altra) || 0 });
   }
 
   return {

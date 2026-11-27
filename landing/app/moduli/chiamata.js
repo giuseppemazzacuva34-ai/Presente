@@ -149,7 +149,9 @@ function chiamatePulite(righe) {
 
 // Cosa mostrare. vista: quella del server (o null). nomeAltra: il nome mostrato nella stanza. secondiVisti: da quanti
 // secondi questo telefono vede la chiamata in corso (per il banner dei primi 10 secondi; se manca il banner resta).
-export function schermata(vista, { nomeAltra = "", secondiVisti } = {}) {
+// giaFatte: chiamate già fatte con questa persona nella settimana (dal server, «chiamate N di 3»): lo squillo in uscita
+// è la numero giaFatte + 1, mai oltre 3 (design v4, schermata 24).
+export function schermata(vista, { nomeAltra = "", secondiVisti, giaFatte = 0 } = {}) {
   if (!vista || typeof vista !== "object") return { tipo: "nessuna" };
   const nome = typeof nomeAltra === "string" ? nomeAltra.trim() : "";
 
@@ -157,7 +159,11 @@ export function schermata(vista, { nomeAltra = "", secondiVisti } = {}) {
     if (vista.io === "riceve") {
       return { tipo: "squillo_in_arrivo", titolo: nome ? `${nome} ti sta chiamando` : "Ti stanno chiamando", testo: "Solo voce · 15 minuti", pulsanti: ["rispondi", "rifiuta"] };
     }
-    return { tipo: "squillo_in_uscita", titolo: nome ? `Stai chiamando ${nome}` : "Stai chiamando", testo: `Squilla… ${Math.max(0, Math.ceil(Number(vista.squillo) || 0))} s`, pulsanti: ["chiudi"] };
+    const fatte = Number.isInteger(giaFatte) && giaFatte > 0 ? giaFatte : 0;
+    const n = Math.min(3, fatte + 1);
+    return { tipo: "squillo_in_uscita", titolo: nome ? `Stai chiamando ${nome}` : "Stai chiamando",
+      occhiello: nome ? `Chiamata ${n} di 3 con ${nome}` : `Chiamata ${n} di 3`, nome,
+      testo: `Squilla… ${Math.max(0, Math.ceil(Number(vista.squillo) || 0))} s`, pulsanti: ["chiudi"] };
   }
 
   if (vista.fase === "finita") return { tipo: "finita", titolo: "Chiamata finita", pulsanti: ["segnala_problema"] };

@@ -134,7 +134,7 @@ test("schermata: nessuna chiamata", () => {
 
 test("schermata: squillo per chi chiama (solo «Chiudi») e per chi riceve («Rispondi» e «Rifiuta»)", () => {
   assert.deepEqual(schermata({ fase: "squilla", io: "chiama", squillo: 25 }, { nomeAltra: "Giulia" }),
-    { tipo: "squillo_in_uscita", titolo: "Stai chiamando Giulia", testo: "Squilla… 25 s", pulsanti: ["chiudi"] });
+    { tipo: "squillo_in_uscita", titolo: "Stai chiamando Giulia", occhiello: "Chiamata 1 di 3 con Giulia", nome: "Giulia", testo: "Squilla… 25 s", pulsanti: ["chiudi"] });
   assert.deepEqual(schermata({ fase: "squilla", io: "riceve", squillo: 30 }, { nomeAltra: "Marco" }),
     { tipo: "squillo_in_arrivo", titolo: "Marco ti sta chiamando", testo: "Solo voce · 15 minuti", pulsanti: ["rispondi", "rifiuta"] });
   // Senza nome: mai «undefined» sullo schermo.

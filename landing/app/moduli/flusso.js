@@ -680,8 +680,13 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo" }, sc.testo),
       h("div", { classe: "azioni-chiamata" }, bottone("Rifiuta", () => t.rifiuta()), bottone("Rispondi", () => t.rispondi(), { classe: "bottone" }))];
   } else if (sc.tipo === "squillo_in_uscita") {
-    parti = [h("h1", {}, sc.titolo), h("p", { classe: "sottotitolo", id: "chiamata-testo" }, sc.testo),
-      h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false)))];
+    // Design v4 (D149, schermata 24): occhiello «Chiamata N di 3 con <nome>», «Stai chiamando» con il nome sotto in
+    // rosso corsivo, onda grande che pulsa piano mentre prende la linea, «Squilla… N s», CHIUDI in 3D in fondo.
+    parti = [h("p", { classe: "passo" }, sc.occhiello),
+      h("h1", {}, sc.nome ? ["Stai chiamando ", h("em", {}, sc.nome)] : sc.titolo),
+      ondaGrande(),
+      h("p", { classe: "sottotitolo", id: "chiamata-testo" }, sc.testo),
+      h("div", { classe: "azioni-chiamata" }, bottone("Chiudi", () => t.chiudi(false), { classe: "bottone" }))];
   } else if (sc.tipo === "in_corso") {
     if (regaloRicevuto) regaloRicevuto.avvia(() => telefono && telefono.modello().inCorsoCon);
     // Design v4 (D149, schermate 25, 29, 30): sagoma di chi parla dietro il vetro rosso, nome e timer al centro in
@@ -737,7 +742,8 @@ function schermoChiamata(m) {
     parti = [h("h1", {}, sc.titolo || "Chiamata finita"),
       h("div", { classe: "azioni-chiamata" }, bottone("Torna alla stanza", () => t.torna(), { classe: "bottone" }))];
   }
-  return h("section", { classe: `schermata chiamata${sc.tipo === "in_corso" ? " in-corso" : ""}`, "aria-label": "Chiamata" }, parti, errore(m.errore));
+  const variante = sc.tipo === "in_corso" ? " in-corso" : sc.tipo === "squillo_in_uscita" ? " squillo-uscita" : "";
+  return h("section", { classe: `schermata chiamata${variante}`, "aria-label": "Chiamata" }, parti, errore(m.errore));
 }
 
 // Modulo di segnalazione (#7 spec v1.1 punti 2-3): motivo, racconto facoltativo, «Blocca anche», conferma con il 112.
