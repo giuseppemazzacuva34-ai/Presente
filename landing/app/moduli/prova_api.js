@@ -5,6 +5,8 @@
 // moduli dell'app stessi (test/prova_api.test.mjs).
 import { PERSONE_PROVA } from "./prova.js";
 import { creaCoinServer, creaSaldo, collegaSaldo } from "./saldo_coin.js";
+import { apriFoglioQuasiFiniti, quasiFiniti, schermataTuoiCoin } from "./saldo_coin.js";
+import { apriTuoiCoin } from "./tuoi_coin.js";
 import { aggiornaTestata } from "./testata.js";
 import { creaRegali } from "./regali.js";
 import { creaRegaliStanza } from "./regali_stanza.js";
@@ -20,10 +22,21 @@ import { mostraAvvisoRegalo } from "./regali.js";
 export const SALDO_PROVA = 120;
 const PREZZI = Object.freeze({ rosa: 5, spumante: 10, fiori: 20 });
 
+// Schermata 21 (D149, linea B): /app/prova.html?crediti=15 fa partire la prova con 15 crediti e la prima stanza già
+// usata, così il foglio «crediti quasi finiti» compare come nell'app vera. Solo interi da 0 a 79 (sotto una stanza).
+export function creditiDaIndirizzo(cerca) {
+  if (typeof cerca !== "string") return null;
+  const v = new URLSearchParams(cerca).get("crediti");
+  if (v === null || !/^\d{1,2}$/.test(v)) return null;
+  const n = Number(v);
+  return n < 80 ? n : null;
+}
+
 const json = (status, corpo) => ({ ok: status >= 200 && status < 300, status, json: async () => corpo });
 
-export function creaApiProva() {
-  const mondo = { saldo: SALDO_PROVA, filoVisto: false };
+export function creaApiProva({ crediti = null } = {}) {
+  const scelti = Number.isInteger(crediti) && crediti >= 0;
+  const mondo = { saldo: scelti ? crediti : SALDO_PROVA, primaStanzaUsata: scelti, filoVisto: false };
   const p = (i) => PERSONE_PROVA[i % PERSONE_PROVA.length];
 
   // Schermata 27 (D149, linea B): ogni persona finta ha una rosa da far vedere; compare durante la chiamata con lei
@@ -50,7 +63,7 @@ export function creaApiProva() {
   async function rispondi(percorso, metodo, corpo) {
     const url = new URL(percorso, "https://prova.invalid");
     const via = url.pathname;
-    if (via === "/app/api/coin" && metodo === "GET") return json(200, { ok: true, saldo: mondo.saldo, primaStanzaUsata: false, pagamenti: false });
+    if (via === "/app/api/coin" && metodo === "GET") return json(200, { ok: true, saldo: mondo.saldo, primaStanzaUsata: mondo.primaStanzaUsata, pagamenti: false });
     if (via === "/app/api/regali/storico" && metodo === "GET") return json(200, storico());
     if (via === "/app/api/regali" && metodo === "GET") {
       return json(200, url.searchParams.has("da") ? { ok: true, testo: null } : { ok: true, saldo: mondo.saldo, avvisi: avvisiDaVedere() });
@@ -90,13 +103,18 @@ export function creaApiProva() {
 // I moduli veri dell'app collegati alle API finte, da aggiungere alle opzioni della prova; il saldo finto va nella
 // testata (in alto a sinistra) come nell'app vera. pagina = document; contenitore = .pagina.app.
 export function moduliProva({ pagina, contenitore, aggiorna = {} } = {}) {
-  const api = creaApiProva();
+  let crediti = null;
+  try { crediti = creditiDaIndirizzo(pagina && pagina.location ? pagina.location.search : null); } catch { crediti = null; }
+  const api = creaApiProva({ crediti });
   const token = () => "prova";
   const finto = api.fetch;
   const fai = (nome) => () => { if (typeof aggiorna[nome] === "function") aggiorna[nome](); };
   if (pagina) {
+    // Come avvio.js: il foglio 21 sta in .pagina.app e «Ricarica» apre la 13 (dove «Paga» resta spento).
+    const avviso = contenitore ? (n) => apriFoglioQuasiFiniti(contenitore, quasiFiniti(n),
+      { alRicarica: () => apriTuoiCoin(contenitore, schermataTuoiCoin(n, { primaStanzaUsata: true }), { principale: pagina.getElementById("app") }) }) : undefined;
     collegaSaldo({ saldo: creaSaldo({ coin: creaCoinServer({ token, fetch: finto }), testata: (dati) => aggiornaTestata(pagina, dati) }),
-      pagina });
+      pagina, avviso });
   }
   return {
     coinProfilo: creaCoinServer({ token, fetch: finto }),
