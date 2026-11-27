@@ -147,3 +147,11 @@ test("stile della linea C per la 39: occhiello, titolo serif con l'evidenza ross
   assert.match(css, /\.app \.svelamento-v4 h1 em \{[^}]*color: #E8432B/);
   assert.match(css, /\.app \.svelamento-v4 \.timer \{[^}]*font-size: 44px/);
 });
+
+// D149 parità grafica (confronto a 400x867 con docs/design/v4/schermate/39-lo-svelamento.png): pulsanti su una riga
+// sola («Blocca 100 crediti» andava a capo) e piede in basso come nel disegno (altezza dello schermo meno la testata).
+test("D149: piede in basso come la schermata 39 e testi dei pulsanti su una riga", () => {
+  const css = readFileSync(new URL("../landing/app/app.css", import.meta.url), "utf8");
+  assert.match(css, /\.app \.svelamento-v4 \{[^}]*min-height: calc\(100dvh - 140px\)/);
+  assert.match(css, /\.app \.svelamento-v4 \.azioni button \{[^}]*white-space: nowrap/);
+});
