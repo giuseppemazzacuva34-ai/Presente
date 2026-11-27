@@ -13,6 +13,8 @@ import { creaFiloDomenica } from "./filo_domenica.js";
 import { creaFiloLunedi } from "./filo_lunedi.js";
 import { creaFiloRiascolto } from "./filo_riascolto.js";
 import { creaStanzaViva } from "./appuntamenti_stanza.js";
+import { creaRegaloRicevuto } from "./regalo_ricevuto.js";
+import { mostraAvvisoRegalo } from "./regali.js";
 
 // Saldo inventato: abbastanza per una stanza e qualche regalo.
 export const SALDO_PROVA = 120;
@@ -23,6 +25,11 @@ const json = (status, corpo) => ({ ok: status >= 200 && status < 300, status, js
 export function creaApiProva() {
   const mondo = { saldo: SALDO_PROVA, filoVisto: false };
   const p = (i) => PERSONE_PROVA[i % PERSONE_PROVA.length];
+
+  // Schermata 27 (D149, linea B): ogni persona finta ha una rosa da far vedere; compare durante la chiamata con lei
+  // (regalo_ricevuto.js mostra solo quelli di chi parla con te) e, una volta vista, non torna. Testo come api/coin.js.
+  const rosaDa = new Map(PERSONE_PROVA.map((x, i) => [`00000000-0000-4000-9000-${String(i + 1).padStart(12, "0")}`, x]));
+  const avvisiDaVedere = () => [...rosaDa].map(([id, x]) => ({ id, da: x.id, regalo: "rosa", testo: `${x.nome} ti ha mandato una rosa.` }));
 
   // Schermata 28: un regalo da due persone finte di questa stanza, nessuna stanza passata.
   // Stessa forma di api/storico_regali.js (D149, linea B): titolo con il punto, «Nome, età», il più recente in alto.
@@ -43,10 +50,10 @@ export function creaApiProva() {
     if (via === "/app/api/coin" && metodo === "GET") return json(200, { ok: true, saldo: mondo.saldo, primaStanzaUsata: false, pagamenti: false });
     if (via === "/app/api/regali/storico" && metodo === "GET") return json(200, storico());
     if (via === "/app/api/regali" && metodo === "GET") {
-      return json(200, url.searchParams.has("da") ? { ok: true, testo: null } : { ok: true, saldo: mondo.saldo, avvisi: [] });
+      return json(200, url.searchParams.has("da") ? { ok: true, testo: null } : { ok: true, saldo: mondo.saldo, avvisi: avvisiDaVedere() });
     }
     if (via === "/app/api/regali" && metodo === "POST") {
-      if (corpo.azione === "visti") return json(200, { ok: true });
+      if (corpo.azione === "visti") { for (const id of Array.isArray(corpo.ids) ? corpo.ids : []) rosaDa.delete(id); return json(200, { ok: true }); }
       const costo = PREZZI[corpo.regalo];
       if (corpo.azione !== "manda" || !costo || !PERSONE_PROVA.some((x) => x.id === corpo.a)) return json(400, { ok: false, motivo: "richiesta" });
       if (mondo.saldo < costo) return json(200, { ok: false, motivo: "saldo", testo: "Non hai abbastanza crediti." });
@@ -96,5 +103,7 @@ export function moduliProva({ pagina, contenitore, aggiorna = {} } = {}) {
     filoLunedi: creaFiloLunedi({ token, fetch: finto, aggiorna: fai("filo") }),
     filoRiascolto: creaFiloRiascolto({ token, fetch: finto, aggiorna: fai("filo") }),
     stanzaViva: creaStanzaViva({ token, fetch: finto }),
+    regaloRicevuto: contenitore ? creaRegaloRicevuto({ regali: creaRegali({ token, fetch: finto }),
+      mostra: (avviso) => mostraAvvisoRegalo(contenitore, avviso) }) : null,
   };
 }
