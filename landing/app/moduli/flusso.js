@@ -20,6 +20,7 @@ import { schermataDifficolta, inviaDifficolta, personeDifficolta } from "./diffi
 import { confermaBlocco, menuScheda, nomeScheda } from "./blocca.js";
 import { ORARI_DALLE, ORARI_ALLE, TESTI as TESTI_FASCIA, daProfilo, campiDaSalvare, testoSalvato } from "./disponibilita.js";
 import { vistaChiavi, vistaSchedaChiave, vistaSera, vistaSchermataChiave } from "./chiavi_stanza.js";
+import { testataStanza, testoChiaviGruppo, vistaTestataStanza, vistaTitoloGruppo } from "./testata_stanza.js";
 import { TESTI_STORICO, segnalaDaStorico } from "./storico_chiamate.js";
 import { vistaAppunti } from "./appunti_stanza.js";
 import { vistaRegaliScheda } from "./regali_stanza.js";
@@ -570,6 +571,7 @@ function bloccoTuaStanza() {
     : null;
   if (filo) return filo;
   let contenuto;
+  let chiaviSulGruppo = false; // design v4 (schermata 19): «N chiavi» sulla riga del primo gruppo al posto del contatore
   if (chiaviStanza) chiaviStanza.prepara();
   if (chiaviStanza && chiaviStanza.modello().sera && st.stato === "pronta" && !st.chiusa && !stanzaRilettaDiSera) {
     stanzaRilettaDiSera = true;
@@ -630,6 +632,8 @@ function bloccoTuaStanza() {
         { id: "tu", presento: stato.miPresento });
       const perId = new Map(persone.map((p) => [p.id, p]));
       const stati = viva.persa ? {} : Object.fromEntries(persone.map((p) => [p.id, (viva.stati.get(p.id) || {}).stato]));
+      const chiaviGruppo = chiaviStanza ? testoChiaviGruppo(chiaviStanza.modello().contatore) : null;
+      chiaviSulGruppo = Boolean(chiaviGruppo && disp.elenco.length && disp.elenco[0].titolo);
       contenuto = [
         viva.persa ? h("p", { classe: "nota connessione-persa", role: "status" }, TESTI_FISSA.connessione) : null,
         vistaCerchioStanza(h, disp, { stati }),
@@ -638,7 +642,7 @@ function bloccoTuaStanza() {
           h("span", {}, h("span", { classe: "punto-stato in_chiamata" }), "in chiamata"),
           h("span", {}, h("span", { classe: "punto-stato non_in_linea" }), "non in linea")),
         vistaAvvisiAppuntamenti(nomi, adesso),
-        disp.elenco.map((g) => [g.titolo ? h("h3", { classe: "gruppo-stanza" }, g.titolo) : null,
+        disp.elenco.map((g, i) => [g.titolo ? vistaTitoloGruppo(h, g.titolo, i === 0 ? chiaviGruppo : null) : null,
           h("ul", { classe: "compagni" }, g.persone.map((x) => riga(perId.get(x.id))))]),
       ];
     } else {
@@ -652,10 +656,10 @@ function bloccoTuaStanza() {
     contenuto = h("p", { classe: "nota", role: "status" }, "Un attimo…");
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
-    h("h2", { id: "tua-stanza-titolo" }, "La tua stanza", st.chiusa ? h("span", { classe: "etichetta-chiusa" }, " · Chiusa") : null),
+    vistaTestataStanza(h, testataStanza(st.info, new Date()), { chiusa: st.chiusa }),
     chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null,
     avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
-    chiaviStanza && st.stato === "pronta" && !st.chiusa ? vistaChiavi(h, chiaviStanza) : null,
+    chiaviStanza && st.stato === "pronta" && !st.chiusa ? (chiaviSulGruppo ? vistaContoChiavi() : vistaChiavi(h, chiaviStanza)) : null,
     st.stato === "pronta" && !st.chiusa && filoRiascolto ? vistaFiloRiascolto(h, filoRiascolto) : null,
     contenuto,
     st.stato === "pronta" && st.chiusa ? h("p", { classe: "nota" }, "La stanza è chiusa: puoi rileggere le schede e i tuoi appunti fino a lunedì alle 9:00, quando apre una nuova stanza.") : null,
@@ -1922,12 +1926,18 @@ function battitoArrivato(r) {
 }
 
 // Avvisi in cima alla stanza (spec punti 5-6): solo per le due persone dell'appuntamento.
+// Con «N chiavi» sulla riga del gruppo resta solo il conto delle 20:00 (stesso id e ruolo di vistaChiavi).
+function vistaContoChiavi() {
+  const conto = chiaviStanza.modello().conto;
+  return conto ? h("div", { classe: "chiavi-stanza" }, h("p", { classe: "nota", id: "chiavi-conto", role: "status" }, conto)) : null;
+}
+
 function vistaAvvisiAppuntamenti(nomi, adesso) {
   const avvisi = avvisiAppuntamenti(viva.appuntamenti, nomi, adesso).filter((a) => !viva.nascosti.has(`${a.id}:${a.tipo}`));
   if (!avvisi.length) return null;
   return h("div", { classe: "avvisi-appuntamenti" }, avvisi.map((a) =>
     h("div", { classe: a.urgente ? "avviso-appuntamento urgente" : "avviso-appuntamento", role: a.urgente ? "alert" : null },
-      h("p", {}, a.testo),
+      h("p", {}, a.parti ? a.parti.map((x, i) => (i === 1 ? h("span", { classe: "nome-avviso" }, x) : x)) : a.testo),
       a.messaggio ? h("p", { classe: "nota" }, `«${a.messaggio}»`) : null,
       h("div", { classe: "azioni" }, a.azioni.map((x) => h("button", {
         classe: x.azione === "conferma" || x.azione === "chiama" ? "bottone" : "bottone-secondario", type: "button",

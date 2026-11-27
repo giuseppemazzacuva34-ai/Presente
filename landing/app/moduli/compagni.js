@@ -31,6 +31,23 @@ export function creaCompagni({ supabaseUrl, supabaseAnonKey, token, fetch: f = g
       const chiusa = await rpc(PERCORSO_CHIUSA, t);
       return chiusa.ok && chiusa.persone.length ? { ok: true, chiusa: true, persone: chiusa.persone } : aperta;
     },
+    // Design v4, schermata 19 (testata_stanza.js): tipo, città e apertura della stanza aperta adesso, dalla tabella
+    // stanze (regola per riga: solo le stanze di cui fai parte). { ok: true, tipo, citta, apreIl } o { ok: false }.
+    async stanza(adesso = new Date()) {
+      const t = await Promise.resolve().then(token).catch(() => null);
+      if (!t) return { ok: false };
+      const ora = adesso.toISOString();
+      const q = new URLSearchParams({ select: "tipo,citta,apre_il", apre_il: `lte.${ora}`, chiude_il: `gt.${ora}`, order: "apre_il.desc", limit: "1" });
+      try {
+        const r = await f(`${base}/rest/v1/stanze?${q}`, { method: "GET", headers: { apikey: supabaseAnonKey, authorization: `Bearer ${t}` } });
+        if (!r.ok) return { ok: false };
+        const [x] = await r.json();
+        if (!x || (x.tipo !== "italia" && x.tipo !== "citta") || typeof x.apre_il !== "string") return { ok: false };
+        return { ok: true, tipo: x.tipo, citta: typeof x.citta === "string" ? x.citta.trim().slice(0, 60) : null, apreIl: x.apre_il };
+      } catch {
+        return { ok: false };
+      }
+    },
   };
 
   async function rpc(percorso, t) {
