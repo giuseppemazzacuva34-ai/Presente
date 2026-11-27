@@ -687,3 +687,7 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .chiamata.in-corso .azioni-in-corso > :nth-last-child(2):nth-child(odd), .app .chiamata.in-corso .azioni-in-corso > .bottone-pericolo { grid-column: 1 / -1; }
 .app .chiamata.in-corso .azioni-in-corso .bottone-pericolo { min-height: 52px; border-radius: 16px; padding: 0 1.1rem; background: linear-gradient(180deg, #2C282F 0%, #1C191F 100%); color: #F05A43; border: 1px solid rgba(242, 237, 228, 0.16); box-shadow: 0 6px 0 #050406, 0 12px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
 .app .chiamata.in-corso .azioni-in-corso .bottone-pericolo:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #050406, 0 6px 10px rgba(0, 0, 0, 0.45); }
+/* Linea C (#349, schermata 18): una barra dei pulsanti vuota (home) non resta incollata in fondo con lo sfondo sfumato:
+   copriva la metà bassa di «Entra nella stanza» del Filo. Il Filo lascia spazio prima della scheda del profilo. */
+.azioni:empty { position: static; background: none; }
+.app .filo-lunedi { margin-bottom: 24px; }
