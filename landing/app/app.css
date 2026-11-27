@@ -300,6 +300,7 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .avviso-regalo em { color: #E8432B; }
 @keyframes regalo-arriva { from { opacity: 0; transform: translate(-50%, -46%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .app .avviso-regalo { animation: none; } }
+.app:has(.avviso-regalo) .onda-grande.in-chiamata { visibility: hidden; }
 
 /* Design v4 (#349, schermate 16 e 35): la home che cambia con la settimana. Valori del prototipo v4. */
 .home-settimana { display: flex; flex-direction: column; gap: 16px; }
