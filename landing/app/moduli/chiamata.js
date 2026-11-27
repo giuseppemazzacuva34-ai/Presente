@@ -203,11 +203,20 @@ export const TESTI_DOPO = Object.freeze({
 export const notaSegreta = (nome) =>
   `Resta tra te e Presente. ${String(nome || "").trim() || "L'altra persona"} non lo saprà mai.`;
 
-export function schermataDopo(dopo, { nomeAltra = "", risposto = false } = {}) {
+// numero: quale chiamata con questa persona è appena finita (1-3), per l'occhiello del design v4 (schermata 31).
+// Se non si sa, nessun numero: «Chiamata con <nome> · finita».
+export function occhielloFinita(nome, numero) {
+  const n = Number.isInteger(numero) && numero >= 1 && numero <= 3 ? `${numero} di 3 ` : "";
+  const con = nome ? `con ${nome} ` : "";
+  return n || con ? `Chiamata ${n}${con}· finita` : "Chiamata finita";
+}
+
+export function schermataDopo(dopo, { nomeAltra = "", risposto = false, numero } = {}) {
   if (!dopo || typeof dopo !== "object") return { tipo: "nessuna" };
   if (dopo.tipo === "richiameresti" && !risposto && dopo.chiamata) {
     return {
       tipo: "richiameresti",
+      occhiello: occhielloFinita(typeof nomeAltra === "string" ? nomeAltra.trim() : "", numero),
       // Spec v1.4: dopo una caduta lunga il server manda in alto «La chiamata si è interrotta dopo m:ss…».
       testo: typeof dopo.testo === "string" && dopo.testo ? dopo.testo : null,
       titolo: TESTI_DOPO.domanda,
