@@ -67,10 +67,11 @@ test("contrasto AA: prezzo, nome, saldo e nota leggibili sul fondo del foglio (�
   }
 });
 
-test("avviso del regalo ricevuto: piccolo, in alto al centro, compare piano e si ferma con «riduci movimento»", () => {
+// D149 (design v4, schermata 27): non più la pillola piccola in alto ma la rosa grande al centro della chiamata.
+test("avviso del regalo ricevuto: al centro, compare piano e si ferma con «riduci movimento»", () => {
   const a = regole(".app .avviso-regalo");
-  for (const x of [/position: fixed/, /left: 50%/, /transform: translateX\(-50%\)/, /animation: regalo-arriva/]) assert.match(a, x);
-  assert.ok(contrasto(colore(a, "color"), colore(a, "background")) >= 4.5);
+  for (const x of [/position: fixed/, /left: 50%/, /top: 50%/, /transform: translate\(-50%, -50%\)/, /animation: regalo-arriva/]) assert.match(a, x);
+  assert.ok(contrasto(colore(a, "color"), "#0E0D10") >= 4.5); // testo crema sul fondo della chiamata
   assert.match(css, /@keyframes regalo-arriva \{/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.app \.avviso-regalo \{ animation: none; \} \}/);
 });
