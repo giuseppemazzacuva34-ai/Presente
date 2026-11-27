@@ -1808,7 +1808,7 @@ function schermoIncontroVostro() {
   const m = incontroVostro.modello();
   const valuta = valutazioneVostra && m.porta ? () => valutazioneVostra.apri(m.porta, { nome: m.nome }) : null;
   return h("section", { classe: "schermata" },
-    vistaIncontro(h, incontroVostro, { valuta }),
+    vistaIncontro(h, incontroVostro, { valuta, buca: incontroVostro.buca || null }), // buca: #6 v1.4 (linea B)
     h("button", { classe: "link", type: "button", onclick: () => { vostri.chiesti = false; incontroVostro.chiudi(); } }, "Torna alla home"));
 }
 function schermoValutazioneVostra() {

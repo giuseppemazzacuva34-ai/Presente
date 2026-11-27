@@ -96,3 +96,85 @@ export function creaContestaBuca({ token, fetch: f = globalThis.fetch }) {
     },
   };
 }
+
+// Il foglio dentro «Il vostro incontro» (passo 2): lo stato si legge una volta per porta; il testo resta solo in memoria.
+export function creaFoglioBuca({ client, aggiorna = () => {} }) {
+  let porta = null;
+  let contestazione = null;
+  let lettura = Promise.resolve();
+  let aperto = false;
+  let testo = "";
+  let invio = false;
+  let errore = "";
+  let inviata = false;
+  const avvisa = () => { try { aggiorna(); } catch { /* la vista non deve fermare il foglio */ } };
+  return {
+    sincronizza(p) {
+      if (!p || p === porta) return;
+      porta = p;
+      contestazione = null; aperto = false; testo = ""; errore = ""; inviata = false;
+      lettura = Promise.resolve().then(() => client.leggi(p)).catch(() => null).then((r) => {
+        if (porta !== p) return;
+        contestazione = r && r.ok ? r.contestazione : null;
+        avvisa();
+      });
+    },
+    letto: () => lettura,
+    apri() { aperto = true; testo = ""; errore = ""; inviata = false; avvisa(); },
+    chiudi() { aperto = false; testo = ""; errore = ""; avvisa(); },
+    imposta(t) { testo = typeof t === "string" ? t : ""; },
+    async manda() {
+      if (invio || !porta) return false;
+      if (!testoValidoBuca(testo)) { errore = TESTI_BUCA.errori.testo_non_valido; avvisa(); return false; }
+      invio = true; errore = ""; avvisa();
+      const p = porta;
+      const r = await Promise.resolve().then(() => client.manda(p, testo)).catch(() => ({ ok: false, testo: TESTI_BUCA.errori.generico }));
+      invio = false;
+      if (porta !== p) return false;
+      if (r && r.ok) {
+        aperto = false; testo = ""; inviata = true;
+        contestazione = { contestabile: false, stato: "in_attesa" };
+      } else errore = (r && r.testo) || TESTI_BUCA.errori.generico;
+      avvisa();
+      return !!(r && r.ok);
+    },
+    modello: () => ({ porta, contestazione, aperto, testo, invio, errore, inviata }),
+  };
+}
+
+// La vista del foglio (h come in flusso.js). s è il risultato di schermataIncontro, i lo stato dell'incontro.
+export function vistaFoglioBuca(h, fb, porta, s, i) {
+  if (!fb || !s || (s.tipo !== "confermato" && s.tipo !== "concluso")) return null;
+  fb.sincronizza(porta);
+  const m = fb.modello();
+  if (m.porta !== porta) return null;
+  const riga = rigaContestaBuca(m.contestazione, s.tipo);
+  const parti = [];
+  if (i && i.esito === "contestato" && m.contestazione && m.contestazione.stato === null) {
+    parti.push(h("p", { classe: "nota", role: "status" }, TESTI_BUCA.altroContesta));
+  }
+  if (m.inviata) parti.push(h("p", { classe: "nota", role: "status" }, TESTI_BUCA.inviata));
+  if (riga.bottone === "in_revisione") parti.push(h("p", { classe: "nota" }, TESTI_BUCA.inRevisione));
+  if (riga.esito) parti.push(h("p", { classe: "nota", role: "status" }, riga.esito));
+  const nome = riga.bottone === "non_riesco" ? TESTI_BUCA.nonRiesco : riga.bottone === "ero_li" ? TESTI_BUCA.eroLi : null;
+  if (nome && !m.aperto) {
+    parti.push(h("button", { classe: "bottone-secondario", type: "button", onclick: () => {
+      fb.apri();
+      const campo = globalThis.document && globalThis.document.getElementById("contesta-buca-testo");
+      if (campo) campo.focus();
+    } }, nome));
+  }
+  if (nome && m.aperto) {
+    parti.push(h("div", { classe: "foglio-contesta", role: "group", "aria-label": nome },
+      h("label", { for: "contesta-buca-testo" }, TESTI_BUCA.domanda),
+      h("p", { classe: "nota", id: "contesta-buca-nota" }, TESTI_BUCA.nota),
+      h("textarea", { id: "contesta-buca-testo", classe: "racconto-segnala", rows: "5", minlength: String(MINIMO),
+        maxlength: String(MASSIMO), "aria-describedby": "contesta-buca-nota", disabled: m.invio,
+        oninput: (e) => fb.imposta(e.target.value) }, m.testo),
+      m.errore ? h("p", { classe: "errore", role: "alert" }, m.errore) : null,
+      h("div", { classe: "azioni" },
+        h("button", { classe: "bottone", type: "button", disabled: m.invio, onclick: () => fb.manda() }, m.invio ? "Invio…" : TESTI_BUCA.manda),
+        h("button", { classe: "link", type: "button", disabled: m.invio, onclick: () => fb.chiudi() }, TESTI_BUCA.annulla))));
+  }
+  return parti.length ? h("div", { classe: "contesta-buca" }, parti) : null;
+}
