@@ -382,6 +382,13 @@ a.bottone-pericolo { display: inline-flex; align-items: center; justify-content:
 .app .porta-v4 .frase { margin: 0; border-left: 2px solid #E8432B; padding: 4px 0 4px 12px; font-family: var(--serif); font-style: italic; font-size: 19px; color: var(--avorio); }
 .app .porta-v4 .bottone { width: 100%; margin: 8px 0 0; }
 .app .chiavi-sera:has(.porta-v4) { border: 0; padding: 0; }
+/* Linea A (#349, D149, schermata 37): con le porte aperte la sera è la prima schermata della home (.sera-in-cima).
+   La prima porta è alta quanto il telefono sotto la testata (112px, come la 35) e la scena sale dietro la testata,
+   che resta sopra e trasparente, come nel prototipo (.foto-full su tutta l'app). Le ante restano tagliate ai lati. */
+.app .sera-in-cima { margin: 0 0 1.5rem; }
+.app .sera-in-cima .chiavi-sera > .porta-v4:first-child { min-height: calc(100dvh - 112px); overflow-x: clip; overflow-y: visible; }
+.app .sera-in-cima .chiavi-sera > .porta-v4:first-child > .porta-v4-scena { top: -112px; }
+.pagina.app:has(.sera-in-cima .porta-v4) > .testata { position: relative; z-index: 1; background: transparent; }
 
 /* ===== Linea C (#349): «Lo svelamento · Come» del design v4, schermata 40 =====
    Valori dal prototipo docs/design/v4/prototipo (.scelta2, .opz, .anello, .pila, .segmenti, .orari). Le schede e il
