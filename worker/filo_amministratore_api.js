@@ -6,6 +6,9 @@
 //   POST /app/api/filo-amministratore/togli-filo  { stanza }           → { ok, tolto }
 //   GET  /app/api/filo-amministratore/ascolta?stanza=&tipo=            → { ok, vocale: { url, durata, testo, file } | null }
 //   POST /app/api/filo-amministratore/togli-vocale { stanza, tipo, file } → { ok, tolto }
+//   GET  /app/api/filo-amministratore/aree                                → { ok, aree: [...] }       (spec v1.2)
+//   POST /app/api/filo-amministratore/assegna-area { tipo, citta, email }  → { ok } | { ok: false, motivo }
+//   POST /app/api/filo-amministratore/togli-area   { tipo, citta }         → { ok, tolto }
 //   errori: 400 dati · 401 accesso · 403 non_amministratore · 404 · 405 · 413 · 429 troppe · 503 riprova
 //
 // Chi è lo dice SOLO il token di Supabase; se è amministratore (tabella moderatori) lo decide il database, che rifiuta
@@ -25,7 +28,19 @@ const FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,63}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
 const MOTIVI_ASSEGNA = new Set(["persona", "stanza", "filo_membro"]);
-const METODI = { "/stanze": "GET", "/assegna": "POST", "/togli-filo": "POST", "/ascolta": "GET", "/togli-vocale": "POST" };
+const METODI = {
+  "/stanze": "GET", "/assegna": "POST", "/togli-filo": "POST", "/ascolta": "GET", "/togli-vocale": "POST",
+  "/aree": "GET", "/assegna-area": "POST", "/togli-area": "POST",
+};
+const MOTIVI_ASSEGNA_AREA = new Set(["persona", "area"]);
+
+// Area del Filo (spec v1.2): { tipo: "citta", citta: "Milano" } o { tipo: "italia" } → { tipo, citta } | null
+function areaValida(corpo) {
+  if (corpo.tipo === "italia") return corpo.citta === undefined || corpo.citta === null || corpo.citta === "" ? { tipo: "italia", citta: null } : null;
+  if (corpo.tipo !== "citta" || typeof corpo.citta !== "string") return null;
+  const citta = corpo.citta.trim();
+  return citta.length >= 1 && citta.length <= 80 ? { tipo: "citta", citta } : null;
+}
 
 function risposta(stato, corpo, extra = {}) {
   return new Response(JSON.stringify(corpo), {
@@ -195,8 +210,35 @@ export async function filoAmministratoreApi(request, env, f = fetch) {
     return risposta(200, { ok: true, vocale: { url: link, durata: Number(v.vocale.durata), testo: String(v.vocale.testo || ""), file: v.vocale.file } });
   }
 
+  if (passo === "/aree") {
+    const r = await rpc(s, "fili_aree_amministratore", { p_amministratore: chi.id }, f);
+    const comune = esitoComune(r);
+    if (comune) return comune;
+    return r.ok && Array.isArray(r.corpo) ? risposta(200, { ok: true, aree: r.corpo }) : riprova();
+  }
+
   const corpo = await leggiCorpo(request);
   if (corpo.errore) return corpo.errore;
+
+  if (passo === "/assegna-area" || passo === "/togli-area") {
+    const area = areaValida(corpo.dati);
+    if (!area) return dati();
+    if (passo === "/togli-area") {
+      const r = await rpc(s, "togli_filo_area", { p_amministratore: chi.id, p_tipo: area.tipo, p_citta: area.citta }, f);
+      const comune = esitoComune(r);
+      if (comune) return comune;
+      return r.ok && typeof r.corpo === "boolean" ? risposta(200, { ok: true, tolto: r.corpo }) : riprova();
+    }
+    const email = typeof corpo.dati.email === "string" ? corpo.dati.email.trim() : "";
+    if (email.length > 254 || !EMAIL.test(email)) return dati();
+    const r = await rpc(s, "assegna_filo_area", { p_amministratore: chi.id, p_tipo: area.tipo, p_citta: area.citta, p_email: email, p_ora: ora }, f);
+    const comune = esitoComune(r);
+    if (comune) return comune;
+    if (r.ok) return risposta(200, { ok: true });
+    if (r.stato >= 400 && r.stato < 500 && MOTIVI_ASSEGNA_AREA.has(r.motivo)) return risposta(200, { ok: false, motivo: r.motivo });
+    return riprova();
+  }
+
   const stanza = corpo.dati.stanza;
   if (typeof stanza !== "string" || !UUID.test(stanza)) return dati();
 
