@@ -1,6 +1,6 @@
 // Pannello dell'amministratore per il Filo della stanza (issue #360, spec v1 + v1.1 del CPO, D151 A), passo 12c della
 // linea «sviluppatore-c». Parla SOLO con /app/api/filo-amministratore/{stanze, assegna, togli-filo, ascolta,
-// togli-vocale} (worker/filo_amministratore_api.js) col token di chi guarda: se è amministratore lo decide il database
+// togli-vocale, aree, assegna-area, togli-area} (worker/filo_amministratore_api.js) col token di chi guarda: se è amministratore lo decide il database
 // (tabella moderatori). Qui solo testi e forma dei dati, niente pagina (così si prova con node --test). Niente
 // salvataggi sul telefono, niente log: email e testi restano sullo schermo. Pagina interna (in beta la usa solo
 // Giuseppe): nessun testo pubblico nuovo.
@@ -60,6 +60,27 @@ export function vociStanzeFilo(stanze, adesso = new Date()) {
     .map(({ _ordine, ...v }) => v);
 }
 
+// Aree con un Filo (spec v1.2): { area: { tipo, citta }, titolo, filo }; prima la Stanza Italia, poi le città.
+export function vociAreeFilo(aree) {
+  if (!Array.isArray(aree)) return [];
+  return aree
+    .filter((a) => a && typeof a === "object" && (a.tipo === "italia" || (a.tipo === "citta" && typeof a.citta === "string" && a.citta.trim())))
+    .map((a) => {
+      const citta = a.tipo === "citta" ? a.citta.trim() : null;
+      const nome = typeof a.filo_nome === "string" ? a.filo_nome.trim() : "";
+      return { area: { tipo: a.tipo, citta }, titolo: citta || "Stanza Italia", filo: `Filo: ${nome || "(nome non inserito)"}` };
+    })
+    .sort((x, y) => (x.area.tipo === y.area.tipo ? x.titolo.localeCompare(y.titolo, "it") : x.area.tipo === "italia" ? -1 : 1));
+}
+
+// { tipo, citta } pronta per il Worker, o null.
+function areaPulita(tipo, citta) {
+  if (tipo === "italia") return { tipo };
+  if (tipo !== "citta" || typeof citta !== "string") return null;
+  const nome = citta.trim();
+  return nome.length >= 1 && nome.length <= 80 ? { tipo, citta: nome } : null;
+}
+
 export function durataVocale(secondi) {
   const n = Number(secondi);
   if (!Number.isFinite(n) || n < 0) return "";
@@ -77,6 +98,7 @@ const ERRORI = Object.freeze({
   stanza: "Questa stanza è già chiusa.",
   filo_membro: "Questa persona è nella stanza: il Filo non può esserne membro.",
   email: "Scrivi un'email valida.",
+  area: "Scrivi il nome della città (fino a 80 caratteri), oppure scegli la Stanza Italia.",
   dati: "Controlla i dati e riprova.",
 });
 export const testoErroreFilo = (motivo) => (Object.hasOwn(ERRORI, motivo) ? ERRORI[motivo] : "Qualcosa non ha funzionato. Riprova tra poco.");
@@ -149,6 +171,24 @@ export function creaFiloAmministratore({ token, fetch: f = globalThis.fetch, att
         return { ok: false, motivo: "riprova" };
       }
       return { ok: true, vocale: v };
+    },
+    async aree() {
+      const { dati, errore } = await chiedi("/aree", "GET");
+      if (errore) return { ok: false, motivo: errore };
+      if (dati.ok !== true || !Array.isArray(dati.aree)) return { ok: false, motivo: "riprova" };
+      return { ok: true, aree: dati.aree };
+    },
+    async assegnaArea(tipo, citta, email) {
+      const area = areaPulita(tipo, citta);
+      if (!area) return { ok: false, motivo: "area" };
+      const pulita = typeof email === "string" ? email.trim() : "";
+      if (pulita.length > 254 || !EMAIL.test(pulita)) return { ok: false, motivo: "email" };
+      return scrivi("/assegna-area", { ...area, email: pulita }, false);
+    },
+    async togliArea(tipo, citta) {
+      const area = areaPulita(tipo, citta);
+      if (!area) return { ok: false, motivo: "area" };
+      return scrivi("/togli-area", area, true);
     },
     async togliVocale(stanza, tipo, file) {
       if (!stanzaValida(stanza) || !TIPI.has(tipo) || typeof file !== "string" || !FILE.test(file)) return { ok: false, motivo: "dati" };

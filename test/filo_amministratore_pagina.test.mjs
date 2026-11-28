@@ -29,7 +29,7 @@ test("avvio: usa il modulo, testi solo con textContent, niente salvataggi né lo
 
 test("avvio: tutte le azioni del pannello, con conferma prima di togliere", () => {
   for (const azione of ["stanze", "assegna", "togliFilo", "ascolta", "togliVocale"]) assert.match(avvio, new RegExp(`\\.${azione}\\(`));
-  assert.equal((avvio.match(/window\.confirm\(/g) || []).length, 2, "conferma per togliere il Filo e per togliere il vocale");
+  assert.equal((avvio.match(/window\.confirm\(/g) || []).length, 3, "conferma per togliere il Filo, il vocale e il Filo dell'area");
   assert.match(avvio, /preload: "none"/, "il vocale non si scarica né parte da solo");
   assert.doesNotMatch(avvio, /autoplay/);
   assert.match(avvio, /testo: "Aggiorna"/);
