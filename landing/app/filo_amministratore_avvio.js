@@ -3,7 +3,7 @@
 // (tabella moderatori): qui la pagina mostra solo ciò che il Worker restituisce. Ogni testo entra con textContent,
 // mai come HTML. Il vocale non si scarica e non parte da solo (preload «none», nessuna partenza automatica).
 import { creaAccesso } from "/app/moduli/accesso.js";
-import { creaFiloAmministratore, vociStanzeFilo, testoErroreFilo, durataVocale } from "/app/moduli/filo_amministratore.js";
+import { creaFiloAmministratore, vociStanzeFilo, vociAreeFilo, testoErroreFilo, durataVocale } from "/app/moduli/filo_amministratore.js";
 
 const radice = document.getElementById("filo-amministratore");
 const stato = document.getElementById("stato");
@@ -109,6 +109,50 @@ function riquadroVocale(p, v, tipo, i) {
   return h("div", {}, ascolta, zona, errore);
 }
 
+// Il Filo per area (spec v1.2): a ogni composizione del lunedì le stanze dell'area ricevono questo Filo; il cambio su
+// una sola stanza (più sotto) vale solo per quella settimana.
+function sezioneAree(p, aree) {
+  const voci = vociAreeFilo(aree);
+  const tipo = h("select", { id: "area-tipo", name: "tipo" },
+    h("option", { value: "citta", testo: "Una città" }), h("option", { value: "italia", testo: "Stanza Italia" }));
+  const citta = h("input", { id: "area-citta", name: "citta", type: "text", autocomplete: "off", maxlength: "80" });
+  const etichettaCitta = h("label", { for: "area-citta", testo: "Città (come nelle stanze, es. Milano)" });
+  tipo.addEventListener("change", () => { const italia = tipo.value === "italia"; citta.hidden = italia; etichettaCitta.hidden = italia; });
+  const email = h("input", { id: "area-email", name: "email", type: "email", autocomplete: "off", required: true, maxlength: "254" });
+  const errore = h("p", { class: "errore", role: "alert" });
+  const invia = h("button", { type: "submit", class: "bottone", testo: "Assegna all'area" });
+  const modulo = h("form", { class: "corpo", onsubmit: async (e) => {
+    e.preventDefault();
+    errore.textContent = "";
+    invia.disabled = true;
+    const esito = await p.assegnaArea(tipo.value, citta.value, email.value);
+    invia.disabled = false;
+    if (!esito.ok) { errore.textContent = testoErroreFilo(esito.motivo); return; }
+    avvisa("Filo assegnato all'area: vale dalle prossime stanze composte.");
+    mostraStanze(p, false);
+  } },
+  h("label", { for: "area-tipo", testo: "Area" }), tipo, etichettaCitta, citta,
+  h("label", { for: "area-email", testo: "Email dell'account del Filo" }), email, errore, invia);
+  return h("section", { class: "corpo", "aria-labelledby": "titolo-aree" },
+    h("h2", { id: "titolo-aree", testo: "Il Filo per area" }),
+    h("p", { class: "nota", testo: "Ogni lunedì le stanze nuove di un'area ricevono il suo Filo. Un'area senza Filo ha le stanze senza Filo." }),
+    voci.length ? h("ul", { class: "coda" }, voci.map((v) => {
+      const sbaglio = h("p", { class: "errore", role: "alert" });
+      const togli = h("button", { type: "button", class: "bottone-secondario", testo: "Togli il Filo dall'area", onclick: async () => {
+        if (!window.confirm(`Togliere il Filo dall'area «${v.titolo}»? Le stanze già composte lo tengono, le prossime no.`)) return;
+        sbaglio.textContent = "";
+        togli.disabled = true;
+        const esito = await p.togliArea(v.area.tipo, v.area.citta);
+        togli.disabled = false;
+        if (!esito.ok) { sbaglio.textContent = testoErroreFilo(esito.motivo); return; }
+        avvisa(esito.tolto ? "Filo tolto dall'area." : "L'area era già senza Filo.");
+        mostraStanze(p, false);
+      } });
+      return h("li", { class: "voce-coda" }, h("h3", { testo: v.titolo }), h("p", { testo: v.filo }), togli, sbaglio);
+    })) : h("p", { class: "nota", testo: "Nessuna area ha un Filo." }),
+    modulo);
+}
+
 async function mostraStanze(p, pulisci = true) {
   if (pulisci) avvisa("");
   const r = await p.stanze();
@@ -117,12 +161,15 @@ async function mostraStanze(p, pulisci = true) {
       r.motivo === "accesso" ? h("p", {}, h("a", { href: "/app/", testo: "Vai all'app" })) : null);
     return;
   }
+  const aree = await p.aree();
   const voci = vociStanzeFilo(r.stanze, new Date());
   const avvisi = voci.filter((v) => v.rossa).length;
   mostra(
     h("h1", { testo: TITOLO }),
     h("p", { class: "sottotitolo", testo: !voci.length ? "Nessuna stanza aperta o in arrivo."
       : avvisi ? `${avvisi} ${avvisi === 1 ? "stanza" : "stanze"} senza vocale del lunedì, in cima.` : `${voci.length} ${voci.length === 1 ? "stanza" : "stanze"}, nessun avviso.` }),
+    aree.ok ? sezioneAree(p, aree.aree) : h("p", { class: "errore", role: "alert", testo: testoErroreFilo(aree.motivo) }),
+    h("h2", { testo: "Le stanze di questa settimana" }),
     h("ul", { class: "coda" }, voci.map((v, i) => h("li", { class: v.rossa ? "voce-coda voce-rossa" : "voce-coda" },
       h("h2", { testo: v.titolo }),
       h("p", { class: "nota", testo: [v.periodo, v.membri].filter(Boolean).join(" · ") }),
@@ -133,7 +180,8 @@ async function mostraStanze(p, pulisci = true) {
       v.domenica ? riquadroVocale(p, v, "domenica", i) : null,
       moduloAssegna(p, v, i),
       v.conFilo ? bottoneTogliFilo(p, v) : null))),
-    h("div", { class: "azioni" }, h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraStanze(p), testo: "Aggiorna" })),
+    // «Aggiorna» nel flusso della pagina (non fisso in fondo): non copre i campi del modulo delle aree.
+    h("p", { class: "aggiorna-filo" }, h("button", { type: "button", class: "bottone-secondario", onclick: () => mostraStanze(p), testo: "Aggiorna" })),
   );
 }
 
