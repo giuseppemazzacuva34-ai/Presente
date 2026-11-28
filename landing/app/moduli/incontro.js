@@ -18,6 +18,7 @@ import { TESTI_VALUTAZIONE } from "./valutazione.js";
 import { vistaFoglioBuca } from "./contesta_buca.js"; // «Ero lì» / «Non riesco» (spec v1.4)
 import { vistaFoglioCambio } from "./cambia_luogo.js"; // «Cambia luogo» (spec v1, casi limite)
 import { vistaFoglioAvviso } from "./avvisa_qui.js"; // «Avvisa <nome> che sei qui» (spec v1, punto 6)
+import { testoIcs, TESTI_CALENDARIO } from "./calendario_incontro.js"; // «Aggiungi al calendario» (spec v1, passo 4)
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
@@ -474,7 +475,8 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
 // opzioni.buca (#6 v1.4): il foglio «Ero lì» / «Non riesco» di moduli/contesta_buca.js; senza, non c'è.
 // opzioni.cambio (#6 v1, casi limite): il foglio «Cambia luogo» di moduli/cambia_luogo.js; senza, non c'è.
 // opzioni.avviso (#6 v1, punto 6): il foglio «Avvisa <nome> che sei qui» di moduli/avvisa_qui.js; senza, non c'è.
-export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = null, avviso = null } = {}) {
+// opzioni.calendario (#6 v1, passo 4): riceve il testo del file .ics (moduli/calendario_incontro.js); senza, non c'è.
+export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = null, avviso = null, calendario = null } = {}) {
   const m = inc.modello();
   if (!m.porta && !m.errore) return null;
   const T = TESTI_INCONTRO;
@@ -500,6 +502,9 @@ export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = nul
     if (s.azioni.includes("ritardo")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.ritardo() }, T.ritardo));
     if (s.azioni.includes("disdici")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.disdici() }, T.disdici));
     if (s.azioni.includes("annulla_incontro")) parti.push(h("button", { classe: "bottone-secondario", type: "button", disabled: bloccato, onclick: () => inc.annullaIncontro() }, T.annulla));
+    const ics = s.tipo === "confermato" && typeof calendario === "function"
+      ? testoIcs({ porta: m.porta, orario: m.incontro.orario, luogo: dove(m.incontro) }, inc.adesso()) : null;
+    if (ics) parti.push(h("button", { classe: "bottone-secondario", type: "button", onclick: () => calendario(ics) }, TESTI_CALENDARIO.bottone));
     if (s.azioni.includes("valuta") && typeof valuta === "function") parti.push(h("button", { classe: "bottone", type: "button", disabled: bloccato, onclick: () => valuta() }, TESTI_VALUTAZIONE.apri));
   }
   if (s && (m.conferma === "disdici" || m.conferma === "annulla_incontro")) {
