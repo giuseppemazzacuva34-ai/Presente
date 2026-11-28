@@ -18,6 +18,7 @@ export const INCONTRO = Object.freeze({
   checkinPrimaMinuti: 30, // «Sono qui» da 30 minuti prima…
   checkinDopoMinuti: 30, // …a 30 minuti dopo l'ora (da confermare con Giuseppe, valore in configurazione)
   ritardi: Object.freeze([15, 30]), // «Arrivo in ritardo», una volta sola
+  avvisoQuiMinuti: 15, // «Avvisa <nome> che sei qui»: dopo 15 minuti di attesa (dal più tardi tra «Sono qui» e l'ora), una volta sola
   cambioLuogoPrimaMinuti: 60, // «Cambia luogo» (e la conferma dell'altra persona) fino a 1 ora prima; senza conferma resta il luogo vecchio
   caparra: 100, // Coin: la stessa caparra bloccata per lo svelamento (#65; #331)
   bucaAChiAspetta: 70, // D12 A, in Coin (#331)
