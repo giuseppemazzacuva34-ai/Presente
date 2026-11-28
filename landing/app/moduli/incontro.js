@@ -17,6 +17,7 @@
 import { TESTI_VALUTAZIONE } from "./valutazione.js";
 import { vistaFoglioBuca } from "./contesta_buca.js"; // «Ero lì» / «Non riesco» (spec v1.4)
 import { vistaFoglioCambio } from "./cambia_luogo.js"; // «Cambia luogo» (spec v1, casi limite)
+import { vistaFoglioAvviso } from "./avvisa_qui.js"; // «Avvisa <nome> che sei qui» (spec v1, punto 6)
 
 const PERCORSO = "/app/api/incontro";
 const ATTESA_MS = 8000;
@@ -76,7 +77,7 @@ export const TESTI_INCONTRO = Object.freeze({
   segnale: "Il vostro segnale: <parola>",
   creditiLiberi: "I tuoi 100 crediti sono di nuovo disponibili.",
   // Provvisori, da rivedere con «contenuti» (la spec usa il nome dell'altra persona, che lo stato non manda ancora).
-  aspettaAltro: "L'altra persona non ha ancora fatto il check-in.",
+  aspettaAltro: "<nome> non ha ancora fatto il check-in.", // dalla spec v1, punto 6
   finestraCheckin: "Potrai dire «Sono qui» <giorno> dalle <da> alle <fino>.",
   troppoPresto: "È ancora presto: «Sono qui» si può dire da 30 minuti prima dell'incontro.",
   troppoTardi: "Il tempo per dire «Sono qui» è finito.",
@@ -145,8 +146,9 @@ function quando(i) {
 const proposta = (i) => { const q = quando(i); return q ? `${q.giorno} alle ${q.ora} · ${dove(i)}` : ""; };
 
 // Accanto a «Ci vediamo…»: quando si potrà dire «Sono qui», o che si aspetta l'altra persona.
-function testoCheckin(i, adesso) {
-  if (i.checkin_mio === true) return i.checkin_altro === true ? null : TESTI_INCONTRO.aspettaAltro;
+function testoCheckin(i, adesso, nome = null) {
+  const chi = typeof nome === "string" && nome.trim() ? nome.trim() : TESTI_INCONTRO.altraPersona;
+  if (i.checkin_mio === true) return i.checkin_altro === true ? null : TESTI_INCONTRO.aspettaAltro.replace("<nome>", chi);
   const da = valida(i.checkin_da);
   const fino = valida(i.checkin_fino);
   if (!da || !fino || adesso >= da) return null;
@@ -198,7 +200,7 @@ export function schermataIncontro(i, adesso = new Date(), nome = null) {
   }
   if (i.stato === "confermato") {
     const q = quando(i);
-    return { tipo: "confermato", azioni, testo: TESTI_INCONTRO.caparra, checkin: testoCheckin(i, adesso), ritardo: testoRitardo(i, nome),
+    return { tipo: "confermato", azioni, testo: TESTI_INCONTRO.caparra, checkin: testoCheckin(i, adesso, nome), ritardo: testoRitardo(i, nome),
       titolo: q ? TESTI_INCONTRO.confermato.replace("<giorno>", q.giorno).replace("<ora>", q.ora).replace("<luogo>", dove(i)) : TESTI_INCONTRO.titolo };
   }
   if (i.stato === "proposto" && i.proposta_mia === true) return { tipo: "attesa", proposta: proposta(i), testo: TESTI_INCONTRO.aspetta,
@@ -471,7 +473,8 @@ export function creaIncontro({ token, fetch: f = globalThis.fetch, attesa = ATTE
 // opzioni.valuta (passo 3f): chi apre la schermata della valutazione; senza, il pulsante non c'è.
 // opzioni.buca (#6 v1.4): il foglio «Ero lì» / «Non riesco» di moduli/contesta_buca.js; senza, non c'è.
 // opzioni.cambio (#6 v1, casi limite): il foglio «Cambia luogo» di moduli/cambia_luogo.js; senza, non c'è.
-export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = null } = {}) {
+// opzioni.avviso (#6 v1, punto 6): il foglio «Avvisa <nome> che sei qui» di moduli/avvisa_qui.js; senza, non c'è.
+export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = null, avviso = null } = {}) {
   const m = inc.modello();
   if (!m.porta && !m.errore) return null;
   const T = TESTI_INCONTRO;
@@ -521,6 +524,7 @@ export function vistaIncontro(h, inc, { valuta = null, buca = null, cambio = nul
   if (s && m.proposta) parti.push(vistaProposta(h, inc, m, s));
   if (s && buca && !m.proposta && !m.conferma) parti.push(vistaFoglioBuca(h, buca, m.porta, s, m.incontro));
   if (s && cambio && !m.proposta && !m.conferma) parti.push(vistaFoglioCambio(h, cambio, m.porta, m.incontro, m.nome));
+  if (s && avviso && !m.proposta && !m.conferma) parti.push(vistaFoglioAvviso(h, avviso, m.porta, m.incontro, m.nome, inc.adesso()));
   if (m.errore) parti.push(h("p", { classe: "errore", role: "alert" }, m.errore));
   return h("section", { classe: "incontro", "aria-labelledby": "incontro-titolo" }, h("h2", { id: "incontro-titolo" }, T.titolo), parti);
 }
