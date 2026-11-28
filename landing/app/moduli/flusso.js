@@ -884,6 +884,8 @@ function homePrimaDellaStanza(corpo, dopo) {
   { entra: entraNellaStanza, ripensa: ciRipenso });
   return h("div", { classe: "home-v4" },
     h("section", { classe: "schermata home-prima" },
+      // Domenica alle 21 la stanza è chiusa ma le porte sono aperte: anche qui la sera (schermata 37) sta in cima.
+      seraInCima() ? h("div", { classe: "sera-in-cima" }, bloccoSera()) : null,
       vistaSettimanaHome(h, settimanaDellaHome({ regalo: true })),
       h("div", { classe: "corpo" }, corpo),
       errore(salvataggio.errore),

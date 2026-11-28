@@ -41,3 +41,19 @@ test("il service worker cambia versione", () => {
   const sw = readFileSync(new URL("../landing/app/sw.js", import.meta.url), "utf8");
   assert.ok(!sw.includes('"presente-app-86"'), "versione della cache aumentata");
 });
+
+// Regressione (#545 + #530, segnalata dalla linea C il 28/11): alle 21 la stanza è chiusa, quindi la home usa
+// homePrimaDellaStanza; anche lì, con le porte, la sera deve stare in cima, sopra la settimana.
+test("con la stanza chiusa (home prima della stanza) la sera con le porte resta in cima", () => {
+  const corpo = flusso.match(/function homePrimaDellaStanza\(corpo, dopo\) \{([\s\S]*?)\n\}/);
+  assert.ok(corpo, "manca homePrimaDellaStanza");
+  const f = corpo[1];
+  const sera = f.indexOf('seraInCima() ? h("div", { classe: "sera-in-cima" }, bloccoSera()) : null');
+  const settimana = f.indexOf("vistaSettimanaHome(");
+  assert.ok(sera >= 0, "la sera manca nella home prima della stanza");
+  assert.ok(sera < settimana, "la sera va sopra la settimana");
+});
+
+test("con la porta in cima il piede di «Ci sarò lunedì» non resta attaccato sopra la porta", () => {
+  assert.match(regola(".app .home-prima:has(> .sera-in-cima .porta-v4) > .azioni-home"), /position:\s*static/);
+});

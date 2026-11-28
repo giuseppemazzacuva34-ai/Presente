@@ -771,6 +771,8 @@ body:has(.chiamata.in-corso) { background: transparent; }
 .app .home-prima { display: flex; flex-direction: column; gap: 16px; min-height: calc(100dvh - 140px); box-sizing: border-box; }
 .app .home-prima .nota-settimana { line-height: 1.45; }
 .app .home-prima > .azioni-home { margin-top: auto; }
+/* Domenica alle 21 con la stanza chiusa la porta è la prima schermata anche qui: il piede non le resta sopra. */
+.app .home-prima:has(> .sera-in-cima .porta-v4) > .azioni-home { position: static; }
 #app .azioni-home { display: flex; flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
 #app .azioni-home > .bottone { width: 100%; margin: 0; }
 #app .azioni-home > .nota { margin: 0; }
