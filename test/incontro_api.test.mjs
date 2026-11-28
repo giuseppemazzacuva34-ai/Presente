@@ -155,6 +155,7 @@ const STATO = {
   disdetta: null, // passo 2q
   ritardo_mio: false, // «Arrivo in ritardo»: solo sì/no, mai chi l'ha dichiarato
   cambio_luogo: null, // «Cambia luogo»: nessuna richiesta in corso
+  avviso_qui_da: null, avvisato_mio: false, avvisato_altro: false, // «Avvisa che sei qui»: solo orario e sì/no
 };
 const leggi = (porta = PORTA, extra = "") => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${porta}${extra}` });
 
