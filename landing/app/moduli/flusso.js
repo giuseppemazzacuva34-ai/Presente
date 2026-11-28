@@ -657,7 +657,7 @@ function bloccoTuaStanza() {
   }
   return h("section", { classe: "tua-stanza", "aria-labelledby": "tua-stanza-titolo" },
     vistaTestataStanza(h, testataStanza(st.info, new Date()), { chiusa: st.chiusa }),
-    chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null,
+    seraInCima() ? null : bloccoSera(),
     avvisiPorte ? vistaAvvisiPorte(h, avvisiPorte, { apri: svelamento, soloUrgenti: seraConPorte() }) : null,
     chiaviStanza && st.stato === "pronta" && !st.chiusa ? (chiaviSulGruppo ? vistaContoChiavi() : vistaChiavi(h, chiaviStanza)) : null,
     st.stato === "pronta" && !st.chiusa && filoRiascolto ? vistaFiloRiascolto(h, filoRiascolto) : null,
@@ -1308,7 +1308,7 @@ const SCHERMATE = {
     // Schermata 16: settimana, cerchio e «Ci sarò lunedì» in fondo alla prima schermata; il resto sotto.
     if (prima) return homePrimaDellaStanza([vistaCerchioHome(h, stato.miPresento), ...zona], [...resto, h("div", { classe: "azioni" }, azioniFondo)]);
     // Design v4 (#349, schermate 16 e 35): in cima la settimana, mai «profilo pronto».
-    return schermataHome(vistaSettimanaHome(h, settimanaDellaHome()),
+    return schermataHome([seraInCima() ? h("div", { classe: "sera-in-cima" }, bloccoSera()) : null, vistaSettimanaHome(h, settimanaDellaHome())],
       [inStanzaAperta() ? null : vistaCerchioHome(h, stato.miPresento), ...zona, bloccoStanza(), ...resto], azioniFondo);
   },
 };
@@ -1576,6 +1576,14 @@ export function avvisiCambiati() {
 function seraConPorte() {
   const sera = chiaviStanza && chiaviStanza.modello().sera;
   return Boolean(sera && sera.tipo === "porte");
+}
+// Design v4 (#349, schermata 37): con le porte aperte la sera (schermata 36 del Filo, animazione, porte) è la prima
+// schermata della home, sopra la settimana; in «La tua stanza» non si ripete.
+function seraInCima() {
+  return seraConPorte();
+}
+function bloccoSera() {
+  return chiaviStanza ? vistaSeraFilo(h, filoDomenica, chiaviStanza, () => vistaSera(h, chiaviStanza, { svelamento })) : null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
