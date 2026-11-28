@@ -2023,7 +2023,7 @@ function schermoFissa() {
       h("div", { classe: "scelte", role: "group", "aria-labelledby": "fissa-ora" },
         (giorno ? giorno.ore : []).map((o) => scelta(o.iso === f.ora, o.testo, () => { f.ora = o.iso; disegna(); }))),
       h("div", { classe: "campo" },
-        h("label", { for: "fissa-messaggio" }, TESTI_FISSA.messaggio),
+        h("label", { for: "fissa-messaggio", classe: "solo-lettore" }, TESTI_FISSA.messaggio),
         h("textarea", { id: "fissa-messaggio", rows: "3", maxlength: String(TESTI_FISSA.massimo), placeholder: TESTI_FISSA.segnaposto,
           disabled: f.invio, oninput: (e) => { f.messaggio = e.target.value; } }, f.messaggio)),
       h("p", { classe: "nota" }, TESTI_FISSA.spiega(f.nome)),
