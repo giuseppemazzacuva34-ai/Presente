@@ -46,7 +46,7 @@ test("confermato, dentro la finestra: c'è «Sono qui»; fuori: quando si potrà
 test("check-in fatto solo da me: si aspetta l'altra persona, nessun pulsante, nessun segnale", () => {
   const s = schermataIncontro(confermato({ checkin_mio: true }), DENTRO);
   assert.deepEqual(s.azioni, []);
-  assert.equal(s.checkin, TESTI_INCONTRO.aspettaAltro);
+  assert.equal(s.checkin, "L'altra persona non ha ancora fatto il check-in.");
   assert.equal(s.segnale, undefined);
 });
 
@@ -110,7 +110,7 @@ test("vista: pulsante grande «Sono qui», poi attesa, poi il segnale in evidenz
   await b.a.onclick();
   v = vistaIncontro(h, inc);
   assert.equal(bottone(v, TESTI_INCONTRO.sonoQui), undefined);
-  assert.match(testo(v), new RegExp(TESTI_INCONTRO.aspettaAltro));
+  assert.match(testo(v), /L'altra persona non ha ancora fatto il check-in\./);
   await inc.riprova();
   v = vistaIncontro(h, inc);
   const segnale = tutti(v, (x) => x.a.classe === "segnale")[0];
