@@ -20,6 +20,9 @@
 //   POST /app/api/incontro  { azione: "rispondi_cambio", porta, risposta: "accetto" | "rifiuto" } → rispondi_cambio_luogo
 //        «Cambia luogo» (spec v1, casi limite): fino a 1 ora prima, con conferma dell'altra persona; nello stato
 //        «cambio_luogo» { mio, locale, luogo, scade } | null, mai chi l'ha chiesto (ripulito da soloCambioLuogo).
+//   POST /app/api/incontro  { azione: "avvisa_qui", porta }                          → avvisa_sono_qui
+//        «Avvisa <nome> che sei qui» (spec v1 punto 6): dopo 15 minuti di attesa, una volta sola; nello stato
+//        «avviso_qui_da» (orario o null) e «avvisato_mio» / «avvisato_altro» solo sì/no.
 //   POST /app/api/incontro  { azione: "valuta", porta, presentato, foto_sue, come_in_chiamata, sicuro } → valuta_incontro
 //        Valutazione D20 (passo 3c): esito «grazie» o «racconta» (con «No» alla sicurezza: proporre la segnalazione, #7)
 //   POST /app/api/incontro  { azione: "racconta", porta, testo }                     → racconta_valutazione
@@ -73,7 +76,9 @@ const RIUSCITI = { proponi_incontro: ["proposto", "controproposto"], rispondi_in
   contesta_buca: ["inviata"],
   // Spec v1, casi limite: «Cambia luogo» con conferma dell'altra persona.
   cambia_luogo: ["proposto"],
-  rispondi_cambio_luogo: ["cambiato", "rifiutato"] };
+  rispondi_cambio_luogo: ["cambiato", "rifiutato"],
+  // Spec v1 punto 6: «Avvisa <nome> che sei qui».
+  avvisa_sono_qui: ["avvisato"] };
 const RIFIUTI = {
   proponi_incontro: ["orario_non_valido", "prima_di_domani", "fuori_orario", "non_sul_passo", "dopo_la_scadenza",
     "luogo_non_valido", "attendi_risposta", "controproposte_finite", "gia_confermato", "incontro_chiuso", "incontro_scaduto"],
@@ -90,6 +95,8 @@ const RIFIUTI = {
   cambia_luogo: ["non_confermato", "incontro_chiuso", "troppo_tardi", "luogo_non_valido", "stesso_luogo", "attendi_risposta",
     "rispondi_prima"],
   rispondi_cambio_luogo: ["nessun_cambio", "non_puoi_rispondere", "troppo_tardi", "non_confermato", "incontro_chiuso"],
+  avvisa_sono_qui: ["non_confermato", "incontro_chiuso", "non_ancora_qui", "gia_arrivato", "troppo_presto", "gia_avvisato",
+    "troppo_tardi"],
 };
 const NON_TROVATO = ["non_nella_porta", "nessun_incontro"];
 // Campi dello stato che arrivano al telefono: solo questi, anche se il database ne mandasse altri.
@@ -210,6 +217,7 @@ export async function incontroApi(request, env, f = fetch) {
     if (!RISPOSTE_CAMBIO.includes(scelta)) return dati();
     return esegui(s, "rispondi_cambio_luogo", { p_porta: porta, p_persona: chi.id, p_risposta: scelta }, f);
   }
+  if (azione === "avvisa_qui") return esegui(s, "avvisa_sono_qui", { p_porta: porta, p_persona: chi.id }, f);
   if (azione === "contesta_buca") return contestaBuca(s, chi, porta, corpo.dati.testo, f);
   if (azione === "racconta") {
     const t = corpo.dati.testo;
@@ -272,6 +280,10 @@ async function stato(s, request, chi, f) {
   incontro.disdetta = soloDisdetta(r.disdetta);
   incontro.ritardo_mio = r.ritardo_mio === true; // solo sì/no, mai chi ha dichiarato il ritardo
   incontro.cambio_luogo = soloCambioLuogo(r.cambio_luogo); // «Cambia luogo»: mai chi l'ha chiesto
+  // «Avvisa <nome> che sei qui»: un orario (o null) e due sì/no, mai chi ha avvisato.
+  incontro.avviso_qui_da = typeof r.avviso_qui_da === "string" && orarioONull(r.avviso_qui_da) ? r.avviso_qui_da : null;
+  incontro.avvisato_mio = r.avvisato_mio === true;
+  incontro.avvisato_altro = r.avvisato_altro === true;
   Object.assign(incontro, soloLocali(await rpc(s, "locali_incontro", { p_porta: porta, p_persona: chi.id }, f)));
   return risposta(200, { ok: true, incontro });
 }

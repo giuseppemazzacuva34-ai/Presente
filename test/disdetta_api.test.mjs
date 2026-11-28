@@ -99,6 +99,7 @@ const STATO_DISDETTO = {
   segnale: null, disdetta: { mia: false, il: "2026-11-20T09:00:00+00:00", orario: "2026-11-21T18:00:00+00:00" },
   ritardo_mio: false,
   cambio_luogo: null, // «Cambia luogo»: nessuna richiesta
+  avviso_qui_da: null, avvisato_mio: false, avvisato_altro: false, // «Avvisa che sei qui»
 };
 const leggiStato = () => richiesta({ metodo: "GET", percorso: `${PERCORSO_INCONTRO}?porta=${PORTA}` });
 
